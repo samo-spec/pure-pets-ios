@@ -135,6 +135,171 @@ final class LensDetectionStabilizerTests: XCTestCase {
         XCTAssertEqual(stabilizer.ingest([]), .searching)
     }
 
+    func testPreLockGapRetainsProgressButStillRequiresThreeAcceptedFrames() {
+        var stabilizer = LensDetectionStabilizer(
+            configuration: .init(requiredStableFrames: 3, lostFrameTolerance: 2)
+        )
+        let dog = animal("dog", confidence: 0.94)
+        let first = stabilizer.ingest([dog])
+        let trackID = first.recognition?.trackID
+        XCTAssertNotNil(trackID)
+        assertProgress(first, equals: 1.0 / 3.0)
+        XCTAssertEqual(stabilizer.ingest([]), first)
+
+        let second = stabilizer.ingest([dog])
+        assertProgress(second, equals: 2.0 / 3.0)
+        XCTAssertEqual(second.recognition?.trackID, trackID)
+        XCTAssertEqual(stabilizer.ingest([]), second)
+        XCTAssertEqual(stabilizer.ingest([]), second)
+
+        let third = stabilizer.ingest([dog])
+        XCTAssertTrue(third.isDetected)
+        XCTAssertEqual(third.recognition?.trackID, trackID)
+    }
+
+    func testSubthresholdFrameDoesNotAdvanceOrLowerPreLockConfidence() {
+        var stabilizer = LensDetectionStabilizer(
+            configuration: .init(minimumConfidence: 0.60, requiredStableFrames: 3, lostFrameTolerance: 2)
+        )
+        let dog = animal("dog", confidence: 0.94)
+        let weakDog = animal("dog", confidence: 0.59)
+        XCTAssertEqual(stabilizer.ingest([weakDog]), .searching)
+        _ = stabilizer.ingest([dog])
+        let second = stabilizer.ingest([dog])
+
+        XCTAssertEqual(stabilizer.ingest([weakDog]), second)
+        XCTAssertEqual(stabilizer.ingest([weakDog]), second)
+        assertProgress(stabilizer.state, equals: 2.0 / 3.0)
+
+        let third = stabilizer.ingest([dog])
+        XCTAssertTrue(third.isDetected)
+        XCTAssertEqual(third.recognition?.trackID, second.recognition?.trackID)
+        XCTAssertEqual(third.recognition?.confidence ?? 0, 0.94, accuracy: 0.001)
+    }
+
+    func testExceedingPreLockGapToleranceDropsProgressAndStartsANewTrack() {
+        var stabilizer = LensDetectionStabilizer(
+            configuration: .init(requiredStableFrames: 3, lostFrameTolerance: 2)
+        )
+        let dog = animal("dog", confidence: 0.94)
+        _ = stabilizer.ingest([dog])
+        let oldCandidate = stabilizer.ingest([dog])
+        XCTAssertEqual(stabilizer.ingest([]), oldCandidate)
+        XCTAssertEqual(stabilizer.ingest([]), oldCandidate)
+        XCTAssertEqual(stabilizer.ingest([]), .searching)
+
+        let fresh = stabilizer.ingest([dog])
+        assertProgress(fresh, equals: 1.0 / 3.0)
+        XCTAssertNotEqual(fresh.recognition?.trackID, oldCandidate.recognition?.trackID)
+        assertProgress(stabilizer.ingest([dog]), equals: 2.0 / 3.0)
+        XCTAssertTrue(stabilizer.ingest([dog]).isDetected)
+    }
+
+    func testZeroPreLockGapToleranceStillRequiresConsecutiveFrames() {
+        var stabilizer = LensDetectionStabilizer(
+            configuration: .init(requiredStableFrames: 3, lostFrameTolerance: 0)
+        )
+        let dog = animal("dog", confidence: 0.94)
+        _ = stabilizer.ingest([dog])
+        let oldCandidate = stabilizer.ingest([dog])
+        XCTAssertEqual(stabilizer.ingest([]), .searching)
+
+        let fresh = stabilizer.ingest([dog])
+        assertProgress(fresh, equals: 1.0 / 3.0)
+        XCTAssertNotEqual(fresh.recognition?.trackID, oldCandidate.recognition?.trackID)
+    }
+
+    func testDifferentSpeciesAfterToleratedGapCannotInheritPreLockProgress() {
+        var stabilizer = LensDetectionStabilizer(
+            configuration: .init(requiredStableFrames: 3, lostFrameTolerance: 2)
+        )
+        let dog = animal("dog", confidence: 0.94)
+        let cat = animal("cat", confidence: 0.95)
+        _ = stabilizer.ingest([dog])
+        let dogCandidate = stabilizer.ingest([dog])
+        _ = stabilizer.ingest([])
+
+        let catCandidate = stabilizer.ingest([cat])
+        assertProgress(catCandidate, equals: 1.0 / 3.0)
+        XCTAssertEqual(catCandidate.recognition?.species, "Cat")
+        XCTAssertNotEqual(catCandidate.recognition?.trackID, dogCandidate.recognition?.trackID)
+        assertProgress(stabilizer.ingest([cat]), equals: 2.0 / 3.0)
+        let locked = stabilizer.ingest([cat])
+        XCTAssertTrue(locked.isDetected)
+        XCTAssertEqual(locked.recognition?.trackID, catCandidate.recognition?.trackID)
+    }
+
+    func testDistantSameSpeciesAfterToleratedGapCannotInheritPreLockProgress() {
+        var stabilizer = LensDetectionStabilizer(
+            configuration: .init(requiredStableFrames: 3, lostFrameTolerance: 2)
+        )
+        let left = LensLocalDetection(
+            id: "left-dog", kind: .animal, label: "dog", confidence: 0.94,
+            boundingBox: .init(x: 0.02, y: 0.3, width: 0.18, height: 0.25)
+        )
+        let right = LensLocalDetection(
+            id: "right-dog", kind: .animal, label: "dog", confidence: 0.95,
+            boundingBox: .init(x: 0.80, y: 0.3, width: 0.18, height: 0.25)
+        )
+        _ = stabilizer.ingest([left])
+        let leftCandidate = stabilizer.ingest([left])
+        _ = stabilizer.ingest([])
+
+        let rightCandidate = stabilizer.ingest([right])
+        assertProgress(rightCandidate, equals: 1.0 / 3.0)
+        XCTAssertNotEqual(rightCandidate.recognition?.trackID, leftCandidate.recognition?.trackID)
+        assertProgress(stabilizer.ingest([right]), equals: 2.0 / 3.0)
+        let locked = stabilizer.ingest([right])
+        XCTAssertTrue(locked.isDetected)
+        XCTAssertEqual(locked.recognition?.trackID, rightCandidate.recognition?.trackID)
+        XCTAssertEqual(locked.recognition?.boundingBox, right.boundingBox)
+    }
+
+    func testAmbiguousPreLockAssociationDiscardsProgressInsteadOfTreatingItAsAGap() {
+        var stabilizer = LensDetectionStabilizer(
+            configuration: .init(requiredStableFrames: 3, lostFrameTolerance: 2)
+        )
+        let dog = animal("dog", confidence: 0.94)
+        _ = stabilizer.ingest([dog])
+        let original = stabilizer.ingest([dog])
+        _ = stabilizer.ingest([])
+        let first = LensLocalDetection(
+            id: "crossing-first", kind: .animal, label: "dog", confidence: 0.94,
+            boundingBox: .init(x: 0.19, y: 0.3, width: 0.5, height: 0.5)
+        )
+        let second = LensLocalDetection(
+            id: "crossing-second", kind: .animal, label: "dog", confidence: 0.95,
+            boundingBox: .init(x: 0.21, y: 0.3, width: 0.5, height: 0.5)
+        )
+
+        XCTAssertEqual(stabilizer.ingest([first, second]), .searching)
+        XCTAssertEqual(stabilizer.ingest([]), .searching)
+        let reacquired = stabilizer.ingest([dog])
+        assertProgress(reacquired, equals: 1.0 / 3.0)
+        XCTAssertNotEqual(reacquired.recognition?.trackID, original.recognition?.trackID)
+        assertProgress(stabilizer.ingest([dog]), equals: 2.0 / 3.0)
+        XCTAssertTrue(stabilizer.ingest([dog]).isDetected)
+    }
+
+    func testPreLockToleranceDoesNotRetainAReplacementCandidateAcrossAMiss() {
+        var stabilizer = LensDetectionStabilizer(
+            configuration: .init(requiredStableFrames: 1, replacementStableFrames: 3, lostFrameTolerance: 2)
+        )
+        let dog = animal("dog", confidence: 0.94)
+        let cat = animal("cat", confidence: 0.95)
+        let lockedDog = stabilizer.ingest([dog])
+        _ = stabilizer.ingest([cat])
+        _ = stabilizer.ingest([cat])
+        XCTAssertEqual(stabilizer.ingest([]), lockedDog)
+        XCTAssertEqual(stabilizer.ingest([cat]), lockedDog)
+        XCTAssertEqual(stabilizer.ingest([cat]), lockedDog)
+
+        let lockedCat = stabilizer.ingest([cat])
+        XCTAssertTrue(lockedCat.isDetected)
+        XCTAssertEqual(lockedCat.recognition?.species, "Cat")
+        XCTAssertNotEqual(lockedCat.recognition?.trackID, lockedDog.recognition?.trackID)
+    }
+
     func testCompetingCandidateMustStabilizeBeforeReplacingLock() {
         var stabilizer = LensDetectionStabilizer(
             configuration: .init(
@@ -279,6 +444,35 @@ final class LensDetectionStabilizerTests: XCTestCase {
         XCTAssertFalse(gate.shouldPlay(for: dog, at: start.addingTimeInterval(1), cooldown: 3))
         XCTAssertTrue(gate.shouldPlay(for: cat, at: start.addingTimeInterval(1), cooldown: 3))
         XCTAssertTrue(gate.shouldPlay(for: dog, at: start.addingTimeInterval(4), cooldown: 3))
+    }
+
+    func testRealWorldEffectiveConfidenceStabilizesUnderDefaultThreshold() {
+        var stabilizer = LensDetectionStabilizer()
+        // Typical real-world Vision animal detection: observation 0.72, label 0.70 => 0.504 effective confidence
+        let effective = LensObservationConfidence.effective(observation: 0.72, label: 0.70)
+        let dog = animal("dog", confidence: effective)
+
+        let first = stabilizer.ingest([dog])
+        assertProgress(first, equals: 1.0 / 3.0)
+
+        let second = stabilizer.ingest([dog])
+        assertProgress(second, equals: 2.0 / 3.0)
+
+        let third = stabilizer.ingest([dog])
+        XCTAssertTrue(third.isDetected)
+        XCTAssertEqual(third.recognition?.species, "Dog")
+    }
+
+    private func assertProgress(
+        _ state: LensDetectorState,
+        equals expected: Double,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard case .stabilizing(_, let progress) = state else {
+            return XCTFail("Expected stabilization without a detection", file: file, line: line)
+        }
+        XCTAssertEqual(progress, expected, accuracy: 0.001, file: file, line: line)
     }
 
     private func animal(_ label: String, confidence: Double) -> LensLocalDetection {

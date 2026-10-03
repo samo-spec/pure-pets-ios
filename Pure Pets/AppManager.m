@@ -594,7 +594,7 @@ static NSString * const kCachedAddressesByUserKey    = @"cachedAddressesByUser";
         NSLog(@"User modified: %@", userModel.ID);
     }
 }
-
+ 
 - (void)handleUserRemoved:(UserModel *)userModel {
     // Remove the user from the array
     NSPredicate *predicate = [NSPredicate predicateWithFormat:@"ID == %@", userModel.ID];

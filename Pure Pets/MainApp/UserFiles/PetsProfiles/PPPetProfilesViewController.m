@@ -955,6 +955,7 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 @property (nonatomic, assign) BOOL isLoading;
 @property (nonatomic, assign) BOOL isFetching;
 @property (nonatomic, assign) BOOL reloadRequestedWhileFetching;
+@property (nonatomic, strong) NSMutableArray<dispatch_block_t> *refreshCompletions;
 @property (nonatomic, strong) NSError *loadError;
 @property (nonatomic, strong) CAGradientLayer *backgroundGradientLayer;
 
@@ -1039,6 +1040,12 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
     [self pp_runEntranceIfNeeded];
 }
 
+- (void)viewDidDisappear:(BOOL)animated
+{
+    [super viewDidDisappear:animated];
+    [self pp_finishRefreshCompletions];
+}
+
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
@@ -1049,6 +1056,13 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 
 - (void)dealloc
 {
+    // A refresh task must not outlive its owner waiting for a network callback.
+    NSArray<dispatch_block_t> *pendingRefreshes = [_refreshCompletions copy];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        for (dispatch_block_t completion in pendingRefreshes) {
+            completion();
+        }
+    });
     [self.heroImageTask cancel];
     for (NSURLSessionDataTask *task in self.swiftUIImageTasks.allValues) {
         [task cancel];
@@ -1074,8 +1088,13 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
         onReminders:^{
             [weakSelf pp_openReminders];
         }
-        onRefresh:^{
-            [weakSelf pp_reload];
+        onRefresh:^(dispatch_block_t completion) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (self) {
+                [self pp_refreshWithCompletion:completion];
+            } else if (completion) {
+                completion();
+            }
         }
         onSelect:^(PPPetProfile *pet) {
             [weakSelf pp_editPet:pet];
@@ -1718,11 +1737,44 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
     [self pp_updateHeaderLayout];
 }
 
+- (void)pp_refreshWithCompletion:(dispatch_block_t)completion
+{
+    if (!NSThread.isMainThread) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (self) {
+                [self pp_refreshWithCompletion:completion];
+            } else if (completion) {
+                completion();
+            }
+        });
+        return;
+    }
+
+    if (completion) {
+        if (!self.refreshCompletions) {
+            self.refreshCompletions = [NSMutableArray array];
+        }
+        [self.refreshCompletions addObject:[completion copy]];
+    }
+    [self pp_reload];
+}
+
+- (void)pp_finishRefreshCompletions
+{
+    [self.tableView.refreshControl endRefreshing];
+    NSArray<dispatch_block_t> *completions = self.refreshCompletions.copy;
+    [self.refreshCompletions removeAllObjects];
+    for (dispatch_block_t completion in completions) {
+        completion();
+    }
+}
+
 - (void)pp_reload
 {
     if (self.isFetching) {
         self.reloadRequestedWhileFetching = YES;
-        [self.tableView.refreshControl endRefreshing];
         return;
     }
 
@@ -1740,7 +1792,6 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
             if (!self) return;
             self.isFetching = NO;
             self.isLoading = NO;
-            [self.tableView.refreshControl endRefreshing];
             BOOL shouldReloadAgain = self.reloadRequestedWhileFetching;
             self.reloadRequestedWhileFetching = NO;
 
@@ -1754,7 +1805,11 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
                             subtitle:kLang(@"pet_profiles_error_subtitle")];
                 }
                 [self pp_renderState];
-                if (shouldReloadAgain) [self pp_reload];
+                if (shouldReloadAgain) {
+                    [self pp_reload];
+                } else {
+                    [self pp_finishRefreshCompletions];
+                }
                 return;
             }
 
@@ -1762,7 +1817,11 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
             self.pets = pets ?: @[];
             [self pp_updateSwiftUIImages];
             [self pp_renderState];
-            if (shouldReloadAgain) [self pp_reload];
+            if (shouldReloadAgain) {
+                [self pp_reload];
+            } else {
+                [self pp_finishRefreshCompletions];
+            }
         });
     }];
 }

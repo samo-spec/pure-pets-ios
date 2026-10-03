@@ -33,6 +33,10 @@
                       indexPath:(NSIndexPath *)indexPath;
 - (void)configureAsAddNewIndexPath:(NSIndexPath *)indexPath;
 - (void)updateSelectionState:(BOOL)isSelected animated:(BOOL)animated;
++ (CGFloat)heightForInstrument:(UserPaymentInstrument *)instrument
+                       method:(PaymentMethod *)method
+                        width:(CGFloat)width
+              traitCollection:(UITraitCollection *)traitCollection;
 + (UIColor *)accentColorForMethod:(nullable PaymentMethod *)method;
 
 @end

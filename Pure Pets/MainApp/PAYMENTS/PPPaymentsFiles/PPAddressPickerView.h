@@ -14,6 +14,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Show picker floating on top of any controller
 + (instancetype)showInViewController:(UIViewController *)controller width:(float)width;
 
+/// Use as a self-sizing checkout section. Does not install floating constraints.
+- (void)configureForInlineCheckout;
+
 /// Attach pan gesture to dismiss/collapse on scroll
 - (void)attachToScrollView:(UIScrollView *)scrollView;
 
@@ -27,6 +30,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Called when user taps expanded picker
 @property (nonatomic, copy, nullable) void (^onPickAddress)(void);
 
+/// Allows a containing self-sizing header to refresh after content or type changes.
+@property (nonatomic, copy, nullable) void (^onLayoutHeightChange)(void);
+
 /// Collapse programmatically
 - (void)collapse;
 
@@ -39,4 +45,3 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
-

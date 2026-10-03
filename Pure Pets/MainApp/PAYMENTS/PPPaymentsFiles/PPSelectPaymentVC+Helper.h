@@ -8,6 +8,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class UserPaymentInstrument;
 @class UserPaymentInstrumentManager;
 @class PaymentMethod;
+@class PPPaymentSectionHeaderView;
 
 @interface PPSelectPaymentVC ()
 
@@ -18,15 +19,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UserPaymentInstrumentManager *instrumentManager;
 @property (nonatomic, strong) NSArray<UserPaymentInstrument *> *userInstruments;
 
+- (void)pp_configurePaymentHeader:(PPPaymentSectionHeaderView *)header;
+- (CGFloat)pp_paymentHeaderHeightForWidth:(CGFloat)width;
+
 @end
 
 @interface PPPaymentSectionHeaderView : UICollectionReusableView
-
-@property (nonatomic, copy, nullable) void (^actionHandler)(void);
-- (void)configureWithTitle:(NSString *)title
-                  subtitle:(nullable NSString *)subtitle
-               actionTitle:(nullable NSString *)actionTitle;
-
 @end
 
 @interface PPSelectPaymentVC (PPPaymentHelper) <UICollectionViewDelegate,

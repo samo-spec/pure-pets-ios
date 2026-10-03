@@ -77,6 +77,8 @@ final class PureLensStore: ObservableObject {
     private var demoTask: Task<Void, Never>?
     private var openItemTask: Task<Void, Never>?
     private var supportValidationTask: Task<Void, Never>?
+    private var cameraAuthorizationTask: Task<Void, Never>?
+    private var cameraAuthorizationRequestID: UUID?
     private var sessionGeneration = UUID()
     private var imageSearchGeneration: UUID?
     private var hasStarted = false
@@ -153,6 +155,7 @@ final class PureLensStore: ObservableObject {
         demoTask?.cancel()
         openItemTask?.cancel()
         supportValidationTask?.cancel()
+        cameraAuthorizationTask?.cancel()
         camera.stop()
     }
 
@@ -277,8 +280,13 @@ final class PureLensStore: ObservableObject {
     }
 
     func start() async {
+        guard !Task.isCancelled else { return }
         guard !hasStarted else {
-            resumeCameraIfNeeded()
+            if let task = requestCameraAuthorizationRefresh() {
+                _ = await task.value
+            } else {
+                resumeCameraIfNeeded()
+            }
             return
         }
         hasStarted = true
@@ -292,12 +300,42 @@ final class PureLensStore: ObservableObject {
             return
         }
 
-        let authorization = await camera.authorization()
-        guard !Task.isCancelled else { return }
-        cameraAuthorization = authorization
-        guard authorization == .authorized else { return }
-        camera.setAnalysisEnabled(true)
-        camera.start()
+        if let task = requestCameraAuthorizationRefresh() {
+            _ = await task.value
+        }
+    }
+
+    @discardableResult
+    private func requestCameraAuthorizationRefresh() -> Task<Void, Never>? {
+        guard hasStarted, isAppActive, !configuration.isDemoMode else { return nil }
+        if let cameraAuthorizationTask { return cameraAuthorizationTask }
+
+        // Activation can arrive while the initial system permission prompt is
+        // resolving. Share that request instead of asking or starting twice.
+        let requestID = UUID()
+        cameraAuthorizationRequestID = requestID
+        let task = Task { [weak self, camera] in
+            defer {
+                if let self, self.cameraAuthorizationRequestID == requestID {
+                    self.cameraAuthorizationTask = nil
+                    self.cameraAuthorizationRequestID = nil
+                }
+            }
+            guard !Task.isCancelled else { return }
+            let authorization = await camera.authorization()
+            guard let self, self.cameraAuthorizationRequestID == requestID else { return }
+            self.cameraAuthorizationTask = nil
+            self.cameraAuthorizationRequestID = nil
+            guard !Task.isCancelled, self.hasStarted, self.isAppActive else { return }
+            self.cameraAuthorization = authorization
+            if authorization == .authorized {
+                self.resumeCameraIfNeeded()
+            } else {
+                self.camera.stop()
+            }
+        }
+        cameraAuthorizationTask = task
+        return task
     }
 
     func pauseCamera() {
@@ -306,9 +344,11 @@ final class PureLensStore: ObservableObject {
     }
 
     func resumeCameraIfNeeded() {
-        guard isAppActive,
+        guard hasStarted,
+              isAppActive,
               !configuration.isDemoMode,
               !isOpeningGuidance,
+              cameraAuthorizationTask == nil,
               cameraAuthorization == .authorized
         else { return }
         let canAnalyze = presentation == nil
@@ -332,7 +372,7 @@ final class PureLensStore: ObservableObject {
                 startDemoDetection()
             }
         } else {
-            resumeCameraIfNeeded()
+            requestCameraAuthorizationRefresh()
         }
     }
 
@@ -593,6 +633,10 @@ final class PureLensStore: ObservableObject {
     }
 
     func cancelActiveWork() {
+        hasStarted = false
+        cameraAuthorizationRequestID = nil
+        cameraAuthorizationTask?.cancel()
+        cameraAuthorizationTask = nil
         cancelDiscoveryWork()
         sessionGeneration = UUID()
         representativeFrame = nil

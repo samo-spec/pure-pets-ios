@@ -326,11 +326,14 @@ public struct LensDetectionStabilizer: Sendable {
         public var minimumConfidence: Double
         public var requiredStableFrames: Int
         public var replacementStableFrames: Int
+        /// Consecutive absent or subthreshold observations tolerated while
+        /// acquiring or retaining one subject. Missing frames never advance
+        /// stabilization; competing and ambiguous subjects are not misses.
         public var lostFrameTolerance: Int
         public var spatialAssociation: LensSpatialAssociationConfiguration
 
         public init(
-            minimumConfidence: Double = 0.58,
+            minimumConfidence: Double = 0.45,
             requiredStableFrames: Int = 3,
             replacementStableFrames: Int = 4,
             lostFrameTolerance: Int = 2,
@@ -441,7 +444,25 @@ public struct LensDetectionStabilizer: Sendable {
             return state
         }
 
-        candidate = updatedCandidate(with: strongest)
+        let acceptedRecognition: LensPetRecognition
+        if let candidate {
+            switch spatialMatch(for: candidate.recognition, in: recognitions) {
+            case .match(let matched):
+                acceptedRecognition = matched
+            case .ambiguous:
+                // A tolerated gap must not let two crossing pets inherit one
+                // another's accepted frames or track identity.
+                self.candidate = nil
+                state = .searching
+                return state
+            case .none:
+                acceptedRecognition = strongest
+            }
+        } else {
+            acceptedRecognition = strongest
+        }
+
+        candidate = updatedCandidate(with: acceptedRecognition)
         guard let candidate else {
             state = .searching
             return state
@@ -470,8 +491,10 @@ public struct LensDetectionStabilizer: Sendable {
     }
 
     private mutating func ingestMissingFrame() -> LensDetectorState {
-        candidate = nil
         if let lockedRecognition {
+            // Replacement/reacquisition candidates still require uninterrupted
+            // evidence. Pre-lock tolerance must not weaken replacement safety.
+            candidate = nil
             missingFrameCount += 1
             if missingFrameCount <= configuration.lostFrameTolerance {
                 if requiresReacquisitionAfterAmbiguity {
@@ -481,7 +504,20 @@ public struct LensDetectionStabilizer: Sendable {
                 }
                 return state
             }
+        } else if let candidate {
+            missingFrameCount += 1
+            if missingFrameCount <= configuration.lostFrameTolerance {
+                state = .stabilizing(
+                    recognition: candidate.recognition,
+                    progress: min(
+                        Double(candidate.frameCount) / Double(configuration.requiredStableFrames),
+                        1
+                    )
+                )
+                return state
+            }
         }
+        candidate = nil
         lockedRecognition = nil
         missingFrameCount = 0
         requiresReacquisitionAfterAmbiguity = false

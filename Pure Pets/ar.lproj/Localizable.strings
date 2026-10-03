@@ -5404,3 +5404,30 @@
 "cart_cell_unnamed_item" = "منتج في السلة";
 "cart_cell_decrease_format" = "تقليل كمية %@";
 "cart_cell_increase_format" = "زيادة كمية %@";
+
+/* Payment review */
+"payment_review_navigation" = "إتمام الطلب";
+"payment_review_title" = "كيف تفضّل الدفع؟";
+"payment_review_subtitle" = "تفاصيل التوصيل وطريقة الدفع، في مكان واحد.";
+"payment_review_retry" = "إعادة المحاولة";
+"payment_review_loading" = "جارٍ تحميل طرق الدفع المحفوظة…";
+"payment_review_unavailable" = "طرق الدفع غير متاحة حاليًا. يُرجى إعادة المحاولة.";
+
+/* Pet profiles — personal folio */
+"pet_folio_title" = "حيواناتي الأليفة";
+"pet_folio_subtitle" = "تفاصيلهم ورعايتهم، في مكان واحد.";
+"pet_folio_all_pets" = "كل الحيوانات";
+"pet_folio_profile" = "ملف الحيوان الأليف";
+"pet_folio_edit_profile" = "تعديل الملف";
+"pet_folio_care_title" = "سجل الرعاية";
+"pet_folio_vaccines_empty" = "لا توجد تطعيمات مسجّلة";
+"pet_folio_vaccines_detail" = "إدارة سجل التطعيمات من «تعديل الملف»";
+"pet_folio_reminders_detail" = "تذكيرات لكل حيواناتك الأليفة";
+"pet_folio_age" = "العمر";
+"pet_folio_breed" = "السلالة";
+"pet_folio_actions_format" = "خيارات %@";
+"pet_folio_select_format" = "عرض ملف %@";
+"pet_folio_empty_title" = "ملف صغير. ورعاية تدوم.";
+"pet_folio_empty_detail" = "أضف صورة حيوانك الأليف وتفاصيله، واحتفظ بتطعيماته وتذكيراته في متناولك.";
+"pet_folio_edit_hint" = "يفتح تفاصيل الحيوان الأليف وسجل تطعيماته";
+"pet_folio_more_records_format" = "%ld إضافية في الملف";

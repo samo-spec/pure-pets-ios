@@ -59,7 +59,7 @@ public struct PureLensConfiguration: Sendable {
         maximumSelectedFrameAge: TimeInterval = 4,
         requestTimeout: TimeInterval = 15,
         automaticallyResolvesDetections: Bool = true,
-        minimumDetectionConfidence: Double = 0.58,
+        minimumDetectionConfidence: Double = 0.45,
         minimumBreedConfidence: Double = 0.74,
         stableDetectionFrameCount: Int = 3,
         replacementStableFrameCount: Int = 4,

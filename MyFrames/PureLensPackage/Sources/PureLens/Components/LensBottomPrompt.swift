@@ -12,84 +12,85 @@ struct LensBottomPrompt: View {
     let reduceTransparency: Bool
     let differentiateWithoutColor: Bool
     let maximumHeight: CGFloat
+    var isSidePanel: Bool = false
+    var fillsAvailableHeight: Bool = false
 
     var body: some View {
-        let availableHeight = max(0, maximumHeight - LensPromptMetrics.edgeSpacing)
-        ScrollView(.vertical) {
+        ScrollView(.vertical, showsIndicators: true) {
             promptContent
+                .fixedSize(horizontal: false, vertical: true)
                 .background {
                     GeometryReader { proxy in
                         Color.clear.preference(key: LensPromptHeightKey.self, value: proxy.size.height)
                     }
                 }
         }
-        .frame(height: contentHeight > 0 ? min(contentHeight, availableHeight) : availableHeight)
+        // Compact camera layouts reserve this space so status/copy changes do
+        // not resize the preview and jump its aspect-fill crop while scanning.
+        .frame(height: fillsAvailableHeight
+            ? max(0, maximumHeight)
+            : min(contentHeight, max(0, maximumHeight)))
         .onPreferenceChange(LensPromptHeightKey.self) { contentHeight = $0 }
-        .lensPromptSurface(
-            fallback: store.theme.cameraChrome,
-            accent: indicatorTint,
-            reduceTransparency: reduceTransparency,
-            increasedContrast: increasedContrast
-        )
-        .frame(maxWidth: LensPromptMetrics.maximumWidth)
-        .padding(.horizontal, LensPromptMetrics.screenInset)
-        .padding(.bottom, LensPromptMetrics.edgeSpacing)
+        .background {
+            RoundedRectangle(cornerRadius: surfaceRadius, style: .continuous)
+                .fill(store.theme.cameraChrome)
+                .overlay {
+                    RoundedRectangle(cornerRadius: surfaceRadius, style: .continuous)
+                        .fill(store.theme.textOnCamera.opacity(increasedContrast ? 0.085 : 0.055))
+                }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: surfaceRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: surfaceRadius, style: .continuous)
+                .strokeBorder(
+                    store.theme.textOnCamera.opacity(increasedContrast ? 0.42 : 0.16),
+                    lineWidth: increasedContrast ? 1.5 : 1
+                )
+                .allowsHitTesting(false)
+        }
     }
 
+    private var surfaceRadius: CGFloat { isSidePanel ? 28 : 30 }
+    private var contentInset: CGFloat { isSidePanel ? 24 : 22 }
+
     private var promptContent: some View {
-        VStack(spacing: 0) {
-            phaseAccent
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: statusSymbol)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(indicatorTint)
+                        .accessibilityHidden(true)
+                    Text(statusCaption)
+                        .font(store.theme.typography.footnoteEmphasized)
+                        .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.94 : 0.78))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(promptTitle)
+                    .font(store.theme.typography.title2)
+                    .foregroundStyle(store.theme.textOnCamera)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+
+                Text(promptDetail)
+                    .font(store.theme.typography.subheadline)
+                    .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.94 : 0.80))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                recognitionProgress
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilitySortPriority(3)
 
             if store.isCameraInterrupted {
                 Label(store.localized("lens.camera.interrupted"), systemImage: "video.slash.fill")
                     .font(store.theme.typography.footnoteEmphasized)
                     .foregroundStyle(store.theme.warningOnCamera)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, LensPromptMetrics.compactInset)
-                    .padding(.vertical, LensPromptMetrics.interruptionVerticalInset)
-                    .background(
-                        store.theme.warningOnCamera.opacity(0.12),
-                        in: RoundedRectangle(
-                            cornerRadius: LensPromptMetrics.inlineRadius,
-                            style: .continuous
-                        )
-                    )
-                    .overlay {
-                        RoundedRectangle(
-                            cornerRadius: LensPromptMetrics.inlineRadius,
-                            style: .continuous
-                        )
-                        .stroke(store.theme.warningOnCamera.opacity(0.20), lineWidth: 1)
-                    }
-                    .padding(.horizontal, LensPromptMetrics.contentInset)
-                    .padding(.top, LensPromptMetrics.elementSpacing)
             }
-
-            HStack(alignment: .center, spacing: LensPromptMetrics.headerSpacing) {
-                statusIndicator
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(promptTitle)
-                        .font(store.theme.typography.headline)
-                        .foregroundStyle(store.theme.textOnCamera)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-
-                    Text(promptDetail)
-                        .font(store.theme.typography.caption)
-                        .foregroundStyle(
-                            store.theme.textOnCamera.opacity(increasedContrast ? 0.86 : 0.70)
-                        )
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.horizontal, LensPromptMetrics.contentInset)
-            .padding(.top, LensPromptMetrics.headerTopInset)
-            .padding(.bottom, LensPromptMetrics.headerBottomInset)
-            .accessibilityElement(children: .combine)
-            .accessibilitySortPriority(3)
 
             terminalIdentitySummary
 
@@ -97,77 +98,106 @@ struct LensBottomPrompt: View {
                 candidateChoices
             }
 
-            if store.scanPhase == .unsupported
-                || store.scanPhase == .uncertain
-                || store.scanPhase == .notAnimal
-                || store.scanPhase == .taxonomyUnavailable
-                || store.scanPhase == .validationFailed {
-                Button(action: store.scanAgain) {
-                    Label(store.localized("lens.scan_again"), systemImage: "viewfinder")
-                        .font(store.theme.typography.headline)
-                        .frame(maxWidth: .infinity, minHeight: LensPromptMetrics.actionHeight)
-                }
-                .buttonStyle(LensPrimaryButtonStyle(theme: store.theme, reduceMotion: motionDisabled))
-                .accessibilityHint(store.localized("lens.scan_again.hint"))
-                .accessibilitySortPriority(2)
-                .padding(.horizontal, LensPromptMetrics.contentInset)
-                .padding(.bottom, LensPromptMetrics.elementSpacing)
-            }
+            recoveryActions
 
             if store.configuration.showsPrivacyNotice {
-                HStack(alignment: .center, spacing: LensPromptMetrics.privacySpacing) {
-                    Image(systemName: "lock.shield.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(
-                            store.theme.textOnCamera.opacity(increasedContrast ? 0.90 : 0.72)
-                        )
-                        .frame(
-                            width: LensPromptMetrics.privacyIconSize,
-                            height: LensPromptMetrics.privacyIconSize
-                        )
-                        .background(
-                            store.theme.textOnCamera.opacity(0.08),
-                            in: RoundedRectangle(
-                                cornerRadius: LensPromptMetrics.privacyIconRadius,
-                                style: .continuous
-                            )
-                        )
-
-                    Text(privacyMessage)
-                        .font(store.theme.typography.caption2Medium)
-                        .foregroundStyle(
-                            store.theme.textOnCamera.opacity(increasedContrast ? 0.82 : 0.64)
-                        )
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 12) {
+                    Rectangle()
+                        .fill(store.theme.textOnCamera.opacity(increasedContrast ? 0.32 : 0.12))
+                        .frame(height: 1)
+                        .accessibilityHidden(true)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Image(systemName: "lock.shield")
+                            .font(.system(size: 12, weight: .medium))
+                            .accessibilityHidden(true)
+                        Text(privacyMessage)
+                            .font(store.theme.typography.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.90 : 0.72))
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, LensPromptMetrics.compactInset)
-                .padding(.vertical, LensPromptMetrics.privacyVerticalInset)
-                .background(
-                    store.theme.textOnCamera.opacity(0.055),
-                    in: RoundedRectangle(
-                        cornerRadius: LensPromptMetrics.inlineRadius,
-                        style: .continuous
-                    )
-                )
-                .overlay {
-                    RoundedRectangle(
-                        cornerRadius: LensPromptMetrics.inlineRadius,
-                        style: .continuous
-                    )
-                    .stroke(
-                        store.theme.textOnCamera.opacity(increasedContrast ? 0.22 : 0.08),
-                        lineWidth: increasedContrast ? 1.5 : 1
-                    )
-                }
-                .padding(.horizontal, LensPromptMetrics.contentInset)
-                .padding(.bottom, LensPromptMetrics.contentInset)
                 .accessibilityElement(children: .combine)
                 .accessibilitySortPriority(1)
             }
         }
-        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.leading)
+        .padding(contentInset)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var recognitionProgress: some View {
+        if !store.didDeclineRemoteProcessingForCurrentDetection && !store.isCameraInterrupted {
+            if store.scanPhase == .candidateFound || store.scanPhase == .confirming {
+                ProgressView(value: min(1, max(0, store.detectorProgress)))
+                    .progressViewStyle(.linear)
+                    .tint(differentiateWithoutColor ? store.theme.textOnCamera : indicatorTint)
+                    .animation(motionDisabled ? nil : .easeOut(duration: 0.20), value: store.detectorProgress)
+                    .accessibilityLabel(store.localized("lens.detector.stabilizing"))
+            } else if (store.scanPhase == .validating || store.scanPhase == .discovering) && !motionDisabled {
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .tint(differentiateWithoutColor ? store.theme.textOnCamera : indicatorTint)
+                    .accessibilityLabel(promptTitle)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var recoveryActions: some View {
+        if store.didDeclineRemoteProcessingForCurrentDetection || isTerminalState {
+            VStack(spacing: 8) {
+                if canResumeConsentedFrame {
+                    Button(action: store.requestRemoteProcessingConsentAgain) {
+                        Label(store.localized("lens.privacy.consent.resume"), systemImage: "arrow.forward.circle")
+                            .font(store.theme.typography.headline)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(LensPrimaryButtonStyle(theme: store.theme, reduceMotion: motionDisabled))
+                    .accessibilityHint(store.localized("lens.privacy.consent.resume.hint"))
+                }
+
+                Button(action: store.scanAgain) {
+                    Label(store.localized("lens.scan_again"), systemImage: "viewfinder")
+                        .font(store.theme.typography.headline)
+                        .foregroundStyle(store.theme.textOnCamera)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .background(
+                            store.theme.textOnCamera.opacity(canResumeConsentedFrame ? 0.04 : 0.10),
+                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(store.theme.textOnCamera.opacity(increasedContrast ? 0.48 : 0.18))
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(store.localized("lens.scan_again.hint"))
+            }
+            .accessibilitySortPriority(2)
+        }
+    }
+
+    private var canResumeConsentedFrame: Bool {
+        // Declining initial identity consent releases the frame. Only the later
+        // image-discovery path retains a frame the existing retry can consume.
+        store.didDeclineRemoteProcessingForCurrentDetection && store.animalContext != nil
+    }
+
+    private var isTerminalState: Bool {
+        switch store.scanPhase {
+        case .unsupported, .uncertain, .notAnimal, .taxonomyUnavailable, .validationFailed:
+            return true
+        default:
+            return false
+        }
     }
 
     @ViewBuilder
@@ -185,51 +215,28 @@ struct LensBottomPrompt: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let scientific = identity?.scientificName, !scientific.isEmpty {
-                    Text(store.localizedFormat("lens.identity.scientific_name", scientific))
+                    Text(store.localizedFormat("lens.identity.scientific_name", isolatedScientificName(scientific)))
                         .font(store.theme.typography.caption)
-                        .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.90 : 0.74))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
                 if let group = identity?.animalGroup, !group.isEmpty {
-                    Text(
-                        store.localizedFormat(
-                            "lens.identity.group",
-                            store.localizedAnimalGroup(group)
-                        )
-                    )
-                    .font(store.theme.typography.caption)
-                    .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.90 : 0.74))
+                    Text(store.localizedFormat("lens.identity.group", store.localizedAnimalGroup(group)))
+                        .font(store.theme.typography.caption)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
                 if let breed = identity?.breed, !breed.isEmpty {
                     Text(store.localizedFormat("lens.identity.breed", breed))
                         .font(store.theme.typography.caption)
-                        .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.90 : 0.74))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
                 if let confidence = identity?.speciesConfidence {
-                    Text(
-                        store.localizedFormat(
-                            "lens.identity.confidence",
-                            Int((confidence * 100).rounded())
-                        )
-                    )
-                    .font(store.theme.typography.caption2Medium.monospacedDigit())
-                    .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.84 : 0.64))
+                    Text(store.localizedFormat("lens.identity.confidence", Int((confidence * 100).rounded())))
+                        .font(store.theme.typography.caption2Medium.monospacedDigit())
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(.horizontal, LensPromptMetrics.compactInset)
-            .padding(.vertical, LensPromptMetrics.privacyVerticalInset)
+            .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.94 : 0.80))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                store.theme.textOnCamera.opacity(0.055),
-                in: RoundedRectangle(
-                    cornerRadius: LensPromptMetrics.inlineRadius,
-                    style: .continuous
-                )
-            )
-            .padding(.horizontal, LensPromptMetrics.contentInset)
-            .padding(.bottom, LensPromptMetrics.elementSpacing)
             .accessibilityElement(children: .combine)
             .accessibilitySortPriority(2.5)
         }
@@ -240,155 +247,109 @@ struct LensBottomPrompt: View {
             Text(store.localized("lens.identity.possibilities"))
                 .font(store.theme.typography.subheadlineEmphasized)
                 .foregroundStyle(store.theme.textOnCamera)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
 
-            VStack(spacing: 8) {
-                ForEach(store.identityCandidates, id: \.canonicalSpecies) { candidate in
-                    Button {
-                        store.selectIdentityCandidate(candidate)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
+            ForEach(store.identityCandidates, id: \.canonicalSpecies) { candidate in
+                Button {
+                    store.selectIdentityCandidate(candidate)
+                } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 3) {
                             Text(store.localizedCandidateName(candidate))
                                 .font(store.theme.typography.subheadlineEmphasized)
                                 .foregroundStyle(store.theme.textOnCamera)
                                 .fixedSize(horizontal: false, vertical: true)
                             if let scientific = candidate.scientificName, !scientific.isEmpty {
-                                Text(scientific)
+                                Text(isolatedScientificName(scientific))
                                     .font(store.theme.typography.caption)
-                                    .foregroundStyle(store.theme.textOnCamera.opacity(0.75))
+                                    .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.94 : 0.80))
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            store.theme.textOnCamera.opacity(0.08),
-                            in: RoundedRectangle(cornerRadius: LensPromptMetrics.inlineRadius, style: .continuous)
-                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(store.theme.textOnCamera.opacity(0.72))
+                            .accessibilityHidden(true)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint(store.localized("lens.identity.candidate.hint"))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                    .background(
+                        store.theme.textOnCamera.opacity(0.07),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(store.theme.textOnCamera.opacity(increasedContrast ? 0.45 : 0.13))
+                    }
+                    .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityHint(store.localized("lens.identity.candidate.hint"))
             }
 
-            Button(store.localized("lens.identity.none"), action: store.rejectIdentityCandidates)
-                .font(store.theme.typography.subheadlineEmphasized)
-                .foregroundStyle(store.theme.textOnCamera)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .accessibilityHint(store.localized("lens.identity.none.hint"))
+            Button(action: store.rejectIdentityCandidates) {
+                Text(store.localized("lens.identity.none"))
+                    .font(store.theme.typography.subheadlineEmphasized)
+                    .foregroundStyle(store.theme.textOnCamera)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(store.localized("lens.identity.none.hint"))
         }
-        .padding(.horizontal, LensPromptMetrics.contentInset)
-        .padding(.bottom, LensPromptMetrics.elementSpacing)
         .accessibilityElement(children: .contain)
         .accessibilitySortPriority(2.5)
     }
 
-    private var phaseAccent: some View {
-        Capsule()
-            .fill(
-                LinearGradient(
-                    colors: [indicatorTint, indicatorTint.opacity(0.42)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .frame(width: LensPromptMetrics.accentWidth, height: LensPromptMetrics.accentHeight)
-            .padding(.top, LensPromptMetrics.accentTopInset)
-            .accessibilityHidden(true)
+    private func isolatedScientificName(_ value: String) -> String {
+        "\u{2066}\(value)\u{2069}"
     }
 
-    @ViewBuilder
-    private var statusIndicator: some View {
-        ZStack {
-            Circle()
-                .fill(store.theme.textOnCamera.opacity(0.08))
+    private var motionDisabled: Bool { reduceMotion || systemReduceMotion }
+    private var increasedContrast: Bool { colorSchemeContrast == .increased }
 
-            Circle()
-                .stroke(
-                    differentiateWithoutColor
-                        ? store.theme.textOnCamera.opacity(0.78)
-                        : store.theme.textOnCamera.opacity(increasedContrast ? 0.30 : 0.13),
-                    style: StrokeStyle(
-                        lineWidth: differentiateWithoutColor ? 2 : 1,
-                        dash: differentiateWithoutColor ? [4, 3] : []
-                    )
-                )
-
-            if store.scanPhase == .validating || store.scanPhase == .discovering {
-                ProgressView()
-                    .tint(indicatorTint)
-            } else if store.scanPhase == .candidateFound || store.scanPhase == .confirming {
-                Circle()
-                    .trim(from: 0, to: max(0.08, store.detectorProgress))
-                    .stroke(
-                        store.theme.recognition,
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .animation(
-                        (reduceMotion || systemReduceMotion) ? nil : .easeOut(duration: 0.22),
-                        value: store.detectorProgress
-                    )
-                    .frame(
-                        width: LensPromptMetrics.progressRingSize,
-                        height: LensPromptMetrics.progressRingSize
-                    )
-
-                Image(systemName: statusSymbol)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(store.theme.textOnCamera)
-            } else {
-                Image(systemName: statusSymbol)
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(indicatorTint)
-            }
+    private var statusCaption: String {
+        if store.didDeclineRemoteProcessingForCurrentDetection || store.isCameraInterrupted {
+            return store.localized("lens.stage.paused")
         }
-        .frame(width: LensPromptMetrics.statusSize, height: LensPromptMetrics.statusSize)
-        .overlay(alignment: .bottomTrailing) {
-            Circle()
-                .fill(indicatorTint)
-                .frame(width: LensPromptMetrics.signalDotSize, height: LensPromptMetrics.signalDotSize)
-                .overlay {
-                    Circle().stroke(store.theme.cameraChrome.opacity(0.88), lineWidth: 2)
-                }
-                .accessibilityHidden(true)
+        switch store.scanPhase {
+        case .searching:
+            return store.localized("lens.detector.searching")
+        case .candidateFound, .confirming:
+            return store.localized("lens.stage.recognition")
+        case .confirmed, .discovering, .results:
+            return store.localized("lens.stage.discovery")
+        default:
+            return store.localized("lens.stage.recognition")
         }
-        .accessibilityHidden(true)
-    }
-
-    private var motionDisabled: Bool {
-        reduceMotion || systemReduceMotion
-    }
-
-    private var increasedContrast: Bool {
-        colorSchemeContrast == .increased
     }
 
     private var statusSymbol: String {
+        if store.didDeclineRemoteProcessingForCurrentDetection || store.isCameraInterrupted {
+            return "pause.circle"
+        }
         switch store.scanPhase {
-        case .searching:
-            return "viewfinder"
-        case .candidateFound, .confirming:
-            return "circle.dashed"
-        case .validating:
-            return "checkmark.circle"
-        case .confirmed, .discovering, .results:
-            return "checkmark.seal.fill"
-        case .unsupported:
-            return "exclamationmark.triangle.fill"
-        case .uncertain:
-            return "questionmark.circle.fill"
-        case .notAnimal:
-            return "questionmark.circle.fill"
-        case .taxonomyUnavailable:
-            return "wifi.exclamationmark"
-        case .validationFailed:
-            return "exclamationmark.octagon.fill"
+        case .searching: return "viewfinder"
+        case .candidateFound, .confirming: return "scope"
+        case .validating: return "hourglass"
+        case .confirmed, .discovering, .results: return "checkmark.seal"
+        case .unsupported: return "pawprint"
+        case .uncertain, .notAnimal: return "questionmark.circle"
+        case .taxonomyUnavailable: return "wifi.exclamationmark"
+        case .validationFailed: return "exclamationmark.octagon"
         }
     }
 
     private var indicatorTint: Color {
+        if store.didDeclineRemoteProcessingForCurrentDetection || store.isCameraInterrupted {
+            return store.theme.textOnCamera
+        }
         switch store.scanPhase {
         case .unsupported, .uncertain, .taxonomyUnavailable:
             return store.theme.warningOnCamera
@@ -440,6 +401,13 @@ struct LensBottomPrompt: View {
     }
 
     private var promptDetail: String {
+        if store.didDeclineRemoteProcessingForCurrentDetection {
+            return store.localized(
+                canResumeConsentedFrame
+                    ? "lens.prompt.consent_paused.detail"
+                    : "lens.prompt.consent_paused.scan_again"
+            )
+        }
         switch store.scanPhase {
         case .searching:
             return store.localized("lens.prompt.ready.detail")
@@ -500,32 +468,6 @@ struct LensBottomPrompt: View {
     }
 }
 
-private enum LensPromptMetrics {
-    static let screenInset: CGFloat = 20
-    static let edgeSpacing: CGFloat = 8
-    static let maximumWidth: CGFloat = 560
-    static let surfaceRadius: CGFloat = 30
-    static let inlineRadius: CGFloat = 16
-    static let contentInset: CGFloat = 18
-    static let compactInset: CGFloat = 12
-    static let elementSpacing: CGFloat = 12
-    static let headerSpacing: CGFloat = 14
-    static let headerTopInset: CGFloat = 14
-    static let headerBottomInset: CGFloat = 16
-    static let statusSize: CGFloat = 52
-    static let progressRingSize: CGFloat = 42
-    static let signalDotSize: CGFloat = 10
-    static let actionHeight: CGFloat = 50
-    static let accentWidth: CGFloat = 52
-    static let accentHeight: CGFloat = 4
-    static let accentTopInset: CGFloat = 8
-    static let interruptionVerticalInset: CGFloat = 9
-    static let privacySpacing: CGFloat = 10
-    static let privacyVerticalInset: CGFloat = 10
-    static let privacyIconSize: CGFloat = 30
-    static let privacyIconRadius: CGFloat = 10
-}
-
 struct LensPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
@@ -543,100 +485,6 @@ struct LensPrimaryButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
             .opacity(isEnabled ? (configuration.isPressed ? 0.96 : 1) : 0.78)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func lensPromptSurface(
-        fallback: Color,
-        accent: Color,
-        reduceTransparency: Bool,
-        increasedContrast: Bool
-    ) -> some View {
-        #if swift(>=6.2)
-        if #available(iOS 26.0, *), !reduceTransparency {
-            self
-                .glassEffect(
-                    .regular,
-                    in: RoundedRectangle(
-                        cornerRadius: LensPromptMetrics.surfaceRadius,
-                        style: .continuous
-                    )
-                )
-                .lensPromptOutline(accent: accent, increasedContrast: increasedContrast)
-        } else {
-            self.lensPromptFallback(
-                fallback: fallback,
-                accent: accent,
-                reduceTransparency: reduceTransparency,
-                increasedContrast: increasedContrast
-            )
-        }
-        #else
-        self.lensPromptFallback(
-            fallback: fallback,
-            accent: accent,
-            reduceTransparency: reduceTransparency,
-            increasedContrast: increasedContrast
-        )
-        #endif
-    }
-
-    @ViewBuilder
-    func lensPromptFallback(
-        fallback: Color,
-        accent: Color,
-        reduceTransparency: Bool,
-        increasedContrast: Bool
-    ) -> some View {
-        self
-            .background {
-                if reduceTransparency {
-                    RoundedRectangle(
-                        cornerRadius: LensPromptMetrics.surfaceRadius,
-                        style: .continuous
-                    )
-                    .fill(fallback)
-                } else {
-                    ZStack {
-                        RoundedRectangle(
-                            cornerRadius: LensPromptMetrics.surfaceRadius,
-                            style: .continuous
-                        )
-                        .fill(.ultraThinMaterial)
-
-                        RoundedRectangle(
-                            cornerRadius: LensPromptMetrics.surfaceRadius,
-                            style: .continuous
-                        )
-                        .fill(fallback.opacity(increasedContrast ? 0.86 : 0.74))
-                    }
-                }
-            }
-            .lensPromptOutline(accent: accent, increasedContrast: increasedContrast)
-            .shadow(color: Color.black.opacity(0.22), radius: 24, y: 12)
-    }
-
-    func lensPromptOutline(accent: Color, increasedContrast: Bool) -> some View {
-        self.overlay {
-            RoundedRectangle(
-                cornerRadius: LensPromptMetrics.surfaceRadius,
-                style: .continuous
-            )
-            .stroke(
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(increasedContrast ? 0.42 : 0.22),
-                        accent.opacity(increasedContrast ? 0.32 : 0.18),
-                        Color.white.opacity(increasedContrast ? 0.16 : 0.07),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: increasedContrast ? 1.5 : 1
-            )
-        }
     }
 }
 

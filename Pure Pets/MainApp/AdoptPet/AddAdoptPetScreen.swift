@@ -249,14 +249,85 @@ final class AddAdoptPetStore: ObservableObject {
         return false
     }
 
+    static var isFirebaseAuthActive: Bool {
+        if let authUID = Auth.auth().currentUser?.uid.trimmingCharacters(in: .whitespacesAndNewlines), !authUID.isEmpty {
+            return true
+        }
+        return false
+    }
+
     func handleAuthStateRefresh() {
         let currentUID = Self.resolvedCurrentUID()
         guard !currentUID.isEmpty else { return }
-        if !draftPersistenceEnabled || draftOwnerUID != currentUID {
-            draftOwnerUID = currentUID
-            draftPersistenceEnabled = true
-            if errorMessage == PPAdoptLang("community_error_sign_in_required") {
-                errorMessage = nil
+        if draftOwnerUID != currentUID {
+            migrateDraft(from: draftOwnerUID, to: currentUID)
+        }
+        draftPersistenceEnabled = true
+        if errorMessage == PPAdoptLang("community_error_sign_in_required") {
+            errorMessage = nil
+        }
+    }
+
+    func migrateDraft(from oldUID: String, to newUID: String) {
+        let trimmedNewUID = newUID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedNewUID.isEmpty, trimmedNewUID != oldUID else { return }
+
+        let oldKey = (isEditing && editingPet?.documentID.isEmpty == false)
+            ? "\(draftPrefix).edit.\(editingPet!.documentID).\(oldUID)"
+            : "\(draftPrefix).create.\(oldUID)"
+        let oldIdentityKey = "\(draftPrefix).create-identity.\(oldUID)"
+
+        draftOwnerUID = trimmedNewUID
+        draftPersistenceEnabled = true
+
+        let newKey = draftDefaultsKey
+        let newIdentityKey = creationIdentityDefaultsKey
+
+        if let existingDraft = UserDefaults.standard.dictionary(forKey: oldKey) {
+            UserDefaults.standard.set(existingDraft, forKey: newKey)
+            UserDefaults.standard.removeObject(forKey: oldKey)
+        }
+        if let existingIdentity = UserDefaults.standard.string(forKey: oldIdentityKey) {
+            UserDefaults.standard.set(existingIdentity, forKey: newIdentityKey)
+            UserDefaults.standard.removeObject(forKey: oldIdentityKey)
+        }
+
+        let oldScope = Data(oldKey.utf8).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        let oldMediaDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("AdoptPetDrafts", isDirectory: true)
+            .appendingPathComponent(oldScope, isDirectory: true)
+
+        let newMediaDir = draftMediaDirectoryURL
+        if FileManager.default.fileExists(atPath: oldMediaDir.path), oldMediaDir.path != newMediaDir.path {
+            try? FileManager.default.createDirectory(at: newMediaDir.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? FileManager.default.moveItem(at: oldMediaDir, to: newMediaDir)
+        }
+
+        persistDraft(showSuccessFeedback: false)
+    }
+
+    func requestSignIn(completion: ((Bool) -> Void)? = nil) {
+        persistDraft(showSuccessFeedback: false)
+        guard let presenter = AppManager.sharedInstance().topViewController() else {
+            UserManager.showPromptOnTopController()
+            completion?(false)
+            return
+        }
+        PPPetAdViewerLegacyBridge.presentSignIn(from: presenter) { [weak self] signedIn in
+            guard let self else { return }
+            if signedIn {
+                let newUID = Self.resolvedCurrentUID()
+                if !newUID.isEmpty {
+                    self.migrateDraft(from: self.draftOwnerUID, to: newUID)
+                }
+                self.errorMessage = nil
+                self.handleAuthStateRefresh()
+                completion?(true)
+            } else {
+                completion?(false)
             }
         }
     }
@@ -305,8 +376,8 @@ final class AddAdoptPetStore: ObservableObject {
         self.editingPet = pet
         let currentUID = Self.resolvedCurrentUID()
         let hasUser = !currentUID.isEmpty
-        self.draftOwnerUID = hasUser ? currentUID : UUID().uuidString.lowercased()
-        self.draftPersistenceEnabled = hasUser
+        self.draftOwnerUID = hasUser ? currentUID : "guest"
+        self.draftPersistenceEnabled = true
         if let existingID = pet?.documentID, !existingID.isEmpty {
             self.creationListingID = existingID
         } else if hasUser {
@@ -314,7 +385,10 @@ final class AddAdoptPetStore: ObservableObject {
             self.creationListingID = (persisted?.isEmpty == false ? persisted : nil) ?? UUID().uuidString.lowercased()
             UserDefaults.standard.set(self.creationListingID, forKey: creationIdentityDefaultsKey)
         } else {
-            self.creationListingID = UUID().uuidString.lowercased()
+            let guestIdentityKey = "\(draftPrefix).create-identity.guest"
+            let persisted = UserDefaults.standard.string(forKey: guestIdentityKey)
+            self.creationListingID = (persisted?.isEmpty == false ? persisted : nil) ?? UUID().uuidString.lowercased()
+            UserDefaults.standard.set(self.creationListingID, forKey: guestIdentityKey)
         }
         NotificationCenter.default.publisher(for: NSNotification.Name("CitiesManagerDidUpdateNotification"))
             .receive(on: DispatchQueue.main)
@@ -329,6 +403,22 @@ final class AddAdoptPetStore: ObservableObject {
                 self?.refreshKinds()
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: NSNotification.Name("UserDidLoginNotification"))
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.handleAuthStateRefresh()
+            }
+            .store(in: &cancellables)
+
+        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if let uid = user?.uid.trimmingCharacters(in: .whitespacesAndNewlines), !uid.isEmpty {
+                    self.handleAuthStateRefresh()
+                }
+            }
+        }
 
         loadDomainData()
         if pet != nil {
@@ -465,8 +555,21 @@ final class AddAdoptPetStore: ObservableObject {
     // MARK: - Draft Engine
 
     private func checkAndRestoreDraft() {
-        guard draftPersistenceEnabled,
-              let data = UserDefaults.standard.dictionary(forKey: draftDefaultsKey) else {
+        guard draftPersistenceEnabled else {
+            hasSavedDraft = false
+            return
+        }
+
+        var data = UserDefaults.standard.dictionary(forKey: draftDefaultsKey)
+        if data == nil && !isEditing && draftOwnerUID != "guest" {
+            let guestKey = "\(draftPrefix).create.guest"
+            if UserDefaults.standard.dictionary(forKey: guestKey) != nil {
+                migrateDraft(from: "guest", to: draftOwnerUID)
+                data = UserDefaults.standard.dictionary(forKey: draftDefaultsKey)
+            }
+        }
+
+        guard let data else {
             hasSavedDraft = false
             return
         }
@@ -796,23 +899,34 @@ final class AddAdoptPetStore: ObservableObject {
             return
         }
 
-        guard Self.isUserLoggedIn else {
-            UserManager.showPromptOnTopController()
+        guard Self.isUserLoggedIn && Self.isFirebaseAuthActive else {
+            AdoptHaptics.warning()
+            persistDraft(showSuccessFeedback: false)
             errorMessage = PPAdoptLang("community_error_sign_in_required")
+            requestSignIn { [weak self] success in
+                if success {
+                    self?.submitForm(completion: completion)
+                }
+            }
             return
         }
 
         let currentUID = Self.resolvedCurrentUID()
         guard !currentUID.isEmpty else {
-            UserManager.showPromptOnTopController()
+            AdoptHaptics.warning()
+            persistDraft(showSuccessFeedback: false)
             errorMessage = PPAdoptLang("community_error_sign_in_required")
+            requestSignIn { [weak self] success in
+                if success {
+                    self?.submitForm(completion: completion)
+                }
+            }
             return
         }
 
         // If this draft was opened unpersisted/anonymously, bind it to the authenticated user now.
-        if !draftPersistenceEnabled || draftOwnerUID != currentUID {
-            draftOwnerUID = currentUID
-            draftPersistenceEnabled = true
+        if draftOwnerUID != currentUID {
+            migrateDraft(from: draftOwnerUID, to: currentUID)
             if creationListingID.isEmpty {
                 creationListingID = UUID().uuidString.lowercased()
             }
@@ -1216,20 +1330,45 @@ private struct iPhoneAddAdoptPetDeck: View {
                     }
 
                     if let err = store.errorMessage {
-                        HStack(spacing: 10) {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundColor(Color(hex: 0xC41E3A))
-                                .font(.system(size: 16, weight: .bold))
-                            Text(err)
-                                .font(AdoptFont.bold(14))
-                                .foregroundColor(Color(hex: 0xC41E3A))
-                            Spacer()
+                        Button(action: {
+                            AdoptHaptics.selection()
+                            if err == PPAdoptLang("community_error_sign_in_required") || !AddAdoptPetStore.isUserLoggedIn || !AddAdoptPetStore.isFirebaseAuthActive {
+                                store.requestSignIn()
+                            }
+                        }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundColor(Color(hex: 0xC41E3A))
+                                    .font(.system(size: 16, weight: .bold))
+                                Text(err)
+                                    .font(AdoptFont.bold(14))
+                                    .foregroundColor(Color(hex: 0xC41E3A))
+                                    .multilineTextAlignment(.leading)
+                                Spacer()
+
+                                if err == PPAdoptLang("community_error_sign_in_required") || !AddAdoptPetStore.isUserLoggedIn || !AddAdoptPetStore.isFirebaseAuthActive {
+                                    HStack(spacing: 4) {
+                                        Text(PPAdoptLang("user_menu_login_action"))
+                                            .font(AdoptFont.bold(12))
+                                        Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
+                                            .font(.system(size: 10, weight: .bold))
+                                    }
+                                    .foregroundColor(Color(hex: 0xC41E3A))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color(hex: 0xC41E3A).opacity(0.12))
+                                    )
+                                }
+                            }
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color(hex: 0xFFF1F2))
+                            )
                         }
-                        .padding(14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(hex: 0xFFF1F2))
-                        )
+                        .buttonStyle(.plain)
                     }
 
                     // Mission Hero Card
@@ -1394,8 +1533,20 @@ private struct iPhoneAddAdoptPetDeck: View {
             )
         }
         .padding(.horizontal, 18)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
+        .background(
+            Color(UIColor.systemBackground).opacity(0.92)
+                .background(.ultraThinMaterial)
+                .overlay(
+                    VStack {
+                        Spacer()
+                        Divider().opacity(0.5)
+                    }
+                )
+                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+                .ignoresSafeArea(edges: .top)
+        )
     }
 
     private var readinessBadgeTint: Color {
@@ -1655,12 +1806,16 @@ private struct iPhoneAddAdoptPetDeck: View {
                 }
 
                 // Age Presets
-                HStack(spacing: 8) {
-                    agePresetChip(label: PPAdoptLang("adopt_form_age_preset_3m"), months: 3)
-                    agePresetChip(label: PPAdoptLang("adopt_form_age_preset_6m"), months: 6)
-                    agePresetChip(label: PPAdoptLang("adopt_form_age_preset_1y"), months: 12)
-                    agePresetChip(label: PPAdoptLang("adopt_form_age_preset_2y"), months: 24)
-                    agePresetChip(label: PPAdoptLang("adopt_form_age_preset_3y"), months: 36)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        agePresetChip(label: PPAdoptLang("adopt_form_age_preset_3m"), months: 3)
+                        agePresetChip(label: PPAdoptLang("adopt_form_age_preset_6m"), months: 6)
+                        agePresetChip(label: PPAdoptLang("adopt_form_age_preset_1y"), months: 12)
+                        agePresetChip(label: PPAdoptLang("adopt_form_age_preset_2y"), months: 24)
+                        agePresetChip(label: PPAdoptLang("adopt_form_age_preset_3y"), months: 36)
+                    }
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 2)
                 }
 
                 // Stepper Buttons
@@ -1885,8 +2040,8 @@ private struct iPhoneAddAdoptPetDeck: View {
             if let err = store.errorMessage {
                 Button(action: {
                     AdoptHaptics.selection()
-                    if !AddAdoptPetStore.isUserLoggedIn {
-                        UserManager.showPromptOnTopController()
+                    if err == PPAdoptLang("community_error_sign_in_required") || !AddAdoptPetStore.isUserLoggedIn || !AddAdoptPetStore.isFirebaseAuthActive {
+                        store.requestSignIn()
                     }
                 }) {
                     HStack(spacing: 8) {
@@ -1900,10 +2055,20 @@ private struct iPhoneAddAdoptPetDeck: View {
 
                         Spacer()
 
-                        if !AddAdoptPetStore.isUserLoggedIn {
-                            Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
-                                .font(.system(size: 11, weight: .bold))
-                                .opacity(0.7)
+                        if err == PPAdoptLang("community_error_sign_in_required") || !AddAdoptPetStore.isUserLoggedIn || !AddAdoptPetStore.isFirebaseAuthActive {
+                            HStack(spacing: 4) {
+                                Text(PPAdoptLang("user_menu_login_action"))
+                                    .font(AdoptFont.bold(12))
+                                Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
+                                    .font(.system(size: 10, weight: .bold))
+                            }
+                            .foregroundColor(Color(hex: 0xC41E3A))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(Color(hex: 0xC41E3A).opacity(0.12))
+                            )
                         }
                     }
                     .foregroundColor(Color(hex: 0xC41E3A))
@@ -2043,20 +2208,45 @@ private struct iPadAddAdoptPetCockpit: View {
                         }
 
                         if let err = store.errorMessage {
-                            HStack(spacing: 10) {
-                                Image(systemName: "exclamationmark.circle.fill")
-                                    .foregroundColor(Color(hex: 0xC41E3A))
-                                    .font(.system(size: 16, weight: .bold))
-                                Text(err)
-                                    .font(AdoptFont.bold(14))
-                                    .foregroundColor(Color(hex: 0xC41E3A))
-                                Spacer()
+                            Button(action: {
+                                AdoptHaptics.selection()
+                                if err == PPAdoptLang("community_error_sign_in_required") || !AddAdoptPetStore.isUserLoggedIn || !AddAdoptPetStore.isFirebaseAuthActive {
+                                    store.requestSignIn()
+                                }
+                            }) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundColor(Color(hex: 0xC41E3A))
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text(err)
+                                        .font(AdoptFont.bold(14))
+                                        .foregroundColor(Color(hex: 0xC41E3A))
+                                        .multilineTextAlignment(.leading)
+                                    Spacer()
+
+                                    if err == PPAdoptLang("community_error_sign_in_required") || !AddAdoptPetStore.isUserLoggedIn || !AddAdoptPetStore.isFirebaseAuthActive {
+                                        HStack(spacing: 4) {
+                                            Text(PPAdoptLang("user_menu_login_action"))
+                                                .font(AdoptFont.bold(12))
+                                            Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
+                                                .font(.system(size: 10, weight: .bold))
+                                        }
+                                        .foregroundColor(Color(hex: 0xC41E3A))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color(hex: 0xC41E3A).opacity(0.12))
+                                        )
+                                    }
+                                }
+                                .padding(14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(Color(hex: 0xFFF1F2))
+                                )
                             }
-                            .padding(14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color(hex: 0xFFF1F2))
-                            )
+                            .buttonStyle(.plain)
                         }
 
                         // Media Studio Section

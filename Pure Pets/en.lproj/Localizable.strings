@@ -5420,3 +5420,30 @@
 "cart_cell_unnamed_item" = "Cart item";
 "cart_cell_decrease_format" = "Decrease quantity for %@";
 "cart_cell_increase_format" = "Increase quantity for %@";
+
+/* Payment review */
+"payment_review_navigation" = "Checkout";
+"payment_review_title" = "How would you like to pay?";
+"payment_review_subtitle" = "Your delivery details and payment, all in one place.";
+"payment_review_retry" = "Try again";
+"payment_review_loading" = "Loading your saved payment methods…";
+"payment_review_unavailable" = "Payment methods are unavailable right now. Please try again.";
+
+/* Pet profiles — personal folio */
+"pet_folio_title" = "My pets";
+"pet_folio_subtitle" = "Their details. Their care. One place.";
+"pet_folio_all_pets" = "All pets";
+"pet_folio_profile" = "Pet profile";
+"pet_folio_edit_profile" = "Edit profile";
+"pet_folio_care_title" = "Care record";
+"pet_folio_vaccines_empty" = "No vaccinations recorded";
+"pet_folio_vaccines_detail" = "Manage vaccination records in Edit profile";
+"pet_folio_reminders_detail" = "Reminders for all your pets";
+"pet_folio_age" = "Age";
+"pet_folio_breed" = "Breed";
+"pet_folio_actions_format" = "Actions for %@";
+"pet_folio_select_format" = "Show %@’s profile";
+"pet_folio_empty_title" = "A little profile. A lifetime of care.";
+"pet_folio_empty_detail" = "Add your pet’s photo and details, then keep vaccinations and reminders close.";
+"pet_folio_edit_hint" = "Opens pet details and vaccination records";
+"pet_folio_more_records_format" = "%ld more in profile";

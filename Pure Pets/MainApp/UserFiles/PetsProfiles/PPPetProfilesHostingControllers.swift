@@ -20,7 +20,7 @@ public final class PPPetProfilesSwiftUIHostingController: UIViewController {
     private let onBack: () -> Void
     private let onAdd: () -> Void
     private let onReminders: () -> Void
-    private let onRefresh: () -> Void
+    private let onRefresh: (@escaping () -> Void) -> Void
     private let onSelect: (PPPetProfile) -> Void
     private let onMakeDefault: (PPPetProfile) -> Void
     private let onDelete: (PPPetProfile) -> Void
@@ -36,7 +36,7 @@ public final class PPPetProfilesSwiftUIHostingController: UIViewController {
         onBack: @escaping () -> Void,
         onAdd: @escaping () -> Void,
         onReminders: @escaping () -> Void,
-        onRefresh: @escaping () -> Void,
+        onRefresh: @escaping (@escaping () -> Void) -> Void,
         onSelect: @escaping (PPPetProfile) -> Void,
         onMakeDefault: @escaping (PPPetProfile) -> Void,
         onDelete: @escaping (PPPetProfile) -> Void
@@ -66,7 +66,13 @@ public final class PPPetProfilesSwiftUIHostingController: UIViewController {
             onBack: onBack,
             onAdd: onAdd,
             onReminders: onReminders,
-            onRefresh: onRefresh,
+            onRefresh: { [onRefresh] in
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    onRefresh {
+                        continuation.resume()
+                    }
+                }
+            },
             onSelect: onSelect,
             onMakeDefault: onMakeDefault,
             onDelete: onDelete

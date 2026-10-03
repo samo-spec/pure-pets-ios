@@ -57,6 +57,14 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 @property (nonatomic, strong) UIStackView *actionStack;
 @property (nonatomic, strong) UIStackView *textStack;
 @property (nonatomic, strong) UIStackView *contentStack;
+@property (nonatomic, strong) UIStackView *inlineHeadingStack;
+@property (nonatomic, copy) NSArray<NSLayoutConstraint *> *floatingContentConstraints;
+@property (nonatomic, copy) NSArray<NSLayoutConstraint *> *actionInsetConstraints;
+@property (nonatomic, strong) NSLayoutConstraint *iconPlateWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *iconPlateHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *iconWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *iconHeightConstraint;
+@property (nonatomic, assign) BOOL inlineCheckout;
 
 @property (nonatomic) PPAddressPickerState state;
 @property (nonatomic, strong) NSLayoutConstraint *widthConstraintCircle;
@@ -68,6 +76,8 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 
 - (void)pp_updateMetrics;
 - (void)pp_refreshAppearance;
+- (void)pp_updateInlineLayout;
+- (void)pp_updateAccessibility;
 
 @end
 
@@ -127,8 +137,64 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
     [self setupGesture];
     [self pp_updateMetrics];
     [self pp_refreshAppearance];
+    [self pp_updateAccessibility];
 
     return self;
+}
+
+- (void)configureForInlineCheckout
+{
+    if (self.inlineCheckout) return;
+    self.inlineCheckout = YES;
+    self.state = PPAddressPickerStateExpanded;
+    self.isCollapseDisabled = YES;
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heightConstraint.active = NO;
+    self.widthConstraintCircle.active = NO;
+    self.widthConstraintFull.active = NO;
+    [NSLayoutConstraint deactivateConstraints:self.floatingContentConstraints];
+    [NSLayoutConstraint deactivateConstraints:self.actionInsetConstraints];
+
+    self.iconPlateWidthConstraint.constant = 24.0;
+    self.iconPlateHeightConstraint.constant = 24.0;
+    self.iconWidthConstraint.constant = 19.0;
+    self.iconHeightConstraint.constant = 19.0;
+    self.iconView.image = [UIImage systemImageNamed:@"mappin.and.ellipse"];
+    self.contentStack.alignment = UIStackViewAlignmentTop;
+    self.contentStack.spacing = PPSpaceMD;
+    self.textStack.spacing = PPSpaceSM;
+    self.hintLabel.numberOfLines = 0;
+    self.actionTitleLabel.numberOfLines = 0;
+    self.actionTitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    self.textStack.hidden = NO;
+    self.actionChipView.hidden = NO;
+    self.textStack.alpha = 1.0;
+    self.actionChipView.alpha = 1.0;
+    self.iconPlateView.transform = CGAffineTransformIdentity;
+
+    [self.contentStack removeArrangedSubview:self.actionChipView];
+    [self.actionChipView removeFromSuperview];
+    [self.textStack removeArrangedSubview:self.hintLabel];
+    [self.hintLabel removeFromSuperview];
+    self.inlineHeadingStack = [[UIStackView alloc] init];
+    self.inlineHeadingStack.axis = UILayoutConstraintAxisHorizontal;
+    self.inlineHeadingStack.alignment = UIStackViewAlignmentFirstBaseline;
+    self.inlineHeadingStack.spacing = PPSpaceMD;
+    self.inlineHeadingStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.blurView.contentView.topAnchor constant:PPSpaceBase],
+        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.blurView.contentView.bottomAnchor constant:-PPSpaceBase],
+        [self.heightAnchor constraintGreaterThanOrEqualToConstant:44.0],
+        [self.actionStack.topAnchor constraintEqualToAnchor:self.actionChipView.topAnchor],
+        [self.actionStack.bottomAnchor constraintEqualToAnchor:self.actionChipView.bottomAnchor],
+        [self.actionStack.leadingAnchor constraintEqualToAnchor:self.actionChipView.leadingAnchor],
+        [self.actionStack.trailingAnchor constraintEqualToAnchor:self.actionChipView.trailingAnchor]
+    ]];
+    [self.actionChipView setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+    [self pp_updateInlineLayout];
+    [self pp_refreshAppearance];
+    [self pp_updateAccessibility];
 }
 
 #pragma mark - Helpers & Placeholders
@@ -137,10 +203,7 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 {
     NSString *value = kLang(@"PleaseSelectDeliveryLocation");
     if (![value isKindOfClass:NSString.class] || value.length == 0 || [value isEqualToString:@"PleaseSelectDeliveryLocation"]) {
-        value = kLang(@"SelectAddress");
-    }
-    if (![value isKindOfClass:NSString.class] || value.length == 0 || [value isEqualToString:@"SelectAddress"]) {
-        value = @"Select address";
+        value = kLang(@"Select");
     }
     return value;
 }
@@ -305,6 +368,23 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
     [self.actionChipView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.actionChipView setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
+    self.floatingContentConstraints = @[
+        [self.contentStack.centerYAnchor constraintEqualToAnchor:self.blurView.contentView.centerYAnchor],
+        [self.contentStack.topAnchor constraintGreaterThanOrEqualToAnchor:self.blurView.contentView.topAnchor constant:PPSpaceSM],
+        [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.blurView.contentView.bottomAnchor constant:-PPSpaceSM]
+    ];
+    self.actionInsetConstraints = @[
+        [self.actionStack.topAnchor constraintEqualToAnchor:self.actionChipView.topAnchor constant:PPSpaceMDHalf],
+        [self.actionStack.bottomAnchor constraintEqualToAnchor:self.actionChipView.bottomAnchor constant:-PPSpaceMDHalf],
+        [self.actionStack.leadingAnchor constraintEqualToAnchor:self.actionChipView.leadingAnchor constant:PPSpaceSM],
+        [self.actionStack.trailingAnchor constraintEqualToAnchor:self.actionChipView.trailingAnchor constant:-PPSpaceSM]
+    ];
+    self.iconPlateWidthConstraint = [self.iconPlateView.widthAnchor constraintEqualToConstant:PPAddressPickerIconPlateSize];
+    self.iconPlateHeightConstraint = [self.iconPlateView.heightAnchor constraintEqualToConstant:PPAddressPickerIconPlateSize];
+    self.iconWidthConstraint = [self.iconView.widthAnchor constraintEqualToConstant:24.0];
+    self.iconHeightConstraint = [self.iconView.heightAnchor constraintEqualToConstant:24.0];
+    [NSLayoutConstraint activateConstraints:self.floatingContentConstraints];
+    [NSLayoutConstraint activateConstraints:self.actionInsetConstraints];
     [NSLayoutConstraint activateConstraints:@[
         [self.containerView.topAnchor constraintEqualToAnchor:self.topAnchor],
         [self.containerView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
@@ -321,29 +401,21 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
         [self.tintView.leadingAnchor constraintEqualToAnchor:self.blurView.contentView.leadingAnchor],
         [self.tintView.trailingAnchor constraintEqualToAnchor:self.blurView.contentView.trailingAnchor],
 
-        [self.contentStack.centerYAnchor constraintEqualToAnchor:self.blurView.contentView.centerYAnchor],
-        [self.contentStack.topAnchor constraintGreaterThanOrEqualToAnchor:self.blurView.contentView.topAnchor constant:PPSpaceSM],
-        [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.blurView.contentView.bottomAnchor constant:-PPSpaceSM],
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.blurView.contentView.leadingAnchor constant:PPSpaceMD],
         [self.contentStack.trailingAnchor constraintEqualToAnchor:self.blurView.contentView.trailingAnchor constant:-PPSpaceMD],
 
-        [self.iconPlateView.widthAnchor constraintEqualToConstant:PPAddressPickerIconPlateSize],
-        [self.iconPlateView.heightAnchor constraintEqualToConstant:PPAddressPickerIconPlateSize],
+        self.iconPlateWidthConstraint,
+        self.iconPlateHeightConstraint,
 
         [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconPlateView.centerXAnchor],
         [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconPlateView.centerYAnchor],
-        [self.iconView.widthAnchor constraintEqualToConstant:24.0],
-        [self.iconView.heightAnchor constraintEqualToConstant:24.0],
+        self.iconWidthConstraint,
+        self.iconHeightConstraint,
 
         [self.statusDotView.widthAnchor constraintEqualToConstant:8.0],
         [self.statusDotView.heightAnchor constraintEqualToConstant:8.0],
         [self.statusDotView.topAnchor constraintEqualToAnchor:self.iconPlateView.topAnchor constant:1.0],
         [self.statusDotView.trailingAnchor constraintEqualToAnchor:self.iconPlateView.trailingAnchor constant:-1.0],
-
-        [self.actionStack.topAnchor constraintEqualToAnchor:self.actionChipView.topAnchor constant:PPSpaceMDHalf],
-        [self.actionStack.bottomAnchor constraintEqualToAnchor:self.actionChipView.bottomAnchor constant:-PPSpaceMDHalf],
-        [self.actionStack.leadingAnchor constraintEqualToAnchor:self.actionChipView.leadingAnchor constant:PPSpaceSM],
-        [self.actionStack.trailingAnchor constraintEqualToAnchor:self.actionChipView.trailingAnchor constant:-PPSpaceSM],
 
         [self.actionChevronView.widthAnchor constraintEqualToConstant:12.0],
         [self.actionChevronView.heightAnchor constraintEqualToConstant:12.0]
@@ -354,6 +426,23 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 
 - (void)pp_refreshAppearance
 {
+    if (self.inlineCheckout) {
+        self.blurView.effect = nil;
+        self.tintView.backgroundColor = PPAddressPickerSurfaceColor();
+        self.containerView.layer.borderWidth = UIAccessibilityDarkerSystemColorsEnabled() ? 1.5 : 1.0;
+        [self.containerView pp_setBorderColor:PPAddressPickerStrokeColor()];
+        self.iconPlateView.backgroundColor = UIColor.clearColor;
+        self.iconView.tintColor = PPAddressPickerSecondaryTextColor();
+        self.statusDotView.hidden = YES;
+        self.hintLabel.textColor = PPAddressPickerSecondaryTextColor();
+        self.addressLabel.textColor = PPAddressPickerPrimaryTextColor();
+        self.actionTitleLabel.text = kLang([self pp_hasSelectedAddress] ? @"Change" : @"Select");
+        self.actionTitleLabel.textColor = PPAddressPickerPrimaryTextColor();
+        self.actionChevronView.tintColor = PPAddressPickerSecondaryTextColor();
+        self.actionChipView.backgroundColor = UIColor.clearColor;
+        self.layer.shadowOpacity = 0.0;
+        return;
+    }
     BOOL dark = NO;
     if (@available(iOS 13.0, *)) {
         dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
@@ -410,8 +499,72 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
     self.layer.masksToBounds = NO;
 }
 
+- (void)pp_updateInlineLayout
+{
+    if (!self.inlineCheckout) return;
+    UITraitCollection *traits = self.traitCollection;
+    UIFont *hintFont = [GM MidFontWithSize:PPFontSubheadline]
+        ?: [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightMedium];
+    UIFont *addressFont = [GM boldFontWithSize:PPFontBody]
+        ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightSemibold];
+    UIFont *actionFont = [GM boldFontWithSize:PPFontSubheadline]
+        ?: [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightSemibold];
+    self.hintLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+        scaledFontForFont:hintFont compatibleWithTraitCollection:traits];
+    self.addressLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+        scaledFontForFont:addressFont compatibleWithTraitCollection:traits];
+    self.actionTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+        scaledFontForFont:actionFont compatibleWithTraitCollection:traits];
+    for (UILabel *label in @[self.hintLabel, self.addressLabel, self.actionTitleLabel]) {
+        label.textAlignment = Language.alignmentForCurrentLanguage;
+        label.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+        [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    }
+    self.textStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    BOOL expanded = UIContentSizeCategoryIsAccessibilityCategory(traits.preferredContentSizeCategory);
+    for (UIView *view in self.inlineHeadingStack.arrangedSubviews.copy) {
+        [self.inlineHeadingStack removeArrangedSubview:view];
+        [view removeFromSuperview];
+    }
+    [self.textStack removeArrangedSubview:self.actionChipView];
+    [self.actionChipView removeFromSuperview];
+    if (self.inlineHeadingStack.superview != self.textStack) {
+        [self.textStack insertArrangedSubview:self.inlineHeadingStack atIndex:0];
+    }
+    [self.inlineHeadingStack addArrangedSubview:self.hintLabel];
+    if (expanded) {
+        [self.textStack addArrangedSubview:self.actionChipView];
+    } else {
+        [self.inlineHeadingStack addArrangedSubview:self.actionChipView];
+    }
+    self.inlineHeadingStack.alignment = UIStackViewAlignmentCenter;
+    [self.hintLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.hintLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.actionTitleLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self setNeedsLayout];
+}
+
+- (void)pp_updateAccessibility
+{
+    NSString *text = self.addressLabel.text ?: [self pp_addressPlaceholderText];
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", kLang(@"DeliverTo"), text];
+    self.accessibilityHint = kLang(@"order_change_delivery_address");
+    self.accessibilityValue = nil;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+}
+
+- (BOOL)accessibilityActivate
+{
+    [self handleTap];
+    return YES;
+}
+
 - (void)pp_updateMetrics
 {
+    if (self.inlineCheckout) {
+        [self pp_updateInlineLayout];
+        return;
+    }
     BOOL usesAccessibilityLayout = UIContentSizeCategoryIsAccessibilityCategory(
         self.traitCollection.preferredContentSizeCategory
     );
@@ -475,6 +628,7 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 
 - (void)pp_runTapFeedback
 {
+    if (self.inlineCheckout) return;
     if (!UIAccessibilityIsReduceMotionEnabled()) {
         UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
         [haptic impactOccurred];
@@ -509,10 +663,8 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
     [self pp_refreshAppearance];
     [self pp_updateMetrics];
 
-    NSString *hint = kLang(@"DeliverTo") ?: @"Deliver to";
-    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", hint, displayText];
-    self.accessibilityHint = kLang(@"order_change_delivery_address") ?: @"Double tap to change delivery address";
-    self.accessibilityValue = hasAddress ? kLang(@"Selected") : kLang(@"SelectAddress");
+    [self pp_updateAccessibility];
+    if (self.onLayoutHeightChange) self.onLayoutHeightChange();
 }
 
 - (void)pp_prepareExpandedWidth
@@ -641,7 +793,7 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 {
     [super layoutSubviews];
 
-    if (!CGRectIsEmpty(self.bounds)) {
+    if (!self.inlineCheckout && !CGRectIsEmpty(self.bounds)) {
         self.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                        cornerRadius:self.containerView.layer.cornerRadius].CGPath;
@@ -652,12 +804,9 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 {
     [super traitCollectionDidChange:previousTraitCollection];
     [self pp_updateMetrics];
-    if (@available(iOS 13.0, *)) {
-        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_refreshAppearance];
-        }
-    }
+    [self pp_refreshAppearance];
+    [self pp_updateAccessibility];
+    if (self.onLayoutHeightChange) self.onLayoutHeightChange();
 }
 
 @end
-

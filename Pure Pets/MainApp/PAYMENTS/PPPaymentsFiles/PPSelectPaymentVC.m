@@ -23,7 +23,6 @@
 #import "PPSelectOptionViewController.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPOrderDetailsRouter.h"
-#import "Styling.h"
 
 #import "PPSelectAddressVC.h"
 #import <QuartzCore/QuartzCore.h>
@@ -43,178 +42,6 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         [category isEqualToString:UIContentSizeCategoryExtraExtraExtraLarge];
 }
 
-static NSString *PPPaymentHeroAnimationName(void)
-{
-    return @"PurePetsCard3";
-}
-
-static NSDictionary *PPPaymentHeroLocalJSON(void)
-{
-    NSURL *url = [[NSBundle mainBundle] URLForResource:PPPaymentHeroAnimationName() withExtension:@"json"];
-    if (!url) {
-        return nil;
-    }
-
-    NSData *data = [NSData dataWithContentsOfURL:url options:0 error:nil];
-    if (data.length == 0) {
-        return nil;
-    }
-
-    NSError *jsonError = nil;
-    id json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&jsonError];
-    if (jsonError || ![json isKindOfClass:NSDictionary.class]) {
-        return nil;
-    }
-    return json;
-}
-
-static NSArray<NSNumber *> *PPPaymentHeroLottieRGBA(UIColor *color)
-{
-    UIColor *resolved = color ?: UIColor.labelColor;
-    CGFloat r = 0.0, g = 0.0, b = 0.0, a = 1.0;
-    if (![resolved getRed:&r green:&g blue:&b alpha:&a]) {
-        const CGFloat *components = CGColorGetComponents(resolved.CGColor);
-        size_t count = CGColorGetNumberOfComponents(resolved.CGColor);
-        if (components && count >= 3) {
-            r = components[0];
-            g = components[1];
-            b = components[2];
-            a = (count >= 4) ? components[3] : 1.0;
-        } else if (components && count >= 2) {
-            r = components[0];
-            g = components[0];
-            b = components[0];
-            a = components[1];
-        }
-    }
-    return @[@(r), @(g), @(b), @(a)];
-}
-
-static NSString *PPPaymentHeroLottieColorKey(UIColor *color)
-{
-    NSArray<NSNumber *> *rgba = PPPaymentHeroLottieRGBA(color);
-    return [NSString stringWithFormat:@"%.3f-%.3f-%.3f-%.3f",
-            rgba[0].doubleValue,
-            rgba[1].doubleValue,
-            rgba[2].doubleValue,
-            rgba[3].doubleValue];
-}
-
-static BOOL PPPaymentHeroLottieColorArrayIsLight(NSArray *colorArray)
-{
-    if (![colorArray isKindOfClass:NSArray.class] || colorArray.count < 3) {
-        return NO;
-    }
-    CGFloat r = [colorArray[0] doubleValue];
-    CGFloat g = [colorArray[1] doubleValue];
-    CGFloat b = [colorArray[2] doubleValue];
-    return ((r + g + b) / 3.0) > 0.86;
-}
-
-static void PPPaymentHeroApplyLottieRGBA(NSMutableArray *colorArray, NSArray<NSNumber *> *rgba)
-{
-    if (![colorArray isKindOfClass:NSMutableArray.class] || colorArray.count < 3) {
-        return;
-    }
-    colorArray[0] = rgba[0];
-    colorArray[1] = rgba[1];
-    colorArray[2] = rgba[2];
-    if (colorArray.count >= 4 && rgba.count >= 4) {
-        colorArray[3] = rgba[3];
-    }
-}
-
-static void PPPaymentHeroRetintLottieColorObject(NSMutableDictionary *colorObject,
-                                                  NSArray<NSNumber *> *primaryRGBA,
-                                                  NSArray<NSNumber *> *highlightRGBA)
-{
-    if (![colorObject isKindOfClass:NSMutableDictionary.class]) {
-        return;
-    }
-
-    id k = colorObject[@"k"];
-    if ([k isKindOfClass:NSMutableArray.class]) {
-        NSMutableArray *array = (NSMutableArray *)k;
-        if (array.count >= 3 && [array[0] isKindOfClass:NSNumber.class]) {
-            PPPaymentHeroApplyLottieRGBA(array, PPPaymentHeroLottieColorArrayIsLight(array) ? highlightRGBA : primaryRGBA);
-            return;
-        }
-
-        for (id frame in array) {
-            if (![frame isKindOfClass:NSMutableDictionary.class]) {
-                continue;
-            }
-            NSMutableDictionary *frameDict = (NSMutableDictionary *)frame;
-            for (NSString *key in @[@"s", @"e", @"k"]) {
-                id value = frameDict[key];
-                if ([value isKindOfClass:NSMutableArray.class]) {
-                    NSMutableArray *colorArray = (NSMutableArray *)value;
-                    PPPaymentHeroApplyLottieRGBA(colorArray, PPPaymentHeroLottieColorArrayIsLight(colorArray) ? highlightRGBA : primaryRGBA);
-                }
-            }
-        }
-    }
-}
-
-static void PPPaymentHeroRetintLottieNode(id node,
-                                          NSArray<NSNumber *> *primaryRGBA,
-                                          NSArray<NSNumber *> *highlightRGBA)
-{
-    if ([node isKindOfClass:NSMutableDictionary.class]) {
-        NSMutableDictionary *dict = (NSMutableDictionary *)node;
-        NSString *type = [dict[@"ty"] isKindOfClass:NSString.class] ? dict[@"ty"] : nil;
-        if (([type isEqualToString:@"fl"] || [type isEqualToString:@"st"]) &&
-            [dict[@"c"] isKindOfClass:NSMutableDictionary.class]) {
-            PPPaymentHeroRetintLottieColorObject(dict[@"c"], primaryRGBA, highlightRGBA);
-        }
-        for (id value in dict.allValues) {
-            PPPaymentHeroRetintLottieNode(value, primaryRGBA, highlightRGBA);
-        }
-    } else if ([node isKindOfClass:NSMutableArray.class]) {
-        for (id value in (NSMutableArray *)node) {
-            PPPaymentHeroRetintLottieNode(value, primaryRGBA, highlightRGBA);
-        }
-    }
-}
-
-static NSDictionary *PPPaymentHeroRetintedLottieJSON(NSDictionary *jsonDict,
-                                                     UIColor *primaryColor,
-                                                     UIColor *highlightColor)
-{
-    if (![jsonDict isKindOfClass:NSDictionary.class]) {
-        return nil;
-    }
-
-    NSData *data = [NSJSONSerialization dataWithJSONObject:jsonDict options:0 error:nil];
-    if (!data) {
-        return jsonDict;
-    }
-
-    id mutableJSON = [NSJSONSerialization JSONObjectWithData:data
-                                                     options:NSJSONReadingMutableContainers
-                                                       error:nil];
-    if (![mutableJSON isKindOfClass:NSMutableDictionary.class]) {
-        return jsonDict;
-    }
-
-    PPPaymentHeroRetintLottieNode(mutableJSON,
-                                  PPPaymentHeroLottieRGBA(primaryColor),
-                                  PPPaymentHeroLottieRGBA(highlightColor));
-    return mutableJSON;
-}
-
-static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryColor,
-                                                               UIColor *highlightColor)
-{
-    NSDictionary *json = PPPaymentHeroLocalJSON();
-    if (!json) {
-        return nil;
-    }
-
-    NSDictionary *retintedJSON = PPPaymentHeroRetintedLottieJSON(json, primaryColor, highlightColor) ?: json;
-    return [LOTComposition animationFromJSON:retintedJSON];
-}
-
 #pragma mark - ViewController
 
 @interface PPSelectPaymentVC () <AddressFormVCDelegate>
@@ -231,31 +58,24 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 @property (nonatomic, strong) PPAddressPickerView *locView;
 @property (nonatomic, strong) UIStackView *navTitleSubtitleStack;
 @property (nonatomic, strong) UIButton *heroBackButton;
-@property (nonatomic, strong) UIView *heroIconPlateView;
-@property (nonatomic, strong) UIImageView *heroIconView;
-@property (nonatomic, strong) LOTAnimationView *heroAnimationView;
-@property (nonatomic, strong) UIView *bottomGlowView;
-@property (nonatomic, strong) UIView *bottomSecondaryGlowView;
-@property (nonatomic, strong) UIView *bottomTrailGlowView;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
-@property (nonatomic, strong) PaddedLabel *heroSubtitleLabel;
-@property (nonatomic, assign) BOOL didAnimatePaymentHeroEntrance;
-@property (nonatomic, assign) BOOL didStartPaymentHeroAmbientMotion;
-@property (nonatomic, assign) NSInteger heroAnimationLoadToken;
-@property (nonatomic, copy) NSString *currentHeroAnimationName;
+@property (nonatomic, strong) UIStackView *paymentPreludeView;
+@property (nonatomic, strong) UIStackView *methodStatusStack;
+@property (nonatomic, strong) UIStackView *methodStatusLine;
+@property (nonatomic, strong) UILabel *methodStatusLabel;
+@property (nonatomic, strong) UIActivityIndicatorView *methodLoadingIndicator;
+@property (nonatomic, strong) UIButton *retryMethodsButton;
+@property (nonatomic, assign) BOOL isLoadingPaymentInstruments;
+@property (nonatomic, assign) BOOL paymentInstrumentsLoadFailed;
+@property (nonatomic, assign) NSUInteger paymentInstrumentLoadGeneration;
+@property (nonatomic, assign) CGFloat paymentContentWidth;
 
 - (void)pp_applyPaymentHeroNavBar;
-- (void)pp_preparePaymentHeroEntranceState;
-- (void)pp_animatePaymentHeroEntranceIfNeeded;
 - (void)pp_applyPaymentHeroTheme;
-- (void)pp_configurePaymentHeroAnimationIfNeeded;
-- (void)pp_revealPaymentHeroAnimation;
-- (void)pp_buildPaymentBackgroundAtmosphereIfNeeded;
-- (void)pp_beginPaymentHeroAmbientMotionIfNeeded;
-- (void)pp_stopPaymentHeroAmbientMotion;
 - (void)pp_updatePaymentLayoutMetrics;
 - (BOOL)pp_prefersCondensedCheckoutSummary;
 - (void)pp_applyAdaptiveSummaryPresentation;
+- (void)pp_updateMethodStatus;
 - (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone;
 - (void)pp_showQIBMobileNumberSheetForAddress:(PPAddressModel *)address;
 - (NSArray<CartItem *> *)pp_checkoutItems;
@@ -328,12 +148,10 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [self pp_applyPaymentHeroNavBar];
     [self pp_applyPaymentHeroTheme];
     [self.summaryView setCheckoutLoading:self.isCheckoutInProgress];
-    [self pp_startSummaryBottomGlowMotionIfNeeded];
     [_summaryView pp_startTrustBannerShimmer];
     [self pp_setupInitialAddressState];
     [self pp_refreshCheckoutCallToAction];
     [self pp_applyAdaptiveSummaryPresentation];
-    [self pp_configurePaymentHeroAnimationIfNeeded];
 
     self.navigationController.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
     self.edgesForExtendedLayout = UIRectEdgeAll;
@@ -341,10 +159,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-     [self.heroAnimationView stop];
-    [self pp_stopPaymentHeroAmbientMotion];
-    [self pp_stopSummaryBottomGlowMotion];
-    // [_summaryView pp_stopTrustBannerShimmer];
+    [self.summaryView pp_stopTrustBannerShimmer];
 
     [self pp_navBarSetVisible:YES animated:YES];
 }
@@ -380,8 +195,6 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.navigationItem.title = nil;
 
-     [self pp_buildPaymentBackgroundAtmosphereIfNeeded];
-    [self pp_buildSummaryBottomGlowIfNeeded];
     [self pp_setupHeroSection];
     [self setlocViewViewAtTop];
     [self setSummuryViewAtBottom];
@@ -414,11 +227,6 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [super viewDidLayoutSubviews];
 
     [self pp_applyPaymentHeroTheme];
-    if (self.heroIconPlateView && !CGRectIsEmpty(self.heroIconPlateView.bounds)) {
-        self.heroIconPlateView.layer.cornerRadius = 0.0;
-        self.heroIconPlateView.layer.borderWidth = 0.0;
-        self.heroIconPlateView.backgroundColor = UIColor.clearColor;
-    }
     [self pp_updatePaymentLayoutMetrics];
 }
 
@@ -458,149 +266,17 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     }];
 }
 
-- (void)pp_buildPaymentBackgroundAtmosphereIfNeeded
-{
-}
-
-- (void)pp_buildSummaryBottomGlowIfNeeded
-{
-    if (self.bottomGlowView || self.bottomSecondaryGlowView || self.bottomTrailGlowView) return;
-
-    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIView *glow = [[UIView alloc] init];
-    glow.translatesAutoresizingMaskIntoConstraints = NO;
-    glow.userInteractionEnabled = NO;
-    glow.backgroundColor = [brandColor colorWithAlphaComponent:0.040];
-    glow.alpha = 0.16;
-    glow.layer.cornerRadius = 170.0;
-    glow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.30].CGColor;
-    glow.layer.shadowOpacity = 0.10;
-    glow.layer.shadowRadius = 48.0;
-    glow.layer.shadowOffset = CGSizeZero;
-    // These glow sizes are fixed by their constraints. Build each shadow path
-    // once so navigation transitions never allocate paths during layout.
-    glow.layer.shadowPath =
-        [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0.0, 0.0, 340.0, 340.0)].CGPath;
-
-    UIView *secondaryGlow = [[UIView alloc] init];
-    secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    secondaryGlow.userInteractionEnabled = NO;
-    secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
-    secondaryGlow.alpha = 0.14;
-    secondaryGlow.layer.cornerRadius = 128.0;
-    secondaryGlow.layer.shadowColor = UIColor.whiteColor.CGColor;
-    secondaryGlow.layer.shadowOpacity = 0.08;
-    secondaryGlow.layer.shadowRadius = 34.0;
-    secondaryGlow.layer.shadowOffset = CGSizeZero;
-    secondaryGlow.layer.shadowPath =
-        [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0.0, 0.0, 256.0, 256.0)].CGPath;
-
-    UIView *trailGlow = [[UIView alloc] init];
-    trailGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    trailGlow.userInteractionEnabled = NO;
-    trailGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.030];
-    trailGlow.alpha = 0.14;
-    trailGlow.layer.cornerRadius = 210.0;
-    trailGlow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.25].CGColor;
-    trailGlow.layer.shadowOpacity = 0.08;
-    trailGlow.layer.shadowRadius = 58.0;
-    trailGlow.layer.shadowOffset = CGSizeZero;
-    trailGlow.layer.shadowPath =
-        [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0.0, 0.0, 420.0, 420.0)].CGPath;
-
-    [self.view addSubview:trailGlow];
-    [self.view addSubview:secondaryGlow];
-    [self.view addSubview:glow];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [trailGlow.widthAnchor constraintEqualToConstant:420.0],
-        [trailGlow.heightAnchor constraintEqualToConstant:420.0],
-        [trailGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:150.0],
-        [trailGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:176.0],
-
-        [secondaryGlow.widthAnchor constraintEqualToConstant:256.0],
-        [secondaryGlow.heightAnchor constraintEqualToConstant:256.0],
-        [secondaryGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:72.0],
-        [secondaryGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:86.0],
-
-        [glow.widthAnchor constraintEqualToConstant:340.0],
-        [glow.heightAnchor constraintEqualToConstant:340.0],
-        [glow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:116.0],
-        [glow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-134.0]
-    ]];
-
-    self.bottomGlowView = glow;
-    self.bottomSecondaryGlowView = secondaryGlow;
-    self.bottomTrailGlowView = trailGlow;
-
-    self.bottomGlowView.alpha = 0;
-    self.bottomSecondaryGlowView.alpha = 0;
-    self.bottomTrailGlowView.alpha = 0;
-
-
-    [self pp_startSummaryBottomGlowMotionIfNeeded];
-}
-
-- (void)pp_startSummaryBottomGlowMotionIfNeeded
-{
-    if (!self.bottomGlowView && !self.bottomSecondaryGlowView && !self.bottomTrailGlowView) return;
-
-    [self pp_stopSummaryBottomGlowMotion];
-    self.bottomGlowView.transform = CGAffineTransformIdentity;
-    self.bottomSecondaryGlowView.transform = CGAffineTransformIdentity;
-    self.bottomTrailGlowView.transform = CGAffineTransformIdentity;
-    self.bottomGlowView.alpha = 0.16;
-    self.bottomSecondaryGlowView.alpha = 0.10;
-    self.bottomTrailGlowView.alpha = 0.12;
-}
-
-- (void)pp_stopSummaryBottomGlowMotion
-{
-    [self.bottomGlowView.layer removeAnimationForKey:@"pp_payment_bottom_glow_breath"];
-    [self.bottomSecondaryGlowView.layer removeAnimationForKey:@"pp_payment_bottom_secondary_glow_breath"];
-    [self.bottomTrailGlowView.layer removeAnimationForKey:@"pp_payment_bottom_trail_glow_breath"];
-}
-
-- (void)viewDidAppear:(BOOL)animated
-{
-    [super viewDidAppear:animated];
-
-    [self pp_animatePaymentHeroEntranceIfNeeded];
-    [self pp_beginPaymentHeroAmbientMotionIfNeeded];
-    [self pp_configurePaymentHeroAnimationIfNeeded];
-
-    // Reveal the summary view after the push transition and Auto Layout
-    // have fully settled, so there is no layout-driven jump.
-    if (self.summaryView && self.summaryView.alpha < 1.0) {
-        if (UIAccessibilityIsReduceMotionEnabled()) {
-            self.summaryView.alpha = 1.0;
-            self.summaryView.transform = CGAffineTransformIdentity;
-            return;
-        }
-        [UIView animateWithDuration:PPAnimDurationNormal
-                              delay:0.0
-                            options:UIViewAnimationOptionCurveEaseOut |
-                                    UIViewAnimationOptionBeginFromCurrentState |
-                                    UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            self.summaryView.alpha = 1.0;
-            self.summaryView.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }
-}
-
 - (void)setSummuryViewAtBottom
 {
     self.summaryView = [[PPContextAwareCheckoutView alloc] init];
     self.summaryView.presentationMode = PPContextAwareCheckoutModePayment;
     [self.view addSubview:self.summaryView];
     self.summaryView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-22.0].active = YES;
+    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceXS].active = YES;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 
-    // Suppress the internal cardView entrance animation; this VC uses
-    // its own entrance in viewDidAppear: instead.
+    // Keep the existing checkout dock immediately available during navigation.
     [self.summaryView skipCardEntranceAnimation];
 
     __weak typeof(self) weakSelf = self;
@@ -627,271 +303,203 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         [_summaryView pp_startTrustBannerShimmer];
     }
 
-    // Start fully hidden. viewDidAppear: will reveal with a spring
-    // animation after the push transition and Auto Layout have settled.
-    self.summaryView.alpha = 0.0;
-    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, PPSpaceMD);
+    // The consequential action is visible as soon as the screen is ready.
+    self.summaryView.alpha = 1.0;
+    self.summaryView.accessibilityIdentifier = @"paymentSelection.checkout";
 }
 
-- (void)setlocViewViewAtTop
+#pragma mark - Payment Review Presentation
+
+- (UILabel *)pp_reviewLabelWithText:(NSString *)text
+                              font:(UIFont *)font
+                             style:(UIFontTextStyle)style
+                             color:(UIColor *)color
 {
-    CGFloat initialPickerWidth = MAX(
-        CGRectGetWidth(self.view.bounds) - (PPScreenMargin * 2.0),
-        PPTouchTargetMin
-    );
-    self.locView = [PPAddressPickerView showInViewController:self width:initialPickerWidth];
-    self.locView.accessibilityIdentifier = @"paymentSelection.address";
-    [self.locView setAddressText:kLang(@"PleaseSelectDeliveryLocation")];
-    __weak typeof(self) weakSelf = self;
-    self.locView.onPickAddress = ^{
-        [weakSelf pp_presentAddressPickerOrPrompt];
-    };
-    [self.locView expandAndLock];
-
-    for (NSLayoutConstraint *constraint in self.locView.constraints) {
-        BOOL touchesPicker = constraint.firstItem == self.locView || constraint.secondItem == self.locView;
-        BOOL isWidthConstraint =
-            constraint.firstAttribute == NSLayoutAttributeWidth ||
-            constraint.secondAttribute == NSLayoutAttributeWidth;
-        if (touchesPicker && isWidthConstraint) {
-            constraint.active = NO;
-        }
-    }
-
-    for (NSLayoutConstraint *constraint in self.view.constraints) {
-        BOOL touchesPicker = constraint.firstItem == self.locView || constraint.secondItem == self.locView;
-        BOOL isHorizontal =
-            constraint.firstAttribute == NSLayoutAttributeLeading ||
-            constraint.firstAttribute == NSLayoutAttributeTrailing ||
-            constraint.firstAttribute == NSLayoutAttributeLeft ||
-            constraint.firstAttribute == NSLayoutAttributeRight ||
-            constraint.firstAttribute == NSLayoutAttributeCenterX ||
-            constraint.secondAttribute == NSLayoutAttributeLeading ||
-            constraint.secondAttribute == NSLayoutAttributeTrailing ||
-            constraint.secondAttribute == NSLayoutAttributeLeft ||
-            constraint.secondAttribute == NSLayoutAttributeRight ||
-            constraint.secondAttribute == NSLayoutAttributeCenterX;
-        if (touchesPicker && isHorizontal) {
-            constraint.active = NO;
-        }
-    }
-
-    [NSLayoutConstraint activateConstraints:@[
-        [self.locView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
-        [self.locView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin]
-    ]];
-
-    // Anchor the address picker directly below the navigation bar / safe area top.
-    self.locView.topConstraint.active = NO;
-    self.locView.topConstraint = [self.locView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceSM];
-    self.locView.topConstraint.active = YES;
-
-    [self pp_setupInitialAddressState];
-}
-
-- (NSString *)pp_paymentHeroTextForKey:(NSString *)key fallbackKey:(NSString *)fallbackKey
-{
-    NSString *value = kLang(key);
-    if (![value isKindOfClass:NSString.class] ||
-        value.length == 0 ||
-        [value isEqualToString:key]) {
-        value = kLang(fallbackKey);
-    }
-    if (![value isKindOfClass:NSString.class] ||
-        value.length == 0 ||
-        [value isEqualToString:fallbackKey]) {
-        return @"";
-    }
-    return value;
+    UILabel *label = [UILabel new];
+    label.font = [[UIFontMetrics metricsForTextStyle:style]
+        scaledFontForFont:font ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightRegular]];
+    label.adjustsFontForContentSizeCategory = YES;
+    label.text = text;
+    label.textColor = color;
+    label.numberOfLines = 0;
+    label.textAlignment = Language.alignmentForCurrentLanguage;
+    label.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    return label;
 }
 
 - (void)pp_setupHeroSection
 {
-    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-
-    self.heroIconPlateView = [[UIView alloc] init];
-    self.heroIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroIconPlateView.backgroundColor = UIColor.clearColor;
-    self.heroIconPlateView.userInteractionEnabled = NO;
-    self.heroIconPlateView.clipsToBounds = NO;
-    self.heroIconPlateView.accessibilityIdentifier = @"paymentSelection.heroIconPlate";
-    self.heroIconPlateView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-
-    UIImage *paymentIcon = [UIImage systemImageNamed:@"creditcard.and.123"];
-    if (!paymentIcon) {
-        paymentIcon = [UIImage systemImageNamed:@"creditcard.fill"];
-    }
-    self.heroIconView = [[UIImageView alloc] initWithImage:[paymentIcon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-    self.heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroIconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.heroIconView.tintColor = brandColor;
-    self.heroIconView.isAccessibilityElement = NO;
-    [self.heroIconPlateView addSubview:self.heroIconView];
-
-    self.heroAnimationView = [[LOTAnimationView alloc] init];
-    self.heroAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroAnimationView.contentMode = UIViewContentModeScaleAspectFit;
-    self.heroAnimationView.loopAnimation = YES;
-    self.heroAnimationView.animationSpeed = 1.0;
-    self.heroAnimationView.userInteractionEnabled = NO;
-    self.heroAnimationView.backgroundColor = UIColor.clearColor;
-    self.heroAnimationView.opaque = NO;
-    self.heroAnimationView.hidden = YES;
-    self.heroAnimationView.alpha = 0.0;
-    [self.heroIconPlateView addSubview:self.heroAnimationView];
-
-    self.heroTitleLabel = [[UILabel alloc] init];
-    self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    UIFont *titleBaseFont = [GM boldFontWithSize:16.0]
-        ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightBold];
-    self.heroTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
-        scaledFontForFont:titleBaseFont
-        maximumPointSize:20.0];
-    self.heroTitleLabel.adjustsFontForContentSizeCategory = YES;
-    self.heroTitleLabel.textColor = AppPrimaryTextClr;
-    self.heroTitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.heroTitleLabel = [self pp_reviewLabelWithText:kLang(@"payment_review_navigation")
+                                                font:[GM boldFontWithSize:PPFontHeadline]
+                                               style:UIFontTextStyleHeadline color:AppPrimaryTextClr];
     self.heroTitleLabel.numberOfLines = 1;
-    self.heroTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.heroTitleLabel.adjustsFontSizeToFitWidth = NO;
-    self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.heroTitleLabel.text = [self pp_paymentHeroTextForKey:@"payment_screen_title"
-                                                  fallbackKey:@"SelectPaymentMethod"];
+    // The full-size heading lives in the scroll content; the navigation bar is fixed-height.
+    self.heroTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+        scaledFontForFont:[GM boldFontWithSize:PPFontHeadline] maximumPointSize:24.0];
     self.heroTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
-    [self.heroTitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
-                                                         forAxis:UILayoutConstraintAxisHorizontal];
-
-    self.heroSubtitleLabel = [[PaddedLabel alloc] init];
-    self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSubtitleLabel.textInsets = UIEdgeInsetsZero;
-    UIFont *subtitleBaseFont = [GM MidFontWithSize:12.0]
-        ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    self.heroSubtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
-        scaledFontForFont:subtitleBaseFont
-        maximumPointSize:15.0];
-    self.heroSubtitleLabel.adjustsFontForContentSizeCategory = YES;
-    self.heroSubtitleLabel.textColor = AppSecondaryTextClr;
-    self.heroSubtitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.heroSubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.heroSubtitleLabel.hidden = NO;
-    self.heroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.heroSubtitleLabel.text = kLang(@"payment_screen_subtitle");
-    self.heroSubtitleLabel.numberOfLines = 1;
-    [self.heroSubtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
-                                                           forAxis:UILayoutConstraintAxisHorizontal];
-
-    self.navTitleSubtitleStack = [[UIStackView alloc] init];
+    self.navTitleSubtitleStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.heroTitleLabel]];
     self.navTitleSubtitleStack.translatesAutoresizingMaskIntoConstraints = NO;
-    self.navTitleSubtitleStack.axis = UILayoutConstraintAxisVertical;
-    self.navTitleSubtitleStack.alignment = UIStackViewAlignmentFill;
-    self.navTitleSubtitleStack.distribution = UIStackViewDistributionFill;
-    self.navTitleSubtitleStack.spacing = 1.0;
-    self.navTitleSubtitleStack.userInteractionEnabled = NO;
-    self.navTitleSubtitleStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    [self.navTitleSubtitleStack addArrangedSubview:self.heroTitleLabel];
-    [self.navTitleSubtitleStack addArrangedSubview:self.heroSubtitleLabel];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.heroIconPlateView.widthAnchor constraintEqualToConstant:PPTouchTargetMin + PPSpaceSM],
-        [self.heroIconPlateView.heightAnchor constraintEqualToConstant:PPTouchTargetMin + PPSpaceSM],
+    UILabel *title = [self pp_reviewLabelWithText:kLang(@"payment_review_title")
+                                           font:[GM boldFontWithSize:PPFontTitle1]
+                                          style:UIFontTextStyleTitle1 color:AppPrimaryTextClr];
+    title.accessibilityTraits = UIAccessibilityTraitHeader;
+    title.accessibilityIdentifier = @"paymentSelection.title";
+    UILabel *subtitle = [self pp_reviewLabelWithText:kLang(@"payment_review_subtitle")
+                                              font:[GM MidFontWithSize:PPFontCallout]
+                                             style:UIFontTextStyleCallout color:AppSecondaryTextClr];
+    UIStackView *intro = [[UIStackView alloc] initWithArrangedSubviews:@[title, subtitle]];
+    intro.axis = UILayoutConstraintAxisVertical;
+    intro.spacing = PPSpaceSM;
 
-        [self.heroIconView.centerXAnchor constraintEqualToAnchor:self.heroIconPlateView.centerXAnchor],
-        [self.heroIconView.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
-        [self.heroIconView.widthAnchor constraintEqualToConstant:22.0],
-        [self.heroIconView.heightAnchor constraintEqualToConstant:22.0],
-
-        [self.heroAnimationView.centerXAnchor constraintEqualToAnchor:self.heroIconPlateView.centerXAnchor],
-        [self.heroAnimationView.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
-        [self.heroAnimationView.widthAnchor constraintEqualToConstant:PPTouchTargetMin + PPSpaceSM],
-        [self.heroAnimationView.heightAnchor constraintEqualToConstant:PPTouchTargetMin + PPSpaceSM],
-    ]];
-
+    self.paymentPreludeView = [[UIStackView alloc] initWithArrangedSubviews:@[intro]];
+    self.paymentPreludeView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.paymentPreludeView.axis = UILayoutConstraintAxisVertical;
+    self.paymentPreludeView.alignment = UIStackViewAlignmentFill;
+    self.paymentPreludeView.spacing = PPSpaceXL;
+    self.paymentPreludeView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     [self pp_applyPaymentHeroNavBar];
-    [self pp_applyPaymentHeroTheme];
-    [self pp_updatePaymentLayoutMetrics];
-    [self pp_preparePaymentHeroEntranceState];
+}
+
+- (void)setlocViewViewAtTop
+{
+    self.locView = [PPAddressPickerView new];
+    [self.locView configureForInlineCheckout];
+    self.locView.accessibilityIdentifier = @"paymentSelection.address";
+    __weak typeof(self) weakSelf = self;
+    self.locView.onPickAddress = ^{ [weakSelf pp_presentAddressPickerOrPrompt]; };
+    self.locView.onLayoutHeightChange = ^{
+        [weakSelf.paymentCollection.collectionViewLayout invalidateLayout];
+    };
+    [self.paymentPreludeView addArrangedSubview:self.locView];
+
+    UILabel *methodsTitle = [self pp_reviewLabelWithText:kLang(@"payment_section_methods_title")
+                                                  font:[GM boldFontWithSize:PPFontTitle3]
+                                                 style:UIFontTextStyleTitle3 color:AppPrimaryTextClr];
+    methodsTitle.accessibilityTraits = UIAccessibilityTraitHeader;
+    methodsTitle.accessibilityIdentifier = @"paymentSelection.methodsTitle";
+    self.methodStatusLabel = [self pp_reviewLabelWithText:@""
+                                                    font:[GM MidFontWithSize:PPFontFootnote]
+                                                   style:UIFontTextStyleFootnote color:AppSecondaryTextClr];
+    [self.methodStatusLabel setContentCompressionResistancePriority:UILayoutPriorityRequired - 1.0
+                                                            forAxis:UILayoutConstraintAxisVertical];
+    self.methodLoadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    self.methodLoadingIndicator.hidesWhenStopped = YES;
+    self.methodLoadingIndicator.isAccessibilityElement = NO;
+    UIStackView *statusLine = [[UIStackView alloc] initWithArrangedSubviews:@[self.methodLoadingIndicator, self.methodStatusLabel]];
+    statusLine.axis = UILayoutConstraintAxisHorizontal;
+    statusLine.alignment = UIStackViewAlignmentCenter;
+    statusLine.spacing = PPSpaceSM;
+    statusLine.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.methodStatusLine = statusLine;
+
+    self.retryMethodsButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.retryMethodsButton.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout]
+        scaledFontForFont:[GM boldFontWithSize:PPFontCallout]];
+    self.retryMethodsButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+    self.retryMethodsButton.titleLabel.numberOfLines = 0;
+    [self.retryMethodsButton setTitle:kLang(@"payment_review_retry") forState:UIControlStateNormal];
+    [self.retryMethodsButton setTitleColor:AppPrimaryTextClr forState:UIControlStateNormal];
+    self.retryMethodsButton.contentHorizontalAlignment = Language.isRTL
+        ? UIControlContentHorizontalAlignmentRight : UIControlContentHorizontalAlignmentLeft;
+    self.retryMethodsButton.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    NSLayoutConstraint *retryMinimumHeight = [self.retryMethodsButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin];
+    retryMinimumHeight.priority = UILayoutPriorityRequired - 1.0;
+    retryMinimumHeight.active = YES;
+    [self.retryMethodsButton addTarget:self action:@selector(fetchUserPaymentInstruments) forControlEvents:UIControlEventTouchUpInside];
+    self.retryMethodsButton.accessibilityIdentifier = @"paymentSelection.retryMethods";
+    self.methodStatusStack = [[UIStackView alloc] initWithArrangedSubviews:@[statusLine, self.retryMethodsButton]];
+    self.methodStatusStack.axis = UILayoutConstraintAxisVertical;
+    self.methodStatusStack.spacing = PPSpaceXS;
+    UIStackView *methodHeading = [[UIStackView alloc] initWithArrangedSubviews:@[methodsTitle, self.methodStatusStack]];
+    methodHeading.axis = UILayoutConstraintAxisVertical;
+    methodHeading.spacing = PPSpaceSM;
+    [self.paymentPreludeView addArrangedSubview:methodHeading];
+    [self pp_updateMethodStatus];
+    [self pp_setupInitialAddressState];
 }
 
 - (void)pp_applyPaymentHeroNavBar
 {
-    self.navigationItem.title = nil;
     UIView *bar = [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:NO];
     if (!bar) return;
     bar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.navTitleSubtitleStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.heroTitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.heroSubtitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.heroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-
     if (!self.heroBackButton) {
         self.heroBackButton = [self pp_ButtonWithSystemName:PPChevronName action:@selector(onBack)];
         self.heroBackButton.accessibilityIdentifier = @"paymentSelection.back";
         self.heroBackButton.accessibilityLabel = kLang(@"Back");
-        self.heroBackButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+        // The shared helper uses a 38pt button before iOS 26; keep a 44pt target here.
+        for (NSLayoutConstraint *constraint in self.heroBackButton.constraints) {
+            if (constraint.firstItem == self.heroBackButton && constraint.secondItem == nil &&
+                (constraint.firstAttribute == NSLayoutAttributeWidth || constraint.firstAttribute == NSLayoutAttributeHeight)) {
+                constraint.constant = MAX(PPTouchTargetMin, constraint.constant);
+            }
+        }
     }
-
-    BOOL requiresNavigationLayout =
-        self.heroBackButton.superview != bar ||
-        self.heroIconPlateView.superview != bar ||
-        self.navTitleSubtitleStack.superview != bar;
-    if (requiresNavigationLayout) {
+    if (self.heroBackButton.superview != bar || self.navTitleSubtitleStack.superview != bar) {
         [self.heroBackButton removeFromSuperview];
-        [self.heroIconPlateView removeFromSuperview];
         [self.navTitleSubtitleStack removeFromSuperview];
-
-        [bar addSubview:self.navTitleSubtitleStack];
-        [bar addSubview:self.heroIconPlateView];
         [bar addSubview:self.heroBackButton];
-
+        [bar addSubview:self.navTitleSubtitleStack];
         [NSLayoutConstraint activateConstraints:@[
             [self.heroBackButton.leadingAnchor constraintEqualToAnchor:bar.leadingAnchor],
             [self.heroBackButton.centerYAnchor constraintEqualToAnchor:bar.centerYAnchor],
-
-            [self.heroIconPlateView.trailingAnchor constraintEqualToAnchor:bar.trailingAnchor],
-            [self.heroIconPlateView.centerYAnchor constraintEqualToAnchor:bar.centerYAnchor],
-
             [self.navTitleSubtitleStack.leadingAnchor constraintEqualToAnchor:self.heroBackButton.trailingAnchor constant:PPSpaceSM],
-            [self.navTitleSubtitleStack.trailingAnchor constraintEqualToAnchor:self.heroIconPlateView.leadingAnchor constant:-PPSpaceSM],
+            [self.navTitleSubtitleStack.trailingAnchor constraintEqualToAnchor:bar.trailingAnchor constant:-PPSpaceSM],
             [self.navTitleSubtitleStack.centerYAnchor constraintEqualToAnchor:bar.centerYAnchor]
         ]];
     }
-
-    self.heroBackButton.hidden = NO;
-    self.navTitleSubtitleStack.hidden = NO;
-    self.heroIconPlateView.hidden = NO;
 }
 
-- (void)pp_preparePaymentHeroEntranceState
+- (CGFloat)pp_paymentHeaderHeightForWidth:(CGFloat)width
 {
-    self.navTitleSubtitleStack.alpha = 1.0;
-    self.navTitleSubtitleStack.transform = CGAffineTransformIdentity;
-    self.heroIconPlateView.alpha = 1.0;
-    self.heroIconPlateView.transform = CGAffineTransformIdentity;
-    self.heroTitleLabel.alpha = 1.0;
-    self.heroSubtitleLabel.alpha = 1.0;
-    self.heroIconView.alpha = 1.0;
-    self.heroAnimationView.alpha = 0.0;
-    self.heroAnimationView.transform = CGAffineTransformMakeScale(0.88, 0.88);
+    CGFloat contentWidth = MAX(1.0, MIN(680.0, width - 2.0 * PPScreenMargin));
+    CGSize size = [self.paymentPreludeView systemLayoutSizeFittingSize:CGSizeMake(contentWidth, UILayoutFittingCompressedSize.height)
+                                      withHorizontalFittingPriority:UILayoutPriorityRequired
+                                            verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    return ceil(size.height) + PPSpaceBase + PPSpaceSM;
 }
 
-- (void)pp_animatePaymentHeroEntranceIfNeeded
+- (void)pp_configurePaymentHeader:(PPPaymentSectionHeaderView *)header
 {
-    if (self.didAnimatePaymentHeroEntrance) return;
-    self.didAnimatePaymentHeroEntrance = YES;
+    if (self.paymentPreludeView.superview == header) return;
+    [self.paymentPreludeView removeFromSuperview];
+    [header addSubview:self.paymentPreludeView];
+    NSLayoutConstraint *preferredWidth = [self.paymentPreludeView.widthAnchor constraintEqualToAnchor:header.widthAnchor constant:-2.0 * PPScreenMargin];
+    preferredWidth.priority = UILayoutPriorityDefaultHigh;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.paymentPreludeView.topAnchor constraintEqualToAnchor:header.topAnchor constant:PPSpaceBase],
+        [self.paymentPreludeView.centerXAnchor constraintEqualToAnchor:header.centerXAnchor],
+        [self.paymentPreludeView.widthAnchor constraintLessThanOrEqualToConstant:680.0],
+        preferredWidth,
+        [self.paymentPreludeView.bottomAnchor constraintLessThanOrEqualToAnchor:header.bottomAnchor constant:-PPSpaceSM]
+    ]];
+}
 
-    self.navTitleSubtitleStack.alpha = 1.0;
-    self.navTitleSubtitleStack.transform = CGAffineTransformIdentity;
-    self.heroIconPlateView.alpha = 1.0;
-    self.heroIconPlateView.transform = CGAffineTransformIdentity;
-    self.heroTitleLabel.alpha = 1.0;
-    self.heroSubtitleLabel.alpha = 1.0;
-    self.heroIconView.alpha = 1.0;
+- (void)pp_updateMethodStatus
+{
+    BOOL empty = [self pp_displayedInstruments].count == 0;
+    self.methodStatusLine.hidden = !self.isLoadingPaymentInstruments && !self.paymentInstrumentsLoadFailed && !empty;
+    self.methodStatusLabel.text = self.isLoadingPaymentInstruments
+        ? kLang(@"payment_review_loading")
+        : kLang(empty ? @"payment_review_unavailable" : @"payment_load_methods_failed");
+    self.retryMethodsButton.hidden = self.isLoadingPaymentInstruments || (!self.paymentInstrumentsLoadFailed && !empty);
+    self.methodLoadingIndicator.hidden = !self.isLoadingPaymentInstruments;
+    if (self.isLoadingPaymentInstruments) [self.methodLoadingIndicator startAnimating];
+    else [self.methodLoadingIndicator stopAnimating];
+    [self.paymentCollection.collectionViewLayout invalidateLayout];
 }
 
 - (void)pp_updatePaymentLayoutMetrics
 {
-    self.heroSubtitleLabel.hidden = NO;
-    self.heroIconPlateView.hidden = NO;
+    CGFloat width = CGRectGetWidth(self.paymentCollection.bounds);
+    if (width <= 0 || fabs(width - self.paymentContentWidth) < 0.5) return;
+    self.paymentContentWidth = width;
+    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.paymentCollection.collectionViewLayout;
+    CGFloat margin = MAX(PPScreenMargin, (width - 680.0) / 2.0);
+    layout.sectionInset = UIEdgeInsetsMake(PPSpaceXS, margin, PPSpaceXL, margin);
+    [layout invalidateLayout];
 }
 
 - (BOOL)pp_prefersCondensedCheckoutSummary
@@ -915,138 +523,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
 - (void)pp_applyPaymentHeroTheme
 {
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
-
-    self.heroIconPlateView.backgroundColor = UIColor.clearColor;
-    self.heroIconPlateView.layer.borderWidth = 0.0;
-    [self.heroIconPlateView pp_setBorderColor:UIColor.clearColor];
-    self.heroIconView.tintColor = accent;
-
+    self.view.backgroundColor = AppBackgroundClr;
     self.heroTitleLabel.textColor = AppPrimaryTextClr;
-    self.heroSubtitleLabel.textColor = AppSecondaryTextClr;
-}
-
-- (void)pp_configurePaymentHeroAnimationIfNeeded
-{
-    NSString *animationName = PPPaymentHeroAnimationName();
-    if (animationName.length == 0 || !self.heroAnimationView) {
-        return;
-    }
-
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self.heroAnimationView stop];
-        self.heroAnimationView.hidden = YES;
-        self.heroAnimationView.alpha = 0.0;
-        self.heroAnimationView.transform = CGAffineTransformIdentity;
-        self.heroIconView.hidden = NO;
-        self.heroIconView.alpha = 1.0;
-        return;
-    }
-
-    BOOL dark = NO;
-    if (@available(iOS 13.0, *)) {
-        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    }
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *resolvedAccent = accent;
-    if (@available(iOS 13.0, *)) {
-        resolvedAccent = [accent resolvedColorWithTraitCollection:self.traitCollection];
-    }
-    UIColor *highlight = dark ? [UIColor colorWithWhite:1.0 alpha:0.92] : UIColor.whiteColor;
-    NSString *animationKey = [NSString stringWithFormat:@"%@|%@|%@",
-                              animationName,
-                              PPPaymentHeroLottieColorKey(resolvedAccent),
-                              PPPaymentHeroLottieColorKey(highlight)];
-
-    if ([self.currentHeroAnimationName isEqualToString:animationKey]) {
-        BOOL needsReveal = self.heroAnimationView.hidden
-            || self.heroAnimationView.alpha < 0.99
-            || !CGAffineTransformEqualToTransform(self.heroAnimationView.transform, CGAffineTransformIdentity);
-        if (needsReveal && self.heroAnimationView.sceneModel) {
-            [self pp_revealPaymentHeroAnimation];
-            return;
-        }
-        if (!self.heroAnimationView.hidden && !self.heroAnimationView.isAnimationPlaying) {
-            self.heroAnimationView.loopAnimation = YES;
-            [self.heroAnimationView play];
-        }
-        return;
-    }
-
-    self.currentHeroAnimationName = animationKey;
-    self.heroAnimationLoadToken += 1;
-    NSInteger token = self.heroAnimationLoadToken;
-
-    [self.heroAnimationView stop];
-    self.heroAnimationView.hidden = YES;
-    self.heroAnimationView.alpha = 0.0;
-    self.heroAnimationView.transform = CGAffineTransformMakeScale(0.88, 0.88);
-    self.heroIconView.hidden = NO;
-    self.heroIconView.alpha = MAX(self.heroIconView.alpha, self.didAnimatePaymentHeroEntrance ? 1.0 : 0.0);
-
-    LOTComposition *localComposition = PPPaymentPremiumHeroCompositionWithTint(resolvedAccent, highlight);
-    if (localComposition) {
-        self.heroAnimationView.animationSpeed = 1.0;
-        self.heroAnimationView.loopAnimation = YES;
-        [self.heroAnimationView setSceneModel:localComposition];
-        [self pp_revealPaymentHeroAnimation];
-        return;
-    }
-
-    __weak typeof(self) weakSelf = self;
-    [Styling setAnimationNamed:animationName
-                        toView:self.heroAnimationView
-                     withSpeed:1.0
-                 loopAnimation:YES
-                      autoplay:YES
-                    completion:^(BOOL success) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || strongSelf.heroAnimationLoadToken != token) {
-                return;
-            }
-
-            if (success) {
-                [strongSelf pp_revealPaymentHeroAnimation];
-                return;
-            }
-            strongSelf.heroAnimationView.hidden = YES;
-            strongSelf.heroAnimationView.alpha = 0.0;
-            strongSelf.heroIconView.hidden = NO;
-            strongSelf.heroIconView.alpha = 1.0;
-        });
-    }];
-}
-
-- (void)pp_revealPaymentHeroAnimation
-{
-    self.heroAnimationView.loopAnimation = YES;
-    self.heroAnimationView.hidden = NO;
-    self.heroIconView.hidden = YES;
-    [self.heroAnimationView setNeedsLayout];
-    [self.heroAnimationView layoutIfNeeded];
-    [self.heroAnimationView play];
-
-    [UIView animateWithDuration:0.20
-                          delay:self.didAnimatePaymentHeroEntrance ? 0.04 : 0.18
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.heroAnimationView.alpha = 1.0;
-        self.heroAnimationView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-}
-
-- (void)pp_beginPaymentHeroAmbientMotionIfNeeded
-{
-    if (self.didStartPaymentHeroAmbientMotion) {
-        return;
-    }
-    self.didStartPaymentHeroAmbientMotion = YES;
-}
-
-- (void)pp_stopPaymentHeroAmbientMotion
-{
-    self.didStartPaymentHeroAmbientMotion = NO;
 }
 
 - (NSString *)pp_trimmedAddressString:(id)value
@@ -1249,10 +727,14 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 {
     (void)notification;
     [self.instrumentManager resetForSignOut];
+    self.paymentInstrumentLoadGeneration += 1;
+    self.isLoadingPaymentInstruments = NO;
+    self.paymentInstrumentsLoadFailed = NO;
     self.userInstruments = @[];
     [self pp_applyAddresses:@[]];
     [self.paymentCollection reloadData];
     [self pp_refreshCheckoutCallToAction];
+    [self pp_updateMethodStatus];
 }
 
 - (void)pp_handlePricingConfigurationDidChangeNotification:(NSNotification *)notification
@@ -1271,6 +753,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     [self pp_applyDefaultSelectionIfNeeded];
     [self.paymentCollection reloadData];
+    [self pp_updateMethodStatus];
 }
 
 - (void)setupPaymentCollection {
@@ -1294,7 +777,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.paymentCollection.backgroundColor = UIColor.clearColor;
     self.paymentCollection.accessibilityIdentifier = @"paymentSelection.methods";
     self.paymentCollection.alwaysBounceVertical = YES;
-    self.paymentCollection.showsVerticalScrollIndicator = NO;
+    self.paymentCollection.showsVerticalScrollIndicator = YES;
+    self.paymentCollection.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.paymentCollection.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     [self.paymentCollection registerClass:[PPPaymentMethodCell class] forCellWithReuseIdentifier:@"PaymentMethodCell"];
     [self.paymentCollection registerClass:[PPPaymentSectionHeaderView class]
                forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
@@ -1312,55 +797,53 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     minimumMethodViewport.priority = UILayoutPriorityRequired - 1.0;
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:PPSpaceSM],
+        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
         [self.paymentCollection.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.paymentCollection.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.paymentCollection.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-PPSpaceSM],
         minimumMethodViewport
     ]];
     
-    [self.locView attachToScrollView:self.paymentCollection];
+    [self pp_updatePaymentLayoutMetrics];
 }
 #pragma mark - Setup Payment Collection
 
-- (void)fetchUserPaymentInstruments {
+- (void)fetchUserPaymentInstruments
+{
+    NSUInteger generation = ++self.paymentInstrumentLoadGeneration;
     NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
     if (uid.length == 0) {
         self.userInstruments = @[];
+        self.isLoadingPaymentInstruments = NO;
+        self.paymentInstrumentsLoadFailed = NO;
         [self.paymentCollection reloadData];
         [self pp_refreshCheckoutCallToAction];
+        [self pp_updateMethodStatus];
         return;
     }
-
+    self.isLoadingPaymentInstruments = YES;
+    self.paymentInstrumentsLoadFailed = NO;
+    [self pp_updateMethodStatus];
     __weak typeof(self) weakSelf = self;
     [self.instrumentManager listenForInstrumentsForUser:uid
                                              completion:^(NSArray<UserPaymentInstrument *> * _Nullable instruments, NSError * _Nullable error) {
-        [PPHUD dismiss];
-        if (!error) {
-            PPORDERLog(@"Payment instruments loaded | count=%lu", (unsigned long)instruments.count);
-            for (UserPaymentInstrument *inst in instruments ?: @[]) {
-                PPORDERLog(@"↳ Instrument [#%@] methodID=%@ masked=%@ isDefault=%d",
-                           inst.instrumentID ?: @"",
-                           inst.methodID ?: @"",
-                           inst.maskedDetails ?: @"",
-                           inst.isDefault);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || self.paymentInstrumentLoadGeneration != generation ||
+                ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) return;
+            [PPHUD dismiss];
+            self.isLoadingPaymentInstruments = NO;
+            self.paymentInstrumentsLoadFailed = error != nil;
+            if (!error) {
+                self.userInstruments = instruments ?: @[];
+                [self pp_applyDefaultSelectionIfNeeded];
+                [self.paymentCollection reloadData];
+                [self pp_refreshCheckoutCallToAction];
             }
-            weakSelf.userInstruments = instruments ?: @[];
-            [weakSelf pp_applyDefaultSelectionIfNeeded];
-            [weakSelf.paymentCollection reloadData];
-            [weakSelf pp_refreshCheckoutCallToAction];
-            [UIView performWithoutAnimation:^{
-                
-            }];
-
-        } else {
-            PPORDERLog(@"Payment instruments failed to load | error=%@", error.localizedDescription ?: @"Unknown");
-            [PPHUD showError:kLang(@"payment_load_methods_failed")];
-        }
+            [self pp_updateMethodStatus];
+        });
     }];
 }
-
-
 
 -(void)showPaymentSheetFull:(BOOL)showFull
 {
