@@ -54,6 +54,8 @@ struct PPOrderLivingHandoffRail: View {
     let accent: Color
     let presentation: Presentation
     let showsFooter: Bool
+    /// Lists can retain status-change transitions without running a timeline per row.
+    let animatesContinuously: Bool
     private let layoutDirectionOverride: LayoutDirection?
 
     /// Optional title resolver. Use this to keep localization owned by the local app.
@@ -72,6 +74,7 @@ struct PPOrderLivingHandoffRail: View {
         isRightToLeft: Bool? = nil,
         presentation: Presentation = .hero,
         showsFooter: Bool = true,
+        animatesContinuously: Bool = true,
         titleForStep: ((String, String) -> String)? = nil
     ) {
         self.statusKey = statusKey
@@ -82,6 +85,7 @@ struct PPOrderLivingHandoffRail: View {
         self.accent = accent
         self.presentation = presentation
         self.showsFooter = showsFooter
+        self.animatesContinuously = animatesContinuously
         self.layoutDirectionOverride = isRightToLeft.map {
             $0 ? .rightToLeft : .leftToRight
         }
@@ -252,7 +256,8 @@ struct PPOrderLivingHandoffRail: View {
                         )
                     }
 
-                    if !reduceMotion,
+                    if animatesContinuously,
+                       !reduceMotion,
                        currentIndex < visibleEnd {
                         travelPulse(
                             from: geometry.nodeX(
@@ -571,7 +576,7 @@ struct PPOrderLivingHandoffRail: View {
 
     @ViewBuilder
     private func activeNode(symbol: String) -> some View {
-        if reduceMotion {
+        if reduceMotion || !animatesContinuously {
             activeMembrane(symbol: symbol, phase: 0)
         } else {
             TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { timeline in

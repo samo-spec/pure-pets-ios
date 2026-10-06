@@ -681,12 +681,20 @@ private struct PPOrderHistoryJourneyCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            PPOrderHistoryProgressRail(
-                stage: item.progressStage,
-                tone: tone,
-                terminalFailure: item.filterKey == "failed" ||
-                    item.filterKey == "cancelled"
+            // The journey and badge share the customer-visible status used by
+            // Order Details. Filter buckets are only for list discovery.
+            PPOrderLivingHandoffRail(
+                statusKey: item.statusKey,
+                statusTitle: item.statusTitle,
+                fallbackStatusSymbol: statusSymbol,
+                accent: tone,
+                isRightToLeft: Language.isRTL(),
+                presentation: .compact,
+                showsFooter: false,
+                animatesContinuously: false
             )
+            // The row's single VoiceOver label already includes this status.
+            .accessibilityHidden(true)
 
             HStack(alignment: .center, spacing: PPSpace.sm) {
                 Text(item.amountText)
@@ -728,27 +736,11 @@ private struct PPOrderHistoryJourneyCard: View {
     }
 
     private var tone: Color {
-        switch item.filterKey {
-        case "delivered": return .ppSuccess
-        case "failed": return .ppError
-        case "cancelled": return .ppTextSecondary
-        case "shipped": return .ppQuickActionServices
-        case "processing": return .ppPrimary
-        case "paid": return .ppInfo
-        default: return .ppWarning
-        }
+        Color(uiColor: PPOrderStatusAccentColorForKey(item.statusKey))
     }
 
     private var statusSymbol: String {
-        switch item.filterKey {
-        case "delivered": return "checkmark.circle.fill"
-        case "failed": return "exclamationmark.circle.fill"
-        case "cancelled": return "xmark.circle.fill"
-        case "shipped": return "truck.box.fill"
-        case "processing": return "shippingbox.fill"
-        case "paid": return "creditcard.fill"
-        default: return "clock.fill"
-        }
+        PPOrderStatusSymbolNameForKey(item.statusKey)
     }
 
     private var accessibilityLabel: String {
@@ -760,32 +752,6 @@ private struct PPOrderHistoryJourneyCard: View {
             item.amountText,
             item.dateText
         )
-    }
-}
-
-@available(iOS 17.0, *)
-private struct PPOrderHistoryProgressRail: View {
-    let stage: Int
-    let tone: Color
-    let terminalFailure: Bool
-
-    var body: some View {
-        HStack(spacing: 5) {
-            ForEach(1...4, id: \.self) { index in
-                Capsule()
-                    .fill(color(for: index))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: index == min(max(stage, 1), 4) ? 4 : 3)
-            }
-        }
-        .accessibilityHidden(true)
-    }
-
-    private func color(for index: Int) -> Color {
-        if terminalFailure {
-            return index == 1 ? tone.opacity(0.82) : Color.ppBorder.opacity(0.72)
-        }
-        return index <= stage ? tone.opacity(0.82) : Color.ppBorder.opacity(0.72)
     }
 }
 
