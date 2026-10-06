@@ -4,13 +4,8 @@ import UIKit
 // MARK: - Home Hero V2
 //
 // V1 remains preserved behind `PPHomeHeroFlags.UseHeroV2`. V2 re-composes the
-// same page and action contract as a compact editorial card: copy owns the
-// semantic leading side while the selected category portrait and the preserved
-// `PPHomeHeroLivingBlobView` form one optical object on the trailing side.
-//
-// The plate is deliberately contained rather than full-bleed. Its living edge,
-// feeding bubbles, portrait, halo and card tint now share one visual centre, so
-// the animal feels mounted in the plate instead of pasted over a giant circle.
+// same page, artwork, and action contracts as a quiet companion introduction.
+// Copy and animals share the first reading line; category browsing is separate.
 
 /// Mirrors `homeHeroShowsSelectedMainKindArtwork` in V1: the marketplace hero
 /// presents the selected main-kind portrait instead of the generic shop scene.
@@ -129,48 +124,25 @@ struct HomeHeroV2View: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
-    @ScaledMetric(relativeTo: .title) private var scaledHeight: CGFloat =
-        HomeHeroV2Metrics.height
-
-    @State private var measuredCopyHeights: [String: CGFloat] = [:]
 
     private var selectedPage: HomeHeroPage? {
         guard pages.indices.contains(selectedIndex) else { return nil }
         return pages[selectedIndex]
     }
 
-    private var resolvedHeight: CGFloat {
-        min(scaledHeight, HomeHeroV2Metrics.maximumHeight)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var isRightToLeft: Bool { layoutDirection == .rightToLeft }
+    private var allowsPaging: Bool { pages.count > 1 }
+    @State private var availableWidth: CGFloat = 0
+
+    private var usesStackedLayout: Bool {
+        dynamicTypeSize >= .xxLarge || (availableWidth > 0 && availableWidth < 300)
     }
 
-    private func shouldEndHeightAfterSubtitle(for page: HomeHeroPage) -> Bool {
-        if page.endsHeightAfterSubtitle { return true }
-        if page.isPromotionSpark {
-            if let index = pages.firstIndex(where: { $0.id == page.id }) {
-                return index < 4
-            }
-            return true
-        }
-        return false
-    }
-
-    private func stageHeight(for page: HomeHeroPage) -> CGFloat {
-        if shouldEndHeightAfterSubtitle(for: page) {
-            let measured = measuredCopyHeights[page.id] ?? 88
-            return HomeHeroV2Metrics.copyTopInset + measured + HomeHeroPage.subtitleBottomClearance
-        }
-        return HomeHeroV2Metrics.stageHeight
-    }
-
-    /// `HomeView` publishes `HomeStore.state.isRightToLeft` into the SwiftUI
-    /// environment. Consume that single live owner here; querying `Language`
-    /// again would create a second direction source during a locale transition.
-    private var isRightToLeft: Bool {
-        layoutDirection == .rightToLeft
-    }
-
-    private var allowsPaging: Bool {
-        pages.count > 1
+    private var artworkSide: CGFloat {
+        let contentWidth = max(280, availableWidth) - PPSpace.base * 2
+        return min(horizontalSizeClass == .regular ? 196 : 142, max(112, contentWidth * 0.38))
     }
 
     var body: some View {
@@ -178,670 +150,156 @@ struct HomeHeroV2View: View {
             if let page = selectedPage {
                 hero(page)
             } else {
-                HomeHeroV2Skeleton(height: resolvedHeight)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, HomeHeroV2Metrics.outerInset)
-        .accessibilityElement(children: .contain)
-    }
-
-    // MARK: Composition
-
-    private func hero(_ page: HomeHeroPage) -> some View {
-        // The hero now carries the live category identity: marketplace pages
-        // publish the selected MainKind color in `accentHex`, so V2's eyebrow,
-        // CTA, plate halo, living membrane, and secondary action all shift with
-        // the species the rail is scoping. The value passes through a contrast
-        // ladder first, so a pale MainKind color can never produce an
-        // illegible eyebrow or a washed-out CTA.
-        let accent = heroAccent(for: page)
-
-        return Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                stackedHero(page, accent: accent)
-            } else {
-                unifiedHero(page, accent: accent)
+                HomeHeroV2Skeleton(height: 204)
+                    .redacted(reason: .placeholder)
+                    .accessibilityHidden(true)
             }
         }
         .background {
-            cardSurface(accent: accent)
-        }
-        .clipShape(cardShape)
-        .overlay {
-            cardShape
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            accent.opacity(
-                                contrast == .increased
-                                    ? 0.50
-                                    : (colorScheme == .dark ? 0.22 : 0.12)
-                            ),
-                            accent.opacity(
-                                contrast == .increased
-                                    ? 0.25
-                                    : (colorScheme == .dark ? 0.10 : 0.05)
-                            ),
-                            Color.clear
-                        ],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    ),
-                    lineWidth: contrast == .increased ? 1.5 : 0.8
-                )
-        }
-        .shadow(
-            color: Color.black.opacity(
-                contrast == .increased
-                    ? 0
-                    : (colorScheme == .dark ? 0.26 : 0.07)
-            ),
-            radius: contrast == .increased ? 0 : 16,
-            y: contrast == .increased ? 0 : 7
-        )
-        .animation(
-            reduceMotion ? nil : .easeInOut(duration: 0.28),
-            value: page.accentHex
-        )
-        .modifier(
-            HomeHeroV2PageMotionModifier(
-                pageID: AnyHashable(page.id),
-                reduceMotion: reduceMotion
-            )
-        )
-        .contentShape(Rectangle())
-        .accessibilityLabel(
-            page.accessibilityLabel ?? [page.eyebrow, page.title, page.subtitle]
-                .filter { !$0.isEmpty }
-                .joined(separator: ", ")
-        )
-        .modifier(
-            HomeHeroV2PagingAccessibilityModifier(
-                isEnabled: allowsPaging,
-                selectedIndex: selectedIndex,
-                pageCount: pages.count,
-                onSelect: onSelect
-            )
-        )
-        .onTapGesture {
-            if shouldEndHeightAfterSubtitle(for: page) {
-                onPrimaryAction()
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { availableWidth = geometry.size.width }
+                    .onChange(of: geometry.size.width) { width in availableWidth = width }
             }
         }
-        .onPreferenceChange(HeroCopyHeightPreferenceKey.self) { height in
-            if height > 0 {
-                let current = measuredCopyHeights[page.id] ?? 0
-                if abs(current - height) > 0.5 {
-                    measuredCopyHeights[page.id] = height
+        .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+        .accessibilityElement(children: .contain)
+        .onDisappear { onInteractionChanged(false) }
+    }
+
+    /// One reading path: animal + headline, supporting context, then one action.
+    /// Category selection lives in Home's independent browsing row.
+    private func hero(_ page: HomeHeroPage) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            Group {
+                if usesStackedLayout {
+                    VStack(alignment: .leading, spacing: PPSpace.base) {
+                        artwork(page)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        heroCopy(page)
+                    }
+                } else {
+                    HStack(alignment: .center, spacing: PPSpace.md) {
+                        heroCopy(page)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .layoutPriority(1)
+                        artwork(page)
+                    }
                 }
             }
-        }
-    }
+            .id(page.id)
+            .transition(.opacity)
 
-    @ViewBuilder
-    private func unifiedHero(
-        _ page: HomeHeroPage,
-        accent: Color
-    ) -> some View {
-        VStack(spacing: 0) {
-            splitHero(page, accent: accent)
-                .id(page.id)
-                .transition(pageTransition)
-                .modifier(
-                    HomeHeroV2PagingGestureModifier(
-                        isEnabled: allowsPaging,
-                        selectedIndex: selectedIndex,
-                        pageCount: pages.count,
-                        layoutDirection: layoutDirection,
-                        onSelect: onSelect,
-                        onInteractionChanged: onInteractionChanged
-                    )
-                )
-                .frame(height: stageHeight(for: page))
-                .animation(
-                    reduceMotion ? nil : .easeInOut(duration: 0.22),
-                    value: stageHeight(for: page)
-                )
+            heroActions(page)
 
-            if !categories.isEmpty, let onSelectCategory {
-                // Categories Section Strip
-                HomeHeroSpeciesDock(
-                    categories: categories,
-                    selectedCategoryID: selectedCategoryID,
-                    accent: accent,
-                    isRightToLeft: isRightToLeft,
-                    onSelect: onSelectCategory
-                )
-                .frame(
-                    height: HomeHeroSpeciesDockMetrics.height(
-                        for: dynamicTypeSize
-                    )
-                )
+            if allowsPaging {
+                PPHomePageControl(count: pages.count, selectedIndex: selectedIndex)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-    }
-
-    private var cardShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: HomeHeroV2Metrics.cardRadius,
-            style: .continuous
-        )
-    }
-
-    private func cardSurface(accent: Color) -> some View {
-        ZStack {
-            Color.homeSurface
-
-            if contrast != .increased && !reduceTransparency {
-                RadialGradient(
-                    colors: [
-                        accent.opacity(colorScheme == .dark ? 0.16 : 0.08),
-                        Color.clear
-                    ],
-                    center: isRightToLeft ? .topLeading : .topTrailing,
-                    startRadius: 0,
-                    endRadius: 360
-                )
-            }
-        }
-        .mask(
-            LinearGradient(
-                stops: [
-                    .init(color: .clear, location: 0.0),
-                    .init(color: .black, location: 0.5),
-                    .init(color: .black, location: 1.0)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-    }
-
-    /// Compact semantic split: copy owns the leading lane; the living plate and
-    /// category portrait own the trailing lane. Positions are resolved from the
-    /// canonical app language as well as SwiftUI's environment so Arabic cannot
-    /// accidentally retain the old left-copy/right-plate arrangement.
-    private func splitHero(
-        _ page: HomeHeroPage,
-        accent: Color
-    ) -> some View {
-        GeometryReader { proxy in
-            let width = proxy.size.width
-            let height = proxy.size.height
-            let isCompact = shouldEndHeightAfterSubtitle(for: page)
-            let plateInk = isCompact
-                ? min(max(height - 12, 60), 120)
-                : min(
-                    HomeHeroV2Metrics.plateInk,
-                    HomeHeroV2Metrics.referenceStageHeight - (HomeHeroV2Metrics.cardContentInset * 2)
-                )
-            let plateFrame = plateInk / HomeHeroV2Metrics.blobInkRatio
-            let plateOverflow = isCompact
-                ? 10
-                : min(
-                    HomeHeroV2Metrics.plateHorizontalOverflow,
-                    plateFrame * HomeHeroV2Metrics.maximumPlateOverflowRatio
-                )
-            let visiblePlateWidth = plateFrame - plateOverflow
-            let availableCopyWidth = width
-                - visiblePlateWidth
-                - HomeHeroV2Metrics.copyLeadingInset
-                - HomeHeroV2Metrics.contentGap
-            let copyWidth = max(
-                HomeHeroV2Metrics.minimumCopyWidth,
-                min(width * HomeHeroV2Metrics.copyWidthRatio, availableCopyWidth)
-            )
-
-            // SwiftUI mirrors explicit child placement when the environment is
-            // RTL. Express each center once in semantic leading/trailing terms;
-            // branching on `isRightToLeft` here would mirror the composition a
-            // second time and leave Arabic visually identical to English.
-            let copyCenterX = HomeHeroV2Metrics.copyLeadingInset
-                + (copyWidth / 2)
-            let plateInsetCenter = max((plateFrame / 2) - plateOverflow, 0)
-            let plateCenterX = width - plateInsetCenter
-            let gripCenterX = width
-                - HomeHeroV2Metrics.gripEdgeInset
-                - (HomeHeroV2Metrics.gripWidth / 2)
-
-            let artworkSide = isCompact
-                ? min(plateInk - 6, 96)
-                : min(HomeHeroV2Metrics.artworkSide, plateInk - PPSpace.base)
-            let blobCenterX = isCompact ? (plateCenterX + 20) : (plateCenterX + 80)
-            let contentCenterY = isCompact
-                ? (height / 2)
-                : (height - (HomeHeroV2Metrics.referenceStageHeight / 2))
-            let plateArtworkCenterY = isCompact
-                ? (height / 2)
-                : (contentCenterY + HomeHeroV2Metrics.plateArtworkGroupVerticalOffset)
-            ZStack(alignment: .topLeading) {
-                // Living blob plate shifted trailing by +80
-                plateStage(
-                    page,
-                    accent: accent,
-                    plateFrame: plateFrame,
-                    plateInk: plateInk,
-                    artworkSide: artworkSide
-                )
-                .position(x: blobCenterX, y: plateArtworkCenterY)
-                .zIndex(0)
-
-                // Category image in front of the living blob on hero card (preserved position)
-                artworkStage(
-                    asset: heroArtworkAsset(for: page),
-                    accent: accent,
-                    plateFrame: plateFrame,
-                    artworkSide: artworkSide
-                )
-                .position(x: plateCenterX, y: plateArtworkCenterY)
-                .zIndex(1)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-
-                heroCopy(page, accent: accent)
-                    .frame(width: copyWidth, alignment: .leading)
-                    .padding(.leading, HomeHeroV2Metrics.copyLeadingInset)
-                    .padding(.top, HomeHeroV2Metrics.copyTopInset)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .zIndex(2)
-
-                if allowsPaging {
-                    HomeHeroV2SwipeGrip(
-                        accent: accent,
-                        reduceTransparency: reduceTransparency
-                            || contrast == .increased
-                    )
-                    .position(x: gripCenterX, y: contentCenterY)
-                    .zIndex(3)
-                }
-            }
-            .frame(width: width, height: height, alignment: .topLeading)
-        }
-    }
-
-    /// Accessibility sizes retain the card language but move the plate beneath
-    /// the copy so neither text nor artwork is compressed.
-    private func stackedHero(
-        _ page: HomeHeroPage,
-        accent: Color
-    ) -> some View {
-        let plateInk = HomeHeroV2Metrics.accessibilityPlateHeight
-        let plateFrame = plateInk / HomeHeroV2Metrics.blobInkRatio
-        let artworkSide = plateInk - PPSpace.xl
-
-        return VStack(alignment: .leading, spacing: PPSpace.base) {
-            heroCopy(page, accent: accent)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(
-                    .leading,
-                    HomeHeroV2Metrics.copyLeadingInset
-                        - HomeHeroV2Metrics.cardContentInset
-                )
-
-            ZStack {
-                plateStage(
-                    page,
-                    accent: accent,
-                    plateFrame: plateFrame,
-                    plateInk: plateInk,
-                    artworkSide: artworkSide
-                )
-                artworkStage(
-                    asset: heroArtworkAsset(for: page),
-                    accent: accent,
-                    plateFrame: plateFrame,
-                    artworkSide: artworkSide
-                )
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
-
-            if !categories.isEmpty, let onSelectCategory {
-                HomeHeroSpeciesDock(
-                    categories: categories,
-                    selectedCategoryID: selectedCategoryID,
-                    accent: accent,
-                    isRightToLeft: isRightToLeft,
-                    onSelect: onSelectCategory
-                )
-                .frame(
-                    height: HomeHeroSpeciesDockMetrics.height(
-                        for: dynamicTypeSize
-                    )
-                )
-            }
-        }
-        .padding(HomeHeroV2Metrics.cardContentInset)
+        .padding(PPSpace.base)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.homeSurface, in: heroShape)
+        .overlay {
+            heroShape.strokeBorder(
+                HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+            )
+            .allowsHitTesting(false)
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: page.id)
+        .modifier(HomeHeroV2PagingGestureModifier(
+            isEnabled: allowsPaging,
+            selectedIndex: selectedIndex,
+            pageCount: pages.count,
+            layoutDirection: layoutDirection,
+            onSelect: onSelect,
+            onInteractionChanged: onInteractionChanged
+        ))
+        .modifier(HomeHeroV2PagingAccessibilityModifier(
+            isEnabled: allowsPaging,
+            selectedIndex: selectedIndex,
+            pageCount: pages.count,
+            onSelect: onSelect
+        ))
     }
 
-    // MARK: Plate bubble + artwork
+    private var heroShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: HomeVisualTokens.cardCorner, style: .continuous)
+    }
 
-    /// The preserved living plate is now one contained object. The tint halo,
-    /// animated blob and portrait share a centre; the portrait is deliberately
-    /// smaller than the ink boundary so ears, feathers and fur never read as a
-    /// separate oversized crop.
-    private func plateStage(
-        _ page: HomeHeroPage,
-        accent: Color,
-        plateFrame: CGFloat,
-        plateInk: CGFloat,
-        artworkSide: CGFloat
-    ) -> some View {
-        let blobAccent = accent.opacity(HomeHeroV2Metrics.blobAccentOpacity)
-        let plateHeight = plateFrame * HomeHeroV2Metrics.plateHeightRatio
-
-        return ZStack {
-            Ellipse()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
-                            accent.opacity(0),
-                        ],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: plateFrame * 0.54
-                    )
-                )
-                .frame(
-                    width: plateFrame + PPSpace.lg,
-                    height: plateHeight + PPSpace.lg
-                )
-
-            PPHomeHeroLivingBlobView(
-                fillGradient: plateGradient(accent: accent),
-                accent: blobAccent,
-                isDark: colorScheme == .dark,
-                contentOverlay: nil
-            )
-            .frame(width: plateFrame, height: plateHeight)
-            .shadow(
-                color: accent.opacity(
-                    contrast == .increased
-                        ? 0
-                        : (colorScheme == .dark ? 0.18 : 0.08)
-                ),
-                radius: 16,
-                y: 8
-            )
-        }
-        .frame(width: plateFrame, height: plateFrame)
+    private func artwork(_ page: HomeHeroPage) -> some View {
+        HomeHeroV2Artwork(
+            asset: heroArtworkAsset(for: page),
+            accent: .ppPrimary,
+            side: artworkSide
+        )
+        .frame(width: artworkSide, height: artworkSide)
+        .background(HomeHeroV2LivingPlate())
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 
-    /// Keeps the existing artwork top edge fixed. Only a genuine
-    /// `HeroImageUrl` scales to 120%, so the added twenty percent resolves below
-    /// that anchor; category fallbacks retain their established size.
-    private func artworkStage(
-        asset: HomeHeroV2ArtworkAsset,
-        accent: Color,
-        plateFrame: CGFloat,
-        artworkSide: CGFloat
-    ) -> some View {
-        let plateHeight = plateFrame * HomeHeroV2Metrics.plateHeightRatio
-        return ZStack(alignment: .trailing) {
-            Ellipse()
-                .fill(accent.opacity(colorScheme == .dark ? 0.13 : 0.05))
-                .frame(width: artworkSide * 0.70, height: 12)
-                .blur(radius: 6)
-                .offset(y: artworkSide * 0.32)
-
-            HomeHeroV2Artwork(
-                asset: asset,
-                accent: accent,
-                side: artworkSide
-            )
-            .frame(width: artworkSide, height: artworkSide)
-            .scaleEffect(
-                asset.extendsFromTopAnchor
-                    ? HomeHeroV2Metrics.heroImageScale
-                    : 1,
-                anchor: .trailing
-            )
-        }
-        .frame(width: plateFrame, height: plateHeight, alignment: .trailing)
-    }
-
-    /// Reference plate is a low-saturation wash of the live category identity,
-    /// so switching species visibly re-tints the membrane instead of leaving one
-    /// fixed lilac plate behind every category. Built from shipped palette
-    /// tokens plus the resolved accent so it stays correct in dark mode, and the
-    /// increased-contrast/reduced-transparency path keeps its flat opaque
-    /// surface rather than adding tint behind the portrait.
-    private func plateGradient(accent: Color) -> LinearGradient {
-        if contrast == .increased || reduceTransparency {
-            return LinearGradient(
-                colors: [Color.ppSecondarySurface, Color.ppSecondarySurface],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
-
-        if colorScheme == .dark {
-            return LinearGradient(
-                colors: [
-                    Color.ppSurfaceRaised,
-                    accent.opacity(0.26),
-                    accent.opacity(0.14),
-                ],
-                startPoint: .top,
-                endPoint: .bottomTrailing
-            )
-        }
-
-        return LinearGradient(
-            colors: [
-                accent.opacity(0.26),
-                accent.opacity(0.13),
-                Color.ppSurfaceRaised,
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    // MARK: Identity accent
-
-    /// Resolves the page's category color into an accent that is legible in the
-    /// roles V2 gives it: eyebrow text on the card surface, a filled CTA behind
-    /// a white label, and the plate's tint. The selected MainKind is the Home
-    /// hero's color authority, independent of marketplace appearance settings.
-    /// Falls back through the brand ladder rather than accepting a low-contrast
-    /// category value.
-    private func heroAccent(for page: HomeHeroPage) -> Color {
-        let candidate = selectedMainKindAccent
-            ?? UIColor(Color(hex: page.accentHex))
-        return Color(
-            uiColor: HomeHeroV2Palette.identityAccent(
-                candidate,
-                traits: resolvedTraits
-            )
-        )
-    }
-
-    private var selectedMainKindAccent: UIColor? {
-        guard let selectedCategoryID,
-              let category = categories.first(where: {
-                  HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID
-              }) else {
-            return nil
-        }
-        return category.accent
-    }
-
-    /// SwiftUI environment is the single source for appearance here; the traits
-    /// object exists only so the shipped UIColor tokens resolve against the
-    /// same appearance the view is rendering in.
-    private var resolvedTraits: UITraitCollection {
-        UITraitCollection(traitsFrom: [
-            UITraitCollection(
-                userInterfaceStyle: colorScheme == .dark ? .dark : .light
-            ),
-            UITraitCollection(
-                accessibilityContrast: contrast == .increased ? .high : .normal
-            ),
-        ])
-    }
-
-    // MARK: Copy column — every string block is leading aligned
-
-    private func heroCopy(
-        _ page: HomeHeroPage,
-        accent: Color
-    ) -> some View {
-        let isCompact = shouldEndHeightAfterSubtitle(for: page)
-        return VStack(alignment: .leading, spacing: 0) {
-            Text(page.eyebrow)
-                .font(HomeFont.bold(HomeHeroV2Metrics.eyebrowSize))
-                .foregroundStyle(accent)
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+    private func heroCopy(_ page: HomeHeroPage) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
             Text(page.title)
-                .font(HomeFont.bold(HomeHeroV2Metrics.titleSize))
-                .foregroundStyle(Color.ppTextPrimary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
-                .minimumScaleFactor(0.78)
-                .allowsTightening(true)
+                .font(HomeFont.bold(horizontalSizeClass == .regular ? 32 : 26))
+                .foregroundStyle(Color.homeTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, HomeHeroV2Metrics.copyEyebrowToTitleSpacing)
                 .accessibilityAddTraits(.isHeader)
 
-            Text(page.subtitle)
-                .font(HomeFont.subheadline())
-                .foregroundStyle(Color.ppTextSecondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 6 : 2)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, HomeHeroV2Metrics.copyTitleToSubtitleSpacing)
+            if !page.subtitle.isEmpty {
+                Text(page.subtitle)
+                    .font(HomeFont.subheadline())
+                    .foregroundStyle(Color.homeTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-            if !isCompact {
-                ZStack(alignment: .leading) {
-                    primaryButton(page, accent: accent)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, HomeHeroV2Metrics.copySubtitleToPrimarySpacing)
+        }
+        .multilineTextAlignment(.leading)
+    }
 
-                if let secondaryTitle = page.secondaryTitle,
-                   !secondaryTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .isEmpty {
-                    ZStack(alignment: .leading) {
-                        secondaryButton(secondaryTitle, accent: accent)
+    private func heroActions(_ page: HomeHeroPage) -> some View {
+            HStack(alignment: .center, spacing: PPSpace.xs) {
+                Button(action: onPrimaryAction) {
+                    HStack(spacing: PPSpace.sm) {
+                        Text(page.primaryTitle)
+                            .font(HomeFont.medium(15))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 11, weight: .semibold))
+                            .accessibilityHidden(true)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, HomeHeroV2Metrics.copyPrimaryToSecondarySpacing)
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, PPSpace.base)
+                    .padding(.vertical, PPSpace.sm)
+                    .frame(minHeight: HomeVisualTokens.minimumTouchTarget)
+                    .background(Color.ppPrimary, in: RoundedRectangle(
+                        cornerRadius: HomeVisualTokens.primaryActionCorner,
+                        style: .continuous
+                    ))
+                }
+                .buttonStyle(HomeHeroV2PressStyle(reduceMotion: reduceMotion))
+                .accessibilityHint(HomeModelAdapter.localized(
+                    "home_pulse_opens_destination_a11y",
+                    fallback: "Opens this destination"
+                ))
+
+                // Preserve every secondary route without a competing CTA.
+                if let secondaryTitle = page.secondaryTitle,
+                   !secondaryTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Menu {
+                        Button(secondaryTitle, action: onSecondaryAction)
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Color.homeTextSecondary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(secondaryTitle)
                 }
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            GeometryReader { copyProxy in
-                Color.clear.preference(
-                    key: HeroCopyHeightPreferenceKey.self,
-                    value: copyProxy.size.height
-                )
-            }
-        )
-    }
-
-    private func primaryButton(
-        _ page: HomeHeroPage,
-        accent: Color
-    ) -> some View {
-        Button(action: onPrimaryAction) {
-            HStack(
-                alignment: .center,
-                spacing: HomeHeroV2Metrics.primaryContentSpacing
-            ) {
-                Text(page.primaryTitle)
-                    .font(HomeFont.bold(HomeHeroV2Metrics.primaryLabelSize))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .flipsForRightToLeftLayoutDirection(true)
-            }
-            .foregroundStyle(Color.white)
-            .padding(.horizontal, HomeHeroV2Metrics.primaryHorizontalPadding)
-            .frame(
-                minHeight: HomeHeroV2Metrics.primaryHeight,
-                alignment: .center
-            )
-            .background(
-                LinearGradient(
-                    colors: [accent, accent.opacity(0.88)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(
-                    cornerRadius: HomeHeroV2Metrics.primaryRadius,
-                    style: .continuous
-                )
-            )
-            .overlay {
-                RoundedRectangle(
-                    cornerRadius: HomeHeroV2Metrics.primaryRadius,
-                    style: .continuous
-                )
-                .strokeBorder(Color.white.opacity(0.24), lineWidth: 0.8)
-            }
-            .shadow(
-                color: accent.opacity(
-                    contrast == .increased
-                        ? 0
-                        : (colorScheme == .dark ? 0.34 : 0.20)
-                ),
-                radius: 8,
-                x: 0,
-                y: 4
-            )
-        }
-        .buttonStyle(
-            HomeHeroV2PressStyle(reduceMotion: reduceMotion)
-        )
-        .accessibilityHint(
-            HomeModelAdapter.localized(
-                "home_pulse_opens_destination_a11y",
-                fallback: "Opens this destination"
-            )
-        )
-    }
-
-    /// Secondary copy shares the exact leading axis of the eyebrow, title and
-    /// subtitle while its transparent frame preserves a 44pt touch target.
-    private func secondaryButton(
-        _ title: String,
-        accent: Color
-    ) -> some View {
-        Button(action: onSecondaryAction) {
-            Text(title)
-                .font(HomeFont.bold(HomeHeroV2Metrics.secondaryLabelSize))
-                .foregroundStyle(accent)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .multilineTextAlignment(.leading)
-                .frame(minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(
-            HomeHeroV2PressStyle(reduceMotion: reduceMotion)
-        )
-    }
-
-    // MARK: Motion
-
-    private var pageTransition: AnyTransition {
-        .opacity
     }
 
     // MARK: Artwork resolution (unchanged contract from V1)
@@ -923,6 +381,190 @@ struct HomeHeroV2View: View {
             in: .whitespacesAndNewlines
         )
         return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+/// The artwork stays still while its plate softly changes contour. Core
+/// Animation owns the loop, so the image, copy and Home feed do not redraw on
+/// every frame. The same existing membrane geometry supplies the static state.
+@available(iOS 15.0, *)
+private struct HomeHeroV2LivingPlate: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var mounted = false
+
+    var body: some View {
+        HomeHeroV2PlateRenderer(
+            motionEnabled: mounted && scenePhase == .active && !reduceMotion,
+            usesStaticShape: reduceMotion,
+            isDark: colorScheme == .dark,
+            isOpaque: reduceTransparency
+        )
+        .onAppear { mounted = true }
+        .onDisappear { mounted = false }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+@available(iOS 15.0, *)
+private struct HomeHeroV2PlateRenderer: UIViewRepresentable {
+    let motionEnabled: Bool
+    let usesStaticShape: Bool
+    let isDark: Bool
+    let isOpaque: Bool
+
+    func makeUIView(context: Context) -> PlateView { PlateView() }
+
+    func updateUIView(_ view: PlateView, context: Context) {
+        view.configure(motionEnabled: motionEnabled, usesStaticShape: usesStaticShape,
+                       isDark: isDark, isOpaque: isOpaque)
+    }
+
+    static func dismantleUIView(_ view: PlateView, coordinator: ()) {
+        view.stop()
+    }
+
+    final class PlateView: UIView {
+        private let wash = CAGradientLayer()
+        private let membrane = CAShapeLayer()
+        private var scrollObservations: [NSKeyValueObservation] = []
+        private weak var observedScrollView: UIScrollView?
+        private var motionEnabled = false
+        private var usesStaticShape = false
+        private var lastSize: CGSize = .zero
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            isUserInteractionEnabled = false
+            isAccessibilityElement = false
+            backgroundColor = .clear
+            wash.startPoint = CGPoint(x: 0.25, y: 0)
+            wash.endPoint = CGPoint(x: 0.85, y: 1)
+            wash.locations = [0, 0.55, 1]
+            wash.mask = membrane
+            layer.addSublayer(wash)
+        }
+
+        required init?(coder: NSCoder) { nil }
+
+        func configure(motionEnabled: Bool, usesStaticShape: Bool, isDark: Bool, isOpaque: Bool) {
+            self.motionEnabled = motionEnabled
+            self.usesStaticShape = usesStaticShape
+            let traits = UITraitCollection(userInterfaceStyle: isDark ? .dark : .light)
+            let base = UIColor(Color.ppSecondarySurface).resolvedColor(with: traits)
+            let rose = UIColor(Color.ppPrimary).resolvedColor(with: traits)
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            wash.backgroundColor = base.cgColor
+            wash.colors = isOpaque
+                ? [base.cgColor, base.cgColor, base.cgColor]
+                : [rose.withAlphaComponent(isDark ? 0.24 : 0.13).cgColor,
+                   rose.withAlphaComponent(isDark ? 0.10 : 0.035).cgColor,
+                   base.cgColor]
+            CATransaction.commit()
+            updateMotion()
+        }
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            if bounds.size != lastSize {
+                lastSize = bounds.size
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                wash.frame = bounds
+                membrane.frame = wash.bounds
+                membrane.path = platePath(phase: 0)
+                membrane.removeAnimation(forKey: "home.plate.contour")
+                CATransaction.commit()
+            }
+            observeScrollViewIfNeeded()
+            updateMotion()
+        }
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window == nil { scrollObservations.removeAll(); observedScrollView = nil }
+            else { observeScrollViewIfNeeded() }
+            updateMotion()
+        }
+
+        private func platePath(phase: CGFloat) -> CGPath {
+            PPHomeHeroLivingBlobShape(phase: phase)
+                .path(in: CGRect(origin: .zero, size: bounds.size).insetBy(dx: 4, dy: 4)).cgPath
+        }
+
+        private func observeScrollViewIfNeeded() {
+            var ancestor = superview
+            while let view = ancestor {
+                if let scroll = view as? UIScrollView {
+                    guard observedScrollView !== scroll else { return }
+                    observedScrollView = scroll
+                    scrollObservations = [
+                        scroll.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in
+                            Task { @MainActor [weak self] in self?.updateMotion() }
+                        },
+                        scroll.observe(\.bounds, options: [.new]) { [weak self] _, _ in
+                            Task { @MainActor [weak self] in self?.updateMotion() }
+                        }
+                    ]
+                    return
+                }
+                ancestor = view.superview
+            }
+        }
+
+        private var isInViewport: Bool {
+            guard let window, bounds.width > 8, bounds.height > 8 else { return false }
+            var visibleRect = convert(bounds, to: window).intersection(window.bounds)
+            var ancestor: UIView? = self
+            while let view = ancestor {
+                if view.isHidden || view.alpha < 0.01 { return false }
+                if view.clipsToBounds {
+                    visibleRect = visibleRect.intersection(view.convert(view.bounds, to: window))
+                }
+                ancestor = view.superview
+            }
+            return !visibleRect.isNull && visibleRect.width > 1 && visibleRect.height > 1
+        }
+
+        private func updateMotion() {
+            if usesStaticShape {
+                membrane.removeAnimation(forKey: "home.plate.contour")
+                return
+            }
+            let shouldRun = motionEnabled && isInViewport
+            if shouldRun, membrane.animation(forKey: "home.plate.contour") == nil {
+                // Integer harmonics close exactly after one revolution. Sampling
+                // once leaves interpolation with Core Animation, off the feed.
+                let contour = CAKeyframeAnimation(keyPath: "path")
+                contour.values = (0...60).map { platePath(phase: CGFloat($0) / 60 * .pi * 2) }
+                contour.duration = 9
+                contour.repeatCount = .infinity
+                contour.calculationMode = .linear
+                membrane.add(contour, forKey: "home.plate.contour")
+            }
+            if shouldRun && wash.speed == 0 {
+                let pausedTime = wash.timeOffset
+                wash.speed = 1
+                wash.timeOffset = 0
+                wash.beginTime = 0
+                wash.beginTime = wash.convertTime(CACurrentMediaTime(), from: nil) - pausedTime
+            } else if !shouldRun && wash.speed != 0 {
+                let pausedTime = wash.convertTime(CACurrentMediaTime(), from: nil)
+                wash.speed = 0
+                wash.timeOffset = pausedTime
+            }
+        }
+
+        func stop() {
+            scrollObservations.removeAll()
+            observedScrollView = nil
+            membrane.removeAllAnimations()
+            motionEnabled = false
+        }
     }
 }
 
@@ -1067,7 +709,6 @@ private struct HomeHeroV2Artwork: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.scenePhase) private var scenePhase
-    @State private var presented = false
 
     var body: some View {
         content
@@ -1081,21 +722,6 @@ private struct HomeHeroV2Artwork: View {
                 x: layoutDirection == .leftToRight ? -1 : 1,
                 y: 1
             )
-            .scaleEffect(presented ? 1 : 0.96)
-            .opacity(presented ? 1 : 0)
-            .animation(
-                reduceMotion
-                    ? nil
-                    : .interactiveSpring(
-                        response: 0.52,
-                        dampingFraction: 0.84,
-                        blendDuration: 0.10
-                    )
-                    .delay(0.04),
-                value: presented
-            )
-            .onAppear { presented = true }
-            .onDisappear { presented = false }
             .accessibilityHidden(true)
     }
 
@@ -1129,7 +755,7 @@ private struct HomeHeroV2Artwork: View {
             HomeRemoteImage(
                 urlString: remoteImageURL,
                 placeholder: asset.localImage,
-                contentMode: .scaleToFill
+                contentMode: .scaleAspectFit
             )
             .clipShape(Circle())
             .overlay {
@@ -1148,7 +774,7 @@ private struct HomeHeroV2Artwork: View {
             HomeHeroLottieRepresentable(
                 animationName: animationName,
                 loadsFromFirebase: asset.loadsFromFirebase,
-                playbackEnabled: scenePhase == .active,
+                playbackEnabled: false,
                 tintColor: lottieTintColor(for: animationName)
             )
             .scaleEffect(lottieScale(for: animationName))
@@ -1281,7 +907,7 @@ private struct HomeHeroV2PressStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .scaleEffect(reduceMotion || !configuration.isPressed ? 1 : 0.985)
             .brightness(configuration.isPressed ? -0.035 : 0)
             .animation(
                 reduceMotion ? nil : .easeOut(duration: 0.14),

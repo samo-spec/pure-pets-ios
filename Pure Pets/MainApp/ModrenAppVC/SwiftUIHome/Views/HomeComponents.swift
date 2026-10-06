@@ -9,9 +9,9 @@ enum HomeVisualTokens {
     static let routineRowSpacing = PPSpace.base
     static let compactRowSpacing = PPSpace.sm
     static let mediaRowSpacing = PPSpace.md
-    static let sectionVerticalSpacing = PPSpace.lg
+    static let sectionVerticalSpacing = PPSpace.xxl
     /// Breeze spacing between the top command surface and the leading hero card.
-    static let heroTopBreezeSpacing = PPSpace.md
+    static let heroTopBreezeSpacing = PPSpace.sm
     static let minimumTouchTarget: CGFloat = 44
     /// The shared Home marketplace shelf is six points tighter than the
     /// legacy universal-card footprint.
@@ -19,9 +19,9 @@ enum HomeVisualTokens {
     static let universalAdsCardHeight: CGFloat = 248
 
     // Shared surfaces
-    static let cardCorner = PPCorner.card
-    static let universalCardCorner: CGFloat = 24
-    static let compactCardCorner = PPCorner.medium
+    static let cardCorner: CGFloat = 20
+    static let universalCardCorner: CGFloat = 20
+    static let compactCardCorner = PPCorner.small
     static let iconContainerSize: CGFloat = 44
     static let compactIconContainerSize: CGFloat = 36
     static let iconContainerCorner = PPCorner.small
@@ -33,7 +33,7 @@ enum HomeVisualTokens {
     static let destinationTileHeight: CGFloat = 56
     static let destinationTileSpacing = PPSpace.md
     static let destinationIconContainerSize: CGFloat = 36
-    static let destinationTileCorner = PPCorner.medium
+    static let destinationTileCorner = cardCorner
     static let destinationTileContentInset = PPSpace.base
 
     // Home commerce cards retain a 44pt hit target while their circular
@@ -46,7 +46,7 @@ enum HomeVisualTokens {
     /// The Home cart surface is visually unified across all action states.
     static let universalCartActionVisualHeight: CGFloat = minimumTouchTarget - PPSpace.sm
     static let advertisementActionVisualHeight: CGFloat = 38
-    static let primaryActionCorner = PPCorner.small + PPSpace.xs
+    static let primaryActionCorner = PPCorner.small
     static let advertisementActionCorner = primaryActionCorner
 
     // Command surface
@@ -78,7 +78,7 @@ enum HomeVisualTokens {
         if contrast == .increased {
             return Color.ppTextPrimary.opacity(0.62)
         }
-        return Color.ppSurfaceBorder.opacity(colorScheme == .dark ? 0.88 : 0.72)
+        return Color(uiColor: .separator).opacity(colorScheme == .dark ? 0.45 : 0.24)
     }
 
     static func cardBorderWidth(contrast: ColorSchemeContrast) -> CGFloat {
@@ -179,7 +179,7 @@ enum HomeFont {
     }
 
     static func title2() -> Font {
-        .custom("Beiruti-Bold", size: 22, relativeTo: .title2)
+        .custom("Beiruti-Medium", size: 23, relativeTo: .title2)
     }
 
     static func headline() -> Font {
@@ -195,7 +195,7 @@ enum HomeFont {
     }
 
     static func footnote() -> Font {
-        .custom("Beiruti-Regular", size: 13, relativeTo: .footnote)
+        .custom("Beiruti-Regular", size: 14, relativeTo: .footnote)
     }
 
     static func caption1() -> Font {
@@ -324,29 +324,16 @@ struct HomeCommandBar: View {
 
     /// The command surface is one unified pill. Its child buttons retain
     /// independent actions and semantics without drawing separate glass islands.
-    @ViewBuilder
     private var commandContainer: some View {
-#if compiler(>=6.2)
-        if #available(iOS 26.0, *), !reduceTransparency {
-            GlassEffectContainer(spacing: PPSpace.md) {
-                commandContent
-                    .glassEffect(
-                        .regular.tint(commandTint),
-                        in: commandPillShape
-                    )
-                    .overlay {
-                        commandPillShape.stroke(
-                            commandBorder,
-                            lineWidth: contrast == .increased ? 1.5 : 1
-                        )
-                    }
+        commandContent
+            .background(Color.homeSurface, in: commandPillShape)
+            .overlay {
+                commandPillShape.strokeBorder(
+                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+                )
+                .allowsHitTesting(false)
             }
-        } else {
-            fallbackCommandPill(commandContent)
-        }
-#else
-        fallbackCommandPill(commandContent)
-#endif
     }
 
     /// One capsule whose primary purpose is search, so search leads the pill in
@@ -3107,25 +3094,12 @@ struct HomeCategoriesStripView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: PPSpace.sm) {
-                Circle()
-                    .fill(effectiveAccent)
-                    .frame(width: 6, height: 6)
-                    .accessibilityHidden(true)
-                Text(HomeModelAdapter.localized("home_browse_by_category", fallback: "Browse by category"))
-                    .font(HomeFont.bold(12.5))
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(1)
-                HomeMainKindsScopeThread(
-                    accent: effectiveAccent,
-                    selectedCategoryID: resolvedSelectedID,
-                    isRightToLeft: isRightToLeft
-                )
-            }
-            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
-            .padding(.vertical, PPSpace.xxs)
-            .accessibilityAddTraits(.isHeader)
+            Text(HomeModelAdapter.localized("home_browse_by_category", fallback: "Browse by category"))
+                .font(HomeFont.medium(14))
+                .foregroundStyle(Color.homeTextSecondary)
+                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                .padding(.bottom, PPSpace.xs)
+                .accessibilityAddTraits(.isHeader)
 
             ScrollViewReader { proxy in
                 speciesRail
@@ -3203,29 +3177,29 @@ struct HomeCategoriesStripView: View {
             // HomeStore owns the selection haptic and the existing delayed route.
             withAnimation(selectionAnimation) { onSelect(category) }
         } label: {
-            HStack(spacing: isSelected ? 6 : PPSpace.xs) {
+            HStack(spacing: PPSpace.xs) {
                 Image(systemName: HomeCategoryModel.indicatorSymbol(for: category))
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(itemAccent)
+                    .foregroundStyle(isSelected ? Color.ppAccentText : Color.homeTextSecondary)
                     .opacity(isSelected ? 1 : 0.65)
                     .frame(width: 18, height: 18)
                     .accessibilityHidden(true)
                 Text(title)
-                    .font(HomeFont.bold(15.5))
+                    .font(HomeFont.medium(15))
                     .foregroundStyle(isSelected ? Color.ppTextPrimary : Color.ppTextSecondary)
                     .lineLimit(2)
                     .frame(maxWidth: maximumLabelWidth, alignment: .leading)
                     .fixedSize(horizontal: true, vertical: true)
             }
-            .padding(.horizontal, isSelected ? 14 : PPSpace.sm)
+            .padding(.horizontal, PPSpace.md)
             .padding(.vertical, PPSpace.xs)
-            .frame(minWidth: isSelected ? 78 : 64, minHeight: railHeight)
+            .frame(minWidth: 64, minHeight: railHeight)
             .background {
                 if isSelected {
                     selectionSurface(accent: itemAccent)
                 }
             }
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: HomeVisualTokens.compactCardCorner, style: .continuous))
         }
         .buttonStyle(HomeCardPressStyle())
         .accessibilityElement(children: .ignore)
@@ -3236,12 +3210,12 @@ struct HomeCategoriesStripView: View {
 
     @ViewBuilder
     private func selectionSurface(accent: Color) -> some View {
-        let surface = RoundedRectangle(cornerRadius: 16, style: .continuous)
-            .fill(Color.homeSurface)
+        let surface = RoundedRectangle(cornerRadius: HomeVisualTokens.compactCardCorner, style: .continuous)
+            .fill(Color.ppTextPrimary.opacity(colorScheme == .dark ? 0.10 : 0.045))
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: HomeVisualTokens.compactCardCorner, style: .continuous)
                     .strokeBorder(
-                        contrast == .increased ? Color.ppTextPrimary : accent.opacity(colorScheme == .dark ? 0.6 : 0.3),
+                        contrast == .increased ? Color.ppTextPrimary : Color.clear,
                         lineWidth: contrast == .increased ? 1.5 : 1
                     )
             }
@@ -5539,8 +5513,16 @@ struct HomeFeedSection: View {
     let entrancePresented: Bool
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var productInformationHeight: CGFloat?
+    @State private var productInformationRegions: [HomeProductInformationRegion: CGFloat] = [:]
 
-    private let thirdCardPeekFraction: CGFloat = 0.12
+    private var cardSizing = HomeUniversalCardSizing()
+
+    init(section: HomeSectionModel, store: HomeStore, entrancePresented: Bool) {
+        self.section = section
+        self.store = store
+        self.entrancePresented = entrancePresented
+    }
 
     private var isAdsSection: Bool {
         if section.kind == .advertisements || section.kind == .nearbyAdvertisements {
@@ -5559,9 +5541,10 @@ struct HomeFeedSection: View {
     }
 
     private var targetCardHeight: CGFloat {
-        isAdsSection
-            ? HomeVisualTokens.universalAdsCardHeight
-            : HomeVisualTokens.universalCardHeight
+        cardSizing.height(
+            isAdvertisement: isAdsSection,
+            measuredProductInformationHeight: productInformationHeight
+        )
     }
 
     private var cardRailHeight: CGFloat {
@@ -5618,16 +5601,35 @@ struct HomeFeedSection: View {
                                     entranceOrdinal: ordinal
                                 )
                                 .frame(width: resolvedCardWidth)
-                                .homeHorizontalCellReveal(
-                                    ordinal: ordinal,
-                                    entranceAlreadyPlayed: entrancePresented
-                                )
                             }
                         }
-                        .padding(.leading, PPSpace.screenMargin)
+                        .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
                         .padding(.vertical, isAdsSection ? 0 : PPSpace.xs)
                     }
                     .contentMarginsCompat()
+                    .environment(\.homeProductInformationHeight, productInformationHeight)
+                    .environment(\.homeProductInformationRegions, productInformationRegions)
+                    .onPreferenceChange(HomeProductInformationRegionsKey.self) { heights in
+                        guard !isAdsSection else { return }
+                        let resolved = heights.filter { $0.value.isFinite && $0.value >= 0 }
+                            .mapValues { ceil($0) }
+                        guard !resolved.isEmpty, resolved != productInformationRegions else { return }
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            productInformationRegions = resolved
+                        }
+                    }
+                    .onPreferenceChange(HomeProductInformationHeightPreferenceKey.self) { height in
+                        guard !isAdsSection, height.isFinite, height > 0 else { return }
+                        let resolvedHeight = ceil(height)
+                        guard productInformationHeight != resolvedHeight else { return }
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            productInformationHeight = resolvedHeight
+                        }
+                    }
                 }
                 .frame(height: cardRailHeight)
             case let .empty(title, message, actionTitle):
@@ -5655,36 +5657,13 @@ struct HomeFeedSection: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func cardWidth(
-        in viewportWidth: CGFloat,
-        itemCount: Int = 0
-    ) -> CGFloat {
-        // Reserve the semantic leading margin inside the scroll content so
-        // every universal-card section starts aligned with its section title.
-        // The opposite edge intentionally stays at zero inset.
-        let availableWidth = max(
-            0,
-            viewportWidth - PPSpace.screenMargin
-        )
-        let spacing = PPSpace.md
-        let usesReadableSingleCard =
-            dynamicTypeSize.isAccessibilitySize || viewportWidth < 350
-
-        if usesReadableSingleCard {
-            return max(
-                0,
-                (availableWidth - spacing)
-                    / (1 + thirdCardPeekFraction)
-            )
-        } else {
-            // Leading margin + two complete cards + two gaps + 12% of the third.
-            // All universal cells across all HomeView sections share this identical width.
-            return max(
-                0,
-                (availableWidth - (spacing * 2))
-                    / (2 + thirdCardPeekFraction)
-            )
+    private func cardWidth(in viewportWidth: CGFloat, itemCount: Int = 0) -> CGFloat {
+        let available = max(1, viewportWidth - HomeVisualTokens.contentHorizontalMargin * 2)
+        if dynamicTypeSize.isAccessibilitySize {
+            return min(360, available * 0.92)
         }
+        // A deliberate next-card preview on phone; bounded readable cards on iPad.
+        return min(240, max(180, (available + PPSpace.md) / 1.85))
     }
 }
 
@@ -6432,50 +6411,44 @@ struct HomePureLensSectionV2: View {
 
     var body: some View {
         Button(action: performAction) {
-            VStack(spacing: 6) {
-                telemetryHeader
-
-                if usesAccessibilityLayout {
-                    stackedApertureLayout
-                } else {
-                    compactApertureLayout
+            HStack(alignment: .center, spacing: PPSpace.base) {
+                Image(systemName: "viewfinder")
+                    .font(.system(size: 26, weight: .regular))
+                    .foregroundStyle(Color.homeTextPrimary)
+                    .frame(width: 52, height: 52)
+                    .background(Color.ppSecondarySurface, in: RoundedRectangle(
+                        cornerRadius: HomeVisualTokens.compactCardCorner,
+                        style: .continuous
+                    ))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: PPSpace.xs) {
+                    Text(HomeModelAdapter.localized("pure_lens_account_title", fallback: "Pure Lens"))
+                        .font(HomeFont.medium(20))
+                        .foregroundStyle(Color.homeTextPrimary)
+                    Text(HomeModelAdapter.localized(
+                        "home_pure_lens_subtitle",
+                        fallback: "Identify animal breeds, analyze dietary nutrition, and discover tailored products."
+                    ))
+                        .font(HomeFont.footnote())
+                        .foregroundStyle(Color.homeTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                shutterLauncherDeck
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.homeTextSecondary)
+                    .accessibilityHidden(true)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(cardSurface)
-            .clipShape(cardShape)
-            .overlay(cardBorder)
-            .contentShape(cardShape)
-            .shadow(
-                color: contrast == .increased || colorScheme == .dark
-                    ? .clear
-                    : Color.black.opacity(colorScheme == .dark ? 0.35 : 0.06),
-                radius: 12,
-                x: 0,
-                y: 5
-            )
+            .padding(PPSpace.base)
+            .background(Color.homeSurface, in: RoundedRectangle(
+                cornerRadius: HomeVisualTokens.cardCorner,
+                style: .continuous
+            ))
+            .contentShape(Rectangle())
         }
-        .buttonStyle(HomePureLensV2ButtonStyle())
-        .frame(maxWidth: HomePureLensV2Metrics.maximumCardWidth)
+        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
         .focused($isFocused)
-        .hoverEffect(.highlight)
-        .task(id: HomePureLensMotionTaskID(
-            motionReady: motionReady,
-            reduceMotion: reduceMotion,
-            motionAlreadyPlayed: motionAlreadyPlayed,
-            sceneIsActive: scenePhase == .active
-        )) {
-            await runReadinessResolve()
-        }
-        .onAppear {
-            startAmbientMotion()
-        }
-        .onDisappear {
-            settleReadinessWithoutAnimation()
-        }
+        .onAppear { settleReadinessWithoutAnimation() }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(HomeModelAdapter.localized(
             "pure_lens_account_a11y",
@@ -6485,7 +6458,6 @@ struct HomePureLensSectionV2: View {
             "pure_lens_account_hint",
             fallback: "Opens the animal discovery camera"
         ))
-        .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("home.pureLens.open")
     }
 

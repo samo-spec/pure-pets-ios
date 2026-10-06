@@ -32,11 +32,11 @@ enum PPHomeZoneMetrics {
 /// config-driven zones.
 enum PPHomeSectionHeaderMetrics {
     static let sectionTopSpacing = HomeVisualTokens.sectionVerticalSpacing
-    static let titleSubtitleSpacing = PPSpace.md
-    static let contentSpacing = HomeVisualTokens.sectionVerticalSpacing
+    static let titleSubtitleSpacing = PPSpace.xs
+    static let contentSpacing = PPSpace.base
     static let actionTargetHeight: CGFloat = HomeVisualTokens.minimumTouchTarget
-    static let actionVisualHeight: CGFloat = 36
-    static let actionHorizontalInset = PPSpace.md
+    static let actionVisualHeight: CGFloat = 44
+    static let actionHorizontalInset = PPSpace.xs
     static let actionLabelSpacing = PPSpace.xs
     static let activationDebounce: CFTimeInterval = 0.22
 }
@@ -150,13 +150,7 @@ struct PPHomeSectionHeading: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
 
-                    if let titleAccent {
-                        Capsule(style: .continuous)
-                            .fill(titleAccent)
-                            .frame(width: PPSpace.lg, height: PPSpace.xs)
-                            .accessibilityHidden(true)
-                            .allowsHitTesting(false)
-                    }
+
                 }
 
                 if let subtitle, !subtitle.isEmpty {
@@ -215,8 +209,8 @@ private struct PPHomeSectionActionButton: View {
         Button(action: activate) {
             HStack(spacing: PPHomeSectionHeaderMetrics.actionLabelSpacing) {
                 Text(title)
-                    .font(HomeFont.bold(14))
-                    .lineLimit(1)
+                    .font(HomeFont.medium(14))
+                    .lineLimit(2)
                     .minimumScaleFactor(0.82)
 
                 Image(systemName: iconName)
@@ -224,16 +218,17 @@ private struct PPHomeSectionActionButton: View {
                     .flipsForRightToLeftLayoutDirection(true)
                     .accessibilityHidden(true)
             }
-            .foregroundStyle(accent ?? Color.ppAccentText)
+            .foregroundStyle(Color.homeTextSecondary)
             .padding(
                 .horizontal,
                 PPHomeSectionHeaderMetrics.actionHorizontalInset
             )
             .frame(
+                minWidth: HomeVisualTokens.minimumTouchTarget,
                 minHeight: PPHomeSectionHeaderMetrics.actionVisualHeight
             )
             .fixedSize(horizontal: true, vertical: false)
-            .modifier(PPHomeSectionActionSurfaceModifier(accent: accent))
+            .contentShape(Rectangle())
         }
         .buttonStyle(
             PPHomeSectionActionPressStyle(reduceMotion: reduceMotion)
@@ -4366,18 +4361,17 @@ struct PPEcosystemDomainSwitcher: View {
                             .foregroundStyle(isSelected ? activeAccent(for: domain) : Color.homeTextSecondary)
 
                         Text(domain.title)
-                            .font(isSelected ? HomeFont.bold(14) : HomeFont.medium(14))
+                            .font(isSelected ? HomeFont.medium(14) : HomeFont.regular(14))
                             .foregroundStyle(isSelected ? Color.homeTextPrimary : Color.homeTextSecondary)
-                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 38)
+                    .frame(minHeight: 44)
                     .background {
                         if isSelected {
-                            RoundedRectangle(cornerRadius: PPCorner.small + 2, style: .continuous)
+                            RoundedRectangle(cornerRadius: HomeVisualTokens.compactCardCorner, style: .continuous)
                                 .fill(Color.homeRaisedSurface)
                                 .matchedGeometryEffect(id: "activeDomainPill", in: segmentNamespace)
-                                .shadow(color: Color.black.opacity(0.06), radius: 4, x: 0, y: 2)
                         }
                     }
                 }
@@ -4396,7 +4390,7 @@ struct PPEcosystemDomainSwitcher: View {
         .overlay {
             RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
                 .stroke(
-                    mainKindAccent.opacity(contrast == .increased ? 0.65 : (colorScheme == .dark ? 0.40 : 0.30)),
+                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
                     lineWidth: 1
                 )
         }
@@ -4616,12 +4610,12 @@ private struct PPHomeQuickActionCopy: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.xxs) {
             Text(action.title)
-                .font(HomeFont.bold(isFeatured ? 17 : 14))
+                .font(HomeFont.medium(isFeatured ? 17 : 15))
                 .foregroundStyle(Color.homeTextPrimary)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize >= .xxLarge ? nil : 2)
                 .minimumScaleFactor(0.85)
             Text(action.subtitle)
-                .font(HomeFont.regular(isFeatured ? 12 : 11))
+                .font(HomeFont.regular(13))
                 .foregroundStyle(Color.homeTextSecondary)
                 .lineLimit(dynamicTypeSize >= .xxLarge ? nil : 2)
                 .minimumScaleFactor(0.85)
@@ -5132,14 +5126,16 @@ struct PPCommunityExchangeCard: View {
                     Text(action.title)
                         .font(HomeFont.bold(16))
                         .foregroundStyle(Color.homeTextPrimary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                         .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(action.subtitle)
                         .font(HomeFont.medium(12))
                         .foregroundStyle(Color.homeTextSecondary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                         .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 HStack {
@@ -5194,13 +5190,16 @@ struct PPLiveCompanionsArchitectureView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
-            // Dominant Stewardship Hero: My Pet or Adoption Rescue
-            PPCompanionStewardCard(
-                petAction: petAction,
-                featuredPet: featuredPet,
-                adoptAction: adoptAction,
-                onTap: onSelect
-            )
+            // Keep the personal pet route independent. Adoption belongs beside
+            // community, including when there is no personal pet to feature.
+            if let petAction {
+                PPCompanionStewardCard(
+                    petAction: petAction,
+                    featuredPet: featuredPet,
+                    adoptAction: nil,
+                    onTap: onSelect
+                )
+            }
 
             // Community & Rescue Exchange Deck Header
             HStack(spacing: PPSpace.xs) {
@@ -5233,7 +5232,7 @@ struct PPLiveCompanionsArchitectureView: View {
                         )
                     }
 
-                    if petAction != nil, let adoptAction {
+                    if let adoptAction {
                         PPCommunityExchangeCard(
                             action: adoptAction,
                             accent: HomeSemanticTone.care,
@@ -5253,7 +5252,7 @@ struct PPLiveCompanionsArchitectureView: View {
                         )
                     }
 
-                    if petAction != nil, let adoptAction {
+                    if let adoptAction {
                         PPCommunityExchangeCard(
                             action: adoptAction,
                             accent: HomeSemanticTone.care,
@@ -5319,52 +5318,54 @@ struct PPHomeIPadEcosystemWorkstation: View {
                     .stroke(HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast), lineWidth: 1)
             }
 
-            // Wing 2: Live Companions & Stewardship
-            VStack(alignment: .leading, spacing: PPSpace.sm) {
-                HStack(spacing: PPSpace.xs) {
-                    Image(systemName: "pawprint.circle.fill")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(HomeSemanticTone.care)
+            // Keep personal pet access without the hidden community/adoption
+            // shortcuts or an empty companion column.
+            if let petAction {
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
+                    HStack(spacing: PPSpace.xs) {
+                        Image(systemName: "pawprint.circle.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(HomeSemanticTone.care)
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(PPHomeZoneCopy.launcherIPadCompanionsWing)
-                            .font(HomeFont.bold(15))
-                            .foregroundStyle(Color.homeTextPrimary)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(PPHomeZoneCopy.launcherIPadCompanionsWing)
+                                .font(HomeFont.bold(15))
+                                .foregroundStyle(Color.homeTextPrimary)
 
-                        Text(PPHomeZoneCopy.launcherIPadCompanionsSubtitle)
-                            .font(HomeFont.medium(11))
-                            .foregroundStyle(Color.homeTextSecondary)
+                            Text(petAction.subtitle)
+                                .font(HomeFont.medium(11))
+                                .foregroundStyle(Color.homeTextSecondary)
+                        }
+
+                        Spacer(minLength: 0)
                     }
+                    .padding(.bottom, PPSpace.xxs)
 
-                    Spacer(minLength: 0)
+                    PPCompanionStewardCard(
+                        petAction: petAction,
+                        featuredPet: featuredPet,
+                        adoptAction: nil,
+                        onTap: onSelect
+                    )
                 }
-                .padding(.bottom, PPSpace.xxs)
-
-                PPLiveCompanionsArchitectureView(
-                    petAction: petAction,
-                    featuredPet: featuredPet,
-                    actions: actions,
-                    onSelect: onSelect,
-                    isIPadWing: true
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(PPSpace.base)
+                .background(
+                    RoundedRectangle(cornerRadius: PPCorner.card + 4, style: .continuous)
+                        .fill(Color.homeSurface.opacity(0.65))
                 )
-            }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .padding(PPSpace.base)
-            .background(
-                RoundedRectangle(cornerRadius: PPCorner.card + 4, style: .continuous)
-                    .fill(Color.homeSurface.opacity(0.65))
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: PPCorner.card + 4, style: .continuous)
-                    .stroke(HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast), lineWidth: 1)
+                .overlay {
+                    RoundedRectangle(cornerRadius: PPCorner.card + 4, style: .continuous)
+                        .stroke(HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast), lineWidth: 1)
+                }
             }
         }
     }
 }
 
 /// Zone 3. NextGen Ecosystem Launcher.
-/// Authoring distinct, dedicated native architectures for Accessories/Food vs Live Pets.
-/// Delivers an adaptive tactile segmented experience on iPhone and a synchronized dual-wing workstation on iPad.
+/// Visible quick actions share one group. Personal pet access stays available;
+/// community and adoption shortcuts are intentionally hidden from this section.
 @available(iOS 15.0, *)
 struct PPHomeEcosystemLauncher: View {
     let featuredAction: HomePriorityAction?
@@ -5373,10 +5374,7 @@ struct PPHomeEcosystemLauncher: View {
     var mainKindAccent: Color = .homeBrand
     let onSelect: (HomePriorityAction) -> Void
 
-    @State private var selectedDomain: PPEcosystemDomain = .provisionsAndCare
-    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var petAction: HomePriorityAction? {
         if let featuredAction, featuredAction.id == "pet" {
@@ -5415,81 +5413,24 @@ struct PPHomeEcosystemLauncher: View {
                     onSelect: onSelect
                 )
             } else {
-                // Dedicated iPhone One-Handed Segmented Architecture
+                // All actions stay directly reachable without switching groups.
                 VStack(spacing: PPSpace.md) {
-                    // Temporarily hidden per user request:
-                    // PPEcosystemDomainSwitcher(
-                    //     selectedDomain: $selectedDomain,
-                    //     reduceMotion: reduceMotion,
-                    //     mainKindAccent: mainKindAccent
-                    // )
-
-                    Group {
-                        switch selectedDomain {
-                        case .provisionsAndCare:
-                            PPProvisionsCareArchitectureView(
-                                actions: boundedActions,
-                                onSelect: onSelect
-                            )
-                            .transition(
-                                reduceMotion
-                                    ? .identity
-                                    : .asymmetric(
-                                        insertion: .opacity.combined(with: .scale(scale: 0.98)),
-                                        removal: .opacity
-                                    )
-                            )
-
-                        case .liveCompanions:
-                            PPLiveCompanionsArchitectureView(
-                                petAction: petAction,
-                                featuredPet: featuredPet,
-                                actions: boundedActions,
-                                onSelect: onSelect
-                            )
-                            .transition(
-                                reduceMotion
-                                    ? .identity
-                                    : .asymmetric(
-                                        insertion: .opacity.combined(with: .scale(scale: 0.98)),
-                                        removal: .opacity
-                                    )
-                            )
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 24, coordinateSpace: .local)
-                            .onEnded { value in
-                                let dx = value.translation.width
-                                let dy = value.translation.height
-                                guard abs(dx) > 44, abs(dx) > abs(dy) * 1.5 else { return }
-                                let advances = layoutDirection == .rightToLeft ? dx > 0 : dx < 0
-                                switchDomain(to: advances ? .liveCompanions : .provisionsAndCare)
-                            }
+                    PPProvisionsCareArchitectureView(
+                        actions: boundedActions,
+                        onSelect: onSelect
                     )
+                    if let petAction {
+                        PPCompanionStewardCard(
+                            petAction: petAction,
+                            featuredPet: featuredPet,
+                            adoptAction: nil,
+                            onTap: onSelect
+                        )
+                    }
                 }
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityAction(named: Text(PPEcosystemDomain.provisionsAndCare.title)) {
-            switchDomain(to: .provisionsAndCare)
-        }
-        .accessibilityAction(named: Text(PPEcosystemDomain.liveCompanions.title)) {
-            switchDomain(to: .liveCompanions)
-        }
-    }
-
-    private func switchDomain(to domain: PPEcosystemDomain) {
-        guard selectedDomain != domain else { return }
-        UISelectionFeedbackGenerator().selectionChanged()
-        if reduceMotion {
-            selectedDomain = domain
-        } else {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
-                selectedDomain = domain
-            }
-        }
     }
 }
 
@@ -6148,9 +6089,9 @@ struct PPHomeExploreMoreRow: View {
                     .accessibilityHidden(true)
 
                 Text(entry.title)
-                    .font(HomeFont.bold(15))
+                    .font(HomeFont.medium(15))
                     .foregroundStyle(Color.homeTextPrimary)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -6187,16 +6128,6 @@ struct PPHomeExploreMoreRow: View {
                     )
                 )
             }
-            .shadow(
-                color: contrast == .increased
-                    ? .clear
-                    : PPShadow.subtle.color,
-                radius: contrast == .increased
-                    ? 0
-                    : PPShadow.subtle.radius,
-                x: PPShadow.subtle.x,
-                y: contrast == .increased ? 0 : PPShadow.subtle.y
-            )
             .contentShape(destinationTileShape)
         }
         .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))

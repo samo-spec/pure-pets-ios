@@ -1,6 +1,80 @@
 import SwiftUI
 import UIKit
 
+enum PPProductCardActionMetrics {
+    /// Fixed across add / options / progress / quantity at each text size.
+    static func height(for size: DynamicTypeSize) -> CGFloat {
+        switch size {
+        case .accessibility1: return 60
+        case .accessibility2: return 68
+        case .accessibility3: return 80
+        case .accessibility4: return 92
+        case .accessibility5: return 104
+        default: return 44
+        }
+    }
+}
+
+/// A single, quiet action surface for Home product cards. Both direct-add and
+/// option-selection paths use this label; cart authority stays with the caller.
+struct PPProductCardActionLabel: View {
+    let title: String
+    let symbol: String
+    let height: CGFloat
+    var tint: Color = .ppPrimary
+    var isProcessing = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                if isProcessing {
+                    ProgressView().tint(tint)
+                } else {
+                    Image(systemName: symbol)
+                        .font(.system(size: 16, weight: .semibold))
+                        .id(symbol)
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.85).combined(with: .opacity))
+                }
+            }
+            .frame(width: 20, height: 20)
+            .accessibilityHidden(true)
+
+            Text(title)
+                .font(.custom("Beiruti-Bold", size: 15, relativeTo: .callout))
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .minimumScaleFactor(0.75)
+                .multilineTextAlignment(.center)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        .background(PPProductCardActionSurface(tint: tint))
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: symbol)
+    }
+}
+
+private struct PPProductCardActionSurface: View {
+    let tint: Color
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(tint.opacity(colorScheme == .dark ? 0.18 : 0.08))
+            .overlay {
+                if contrast == .increased {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(tint.opacity(0.65), lineWidth: 1)
+                }
+            }
+    }
+}
+
 private enum AddToCartFlightAnchor: Hashable {
     case addIcon
     case cart
@@ -50,6 +124,8 @@ public struct AnimatedAddToCartButton: View {
         /// Matches the compact 50pt commerce-holder rail while retaining the
         /// shared cart destination required for the add-to-cart flight.
         case commerceHolder
+        /// Home's full-width, flat product action, shared with variant products.
+        case productCard
     }
 
     /// Optional externally-owned quantity state for the signature one-control flow.
@@ -290,6 +366,8 @@ public struct AnimatedAddToCartButton: View {
             accessoryDecisionRailControl
         case .commerceHolder:
             commerceHolderControl
+        case .productCard:
+            primaryAddButton(signature: false)
         }
     }
 
@@ -326,7 +404,33 @@ public struct AnimatedAddToCartButton: View {
         }
     }
 
+    @ViewBuilder
     private func primaryAddButton(signature: Bool) -> some View {
+        if presentationStyle == .productCard {
+            productCardAddButton
+        } else {
+            traditionalAddButton(signature: signature)
+        }
+    }
+
+    private var productCardAddButton: some View {
+        Button(action: beginAdd) {
+            PPProductCardActionLabel(
+                title: currentTitle,
+                symbol: phase == .success ? "checkmark" : (phase == .failure ? "arrow.clockwise" : "cart.badge.plus"),
+                height: signatureControlHeight,
+                tint: phase == .failure ? .ppError : tint,
+                isProcessing: phase == .processing || phase == .flying
+            )
+        }
+        .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
+        .disabled(!isEnabled || phase.locksInteraction)
+        .opacity(isEnabled ? 1 : 0.5)
+        .accessibilityLabel(currentTitle)
+        .accessibilityHint(accessibilityHint)
+    }
+
+    private func traditionalAddButton(signature: Bool) -> some View {
         Button(action: beginAdd) {
             ZStack {
                 buttonShape
@@ -519,7 +623,7 @@ public struct AnimatedAddToCartButton: View {
     }
 
     private var quantityActionSize: CGFloat {
-        signatureControlHeight
+        presentationStyle == .productCard ? min(52, signatureControlHeight) : signatureControlHeight
     }
 
     private var usesCompactSignatureControl: Bool {
@@ -538,6 +642,8 @@ public struct AnimatedAddToCartButton: View {
             return dynamicTypeSize.isAccessibilitySize
                 ? 64
                 : PPBottomDecisionBarGeometry.controlHeight - PPSpace.sm
+        case .productCard:
+            return PPProductCardActionMetrics.height(for: dynamicTypeSize)
         }
     }
 
@@ -565,7 +671,7 @@ public struct AnimatedAddToCartButton: View {
             )
 
             HStack(spacing: 2) {
-                if presentationStyle == .commerceHolder {
+                if presentationStyle == .commerceHolder || presentationStyle == .productCard {
                     quantityActionButton(
                         isIncrease: false,
                         mode: quantityMode
@@ -603,7 +709,9 @@ public struct AnimatedAddToCartButton: View {
             .frame(maxWidth: .infinity, minHeight: signatureHitHeight)
             .background {
                 Group {
-                    if presentationStyle == .commerceHolder {
+                    if presentationStyle == .productCard {
+                        PPProductCardActionSurface(tint: tint)
+                    } else if presentationStyle == .commerceHolder {
                         shape.fill(Color.ppSecondarySurface)
                     } else {
                         ZStack {
@@ -629,7 +737,9 @@ public struct AnimatedAddToCartButton: View {
             }
             .overlay {
                 Group {
-                    if presentationStyle == .commerceHolder {
+                    if presentationStyle == .productCard {
+                        Color.clear
+                    } else if presentationStyle == .commerceHolder {
                         shape.strokeBorder(
                             Color.ppSurfaceBorder.opacity(
                                 colorScheme == .dark ? 0.90 : 0.78
@@ -665,7 +775,7 @@ public struct AnimatedAddToCartButton: View {
                 .frame(height: signatureControlHeight)
             }
             .shadow(
-                color: presentationStyle == .commerceHolder
+                color: presentationStyle == .commerceHolder || presentationStyle == .productCard
                     ? .clear
                     : tint.opacity(colorScheme == .dark ? 0.14 : 0.11),
                 radius: presentationStyle == .commerceHolder
@@ -776,7 +886,7 @@ public struct AnimatedAddToCartButton: View {
             )
         )
         .frame(
-            minWidth: signatureHitHeight,
+            minWidth: presentationStyle == .productCard ? quantityActionSize : signatureHitHeight,
             minHeight: signatureHitHeight
         )
         .contentShape(Rectangle())
@@ -1671,7 +1781,7 @@ public struct AnimatedAddToCartButton: View {
         quantityDirection = direction
         quantityImpulseID += 1
 
-        if presentationStyle == .commerceHolder {
+        if presentationStyle == .commerceHolder || presentationStyle == .productCard {
             showsQuantityFlight = false
             quantityFlightProgress = 0
             quantityImpact = 0

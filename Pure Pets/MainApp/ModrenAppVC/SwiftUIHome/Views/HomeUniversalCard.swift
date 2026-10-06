@@ -1,6 +1,118 @@
 import SwiftUI
 import UIKit
 
+private struct HomeProductInformationHeightEnvironmentKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+enum HomeProductInformationRegion: Hashable {
+    case identity
+    case metadata
+}
+
+struct HomeProductInformationRegionsKey: PreferenceKey, EnvironmentKey {
+    static let defaultValue: [HomeProductInformationRegion: CGFloat] = [:]
+
+    static func reduce(value: inout Value, nextValue: () -> Value) {
+        value.merge(nextValue(), uniquingKeysWith: max)
+    }
+}
+
+extension EnvironmentValues {
+    var homeProductInformationHeight: CGFloat? {
+        get { self[HomeProductInformationHeightEnvironmentKey.self] }
+        set { self[HomeProductInformationHeightEnvironmentKey.self] = newValue }
+    }
+
+    var homeProductInformationRegions: [HomeProductInformationRegion: CGFloat] {
+        get { self[HomeProductInformationRegionsKey.self] }
+        set { self[HomeProductInformationRegionsKey.self] = newValue }
+    }
+}
+
+struct HomeProductInformationHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+extension View {
+    func homeProductInformationRegion(_ region: HomeProductInformationRegion, enabled: Bool) -> some View {
+        modifier(HomeProductInformationRegionModifier(region: region, enabled: enabled))
+    }
+
+    @ViewBuilder
+    func homeProductInformationMeasurement(enabled: Bool) -> some View {
+        if enabled {
+            self
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: HomeProductInformationHeightPreferenceKey.self,
+                            value: geometry.size.height
+                        )
+                    }
+                }
+        } else {
+            self
+        }
+    }
+}
+
+/// Measure the natural content before applying the rail's shared height. This
+/// aligns the metadata and action baselines without a Spacer or a feedback loop
+/// that could inflate the card on each layout pass.
+private struct HomeProductInformationRegionModifier: ViewModifier {
+    let region: HomeProductInformationRegion
+    let enabled: Bool
+    @Environment(\.homeProductInformationRegions) private var heights
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: HomeProductInformationRegionsKey.self,
+                            value: [region: geometry.size.height]
+                        )
+                    }
+                }
+                .frame(minHeight: heights[region], alignment: .topLeading)
+        } else {
+            content
+        }
+    }
+}
+
+/// Loaded product rails share the tallest intrinsic information stack. Media
+/// stays stable; long titles, larger text and quantity controls grow the rail.
+struct HomeUniversalCardSizing: DynamicProperty {
+    static let productMediaHeight: CGFloat = 144
+    static let advertisementMediaHeight: CGFloat = 124
+    // Renderer inset (4), card inset (8), information padding (24).
+    private static let productInformationInsets: CGFloat = 36
+
+    @Environment(\.homeProductInformationHeight) private var measuredInformationHeight
+    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 186
+    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 136
+
+    func height(isAdvertisement: Bool, measuredProductInformationHeight: CGFloat? = nil) -> CGFloat {
+        if isAdvertisement {
+            return Self.advertisementMediaHeight + advertisementInformationHeight
+        }
+        let measured = measuredProductInformationHeight ?? measuredInformationHeight
+        let informationHeight = measured.map { ceil($0) + Self.productInformationInsets }
+            ?? productInformationHeight
+        return Self.productMediaHeight + informationHeight
+    }
+}
+
 struct HomeUniversalCard: View {
     let card: HomeCardModel
     let delegate: PPUniversalCellDelegate?
@@ -9,6 +121,24 @@ struct HomeUniversalCard: View {
     let entrancePresented: Bool
     let entranceOrdinal: Int
 
+    private var cardSizing = HomeUniversalCardSizing()
+
+    init(
+        card: HomeCardModel,
+        delegate: PPUniversalCellDelegate?,
+        onTap: @escaping () -> Void,
+        onQuantityChange: @escaping (Int) -> Void,
+        entrancePresented: Bool,
+        entranceOrdinal: Int
+    ) {
+        self.card = card
+        self.delegate = delegate
+        self.onTap = onTap
+        self.onQuantityChange = onQuantityChange
+        self.entrancePresented = entrancePresented
+        self.entranceOrdinal = entranceOrdinal
+    }
+
     private var isAdsCard: Bool {
         card.kind == .advertisement ||
             card.context == .forAds ||
@@ -16,9 +146,7 @@ struct HomeUniversalCard: View {
     }
 
     private var cardHeight: CGFloat {
-        isAdsCard
-            ? HomeVisualTokens.universalAdsCardHeight
-            : HomeVisualTokens.universalCardHeight
+        cardSizing.height(isAdvertisement: isAdsCard)
     }
 
     var body: some View {
@@ -39,10 +167,6 @@ struct HomeUniversalCard: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: cardHeight)
-        .ppUniversalHomeShelfEntrance(
-            isPresented: entrancePresented,
-            ordinal: entranceOrdinal
-        )
     }
 }
 
@@ -74,6 +198,9 @@ private struct HomeUniversalCompatibilityCard: View {
     let onTap: () -> Void
     let onQuantityChange: (Int) -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .headline) private var titleMinimumHeight: CGFloat = 40
+
     @State private var quantity = 0
     @State private var notificationLoading = false
     @State private var notificationRegistered = false
@@ -94,102 +221,172 @@ private struct HomeUniversalCompatibilityCard: View {
         usesQuantity && stockLimit == 0
     }
 
+    private var isAdvertisement: Bool {
+        card.kind == .advertisement || card.context == .forAds || card.context == .forHomeAds
+    }
+
+    private var requiresVariantSelection: Bool {
+        PPUniversalCellSwiftUIBridge.requiresVariantSelection(for: viewModel)
+    }
+
+    private var mediaHeight: CGFloat {
+        isAdvertisement
+            ? HomeUniversalCardSizing.advertisementMediaHeight
+            : HomeUniversalCardSizing.productMediaHeight
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
-                ZStack(alignment: .topTrailing) {
-                    HomeRemoteImage(
-                        urlString: viewModel.imageURL,
-                        placeholder: viewModel.image ?? viewModel.placeholder,
-                        contentMode: .scaleAspectFill,
-                        cacheKey: card.id,
-                        displaySize: CGSize(width: 180, height: 166)
-                    )
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 166)
-                    .clipShape(
-                        PPUniversalMediaRoundedShape(
-                            topRadius: 9.5,
-                            bottomRadius: 8
-                        )
-                    )
+        VStack(alignment: .leading, spacing: 0) {
+            ZStack(alignment: .topTrailing) {
+                HomeRemoteImage(
+                    urlString: viewModel.imageURL,
+                    placeholder: viewModel.image ?? viewModel.placeholder,
+                    contentMode: .scaleAspectFit,
+                    cacheKey: card.id,
+                    displaySize: CGSize(width: 240, height: mediaHeight)
+                )
+                .padding(8)
+                .frame(maxWidth: .infinity)
+                .frame(height: mediaHeight)
+                .background(Color.ppSecondarySurface)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                    if !viewModel.badgeText.isEmpty {
-                        Text(viewModel.badgeText)
-                            .font(HomeFont.bold(11))
-                            .foregroundStyle(Color.white)
-                            .padding(.horizontal, PPSpace.sm)
-                            .padding(.vertical, PPSpace.xs)
-                            .background(Color.ppPrimary, in: Capsule())
-                            .padding(PPSpace.sm)
-                    }
-                }
-
-                Text(viewModel.title)
-                    .font(HomeFont.headline())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                if !viewModel.subtitle.isEmpty {
-                    Text(viewModel.subtitle)
-                        .font(HomeFont.caption1())
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(1)
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
-                    Text(viewModel.priceText)
-                        .font(HomeFont.bold(17))
+                if !viewModel.badgeText.isEmpty {
+                    Text(viewModel.badgeText)
+                        .font(HomeFont.bold(11))
                         .foregroundStyle(Color.ppTextPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.78)
+                        .padding(.horizontal, PPSpace.sm)
+                        .padding(.vertical, PPSpace.xs)
+                        .background(Color.ppSurfaceRaised, in: Capsule())
+                        .padding(PPSpace.sm)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onTap)
+            .accessibilityHidden(true)
 
-                    if viewModel.hasOffer, !viewModel.discountText.isEmpty {
-                        PPDiscountBadge(
-                            localizedText: viewModel.discountText,
-                            style: .inline
-                        )
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(viewModel.title)
+                        .font(HomeFont.headline())
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                        .frame(maxWidth: .infinity, minHeight: isAdvertisement ? titleMinimumHeight : nil, alignment: .topLeading)
+
+                    if !viewModel.subtitle.isEmpty {
+                        Text(viewModel.subtitle)
+                            .font(HomeFont.caption1())
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     }
-                    Spacer(minLength: 0)
 
-                    if let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
-                        Text(variantInfo)
-                            .font(HomeFont.bold(11))
-                            .foregroundStyle(Color.ppPrimary)
-                            .padding(.horizontal, PPSpace.sm)
-                            .padding(.vertical, PPSpace.xs)
-                            .background(Color.ppPrimary.opacity(0.12), in: Capsule())
+                    HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
+                        Text(viewModel.priceText)
+                            .font(HomeFont.bold(20))
+                            .foregroundStyle(Color.ppTextPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if viewModel.hasOffer, !viewModel.discountText.isEmpty {
+                            PPDiscountBadge(localizedText: viewModel.discountText, style: .inline)
+                        }
                     }
                 }
+                .fixedSize(horizontal: false, vertical: true)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onTap)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilitySummary)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction {
+                    onTap()
+                }
+                .homeProductInformationRegion(.identity, enabled: !isAdvertisement)
 
-                action
+                if isAdvertisement {
+                    Spacer(minLength: 0)
+                }
+
+                if !isAdvertisement {
+                    availability
+                        .homeProductInformationRegion(.metadata, enabled: true)
+                    action
+                } else {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        availability
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        action
+                    }
+                }
+            }
+            .homeProductInformationMeasurement(enabled: !isAdvertisement)
+            .padding(12)
         }
-        .padding(.bottom, PPSpace.md)
-        .ppElevation(.raised, cornerRadius: 12)
-        .contentShape(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-        )
-        .onTapGesture(perform: onTap)
+        .padding(4)
+        .background {
+            Button(action: onTap) {
+                RoundedRectangle(cornerRadius: HomeVisualTokens.universalCardCorner, style: .continuous)
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHidden(true)
+        }
+        .ppElevation(.raised, cornerRadius: HomeVisualTokens.universalCardCorner)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(accessibilitySummary)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction {
-            onTap()
-        }
         .onAppear(perform: refreshQuantity)
         .onReceive(
-            NotificationCenter.default.publisher(
-                for: Notification.Name("CartUpdated")
-            )
+            NotificationCenter.default.publisher(for: Notification.Name("CartUpdated"))
         ) { _ in
             refreshQuantity()
         }
     }
 
+    private var availability: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if !viewModel.availabilityText.isEmpty {
+                Text(viewModel.availabilityText)
+            }
+            if let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
+                Text(variantInfo)
+            }
+        }
+        .font(HomeFont.caption1())
+        .foregroundStyle(Color.ppTextSecondary)
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        .fixedSize(horizontal: false, vertical: true)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var actionHeight: CGFloat {
+        PPProductCardActionMetrics.height(for: dynamicTypeSize)
+    }
+
+    private func actionLabel(title: String, symbol: String, loading: Bool = false) -> some View {
+        PPProductCardActionLabel(
+            title: title, symbol: symbol, height: actionHeight,
+            tint: usesQuantity ? .ppPrimary : .ppTextPrimary,
+            isProcessing: loading
+        )
+    }
+
     @ViewBuilder
     private var action: some View {
-        if usesQuantity {
+        if requiresVariantSelection {
+            // The iOS 15 compatibility card routes to the existing detail flow
+            // rather than ever committing the displayed family's default item.
+            Button(action: onTap) {
+                actionLabel(
+                    title: HomeModelAdapter.localized("home_pulse_add_to_cart", fallback: "Add to cart"),
+                    symbol: "cart.badge.plus"
+                )
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.ppTextPrimary)
+            .accessibilityLabel(PPAccessoryViewerL10n.text("accessory_view_options_title"))
+        } else if usesQuantity {
             if isUnavailable {
                 Button {
                     guard !notificationLoading else { return }
@@ -203,29 +400,19 @@ private struct HomeUniversalCompatibilityCard: View {
                         }
                     }
                 } label: {
-                    Label(
-                        notificationRegistered
-                            ? HomeModelAdapter.localized(
-                                "home_pulse_notify_registered",
-                                fallback: "You will be notified"
-                            )
-                            : HomeModelAdapter.localized(
-                                "home_pulse_notify_available",
-                                fallback: "Notify me"
-                            ),
-                        systemImage: notificationRegistered
-                            ? "checkmark.circle.fill"
-                            : "bell.fill"
+                    actionLabel(
+                        title: notificationRegistered
+                            ? HomeModelAdapter.localized("home_pulse_notify_registered", fallback: "You will be notified")
+                            : HomeModelAdapter.localized("home_pulse_notify_available", fallback: "Notify me"),
+                        symbol: notificationRegistered ? "checkmark" : "bell",
+                        loading: notificationLoading
                     )
-                    .font(HomeFont.bold(14))
-                    .frame(maxWidth: .infinity, minHeight: 46)
-                    .foregroundStyle(
-                        notificationRegistered
-                            ? Color.ppSuccess
-                            : Color.ppTextPrimary
-                    )
-                    .background(Color.ppSecondarySurface, in: Capsule())
                 }
+                .accessibilityLabel(
+                    notificationRegistered
+                        ? HomeModelAdapter.localized("home_pulse_notify_registered", fallback: "You will be notified")
+                        : HomeModelAdapter.localized("home_pulse_notify_available", fallback: "Notify me")
+                )
                 .buttonStyle(.plain)
                 .disabled(notificationLoading || notificationRegistered)
             } else if quantity > 0 {
@@ -258,42 +445,30 @@ private struct HomeUniversalCompatibilityCard: View {
                     }
                     .disabled(quantity >= stockLimit)
                 }
-                .frame(height: HomeVisualTokens.minimumTouchTarget)
+                .frame(height: actionHeight)
                 .padding(.horizontal, PPSpace.xs)
-                .background(Color.ppSecondarySurface, in: Capsule())
+                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             } else {
                 Button {
                     mutateQuantity(1)
                 } label: {
-                    Label(
-                        HomeModelAdapter.localized(
-                            "home_pulse_add_to_cart",
-                            fallback: "Add to cart"
-                        ),
-                        systemImage: "cart.badge.plus"
+                    actionLabel(
+                        title: HomeModelAdapter.localized("home_pulse_add_to_cart", fallback: "Add to cart"),
+                        symbol: "cart.badge.plus"
                     )
-                    .font(HomeFont.bold(14))
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: HomeVisualTokens.minimumTouchTarget - 2
-                    )
-                    .foregroundStyle(Color.white)
-                    .background(Color.ppPrimary, in: Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(HomeModelAdapter.localized("home_pulse_add_to_cart", fallback: "Add to cart"))
             }
-        } else {
-            Label(
-                HomeModelAdapter.localized(
-                    "home_pulse_details",
-                    fallback: "Details"
-                ),
-                systemImage: "arrow.forward"
-            )
-            .font(HomeFont.bold(14))
-            .foregroundStyle(Color.ppPrimary)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .background(Color.ppSoftRose.opacity(0.72), in: Capsule())
+        } else if !isAdvertisement {
+            Button(action: onTap) {
+                actionLabel(
+                    title: HomeModelAdapter.localized("home_pulse_details", fallback: "Details"),
+                    symbol: "arrow.forward"
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(HomeModelAdapter.localized("home_pulse_details", fallback: "Details"))
         }
     }
 
@@ -306,7 +481,7 @@ private struct HomeUniversalCompatibilityCard: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 13, weight: .bold))
-                .frame(width: 44, height: 44)
+                .frame(width: actionHeight, height: actionHeight)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(

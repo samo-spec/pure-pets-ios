@@ -3,19 +3,16 @@
 //  Pure Pets
 //
 //  PurePets Navigation OS — Command Deck
-//  Four destinations + one Create command inside one elevated capsule.
+//  Four destinations + one Create command on one quiet navigation surface.
 //
 //  Deployment: iOS 17+
-//  Native Liquid Glass: iOS 26+
 //
 //  Design contract
 //  ---------------
-//  • One capsule owns the complete bottom system. Create remains the single
-//    consequential action and is rendered as the only filled circular control.
-//  • Selection is carried by a filled symbol + bold brand ink, so state remains
-//    readable without introducing a competing selected-card surface.
-//  • Geometry is authored once and shared by the glass and non-glass paths,
-//    which keeps the hosted UIKit content-clearance calculation truthful.
+//  • The current destination alone uses brand ink and a filled symbol.
+//    Create is a neutral plus action and never looks selected.
+//  • One opaque surface and fine border keep the content visually primary.
+//  • Geometry is authored once so hosted UIKit content clearance stays exact.
 //
 
 import Foundation
@@ -88,6 +85,7 @@ public struct PPCommandDeckTheme {
     /// Source-bound Pure Pets roles. The deck uses the product surface and ink
     /// system rather than inheriting an arbitrary AccentColor.
     public var accent: Color
+    /// Retained for source compatibility; Create now uses neutral action ink.
     public var createTint: Color
     public var surface: Color
     /// Retained in the public initializer for source compatibility with
@@ -100,10 +98,10 @@ public struct PPCommandDeckTheme {
     public init(
         accent: Color = .ppPrimary,
         createTint: Color = .ppPrimary,
-        surface: Color = .white,
+        surface: Color = .ppSurfaceElevated,
         selectedSurface: Color = .ppSoftRose,
         inactiveInk: Color = .ppTextSecondary,
-        border: Color = .white.opacity(0.85)
+        border: Color = .ppSurfaceBorder
     ) {
         self.accent = accent
         self.createTint = createTint
@@ -143,24 +141,15 @@ public struct PPCommandDeckCopy {
 private enum PPCommandDeckMetrics {
     /// Capsule height drives the hosted content clearance, so it is the single
     /// source of vertical truth for the whole bottom system.
-    /// Refined height: 62 pt (decreased from 70 pt for a sleeker profile).
-    static let deckHeight: CGFloat = 62
-    static let deckHorizontalPadding: CGFloat = 5
+    static let deckHeight: CGFloat = 56
+    static let deckHorizontalPadding: CGFloat = 4
     static let tileCornerRadius: CGFloat = 20
     static var deckCornerRadius: CGFloat { deckHeight * 0.5 }
-    /// Decreased items icon point size (18.5 pt, down from 22 pt) for balanced proportions.
-    static let iconPointSize: CGFloat = 18.5
-    static let labelPointSize: CGFloat = 10.5
+    static let iconPointSize: CGFloat = 20
+    static let labelPointSize: CGFloat = 11
     static let labelSpacing: CGFloat = 2
-
-    /// The visible command is smaller than the capsule while its equal-width
-    /// slot remains a full native hit target.
-    /// A compact brand mark leaves room for an explicit action label.
-    static let createDiameter: CGFloat = 30
-    static let createIconPointSize: CGFloat = 16
-
+    static let minimumTouchWidth: CGFloat = 44
     static var tileHeight: CGFloat { deckHeight - 8 }
-
 }
 
 // MARK: - Public Command Deck
@@ -169,8 +158,7 @@ private enum PPCommandDeckMetrics {
 /// - Home / Orders / Chats / Menu are destinations.
 /// - Create is an independent command and never becomes selected.
 /// - SwiftUI owns RTL mirroring; this component never reverses content manually.
-/// - iOS 26+ renders the rail as Liquid Glass over a product surface tint.
-///   iOS 17–25 renders the same geometry on the opaque product surface.
+/// - The opaque surface remains legible with Reduce Transparency enabled.
 @available(iOS 17.0, *)
 public struct PPCommandDeckTabBar: View {
 
@@ -193,14 +181,11 @@ public struct PPCommandDeckTabBar: View {
     private let copy: PPCommandDeckCopy
     private let onCreate: () -> Void
 
-    @State private var navigationFeedbackToken = 0
-    @State private var createFeedbackToken = 0
-
     @Environment(\.accessibilityReduceMotion)
     private var reduceMotion
 
-    @Environment(\.accessibilityReduceTransparency)
-    private var reduceTransparency
+    @Environment(\.dynamicTypeSize)
+    private var dynamicTypeSize
 
     @Environment(\.colorSchemeContrast)
     private var contrast
@@ -226,16 +211,8 @@ public struct PPCommandDeckTabBar: View {
 
     public var body: some View {
         deckSurface
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .disabled(sessionState.isAnyBlocked)
             .accessibilityHidden(sessionState.isAnyBlocked)
-            // Feedback fires only for direct interaction handled by this control.
-            // Programmatic tab changes (deep links / restoration) stay silent.
-            .sensoryFeedback(.selection, trigger: navigationFeedbackToken)
-            .sensoryFeedback(
-                .impact(weight: .medium, intensity: 0.7),
-                trigger: createFeedbackToken
-            )
     }
 
     private var deckContent: some View {
@@ -270,56 +247,15 @@ public struct PPCommandDeckTabBar: View {
     }
 
     private var deckSurface: some View {
-        deckVariant
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(copy.navigationLabel)
-    }
-
-    @ViewBuilder
-    private var deckVariant: some View {
-        if reduceTransparency {
-            opaqueDeck
-        } else {
-            glassDeck
-        }
-    }
-
-    private var glassDeck: some View {
         deckContent
-            .background {
-                deckShape
-                    .fill(theme.surface.opacity(colorScheme == .dark ? 0.94 : 0.97))
-                    .background(deckShape.fill(.regularMaterial))
-            }
+            .background(deckShape.fill(theme.surface))
             .overlay {
                 deckShape.strokeBorder(deckBorderColor, lineWidth: deckBorderWidth)
                     .allowsHitTesting(false)
             }
-            .shadow(color: deckShadowColor, radius: 12, y: 4)
-    }
-
-    private var opaqueDeck: some View {
-        deckContent
-            .background(
-                deckShape.fill(
-                    colorScheme == .dark
-                        ? Color(red: 0.12, green: 0.12, blue: 0.14)
-                        : Color.white
-                )
-            )
-            .overlay {
-                deckShape.strokeBorder(
-                    colorScheme == .dark
-                        ? Color.white.opacity(contrast == .increased ? 0.35 : 0.12)
-                        : deckBorderColor,
-                    lineWidth: deckBorderWidth
-                )
-            }
-            .shadow(
-                color: deckShadowColor,
-                radius: reduceTransparency ? 7 : 18,
-                y: reduceTransparency ? 3 : 8
-            )
+            .shadow(color: deckShadowColor, radius: 6, y: 2)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(copy.navigationLabel)
     }
 
     private var deckBorderColor: Color {
@@ -328,20 +264,18 @@ public struct PPCommandDeckTabBar: View {
                 ? Color.white.opacity(0.50)
                 : Color.ppTextPrimary.opacity(0.75)
         }
-        return colorScheme == .dark
-            ? Color.white.opacity(0.18)
-            : Color.white.opacity(0.92)
+        return theme.border.opacity(0.72)
     }
 
     private var deckBorderWidth: CGFloat {
-        contrast == .increased ? 1.4 : 0.75
+        contrast == .increased ? 1 : 0.5
     }
 
     private var deckShadowColor: Color {
         Color.black.opacity(
             contrast == .increased
                 ? 0.0
-                : (colorScheme == .dark ? 0.50 : 0.06)
+                : (colorScheme == .dark ? 0.16 : 0.04)
         )
     }
 
@@ -349,44 +283,14 @@ public struct PPCommandDeckTabBar: View {
 
     private var createButton: some View {
         Button {
-            createFeedbackToken &+= 1
+            // The root store owns the single haptic and presentation decision.
             onCreate()
         } label: {
-            VStack(spacing: PPCommandDeckMetrics.labelSpacing) {
-                Image("pawprint")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: PPCommandDeckMetrics.createIconPointSize, height: PPCommandDeckMetrics.createIconPointSize)
-                    .foregroundStyle(Color.white)
-                    .frame(width: PPCommandDeckMetrics.createDiameter, height: PPCommandDeckMetrics.createDiameter)
-                    .background(theme.createTint, in: Circle())
-                    .overlay(alignment: .bottomTrailing) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 9, weight: .heavy))
-                            .foregroundStyle(theme.createTint)
-                            .frame(width: 16, height: 16)
-                            .background(theme.surface, in: Circle())
-                            .overlay {
-                                Circle().strokeBorder(
-                                    theme.createTint,
-                                    lineWidth: contrast == .increased ? 2 : 1.25
-                                )
-                            }
-                            .background {
-                                Circle().fill(theme.surface).padding(-1.5)
-                            }
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                    }
-                Text(Language.get("Add", alter: "Add") ?? "Add")
-                    .font(PPFont.medium(PPCommandDeckMetrics.labelPointSize))
-                    .foregroundStyle(theme.accent)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: PPCommandDeckMetrics.tileHeight)
-            .contentShape(Rectangle())
+            createLabel
+                .foregroundStyle(inactiveInk)
+                .frame(minWidth: PPCommandDeckMetrics.minimumTouchWidth, maxWidth: .infinity)
+                .frame(height: PPCommandDeckMetrics.tileHeight)
+                .contentShape(Rectangle())
         }
         .buttonStyle(PPCommandDeckPressStyle(pressedScale: 0.96))
         .frame(maxWidth: .infinity)
@@ -395,8 +299,43 @@ public struct PPCommandDeckTabBar: View {
         .accessibilityHint(copy.createHint)
         .accessibilityIdentifier("pp.commandDeck.create")
         .accessibilityShowsLargeContentViewer {
-            Label(copy.createLabel, systemImage: "plus.circle.fill")
+            Label(copy.createLabel, systemImage: "plus")
         }
+    }
+
+    @ViewBuilder
+    private var createLabel: some View {
+        if dynamicTypeSize < .xxxLarge {
+            ViewThatFits(in: .horizontal) {
+                VStack(spacing: PPCommandDeckMetrics.labelSpacing) {
+                    createIcon
+                    Text(Language.get("Add", alter: "Add") ?? "Add")
+                        .font(PPFont.medium(PPCommandDeckMetrics.labelPointSize))
+                        .lineLimit(1)
+                }
+                .fixedSize(horizontal: true, vertical: false)
+
+                createIcon
+            }
+        } else {
+            createIcon
+        }
+    }
+
+    private var createIcon: some View {
+        Image(systemName: "plus")
+            .font(.system(
+                size: dynamicTypeSize.isAccessibilitySize ? 24 : PPCommandDeckMetrics.iconPointSize,
+                weight: .medium
+            ))
+            .frame(width: 28, height: 24)
+    }
+
+    private var inactiveInk: Color {
+        if contrast == .increased {
+            return colorScheme == .dark ? Color.white : Color.ppTextPrimary
+        }
+        return theme.inactiveInk
     }
 
     // MARK: Interaction
@@ -408,8 +347,6 @@ public struct PPCommandDeckTabBar: View {
             selection = tab
             return
         }
-
-        navigationFeedbackToken &+= 1
 
         if reduceMotion {
             selection = tab
@@ -448,7 +385,7 @@ private struct PPCommandDeckTile: View {
     var body: some View {
         Button(action: onTap) {
             labelContent
-                .frame(maxWidth: .infinity)
+                .frame(minWidth: PPCommandDeckMetrics.minimumTouchWidth, maxWidth: .infinity)
                 .frame(height: PPCommandDeckMetrics.tileHeight)
                 .contentShape(tileShape)
         }
@@ -471,7 +408,8 @@ private struct PPCommandDeckTile: View {
     }
 
     /// The system large-content viewer supplies full labels when a destination
-    /// cannot fit the fixed navigation slot at the largest supported rail size.
+    /// cannot fit its navigation slot. The accessibility environment remains
+    /// uncapped so the viewer can present the user's full preferred text size.
     private var showsLabel: Bool {
         dynamicTypeSize < .xxxLarge
     }
@@ -495,11 +433,13 @@ private struct PPCommandDeckTile: View {
             icon
             Text(tab.title)
                 .font(
-                    PPFont.bold(PPCommandDeckMetrics.labelPointSize)
+                    isSelected
+                        ? PPFont.bold(PPCommandDeckMetrics.labelPointSize)
+                        : PPFont.medium(PPCommandDeckMetrics.labelPointSize)
                 )
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
         }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     @ViewBuilder
@@ -511,8 +451,8 @@ private struct PPCommandDeckTile: View {
         )
         .font(
             .system(
-                size: PPCommandDeckMetrics.iconPointSize,
-                weight: isSelected ? .bold : .medium
+                size: dynamicTypeSize.isAccessibilitySize ? 24 : PPCommandDeckMetrics.iconPointSize,
+                weight: isSelected ? .semibold : .regular
             )
         )
     }
@@ -520,12 +460,12 @@ private struct PPCommandDeckTile: View {
     private var icon: some View {
         iconBase
             .contentTransition(.opacity)
-            .frame(width: 28, height: 23)
+            .frame(width: 28, height: 24)
             .overlay(alignment: .topTrailing) {
                 if tab == .chats, unreadChats > 0 {
                     PPCommandDeckUnreadBadge(
                         count: unreadChats,
-                        tint: theme.accent
+                        tint: .ppTextPrimary
                     )
                     .alignmentGuide(.top) { $0[.top] + 4 }
                     .alignmentGuide(.trailing) { $0[.trailing] - 5 }
@@ -549,9 +489,6 @@ private struct PPCommandDeckTile: View {
         }
         if contrast == .increased {
             return colorScheme == .dark ? Color.white : Color.ppTextPrimary
-        }
-        if colorScheme == .dark {
-            return Color(red: 0.65, green: 0.66, blue: 0.72).opacity(0.82)
         }
         return theme.inactiveInk
     }
@@ -610,7 +547,7 @@ private struct PPCommandDeckUnreadBadge: View {
             )
             .monospacedDigit()
             .contentTransition(reduceMotion ? .identity : .numericText())
-            .foregroundStyle(Color.white)
+            .foregroundStyle(Color.ppSurfaceElevated)
             .padding(.horizontal, 4)
             .frame(minWidth: 16, minHeight: 16)
             .background(tint, in: Capsule())

@@ -40,12 +40,7 @@ private struct HomeRenderRow: Identifiable {
     /// The marketplace Living Ledger owns its required category-bound reveal.
     /// Exempt only that module from the generic row spring so motion never
     /// stacks; promotions and pet-context stages retain existing behavior.
-    var usesIndependentContentMotion: Bool {
-        guard case let .module(module) = content,
-              case .marketingStage(.marketplace) = module.kind
-        else { return false }
-        return true
-    }
+    var usesIndependentContentMotion: Bool { false }
 }
 
 @available(iOS 15.0, *)
@@ -241,6 +236,8 @@ struct HomeView: View {
                     await store.refresh()
                 }
             }
+            .frame(maxWidth: 1120)
+            .frame(maxWidth: .infinity)
             .background(background)
             .overlay(alignment: .bottom) {
                 bottomNavigationFade
@@ -359,10 +356,6 @@ struct HomeView: View {
                         usesIndependentContentMotion:
                             row.usesIndependentContentMotion
                     )
-                    .homeSectionDataReload(
-                        revision: row.rawID.map(store.sectionDataRevision) ?? 0,
-                        accent: reloadAccent(for: row)
-                    )
                     .id("home-row-\(row.id)")
             }
         }
@@ -394,9 +387,6 @@ struct HomeView: View {
         for rawID in store.state.config.orderedSectionIDs {
             guard let resolved = modulesByRawID.removeValue(forKey: rawID)
             else { continue }
-            if PPHomeHeroFlags.UseHeroV2, resolved.module.kind == .discoveryRail {
-                continue
-            }
             rows.append(
                 HomeRenderRow(
                     id: "\(resolved.zone.rawValue)-\(resolved.module.rawID)",
@@ -453,8 +443,17 @@ struct HomeView: View {
             EmptyView()
 
         case let .marketingStage(source):
-            marketingStage(source)
-                .padding(.horizontal, 0)
+            VStack(spacing: PPSpace.base) {
+                marketingStage(source)
+                if presentsCategoryBrowsing(after: module, in: resolvedPlan) {
+                    HomeCategoryRail(
+                        categories: store.state.categories,
+                        selectedID: store.state.selectedMainKindID,
+                        entrancePresented: loadedEntranceVisible,
+                        onSelect: store.selectCategory
+                    )
+                }
+            }
 
         case .ecosystemLauncher:
             PPHomeEcosystemLauncher(
@@ -551,6 +550,25 @@ struct HomeView: View {
                 ))
             }
         }
+    }
+
+    /// Move browsing out of the hero once, keeping Console ordering and
+    /// explicit category modules authoritative (never duplicate the rail).
+    private func presentsCategoryBrowsing(
+        after module: PPHomeModule,
+        in resolvedPlan: PPHomePresentationPlan
+    ) -> Bool {
+        guard PPHomeHeroFlags.UseHeroV2, !store.state.categories.isEmpty else { return false }
+        let modules = resolvedPlan.zones.flatMap(\.modules)
+        guard !modules.contains(where: {
+            if case .discoveryRail = $0.kind { return true }
+            return false
+        }) else { return false }
+        let marketingIDs = Set(modules.compactMap { candidate -> Int? in
+            if case .marketingStage = candidate.kind { return candidate.rawID }
+            return nil
+        })
+        return store.state.config.orderedSectionIDs.first(where: marketingIDs.contains) == module.rawID
     }
 
     // MARK: Zone 2
@@ -924,9 +942,7 @@ struct HomeView: View {
     // MARK: Chrome
 
     private var background: some View {
-        WorldGlassBackground(
-            isFaded: store.state.config.backgroundGlowsFaded
-        )
+        Color.homeCanvas.ignoresSafeArea()
     }
 
     private var bottomNavigationFade: some View {
@@ -1008,21 +1024,8 @@ struct HomeView: View {
         guard let previousRow else {
             return 0
         }
-        if case let .module(prevModule) = previousRow.content,
-           case .marketingStage = prevModule.kind,
-           PPHomeHeroFlags.UseHeroV2 {
-            // Refined breathing room directly beneath Unified Hero V2
-            return PPSpace.md
-        }
-        guard hasStandaloneSectionHeader(row) else {
-            return verticalPadding(for: row)
-        }
-
-        let precedingBottom = verticalPadding(for: previousRow)
-        return max(
-            0,
-            PPHomeSectionHeaderMetrics.sectionTopSpacing - precedingBottom
-        )
+        let desiredGap: CGFloat = row.zone == previousRow.zone ? PPSpace.xl : PPSpace.xxl
+        return max(0, desiredGap - verticalPadding(for: previousRow))
     }
 
     private func hasStandaloneSectionHeader(_ row: HomeRenderRow) -> Bool {
@@ -1148,8 +1151,6 @@ struct HomeHeaderSparkleMotion: View {
                 )
             )
             .foregroundStyle(Color.ppAdoptionAccent)
-            .scaleEffect(reduceMotion ? 1.0 : (isAnimating ? 1.08 : 0.96))
-            .opacity(reduceMotion ? 1.0 : (isAnimating ? 1.0 : 0.86))
             .frame(
                 width: HomeCommandBar.controlSide,
                 height: HomeCommandBar.controlSide
@@ -1164,15 +1165,6 @@ struct HomeHeaderSparkleMotion: View {
                 )
             }
             .contentShape(HomeCommandBar.controlShape)
-            .onAppear {
-                guard !reduceMotion else { return }
-                withAnimation(
-                    .easeInOut(duration: 2.4)
-                    .repeatForever(autoreverses: true)
-                ) {
-                    isAnimating = true
-                }
-            }
             .accessibilityHidden(true)
     }
 }
@@ -1526,29 +1518,12 @@ private struct HomeResolvedSectionEntranceModifier: ViewModifier {
     let usesEcosystemMotion: Bool
     let usesIndependentContentMotion: Bool
 
-    @ViewBuilder
     func body(content: Content) -> some View {
-        if usesIndependentContentMotion {
-            content
-        } else if usesEcosystemMotion {
-            content.modifier(
-                HomeEcosystemEntranceModifier(
-                    isVisible: isVisible,
-                    sectionIndex: sectionIndex,
-                    reduceMotion: reduceMotion
-                )
-            )
-        } else {
-            content
-                .modifier(HomeSectionEntranceModifier(
-                    isVisible: isVisible,
-                    sectionIndex: sectionIndex,
-                    reduceMotion: reduceMotion
-                ))
-                .modifier(HomeVerticalSectionReveal(
-                    entranceAlreadyPlayed: isVisible
-                ))
-        }
+        content.modifier(HomeEcosystemEntranceModifier(
+            isVisible: isVisible,
+            sectionIndex: sectionIndex,
+            reduceMotion: reduceMotion
+        ))
     }
 }
 

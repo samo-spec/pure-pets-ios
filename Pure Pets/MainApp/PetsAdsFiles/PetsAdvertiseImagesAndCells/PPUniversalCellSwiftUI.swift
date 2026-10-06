@@ -527,6 +527,7 @@ extension View {
 public struct PPUniversalCardView: View {
     @StateObject private var store: PPUniversalCardStore
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var homeCardSizing = HomeUniversalCardSizing()
     private let legacyViewModel: PPUniversalCellViewModel?
     private let legacyDelegate: PPUniversalCellDelegate?
     private let legacyContext: PPCellContext?
@@ -698,9 +699,7 @@ public struct PPUniversalCardView: View {
             return dynamicTypeSize.isAccessibilitySize ? 540 : 184
         }
         if store.isHomePresentation {
-            return isAdsMode
-                ? (dynamicTypeSize.isAccessibilitySize ? 320 : HomeVisualTokens.universalAdsCardHeight)
-                : (dynamicTypeSize.isAccessibilitySize ? 508 : HomeVisualTokens.universalCardHeight)
+            return homeCardSizing.height(isAdvertisement: isAdsMode)
         }
         if store.model.isSkeleton && store.context.isCatalogCommerce {
             return 280
@@ -1828,7 +1827,7 @@ private final class PPUniversalCardStore: ObservableObject {
                 self.isEditingQuantity = false
             }
         }
-        if animated {
+        if animated && (!isHomePresentation || !UIAccessibility.isReduceMotionEnabled) {
             withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
                 updates()
             }
@@ -2157,19 +2156,6 @@ private final class PPUniversalCardStore: ObservableObject {
 // MARK: - Card Renderer
 
 @available(iOS 16.0, *)
-private struct PPUniversalHomeCardGridMetrics {
-    let mediaHeight: CGFloat
-    let titleHeight: CGFloat
-    let subtitleHeight: CGFloat
-    let priceHeight: CGFloat
-    let actionHeight: CGFloat
-    let metadataHeight: CGFloat
-    let titleToPriceSpacing: CGFloat
-    let priceToActionSpacing: CGFloat
-    let actionToMetadataSpacing: CGFloat
-}
-
-@available(iOS 16.0, *)
 private struct PPUniversalCardRenderer: View {
     @ObservedObject var store: PPUniversalCardStore
     @State private var ownerName: String? = nil
@@ -2183,9 +2169,10 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
+    @ScaledMetric(relativeTo: .headline) private var homeTitleMinimumHeight: CGFloat = 40
 
     private var cardRadius: CGFloat {
-        24
+        store.isHomePresentation ? HomeVisualTokens.universalCardCorner : 24
     }
     private let mediaBottomRadius: CGFloat = 12
 
@@ -2370,13 +2357,12 @@ private struct PPUniversalCardRenderer: View {
                 }
                 .padding(9)
             } else {
-                let metrics = homeGridMetrics(for: size)
                 VStack(spacing: 0) {
                     cardTapMedia
                         .frame(
                             maxWidth: .infinity,
-                            minHeight: store.isHomePresentation && !store.isContextFocused ? metrics.mediaHeight : nil,
-                            maxHeight: store.isHomePresentation && !store.isContextFocused ? metrics.mediaHeight : .infinity
+                            minHeight: store.isHomePresentation && !store.isContextFocused ? homeMediaHeight : nil,
+                            maxHeight: store.isHomePresentation && !store.isContextFocused ? homeMediaHeight : .infinity
                         )
                         .modifier(
                             PPUniversalHomeShelfMediaSettle(
@@ -2384,15 +2370,14 @@ private struct PPUniversalCardRenderer: View {
                             )
                         )
                     if store.isHomePresentation {
-                        homeVerticalInformationGrid(metrics: metrics)
+                        homeVerticalInformation
                             .frame(
                                 maxWidth: .infinity,
-                                maxHeight: (store.isContextFocused || isAdsMode) ? nil : .infinity,
+                                maxHeight: store.isContextFocused ? nil : .infinity,
                                 alignment: .top
                             )
-                            .padding(.horizontal, 11)
-                            .padding(.top, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
-                            .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
                             .modifier(
                                 PPUniversalHomeShelfInformationDock(
                                     state: homeShelfEntrance
@@ -2427,7 +2412,7 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var usesScopedCardTap: Bool {
-        store.isHomePresentation && store.model.usesQuantityControl
+        store.isHomePresentation
     }
 
     @ViewBuilder
@@ -2454,7 +2439,19 @@ private struct PPUniversalCardRenderer: View {
         _ card: Content,
         size: CGSize
     ) -> some View {
-        let decorated = card
+        let decorated = ZStack {
+            if store.isHomePresentation {
+                // This sibling covers the gaps between the media, information
+                // and controls without putting a navigation gesture above them.
+                Button(action: store.tapCard) {
+                    cardShape.fill(Color.clear)
+                        .contentShape(cardShape)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHidden(true)
+            }
+            card
+        }
             .frame(width: size.width, height: size.height)
             .ppElevation(
                 .raised,
@@ -2507,13 +2504,15 @@ private struct PPUniversalCardRenderer: View {
                     placeholderSystemImage: store.model.placeholderSystemImage,
                     topCornerRadius: mediaTopRadius,
                     bottomCornerRadius: mediaBottomRadius,
+                    isHomePresentation: store.isHomePresentation,
                     contained:
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
                     fillsEmptyAreaWithImageBackground:
+                        !store.isHomePresentation &&
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
-                    focusesPetFace: mediaFocusesPetFace,
+                    focusesPetFace: !store.isHomePresentation && mediaFocusesPetFace,
                     imageLoader: store.imageLoader
                 )
                 .padding(mediaContentInset)
@@ -2757,145 +2756,158 @@ private struct PPUniversalCardRenderer: View {
         )
     }
 
-    @ViewBuilder
-    private func homeVerticalInformationGrid(
-        metrics: PPUniversalHomeCardGridMetrics
-    ) -> some View {
-        switch store.context {
-        case .market, .food, .accessory, .savedForLater:
-            commerceInformationGrid(metrics: metrics)
-        case .adopt:
-            adoptionInformationGrid(metrics: metrics)
-        case .services, .vets:
-            serviceInformationGrid(metrics: metrics)
-        case .ads, .homeAds:
-            adoptionListingInformationGrid(metrics: metrics)
-        }
-    }
-
-    private func commerceInformationGrid(
-        metrics: PPUniversalHomeCardGridMetrics
-    ) -> some View {
-        stableHomeInformationGrid(
-            metrics: metrics,
-            reservesPriceRow: true
-        )
-    }
-
-    private func adoptionInformationGrid(
-        metrics: PPUniversalHomeCardGridMetrics
-    ) -> some View {
-        stableHomeInformationGrid(
-            metrics: metrics,
-            reservesPriceRow: false
-        )
-    }
-
-    private func adoptionListingInformationGrid(
-        metrics: PPUniversalHomeCardGridMetrics
-    ) -> some View {
-        stableHomeInformationGrid(
-            metrics: metrics,
-            reservesPriceRow: true
-        )
-    }
-
-    private func serviceInformationGrid(
-        metrics: PPUniversalHomeCardGridMetrics
-    ) -> some View {
-        stableHomeInformationGrid(
-            metrics: metrics,
-            reservesPriceRow: true
-        )
-    }
-
-    private func stableHomeInformationGrid(
-        metrics: PPUniversalHomeCardGridMetrics,
-        reservesPriceRow: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+    /// Keep product information compact above one full-width action. Add,
+    /// progress and quantity states use the same control footprint.
+    private var homeVerticalInformation: some View {
+        VStack(alignment: .leading, spacing: 8) {
             scopedCardNavigationTarget(
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 4) {
                     titleContent
-                        .frame(
-                            maxWidth: .infinity,
-                            minHeight: metrics.titleHeight,
-                            maxHeight: metrics.titleHeight,
-                            alignment: .leading
-                        )
-
-                    if metrics.subtitleHeight > 0 {
-                        subtitleContent
-                            .frame(
-                                maxWidth: .infinity,
-                                minHeight: metrics.subtitleHeight,
-                                maxHeight: metrics.subtitleHeight,
-                                alignment: .topLeading
-                            )
+                        .frame(minHeight: isAdsMode ? homeTitleMinimumHeight : nil, alignment: .topLeading)
+                    subtitleContent
+                    if hasPrice {
+                        homePriceRow
                     }
-
-                    Color.clear
-                        .frame(height: metrics.titleToPriceSpacing)
-
-                    Group {
-                        if reservesPriceRow && hasPrice {
-                            priceRow
-                        } else {
-                            Color.clear
-                                .accessibilityHidden(true)
-                        }
-                    }
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: reservesPriceRow ? metrics.priceHeight : 0,
-                        maxHeight: reservesPriceRow ? metrics.priceHeight : 0,
-                        alignment: .topLeading
-                    )
                 }
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityElement(children: .combine)
             )
+            .homeProductInformationRegion(.identity, enabled: !isAdsMode)
 
-            if !isAdsMode {
-                Color.clear
-                    .frame(height: store.isContextFocused ? 0 : metrics.priceToActionSpacing)
-
-                Group {
-                    if showsBottomCTA && !store.isContextFocused {
-                        bottomCTA
-                    } else {
-                        Color.clear
-                            .accessibilityHidden(true)
-                    }
-                }
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: store.isContextFocused ? 0 : metrics.actionHeight,
-                    maxHeight: store.isContextFocused ? 0 : metrics.actionHeight
-                )
-
-                Color.clear
-                    .frame(height: store.isContextFocused ? 0 : metrics.actionToMetadataSpacing)
-            } else {
-                Color.clear
-                    .frame(height: 5)
+            if isAdsMode {
+                Spacer(minLength: 0)
             }
 
-            scopedCardNavigationTarget(
-                Group {
-                    if hasBottomBadges {
-                        bottomBadgesRow
-                    } else {
-                        Color.clear
-                            .accessibilityHidden(true)
+            if !isAdsMode {
+                scopedCardNavigationTarget(homeMetadata)
+                    .homeProductInformationRegion(.metadata, enabled: true)
+                if showsBottomCTA && !store.isContextFocused {
+                    primaryAction
+                }
+            } else {
+                HStack(alignment: .bottom, spacing: 8) {
+                    scopedCardNavigationTarget(homeMetadata)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if showsBottomCTA && !store.isContextFocused {
+                        homeCompactAction
                     }
                 }
-                .frame(
-                    maxWidth: .infinity,
-                    minHeight: metrics.metadataHeight,
-                    maxHeight: metrics.metadataHeight,
-                    alignment: isAdsMode ? .leading : .center
-                )
-            )
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .homeProductInformationMeasurement(enabled: !isAdsMode)
+    }
+
+    private var homePriceRow: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                homeCurrentPrice
+                homeOriginalPrice
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                homeCurrentPrice
+                homeOriginalPrice
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var homeCurrentPrice: some View {
+        Text(displayPrice)
+            .font(.custom("Beiruti-Bold", size: 20, relativeTo: .title3))
+            .foregroundStyle(store.palette.ink)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var homeOriginalPrice: some View {
+        if let originalPrice = store.model.originalPrice {
+            Text(formattedPrice(originalPrice))
+                .font(.custom("Beiruti-Medium", size: 12, relativeTo: .caption))
+                .strikethrough()
+                .foregroundStyle(store.palette.secondaryInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var homeMetadata: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let availability = store.model.availability {
+                if !availability.text.isEmpty {
+                    Text(availability.text)
+                        .foregroundStyle(availabilityForeground(availability.tone))
+                }
+                if let metadata = availability.metaText, !metadata.isEmpty {
+                    if let symbol = availability.metaSystemImage, !symbol.isEmpty {
+                        Label(metadata, systemImage: symbol)
+                            .foregroundStyle(store.palette.secondaryInk)
+                    } else {
+                        Text(metadata)
+                            .foregroundStyle(store.palette.secondaryInk)
+                    }
+                }
+            }
+            if let variant = store.model.variantInfoText, !variant.isEmpty {
+                Text(variant)
+                    .foregroundStyle(store.palette.secondaryInk)
+            }
+            if let gender = store.model.gender {
+                Text(genderTitle(gender))
+                    .foregroundStyle(store.palette.secondaryInk)
+            }
+            if let badge = store.model.badgeText, !badge.isEmpty {
+                Text(badge)
+                    .foregroundStyle(store.palette.secondaryInk)
+            }
+        }
+        .font(.custom("Beiruti-Medium", size: 12, relativeTo: .caption))
+        .multilineTextAlignment(.leading)
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var homeCompactAction: some View {
+        Button {
+            PPUniversalHaptics.light()
+            // This preserves authentication, exact-variant selection, stock
+            // notifications and the delegate-owned add success confirmation.
+            store.handlePrimaryAction()
+        } label: {
+            Group {
+                if store.isNotifyInFlight {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Image(systemName: homeCompactActionIcon)
+                        .font(.system(size: 17, weight: .semibold))
+                }
+            }
+            .foregroundStyle(store.notifySucceeded ? store.palette.success : store.palette.ink)
+            .frame(width: 44, height: 44)
+            .background(store.palette.groupedSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color(uiColor: .separator).opacity(0.45), lineWidth: 0.5)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PPUniversalScaleButtonStyle())
+        .disabled(store.isNotifyInFlight)
+        .accessibilityLabel(primaryActionTitle)
+        .accessibilityValue(store.quantity > 0 ? cartQuantityAccessibilityValue(store.quantity) : "")
+        .accessibilityHint(store.requiresVariantSelection
+            ? PPAccessoryViewerL10n.text("accessory_view_options_title") : "")
+    }
+
+    private var homeCompactActionIcon: String {
+        if store.model.usesQuantityControl {
+            return !store.requiresVariantSelection && store.isOutOfStock
+                ? primaryActionIcon
+                : "plus"
+        }
+        return "arrow.forward"
     }
 
     private var titleContent: some View {
@@ -2905,7 +2917,7 @@ private struct PPUniversalCardRenderer: View {
                     "Beiruti-Bold",
                     size: store.layout == .focus
                         ? 18
-                        : (store.layout.isHorizontal ? 17 : 15.5),
+                        : (store.layout.isHorizontal || store.isHomePresentation ? 17 : 15.5),
                     relativeTo: .headline
                 )
             )
@@ -2913,10 +2925,10 @@ private struct PPUniversalCardRenderer: View {
             .lineLimit(
                 dynamicTypeSize.isAccessibilitySize
                     ? (store.layout == .focus ? 4 : 3)
-                    : (store.layout == .focus ? 2 : 1)
+                    : (store.layout == .focus || store.isHomePresentation ? 2 : 1)
             )
             .multilineTextAlignment(.leading)
-            .minimumScaleFactor(0.86)
+            .minimumScaleFactor(store.isHomePresentation ? 1 : 0.86)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(store.model.title)
             .accessibilityAddTraits(.isHeader)
@@ -3334,7 +3346,8 @@ private struct PPUniversalCardRenderer: View {
             tint: primaryActionAccent,
             itemSymbol: "shippingbox.fill",
             isEnabled: store.canIncreaseQuantity,
-            cornerRadius: 13,
+            cornerRadius: store.isHomePresentation ? 12 : 13,
+            presentationStyle: store.isHomePresentation ? .productCard : .standard,
             quantityMode: .init(
                 quantity: Binding(
                     get: { store.quantity },
@@ -3394,7 +3407,30 @@ private struct PPUniversalCardRenderer: View {
             PPUniversalHaptics.medium()
             store.handlePrimaryAction()
         } label: {
-            HStack(spacing: 7) {
+            if store.isHomePresentation && store.model.usesQuantityControl {
+                PPProductCardActionLabel(
+                    title: primaryActionTitle,
+                    symbol: store.requiresVariantSelection && store.quantity == 0
+                        ? "cart.badge.plus" : primaryActionIcon,
+                    height: homeCartActionHeight,
+                    tint: store.isOutOfStock && !store.requiresVariantSelection
+                        ? (store.notifySucceeded ? store.palette.success : store.palette.secondaryInk)
+                        : primaryActionAccent,
+                    isProcessing: store.isNotifyInFlight
+                )
+            } else {
+                standardPrimaryActionLabel
+            }
+        }
+        .buttonStyle(PPUniversalScaleButtonStyle())
+        .disabled(store.isNotifyInFlight)
+        .accessibilityLabel(primaryActionTitle)
+        .accessibilityHint(store.requiresVariantSelection
+            ? PPAccessoryViewerL10n.text("accessory_view_options_title") : "")
+    }
+
+    private var standardPrimaryActionLabel: some View {
+        HStack(spacing: 7) {
                 if store.isNotifyInFlight {
                     ProgressView()
                         .controlSize(.small)
@@ -3432,12 +3468,6 @@ private struct PPUniversalCardRenderer: View {
                 maxHeight: store.isHomePresentation ? standardActionHeight : nil
             )
             .contentShape(Rectangle())
-        }
-        .buttonStyle(PPUniversalScaleButtonStyle())
-        .disabled(store.isNotifyInFlight)
-        .accessibilityLabel(primaryActionTitle)
-        .accessibilityHint(store.requiresVariantSelection
-            ? PPAccessoryViewerL10n.text("accessory_view_options_title") : "")
     }
 
     private func cartQuantityAccessibilityValue(
@@ -4082,71 +4112,16 @@ private struct PPUniversalCardRenderer: View {
         return min(preferred, maximum)
     }
 
-    private func homeGridMetrics(
-        for size: CGSize
-    ) -> PPUniversalHomeCardGridMetrics {
-        let accessibility = dynamicTypeSize.isAccessibilitySize
-        let hasSubtitle =
-            store.model.subtitle?.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            ).isEmpty == false
-        let reservesPriceRow: Bool
-        switch store.context {
-        case .adopt:
-            reservesPriceRow = false
-        default:
-            reservesPriceRow = true
-        }
-
-        let titleHeight: CGFloat = accessibility ? 34 : 24
-        let subtitleHeight: CGFloat = hasSubtitle
-            ? (accessibility ? 44 : 28)
-            : 0
-        let priceHeight: CGFloat = reservesPriceRow
-            ? (accessibility ? 40 : 30)
-            : 0
-        let actionHeight: CGFloat = accessibility
-            ? (isAdsMode ? 0 : 52)
-            : (isAdsMode ? 0 : (store.isHomePresentation ? universalCardActionHeight : (store.model.usesQuantityControl ? homeCartActionHeight : standardActionHeight)))
-        let metadataHeight: CGFloat = accessibility ? 36 : 28
-        let titleToPriceSpacing: CGFloat = accessibility
-            ? 8
-            : HomeVisualTokens.productTitleToPriceSpacing
-        let priceToActionSpacing: CGFloat = isAdsMode ? 0 : (accessibility ? 10 : 8)
-        let actionToMetadataSpacing: CGFloat = isAdsMode ? 0 : (accessibility ? 10 : 8)
-        let adsPriceToMetadataSpacing: CGFloat = isAdsMode ? 5 : 0
-        let informationVerticalInset: CGFloat = accessibility ? 24 : 20
-        let reservedInformationHeight =
-            titleHeight +
-            subtitleHeight +
-            priceHeight +
-            actionHeight +
-            metadataHeight +
-            titleToPriceSpacing +
-            priceToActionSpacing +
-            actionToMetadataSpacing +
-            adsPriceToMetadataSpacing +
-            informationVerticalInset
-        let availableMediaHeight = max(
-            accessibility ? 120 : (isAdsMode ? 116 : 126),
-            size.height - 8 - reservedInformationHeight
-        )
-        let maximumMediaHeight = max(isAdsMode ? 116 : 126, size.width - 8)
-
-        return PPUniversalHomeCardGridMetrics(
-            mediaHeight: min(availableMediaHeight, maximumMediaHeight),
-            titleHeight: titleHeight,
-            subtitleHeight: subtitleHeight,
-            priceHeight: priceHeight,
-            actionHeight: actionHeight,
-            metadataHeight: metadataHeight,
-            titleToPriceSpacing: titleToPriceSpacing,
-            priceToActionSpacing: priceToActionSpacing,
-            actionToMetadataSpacing: actionToMetadataSpacing
-        )
+    private var homeMediaHeight: CGFloat {
+        isAdsMode
+            ? HomeUniversalCardSizing.advertisementMediaHeight
+            : HomeUniversalCardSizing.productMediaHeight
     }
 
     private var mediaContentInset: CGFloat {
+        if store.isHomePresentation {
+            return 8
+        }
         // No inset for market cards – they should fill the container edge‑to‑edge.
         if store.context == .market {
             return 0
@@ -4383,7 +4358,9 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var universalCardActionHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 52 : 36
+        store.isHomePresentation && store.model.usesQuantityControl
+            ? PPProductCardActionMetrics.height(for: dynamicTypeSize)
+            : (dynamicTypeSize.isAccessibilitySize ? 52 : 44)
     }
 
     private var standardActionHeight: CGFloat {
@@ -4435,6 +4412,7 @@ private struct PPUniversalCardRenderer: View {
 @available(iOS 16.0, *)
 private final class PPUniversalMirroredImageView: UIImageView {
     weak var mirroredBackgroundImageView: UIImageView?
+    var usesAspectFitContainment = false
     private var petFaceFocusEnabled = false
     private var petFaceFocusSignature: String?
     private var petFaceFocusPlaceholder: UIImage?
@@ -4589,7 +4567,9 @@ private final class PPUniversalMirroredImageView: UIImageView {
 
     private func resetPetFaceFocusCrop() {
         let fullImageRect = CGRect(x: 0, y: 0, width: 1, height: 1)
-        layer.contentsGravity = CALayerContentsGravity.resizeAspectFill
+        layer.contentsGravity = usesAspectFitContainment
+            ? CALayerContentsGravity.resizeAspect
+            : CALayerContentsGravity.resizeAspectFill
         layer.contentsRect = fullImageRect
         mirroredBackgroundImageView?.layer.contentsGravity = CALayerContentsGravity.resizeAspectFill
         mirroredBackgroundImageView?.layer.contentsRect = fullImageRect
@@ -4717,6 +4697,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     let placeholderSystemImage: String
     let topCornerRadius: CGFloat
     let bottomCornerRadius: CGFloat
+    let isHomePresentation: Bool
     let contained: Bool
     let fillsEmptyAreaWithImageBackground: Bool
     let focusesPetFace: Bool
@@ -4828,7 +4809,8 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
             contained && fillsEmptyAreaWithImageBackground
         let resolvedPlaceholder: UIImage? =
             placeholder ?? UIImage(systemName: placeholderSystemImage)
-        imageView.contentMode = .scaleAspectFill
+        imageView.usesAspectFitContainment = isHomePresentation
+        imageView.contentMode = isHomePresentation ? .scaleAspectFit : .scaleAspectFill
         imageView.configurePetFaceFocus(
             enabled: focusesPetFace,
             signature: signature,
@@ -4847,7 +4829,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
 
         if let imageLoader {
             imageLoader(imageView, imageURL, placeholder, container)
-            imageView.contentMode = .scaleAspectFill
+            imageView.contentMode = isHomePresentation ? .scaleAspectFit : .scaleAspectFill
             context.coordinator.setImageBackgroundVisible(fillsEmptyArea)
             return
         }
