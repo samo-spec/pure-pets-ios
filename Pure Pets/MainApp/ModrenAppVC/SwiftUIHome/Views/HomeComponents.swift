@@ -52,7 +52,7 @@ enum HomeVisualTokens {
     // Command surface
     static let commandIconWeight: Font.Weight = .semibold
     static let commandDividerOpacity: Double = 0.66
-    static let commandPaleTintMultiplier: Double = 0.94
+    static let commandPaleTintMultiplier: Double = 0.72
 
     // Hero decoration remains deliberately subordinate to the central mark.
     static let heroFlankOpacity: Double = 0.52
@@ -83,6 +83,24 @@ enum HomeVisualTokens {
 
     static func cardBorderWidth(contrast: ColorSchemeContrast) -> CGFloat {
         contrast == .increased ? 1.5 : 0.75
+    }
+}
+
+/// Exact shelf geometry shared by products, food, services, ads and skeletons.
+/// A visible next-card slice is deliberate at every width, including RTL.
+enum HomeCarouselMetrics {
+    static let inset = HomeVisualTokens.contentHorizontalMargin
+    static let gap: CGFloat = 16
+    static let peek: CGFloat = 28
+
+    static func cardWidth(viewport: CGFloat, accessibility: Bool) -> CGFloat {
+        let available = max(1, viewport - inset * 2)
+        if accessibility { return min(360, max(1, available - gap - peek)) }
+        // Keep phone shelves compact: one complete card and most of the next.
+        // Counting only whole visible cards forced typical phones to the old
+        // 240pt cap. A fractional span also avoids width jumps at breakpoints.
+        let width = (available + gap) / 1.9
+        return min(available, min(220, max(160, width)))
     }
 }
 
@@ -270,6 +288,7 @@ struct HomeCommandBar: View {
     let cartAction: () -> Void
     let locationAction: () -> Void
     var novaAction: (() -> Void)?
+    var searchDestinationAction: ((HomePriorityAction) -> Void)? = nil
 
     private var resolvedAccentText: Color {
         customAccent ?? Color.ppAccentText
@@ -505,7 +524,18 @@ struct HomeCommandBar: View {
     /// on the token surface. Search carries the capsule's visual weight, so the
     /// glyph reads as the capsule's purpose before the first suggestion word.
     private var searchField: some View {
-        Button(action: searchAction) {
+        Menu {
+            Button(action: searchAction) {
+                Label(HomeModelAdapter.localized("home_universal_search_placeholder", fallback: "Search Pure Pets"), systemImage: "magnifyingglass")
+            }
+            if let searchDestinationAction {
+                ForEach(state.priorityActions.filter { $0.destination != .petProfile }) { destination in
+                    Button { searchDestinationAction(destination) } label: {
+                        Label(destination.title, systemImage: destination.destination == .food ? "carrot" : destination.systemImage)
+                    }
+                }
+            }
+        } label: {
             HStack(spacing: PPSpace.md) {
                 Image(systemName: "magnifyingglass")
                     .font(
@@ -519,7 +549,7 @@ struct HomeCommandBar: View {
                     .background(searchKeyTint, in: Circle())
                     .accessibilityHidden(true)
 
-                HomeAnimatedSearchSuggestionView(isRTL: state.isRightToLeft)
+                HomeUniversalSearchPrompt()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .layoutPriority(1)
 
@@ -536,8 +566,10 @@ struct HomeCommandBar: View {
             }
             .padding(.horizontal, PPSpace.md + PPSpace.xxs)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: resolvedControlHeight)
+            .frame(minHeight: resolvedControlHeight)
             .contentShape(HomeCommandBar.controlShape)
+        } primaryAction: {
+            searchAction()
         }
         .buttonStyle(commandButtonStyle)
         .accessibilityLabel(
@@ -548,8 +580,8 @@ struct HomeCommandBar: View {
         )
         .accessibilityHint(
             HomeModelAdapter.localized(
-                "home_pulse_search_prompt",
-                fallback: "Search products, pets, and services"
+                "home_universal_search_hint",
+                fallback: "Search products, pets and services. Touch and hold for care and category destinations."
             )
         )
     }
@@ -689,112 +721,27 @@ private struct SearchSuggestion: Identifiable {
 }
 
 @available(iOS 15.0, *)
-struct HomeAnimatedSearchSuggestionView: View {
-    let isRTL: Bool
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
+struct HomeUniversalSearchPrompt: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.scenePhase) private var scenePhase
-
-    @State private var currentSuggestionID =
-        "home_search_suggestion_cat_food"
-
-    private var suggestions: [SearchSuggestion] {
-        let keys = [
-            "home_search_suggestion_cat_food",
-            "home_search_suggestion_grooming",
-            "home_search_suggestion_dog_accessories",
-            "home_search_suggestion_veterinary",
-            "home_search_suggestion_medicine",
-            "home_search_suggestion_pet_listings",
-            "home_search_suggestion_cat_hygiene",
-        ]
-        let localized = keys.compactMap { key -> SearchSuggestion? in
-            let text = HomeModelAdapter.localized(key, fallback: "")
-            return text.isEmpty ? nil : SearchSuggestion(id: key, text: text)
-        }
-        if !localized.isEmpty {
-            return localized
-        }
-        return [
-            SearchSuggestion(
-                id: "home_pulse_search_prompt",
-                text: HomeModelAdapter.localized(
-                    "home_pulse_search_prompt",
-                    fallback: ""
-                )
-            ),
-        ]
-    }
-
-    private var visibleSuggestionID: String {
-        suggestions.contains(where: { $0.id == currentSuggestionID })
-            ? currentSuggestionID
-            : (suggestions.first?.id ?? "")
-    }
-
-    private var rotationTaskID: String {
-        "\(scenePhase == .active)-\(reduceMotion)-\(isRTL)"
-    }
-
-    private var searchPlaceholderColor: Color {
-        Color.homeTextPrimary.opacity(
-            contrast == .increased
-                ? 0.94
-                : (colorScheme == .dark ? 0.84 : 0.78)
-        )
-    }
 
     var body: some View {
-        ZStack(alignment: .leading) {
-            ForEach(suggestions) { item in
-                if item.id == visibleSuggestionID {
-                    Text(item.text)
-                        .font(HomeFont.medium(16))
-                        .foregroundStyle(searchPlaceholderColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.82)
-                        .multilineTextAlignment(.leading)
-                        .transition(
-                            reduceMotion
-                                ? .opacity
-                                : .asymmetric(
-                                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                                    removal: .move(edge: .top).combined(with: .opacity)
-                                )
-                        )
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            Text(HomeModelAdapter.localized("home_universal_search_placeholder", fallback: "Search Pure Pets"))
+                .font(HomeFont.medium(16))
+                .foregroundStyle(Color.homeTextPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .fixedSize(horizontal: false, vertical: true)
+            if !dynamicTypeSize.isAccessibilitySize {
+                Text(HomeModelAdapter.localized("home_universal_search_scope", fallback: "Products, pets and services"))
+                    .font(HomeFont.regular(11))
+                    .foregroundStyle(Color.homeTextSecondary)
+                    .lineLimit(1)
             }
         }
+        .padding(.vertical, PPSpace.xs)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: dynamicTypeSize.isAccessibilitySize ? 30 : 24)
-        .clipped()
+        .multilineTextAlignment(.leading)
         .accessibilityHidden(true)
-        .task(id: rotationTaskID) {
-            guard scenePhase == .active else { return }
-            while !Task.isCancelled {
-                do {
-                    try await Task.sleep(nanoseconds: 3_000_000_000)
-                } catch {
-                    return
-                }
-                guard !Task.isCancelled, !suggestions.isEmpty else { return }
-
-                let currentIndex = suggestions.firstIndex(where: { $0.id == visibleSuggestionID }) ?? 0
-                let nextIndex = (currentIndex + 1) % suggestions.count
-                let next = suggestions[nextIndex]
-
-                withAnimation(
-                    reduceMotion
-                        ? .easeOut(duration: 0.20)
-                        : .spring(response: 0.44, dampingFraction: 0.82)
-                ) {
-                    currentSuggestionID = next.id
-                }
-            }
-        }
     }
 }
 
@@ -986,6 +933,9 @@ struct HomePetSwitcher: View {
     let selectedID: String?
     let onSelect: (HomePetModel) -> Void
     let onEdit: () -> Void
+    var contextSubtitle: String? = nil
+    var restoreContextTitle: String? = nil
+    var onRestoreContext: (() -> Void)? = nil
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -999,15 +949,15 @@ struct HomePetSwitcher: View {
                     "home_pulse_pet_context_title",
                     fallback: "Your pet context"
                 ),
-                subtitle: HomeModelAdapter.localized(
+                subtitle: contextSubtitle ?? HomeModelAdapter.localized(
                     "home_pulse_pet_context_subtitle",
                     fallback: "Home priorities follow the selected pet"
                 ),
-                actionTitle: HomeModelAdapter.localized(
+                actionTitle: restoreContextTitle ?? HomeModelAdapter.localized(
                     "Edit",
                     fallback: "Edit"
                 ),
-                action: onEdit
+                action: restoreContextTitle == nil ? onEdit : onRestoreContext
             )
             .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
 
@@ -2865,7 +2815,7 @@ struct HomeCardPressStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
             .opacity(configuration.isPressed ? 0.92 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
     }
@@ -5566,7 +5516,7 @@ struct HomeFeedSection: View {
                     ? nil
                     : { store.seeAll(section.kind) }
             )
-            .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+            .padding(.horizontal, HomeCarouselMetrics.inset)
 
             switch section.state {
             case .loading:
@@ -5585,25 +5535,25 @@ struct HomeFeedSection: View {
                         in: geometry.size.width
                     )
                     ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(alignment: .top, spacing: PPSpace.md) {
-                            ForEach(
-                                Array(cards.enumerated()),
-                                id: \.element.id
-                            ) { ordinal, card in
-                                HomeUniversalCard(
-                                    card: card,
-                                    delegate: store.router.universalCardDelegate,
-                                    onTap: { store.tapCard(card) },
-                                    onQuantityChange: {
-                                        store.setQuantity($0, for: card)
-                                    },
-                                    entrancePresented: entrancePresented,
-                                    entranceOrdinal: ordinal
-                                )
-                                .frame(width: resolvedCardWidth)
+                        Group {
+                            if isAdsSection {
+                                LazyHStack(alignment: .top, spacing: HomeCarouselMetrics.gap) {
+                                    railCards(cards, width: resolvedCardWidth)
+                                }
+                            } else {
+                                // HomeModelAdapter caps these previews at 12
+                                // items (8 for recommendations / buy-again).
+                                // Measure that whole bounded set, including
+                                // offscreen titles and metadata. A LazyHStack
+                                // drops those preferences as cells leave view,
+                                // resizing the cards and everything below them.
+                                // Home's vertical feed remains lazy.
+                                HStack(alignment: .top, spacing: HomeCarouselMetrics.gap) {
+                                    railCards(cards, width: resolvedCardWidth)
+                                }
                             }
                         }
-                        .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                        .padding(.horizontal, HomeCarouselMetrics.inset)
                         .padding(.vertical, isAdsSection ? 0 : PPSpace.xs)
                     }
                     .contentMarginsCompat()
@@ -5642,7 +5592,7 @@ struct HomeFeedSection: View {
                         ? nil
                         : { store.seeAll(section.kind) }
                 )
-                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                .padding(.horizontal, HomeCarouselMetrics.inset)
             case let .failed(title, message, retryTitle):
                 HomeInlineState(
                     symbol: "arrow.clockwise.circle",
@@ -5651,19 +5601,28 @@ struct HomeFeedSection: View {
                     actionTitle: retryTitle,
                     action: { store.retry(section: section.kind) }
                 )
-                .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                .padding(.horizontal, HomeCarouselMetrics.inset)
             }
         }
         .accessibilityElement(children: .contain)
     }
 
-    private func cardWidth(in viewportWidth: CGFloat, itemCount: Int = 0) -> CGFloat {
-        let available = max(1, viewportWidth - HomeVisualTokens.contentHorizontalMargin * 2)
-        if dynamicTypeSize.isAccessibilitySize {
-            return min(360, available * 0.92)
+    private func railCards(_ cards: [HomeCardModel], width: CGFloat) -> some View {
+        ForEach(Array(cards.enumerated()), id: \.element.id) { ordinal, card in
+            HomeUniversalCard(
+                card: card,
+                delegate: store.router.universalCardDelegate,
+                onTap: { store.tapCard(card) },
+                onQuantityChange: { store.setQuantity($0, for: card) },
+                entrancePresented: entrancePresented,
+                entranceOrdinal: ordinal
+            )
+            .frame(width: width)
         }
-        // A deliberate next-card preview on phone; bounded readable cards on iPad.
-        return min(240, max(180, (available + PPSpace.md) / 1.85))
+    }
+
+    private func cardWidth(in viewportWidth: CGFloat) -> CGFloat {
+        HomeCarouselMetrics.cardWidth(viewport: viewportWidth, accessibility: dynamicTypeSize.isAccessibilitySize)
     }
 }
 
@@ -5839,7 +5798,7 @@ private struct HomeCardSkeletonRail: View {
     var body: some View {
         let isCompact = cardHeight < HomeVisualTokens.universalCardHeight
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: PPSpace.md) {
+            LazyHStack(alignment: .top, spacing: HomeCarouselMetrics.gap) {
                 ForEach(Array(Self.skeletonIDs.enumerated()), id: \.element) { index, _ in
                     VStack(alignment: .leading, spacing: PPSpace.sm) {
                         RoundedRectangle(cornerRadius: PPCorner.medium)
@@ -5882,7 +5841,7 @@ private struct HomeCardSkeletonRail: View {
                     .accessibilityHidden(true)
                 }
             }
-            .padding(.leading, PPSpace.screenMargin)
+            .padding(.horizontal, HomeCarouselMetrics.inset)
             .padding(.vertical, PPSpace.xs)
         }
         .contentMarginsCompat()
@@ -6234,23 +6193,12 @@ struct HomePureLensSection: View {
     let action: () -> Void
 
     var body: some View {
-        Group {
-            if PURE_LENS_USE_V2.boolValue {
-                PureLensCardV2(
-                    motionReady: motionReady,
-                    motionAlreadyPlayed: motionAlreadyPlayed,
-                    onMotionSettled: onMotionSettled,
-                    action: action
-                )
-            } else {
-                PureLensCardV1(
-                    motionReady: motionReady,
-                    motionAlreadyPlayed: motionAlreadyPlayed,
-                    onMotionSettled: onMotionSettled,
-                    action: action
-                )
-            }
-        }
+        PureLensCardV2(
+            motionReady: motionReady,
+            motionAlreadyPlayed: motionAlreadyPlayed,
+            onMotionSettled: onMotionSettled,
+            action: action
+        )
         .tint(HomePureLensColors.signal)
     }
 }
@@ -6329,14 +6277,14 @@ struct PureLensCardV2: View {
             }
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-        .buttonStyle(HomeCardPressStyle())
+        .buttonStyle(HomeLensPressStyle())
         .task(id: motionReady) {
             guard motionReady || motionAlreadyPlayed else { return }
             onMotionSettled()
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(HomeModelAdapter.localized("home_pure_lens_a11y", fallback: "Open Pure Lens camera"))
-        .accessibilityHint(HomeModelAdapter.localized("pure_lens_account_hint", fallback: "Opens the animal discovery camera"))
+        .accessibilityHint(HomeModelAdapter.localized("home_lens_purpose", fallback: "Point at an animal to explore its category and related discoveries."))
         .accessibilityIdentifier("home.pureLens.open")
     }
 
@@ -6354,7 +6302,7 @@ struct PureLensCardV2: View {
             Text(HomeModelAdapter.localized("home_pure_lens_title", fallback: "Pure Lens"))
                 .font(HomeFont.bold(19))
                 .foregroundStyle(HomePureLensColors.primaryText)
-            Text(HomeModelAdapter.localized("home_pure_lens_subtitle", fallback: "Recognize an animal and discover what fits it."))
+            Text(HomeModelAdapter.localized("home_lens_purpose", fallback: "Point at an animal to explore its category and related discoveries."))
                 .font(HomeFont.regular(13))
                 .foregroundStyle(HomePureLensColors.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -6369,6 +6317,17 @@ struct PureLensCardV2: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .multilineTextAlignment(.leading)
+    }
+}
+
+private struct HomeLensPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.9), value: configuration.isPressed)
     }
 }
 

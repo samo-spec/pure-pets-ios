@@ -391,13 +391,12 @@ struct HomeHeroV2View: View {
 private struct HomeHeroV2LivingPlate: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @State private var mounted = false
 
     var body: some View {
         HomeHeroV2PlateRenderer(
-            motionEnabled: mounted && scenePhase == .active && !reduceMotion,
+            motionEnabled: mounted && !reduceMotion,
             usesStaticShape: reduceMotion,
             isDark: colorScheme == .dark,
             isOpaque: reduceTransparency
@@ -429,12 +428,15 @@ private struct HomeHeroV2PlateRenderer: UIViewRepresentable {
 
     final class PlateView: UIView {
         private let wash = CAGradientLayer()
+        private var hasPlayedContour = false
         private let membrane = CAShapeLayer()
         private var scrollObservations: [NSKeyValueObservation] = []
+        private var lifecycleObservers: [NSObjectProtocol] = []
         private weak var observedScrollView: UIScrollView?
         private var motionEnabled = false
         private var usesStaticShape = false
         private var lastSize: CGSize = .zero
+        private var applicationActive = false
 
         override init(frame: CGRect) {
             super.init(frame: frame)
@@ -446,6 +448,22 @@ private struct HomeHeroV2PlateRenderer: UIViewRepresentable {
             wash.locations = [0, 0.55, 1]
             wash.mask = membrane
             layer.addSublayer(wash)
+            applicationActive = UIApplication.shared.applicationState == .active
+            // UIKit owns this hosting controller's lifecycle. Do not rely on a
+            // SwiftUI Scene value that is not supplied by a SwiftUI App root.
+            for (name, active) in [
+                (UIApplication.didBecomeActiveNotification, true),
+                (UIApplication.willResignActiveNotification, false)
+            ] {
+                lifecycleObservers.append(NotificationCenter.default.addObserver(
+                    forName: name, object: nil, queue: .main
+                ) { [weak self] _ in
+                    Task { @MainActor [weak self] in
+                        self?.applicationActive = active
+                        self?.updateMotion()
+                    }
+                })
+            }
         }
 
         required init?(coder: NSCoder) { nil }
@@ -535,14 +553,15 @@ private struct HomeHeroV2PlateRenderer: UIViewRepresentable {
                 membrane.removeAnimation(forKey: "home.plate.contour")
                 return
             }
-            let shouldRun = motionEnabled && isInViewport
-            if shouldRun, membrane.animation(forKey: "home.plate.contour") == nil {
+            let shouldRun = motionEnabled && applicationActive && isInViewport
+            if shouldRun, !hasPlayedContour, membrane.animation(forKey: "home.plate.contour") == nil {
+                hasPlayedContour = true
                 // Integer harmonics close exactly after one revolution. Sampling
                 // once leaves interpolation with Core Animation, off the feed.
                 let contour = CAKeyframeAnimation(keyPath: "path")
                 contour.values = (0...60).map { platePath(phase: CGFloat($0) / 60 * .pi * 2) }
-                contour.duration = 9
-                contour.repeatCount = .infinity
+                contour.duration = 3.6
+                contour.repeatCount = 1
                 contour.calculationMode = .linear
                 membrane.add(contour, forKey: "home.plate.contour")
             }
@@ -561,6 +580,8 @@ private struct HomeHeroV2PlateRenderer: UIViewRepresentable {
 
         func stop() {
             scrollObservations.removeAll()
+            lifecycleObservers.forEach(NotificationCenter.default.removeObserver)
+            lifecycleObservers.removeAll()
             observedScrollView = nil
             membrane.removeAllAnimations()
             motionEnabled = false

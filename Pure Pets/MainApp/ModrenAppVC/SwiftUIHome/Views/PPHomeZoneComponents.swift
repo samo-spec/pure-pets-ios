@@ -4580,12 +4580,12 @@ private struct PPHomeQuickActionIcon: View {
         .foregroundStyle(accent)
         .frame(width: side, height: side)
         .background(
-            accent.opacity(colorScheme == .dark ? 0.14 : 0.07),
+            accent.opacity(colorScheme == .dark ? 0.11 : 0.05),
             in: RoundedRectangle(cornerRadius: isFeatured ? 16 : 12, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: isFeatured ? 16 : 12, style: .continuous)
-                .strokeBorder(accent.opacity(contrast == .increased ? 0.7 : 0.12), lineWidth: contrast == .increased ? 1.5 : 0.75)
+                .strokeBorder(accent.opacity(contrast == .increased ? 0.7 : 0), lineWidth: contrast == .increased ? 1.5 : 0.75)
         }
         .accessibilityHidden(true)
     }
@@ -5752,6 +5752,9 @@ struct PPHomePetContextStrip: View {
     let onSelect: (HomePetModel) -> Void
     let onEdit: () -> Void
     let onOpenProfiles: () -> Void
+    var contextSubtitle: String? = nil
+    var restoreContextTitle: String? = nil
+    var onRestoreContext: (() -> Void)? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -5764,7 +5767,10 @@ struct PPHomePetContextStrip: View {
                 pets: pets,
                 selectedID: selectedID,
                 onSelect: onSelect,
-                onEdit: onEdit
+                onEdit: onEdit,
+                contextSubtitle: contextSubtitle,
+                restoreContextTitle: restoreContextTitle,
+                onRestoreContext: onRestoreContext
             )
         }
     }

@@ -215,7 +215,8 @@ struct HomeView: View {
                     searchAction: store.router.openSearch,
                     cartAction: store.router.openCart,
                     locationAction: store.locationTapped,
-                    novaAction: store.router.openNova
+                    novaAction: store.router.openNova,
+                    searchDestinationAction: store.performPriorityAction
                 )
                 .zIndex(10)
 
@@ -529,7 +530,10 @@ struct HomeView: View {
                 selectedID: store.state.selectedPetID,
                 onSelect: store.selectPet,
                 onEdit: store.editSelectedPet,
-                onOpenProfiles: store.openPetProfiles
+                onOpenProfiles: store.openPetProfiles,
+                contextSubtitle: store.petContextSubtitle,
+                restoreContextTitle: store.restorePetContextTitle,
+                onRestoreContext: store.restorePetContext
             )
 
         case .pureLensFeature:
@@ -705,28 +709,58 @@ struct HomeView: View {
     private func careGateway(
         _ variant: PPHomeCareGatewayVariant
     ) -> some View {
-        PPHomeServiceGateway(
-            // No eyebrow: the care gateway is the only banded row, and brand
-            // text measures 4.45:1 on the dark section band. The title already
-            // carries the same meaning.
-            eyebrow: nil,
-            title: variant == .premiumCare
-                ? PPHomeZoneCopy.careGatewayTitle
-                : HomeModelAdapter.localized(
-                    "home_provider_navigation_title",
-                    fallback: "Trusted care"
-                ),
-            subtitle: variant == .premiumCare
-                ? PPHomeZoneCopy.careGatewaySubtitle
-                : HomeModelAdapter.localized(
-                    "home_provider_navigation_subtitle",
-                    fallback: "Choose the care destination you need"
-                ),
-            destinations: careDestinations,
-            onSelect: { destination in
-                store.openProviderCategory(destination.id)
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            if variant == .premiumCare, let context = store.careContextSubtitle {
+                Button(action: store.openSelectedPetCare) {
+                    HStack(alignment: .top, spacing: PPSpace.sm) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.system(size: 18, weight: .medium))
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: PPSpace.xs) {
+                            Text(HomeModelAdapter.localized("home_care_reminder_context", fallback: "From your companion’s schedule"))
+                                .font(HomeFont.medium(13))
+                                .foregroundStyle(Color.homeTextSecondary)
+                            Text(context)
+                                .font(HomeFont.medium(16))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 11, weight: .medium))
+                            .accessibilityHidden(true)
+                    }
+                    .foregroundStyle(Color.homeTextPrimary)
+                    .padding(.vertical, PPSpace.sm)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(HomeCardPressStyle())
+                .accessibilityElement(children: .combine)
+                .accessibilityHint(HomeModelAdapter.localized("home_care_reminder_action", fallback: "Open care schedule in the pet profile"))
             }
-        )
+            PPHomeServiceGateway(
+                // No eyebrow: the care gateway is the only banded row, and brand
+                // text measures 4.45:1 on the dark section band. The title already
+                // carries the same meaning.
+                eyebrow: nil,
+                title: variant == .premiumCare
+                    ? PPHomeZoneCopy.careGatewayTitle
+                    : HomeModelAdapter.localized(
+                        "home_provider_navigation_title",
+                        fallback: "Trusted care"
+                    ),
+                subtitle: variant == .premiumCare
+                    ? PPHomeZoneCopy.careGatewaySubtitle
+                    : HomeModelAdapter.localized(
+                        "home_provider_navigation_subtitle",
+                        fallback: "Choose the care destination you need"
+                    ),
+                destinations: careDestinations,
+                onSelect: { destination in
+                    store.openProviderCategory(destination.id)
+                }
+            )
+        }
     }
 
     private var careDestinations: [PPHomeServiceDestination] {

@@ -695,6 +695,43 @@ final class HomeStore: ObservableObject {
         selectedPet
     }
 
+    /// Personalization is category matching, not a health or suitability claim.
+    /// Explicitly browsing another species or All must stop pet-specific copy.
+    var personalizedPetName: String? {
+        guard let pet = selectedPet, let categoryID = validCategoryID(for: pet),
+              categoryID == state.selectedMainKindID else { return nil }
+        let name = pet.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? nil : HomeModelAdapter.isolated(name)
+    }
+
+    var restorePetContextTitle: String? {
+        guard personalizedPetName == nil, let pet = selectedPet,
+              validCategoryID(for: pet) != nil, !pet.name.isEmpty else { return nil }
+        return String(format: HomeModelAdapter.localized("home_restore_pet_context", fallback: "Show %@’s picks"), HomeModelAdapter.isolated(pet.name))
+    }
+
+    func restorePetContext() {
+        guard let pet = selectedPet else { return }
+        selectPet(pet)
+    }
+
+    var petContextSubtitle: String {
+        guard let name = personalizedPetName else {
+            return HomeModelAdapter.localized("home_pet_context_browse", fallback: "Select a pet to browse its category")
+        }
+        return String(format: HomeModelAdapter.localized("home_pet_context_active_format", fallback: "Recommendations follow %@’s category"), name)
+    }
+
+    var careContextSubtitle: String? {
+        guard let pet = selectedPet, let reminder = nextReminder(for: pet) else { return nil }
+        let title = PPHomeDataBridge.reminderPresentation(for: reminder)["title"] as? String ?? ""
+        guard !title.isEmpty else { return nil }
+        return [HomeModelAdapter.isolated(pet.name), title, reminderSubtitle(reminder)]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    func openSelectedPetCare() { editSelectedPet() }
+
     var usesCategoryAccentColors: Bool {
         UserDefaults.standard.bool(
             forKey: "pp.marketplace.usesMainKindAccentColors"
@@ -1601,7 +1638,13 @@ final class HomeStore: ObservableObject {
         let marketplacePrimaryTitle: String
         let marketplaceAccessibilityLabel: String
 
-        if let categoryName, !categoryName.isEmpty {
+        if let petName = personalizedPetName {
+            marketplaceEyebrow = HomeModelAdapter.localized("home_personal_hero_eyebrow", fallback: "Your companion, at the heart of Home")
+            marketplaceTitle = String(format: HomeModelAdapter.localized("home_personal_hero_title", fallback: "Every day with %@"), petName)
+            marketplaceSubtitle = HomeModelAdapter.localized("home_personal_hero_subtitle", fallback: "Food, essentials and care, filtered to your companion’s category.")
+            marketplacePrimaryTitle = String(format: HomeModelAdapter.localized("home_personal_hero_action", fallback: "Explore for %@"), petName)
+            marketplaceAccessibilityLabel = [marketplaceTitle, marketplaceSubtitle].joined(separator: ". ")
+        } else if let categoryName, !categoryName.isEmpty {
             let forms = categoryCopyForms(
                 title: categoryName,
                 categoryID: state.selectedMainKindID
@@ -2239,6 +2282,22 @@ final class HomeStore: ObservableObject {
     private func petSectionCopy(
         for kind: HomeMarketplaceFeedKind
     ) -> HomeSectionCopy {
+        if let name = personalizedPetName {
+            let key: String?
+            switch kind {
+            case .recommendations: key = "home_for_pet_recommendations"
+            case .accessories, .accessorySuggestions: key = "home_for_pet_essentials"
+            case .food: key = "home_for_pet_food"
+            case .services: key = "home_for_pet_care"
+            default: key = nil
+            }
+            if let key {
+                return HomeSectionCopy(
+                    title: String(format: HomeModelAdapter.localized(key, fallback: "For %@"), name),
+                    subtitle: HomeModelAdapter.localized("home_personal_category_basis", fallback: "Based on the selected pet’s category")
+                )
+            }
+        }
         switch kind {
         case .recommendations:
             return localizedSectionCopy(
@@ -2570,13 +2629,14 @@ final class HomeStore: ObservableObject {
     }
 
     private func nextReminder(for pet: HomePetModel) -> NSObject? {
-        petReminders.first { reminder in
-            let presentation =
-                PPHomeDataBridge.reminderPresentation(for: reminder)
-            let petID = presentation["petID"] as? String ?? ""
-            let enabled =
-                (presentation["enabled"] as? NSNumber)?.boolValue ?? false
-            return petID == pet.id && enabled
+        petReminders.filter { reminder in
+            let presentation = PPHomeDataBridge.reminderPresentation(for: reminder)
+            return presentation["petID"] as? String == pet.id &&
+                (presentation["enabled"] as? NSNumber)?.boolValue == true
+        }.min { lhs, rhs in
+            let left = PPHomeDataBridge.reminderPresentation(for: lhs)["fireDate"] as? Date ?? .distantFuture
+            let right = PPHomeDataBridge.reminderPresentation(for: rhs)["fireDate"] as? Date ?? .distantFuture
+            return left < right
         }
     }
 

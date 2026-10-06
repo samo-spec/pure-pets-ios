@@ -4370,8 +4370,8 @@
 "home_pulse_organize_care" = "نظّم الرعاية";
 "home_pulse_page_position_a11y" = "%1$d من %2$d";
 "home_pulse_partial" = "تعذّر تحديث بعض الأقسام";
-"home_pulse_pet_context_subtitle" = "اختر سياق الحيوان الذي تريد عرضه";
-"home_pulse_pet_context_title" = "سياق حيوانك";
+"home_pulse_pet_context_subtitle" = "اختر رفيقك لتتبع الاختيارات فئته";
+"home_pulse_pet_context_title" = "رفيقك في بيوربتس";
 "home_pulse_pet_selected_status" = "مختار";
 "home_pulse_pet_choose_status" = "عرض في الرئيسية";
 "home_pulse_pet_hero_subtitle" = "الرعاية والتسوّق والاكتشاف من مكان واحد.";
@@ -5455,3 +5455,26 @@
 "chat_passage_retry" = "إعادة محاولة الإرسال";
 "chat_header_last_active_format" = "آخر ظهور %@";
 "chat_keyboard_dismiss" = "إخفاء لوحة المفاتيح";
+
+"home_pet_age_review" = "راجع العمر في ملف الحيوان";
+"home_pet_context_browse" = "اختر رفيقك لعرض اختيارات من فئته";
+"home_pet_context_active_format" = "اختيارات المنزل تتبع فئة %@";
+"home_personal_hero_eyebrow" = "رفيقك في قلب بيوربتس";
+"home_personal_hero_title" = "كل يوم مع %@";
+"home_personal_hero_subtitle" = "طعام ومستلزمات ورعاية من فئة رفيقك، في مكان واحد.";
+"home_personal_hero_action" = "استكشف احتياجات %@";
+"home_for_pet_recommendations" = "اختيارات لـ%@";
+"home_for_pet_essentials" = "مستلزمات %@";
+"home_for_pet_food" = "طعام لـ%@";
+"home_for_pet_care" = "رعاية لـ%@";
+"home_personal_category_basis" = "بحسب فئة رفيقك، لتختار ما يناسبه";
+"home_universal_search_placeholder" = "ابحث في بيوربتس";
+"home_universal_search_scope" = "منتجات، حيوانات وخدمات";
+"home_care_reminder_context" = "من جدول رفيقك";
+"home_care_reminder_action" = "افتح جدول الرعاية في ملف الحيوان";
+"home_lens_purpose" = "وجّه الكاميرا إلى حيوان، واكتشف فئته وما يرتبط بها.";
+"home_lens_signature" = "اكتشف من خلال الكاميرا";
+
+"home_restore_pet_context" = "عرض اختيارات %@";
+
+"home_universal_search_hint" = "ابحث عن منتجات وحيوانات وخدمات. اضغط مطولًا للوصول إلى وجهات الرعاية والفئات.";

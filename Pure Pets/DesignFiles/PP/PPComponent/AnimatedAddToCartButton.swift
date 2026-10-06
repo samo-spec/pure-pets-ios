@@ -43,7 +43,7 @@ struct PPProductCardActionLabel: View {
             .accessibilityHidden(true)
 
             Text(title)
-                .font(.custom("Beiruti-Bold", size: 15, relativeTo: .callout))
+                .font(.custom("Beiruti-Medium", size: 15, relativeTo: .callout))
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(0.75)
                 .multilineTextAlignment(.center)
@@ -58,6 +58,18 @@ struct PPProductCardActionLabel: View {
     }
 }
 
+struct PPProductCardButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+            .opacity(configuration.isPressed ? 0.86 : 1)
+            .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.9),
+                       value: configuration.isPressed)
+    }
+}
+
 private struct PPProductCardActionSurface: View {
     let tint: Color
     @Environment(\.colorScheme) private var colorScheme
@@ -65,7 +77,7 @@ private struct PPProductCardActionSurface: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(tint.opacity(colorScheme == .dark ? 0.18 : 0.08))
+            .fill(tint.opacity(colorScheme == .dark ? 0.14 : 0.055))
             .overlay {
                 if contrast == .increased {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -423,7 +435,7 @@ public struct AnimatedAddToCartButton: View {
                 isProcessing: phase == .processing || phase == .flying
             )
         }
-        .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
+        .buttonStyle(PPProductCardButtonStyle())
         .disabled(!isEnabled || phase.locksInteraction)
         .opacity(isEnabled ? 1 : 0.5)
         .accessibilityLabel(currentTitle)

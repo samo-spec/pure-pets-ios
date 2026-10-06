@@ -2480,10 +2480,13 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     {
         FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
 
-        FIRQuery *query = PPAccessoryRequirePublicMarketVisibility([db collectionWithPath:@"petAccessories"]);
+        FIRQuery *query =
+        [[db collectionWithPath:@"petAccessories"]
+         queryWhereField:@"accessKindType" isEqualTo:@(AccessTypeAccessory)];
+        query = PPAccessoryRequirePublicMarketVisibility(query);
         query = [query queryOrderedByField:@"createdAt" descending:YES];
 
-        query = [query queryLimitedTo:50];
+        query = [query queryLimitedTo:250];
 
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot,
                                             NSError *error) {
@@ -2532,7 +2535,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         query = PPAccessoryRequirePublicMarketVisibility(query);
         query = [query queryOrderedByField:@"createdAt" descending:YES];
 
-        query = [query queryLimitedTo:50];
+        query = [query queryLimitedTo:250];
 
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot,
                                             NSError *error) {

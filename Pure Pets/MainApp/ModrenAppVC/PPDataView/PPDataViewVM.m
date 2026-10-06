@@ -410,6 +410,9 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     // species, whose identifier may match a display-only seed. Always commit
     // that route transition and refresh its scoped data.
     self.mainKind = mainKind;
+    if (self.currentDeepLinkTarget == PPDeepLinkTargetAllCategories) {
+        self.currentDeepLinkTarget = PPDeepLinkTargetNone;
+    }
 
     // Reset pagination
     self.currentPage = 0;
@@ -457,7 +460,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
 - (void)switchToAllMainKinds
 {
-    if (self.currentDeepLinkTarget == PPDeepLinkTargetAllCategories) {
+    if (self.currentDeepLinkTarget == PPDeepLinkTargetAllCategories && self.mainKind == nil && self.mutableItems.count > 0) {
         return;
     }
 

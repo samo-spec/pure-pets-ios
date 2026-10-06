@@ -402,7 +402,8 @@ static NSArray<NSNumber *> *PPAccessoryIntegerArray(id value) {
         } else if (_petSubCategoryID <= 0 && _petSubCategoryIDs.count > 0) {
             _petSubCategoryID = [_petSubCategoryIDs.firstObject integerValue];
         }
-        _AccessoryCategoryID = [dict[@"AccessoryCategoryID"] isKindOfClass:NSString.class] ? dict[@"AccessoryCategoryID"] : nil;
+        id catVal = dict[@"AccessoryCategoryID"] ?: dict[@"accessoryCategoryID"] ?: dict[@"categoryID"] ?: dict[@"categoryId"];
+        _AccessoryCategoryID = [catVal isKindOfClass:NSString.class] ? (NSString *)catVal : nil;
         _cityID = [dict[@"cityID"] ?: @(0) integerValue];
         id createdVal = dict[@"createdAt"];
         if ([createdVal isKindOfClass:[FIRTimestamp class]]) {

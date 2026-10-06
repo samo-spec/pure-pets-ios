@@ -2505,6 +2505,7 @@ private struct PPUniversalCardRenderer: View {
                     topCornerRadius: mediaTopRadius,
                     bottomCornerRadius: mediaBottomRadius,
                     isHomePresentation: store.isHomePresentation,
+                    normalizesProductImage: store.isHomePresentation && store.context.isCatalogCommerce,
                     contained:
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
@@ -3422,7 +3423,9 @@ private struct PPUniversalCardRenderer: View {
                 standardPrimaryActionLabel
             }
         }
-        .buttonStyle(PPUniversalScaleButtonStyle())
+        .buttonStyle(PPUniversalScaleButtonStyle(
+            isProductCart: store.isHomePresentation && store.model.usesQuantityControl
+        ))
         .disabled(store.isNotifyInFlight)
         .accessibilityLabel(primaryActionTitle)
         .accessibilityHint(store.requiresVariantSelection
@@ -4159,6 +4162,11 @@ private struct PPUniversalCardRenderer: View {
 
     private func formattedPrice(_ value: Decimal) -> String {
         let number = formattedNumber(value)
+        if store.isHomePresentation {
+            return store.isRightToLeft
+                ? "\(HomeModelAdapter.isolated(number)) \(normalizedCurrency)"
+                : "\(normalizedCurrency) \(HomeModelAdapter.isolated(number))"
+        }
         return store.isRightToLeft
             ? "\(number) \(normalizedCurrency)"
             : "\(normalizedCurrency) \(number)"
@@ -4167,7 +4175,7 @@ private struct PPUniversalCardRenderer: View {
     private func formattedNumber(_ value: Decimal) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
-        formatter.locale = Locale(identifier: "en_QA")
+        formatter.locale = Locale(identifier: store.isHomePresentation && store.isRightToLeft ? "ar_QA" : "en_QA")
         formatter.maximumFractionDigits = 2
         let decimalNumber = NSDecimalNumber(decimal: value)
         formatter.minimumFractionDigits =
@@ -4698,6 +4706,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     let topCornerRadius: CGFloat
     let bottomCornerRadius: CGFloat
     let isHomePresentation: Bool
+    let normalizesProductImage: Bool
     let contained: Bool
     let fillsEmptyAreaWithImageBackground: Bool
     let focusesPetFace: Bool
@@ -4841,12 +4850,20 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
                 displaySize: container.bounds.size
             ) { image in
                 guard context.coordinator.signature == signature, let image else { return }
-                UIView.transition(
-                    with: imageView,
-                    duration: 0.2,
-                    options: [.transitionCrossDissolve, .allowAnimatedContent]
-                ) {
-                    imageView.image = image
+                let applyImage: (UIImage) -> Void = { [weak imageView] prepared in
+                    guard context.coordinator.signature == signature, let imageView else { return }
+                    UIView.transition(
+                        with: imageView,
+                        duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.18,
+                        options: [.transitionCrossDissolve, .allowAnimatedContent]
+                    ) {
+                        imageView.image = prepared
+                    }
+                }
+                if normalizesProductImage {
+                    HomeProductImagePreparation.prepare(image, key: "home-product-v1|\(imageURL)|\(signature)", completion: applyImage)
+                } else {
+                    applyImage(image)
                 }
             }
             return
@@ -4858,6 +4875,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         coordinator: Coordinator
     ) {
         coordinator.task?.cancel()
+        coordinator.signature = nil
     }
 
     final class Coordinator {
@@ -4984,10 +5002,15 @@ private struct PPUniversalPill: View {
 
 @available(iOS 16.0, *)
 private struct PPUniversalScaleButtonStyle: ButtonStyle {
+    var isProductCart = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        if isProductCart {
+            PPProductCardButtonStyle().makeBody(configuration: configuration)
+        } else {
+            configuration.label
             .scaleEffect(
                 configuration.isPressed && !reduceMotion ? 0.96 : 1
             )
@@ -4998,6 +5021,7 @@ private struct PPUniversalScaleButtonStyle: ButtonStyle {
                     : .spring(response: 0.22, dampingFraction: 0.80),
                 value: configuration.isPressed
             )
+        }
     }
 }
 

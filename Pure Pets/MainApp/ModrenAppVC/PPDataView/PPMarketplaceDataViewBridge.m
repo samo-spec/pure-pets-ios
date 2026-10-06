@@ -569,7 +569,7 @@ static NSString *PPMarketplaceTrimmedString(id value)
 
 - (void)switchToAllMainKinds
 {
-    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
+    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories && self.viewModel.items.count > 0) {
         return;
     }
 

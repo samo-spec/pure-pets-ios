@@ -4394,8 +4394,8 @@
 "home_pulse_organize_care" = "Organize care";
 "home_pulse_page_position_a11y" = "%1$d of %2$d";
 "home_pulse_partial" = "Some sections could not update";
-"home_pulse_pet_context_subtitle" = "Choose which pet context to view";
-"home_pulse_pet_context_title" = "Your pet context";
+"home_pulse_pet_context_subtitle" = "Select a companion to browse its category";
+"home_pulse_pet_context_title" = "Your Pure Pets companion";
 "home_pulse_pet_selected_status" = "Selected";
 "home_pulse_pet_choose_status" = "Show on Home";
 "home_pulse_pet_hero_subtitle" = "Care, shop, and discover from one place.";
@@ -5471,3 +5471,26 @@
 "chat_passage_retry" = "Try sending again";
 "chat_header_last_active_format" = "Last seen %@";
 "chat_keyboard_dismiss" = "Dismiss keyboard";
+
+"home_pet_age_review" = "Review age in pet profile";
+"home_pet_context_browse" = "Select a pet to browse its category";
+"home_pet_context_active_format" = "Home recommendations follow %@’s category";
+"home_personal_hero_eyebrow" = "Your companion, at the heart of Pure Pets";
+"home_personal_hero_title" = "Every day with %@";
+"home_personal_hero_subtitle" = "Food, essentials and care from your companion’s category, in one place.";
+"home_personal_hero_action" = "Explore for %@";
+"home_for_pet_recommendations" = "Discoveries for %@";
+"home_for_pet_essentials" = "Essentials for %@";
+"home_for_pet_food" = "Food for %@";
+"home_for_pet_care" = "Care for %@";
+"home_personal_category_basis" = "Based on your pet’s category; choose what suits them";
+"home_universal_search_placeholder" = "Search Pure Pets";
+"home_universal_search_scope" = "Products, pets and services";
+"home_care_reminder_context" = "From your companion’s schedule";
+"home_care_reminder_action" = "Open care schedule in the pet profile";
+"home_lens_purpose" = "Point at an animal to explore its category and related discoveries.";
+"home_lens_signature" = "Discover through your camera";
+
+"home_restore_pet_context" = "Show %@’s picks";
+
+"home_universal_search_hint" = "Search products, pets and services. Touch and hold for care and category destinations.";

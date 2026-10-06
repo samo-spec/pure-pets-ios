@@ -53,7 +53,7 @@ enum HomeModelAdapter {
                 id: identifier,
                 name: presentation["name"] as? String ?? "",
                 breedOrCategory: presentation["context"] as? String ?? "",
-                age: presentation["age"] as? String ?? "",
+                age: homeAge(for: profile),
                 imageURL: rawImageURL.isEmpty ? nil : rawImageURL,
                 categoryID:
                     (presentation["categoryID"] as? NSNumber)?.intValue ?? 0,
@@ -62,6 +62,30 @@ enum HomeModelAdapter {
                 raw: profile
             )
         }
+    }
+
+    /// Home never rewrites profile data or interprets a corrupt month value as
+    /// a birth date. The generous ceiling includes long-lived species.
+    static func homeAge(for object: NSObject) -> String {
+        guard let profile = object as? PPPetProfile, profile.ageInMonths > 0 else { return "" }
+        guard profile.ageInMonths <= 3_600 else {
+            return localized("home_pet_age_review", fallback: "Review age in pet profile")
+        }
+        let formatter = DateComponentsFormatter()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: Language.isRTL() ? "ar" : "en")
+        formatter.calendar = calendar
+        formatter.allowedUnits = [.year, .month]
+        formatter.unitsStyle = .full
+        formatter.zeroFormattingBehavior = .dropAll
+        formatter.maximumUnitCount = 2
+        let components = DateComponents(year: profile.ageInMonths / 12, month: profile.ageInMonths % 12)
+        return isolated(formatter.string(from: components) ?? "")
+    }
+
+    /// Keep mixed Arabic/Latin names and values from reordering adjacent copy.
+    static func isolated(_ value: String) -> String {
+        "\u{2068}\(value)\u{2069}"
     }
 
     static func cards(
