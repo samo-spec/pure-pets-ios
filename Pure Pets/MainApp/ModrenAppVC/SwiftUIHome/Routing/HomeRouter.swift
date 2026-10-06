@@ -383,7 +383,8 @@ final class PPPureLensHostPresenter: NSObject {
         from presenter: UIViewController,
         handoff: LensGuidanceHandoff
     ) {
-        let format = localized("purelens_nova_context_draft")
+        let key = handoff.isSupported ? "purelens_nova_context_draft" : "purelens_nova_unsupported_draft"
+        let format = localized(key)
         let localeIdentifier = Language.currentLanguageCode() ?? Locale.current.identifier
         let draft = String(
             format: format,

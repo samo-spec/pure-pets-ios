@@ -89,6 +89,9 @@
 "lens.prompt.unsupported" = "This animal is not supported yet";
 "lens.prompt.unsupported.detail" = "%@ is not in the current Pure Pets animal categories.";
 "lens.prompt.unsupported.detail_fallback" = "This detection is not in the current Pure Pets animal categories.";
+"lens.prompt.unsupported.badge" = "Category not in store";
+"lens.unsupported.ask_nova" = "Ask Nova about this animal & supplies";
+"lens.unsupported.ask_nova.hint" = "Opens Nova AI assistant to suggest compatible supplies and information";
 "lens.prompt.uncertain" = "We need a clearer look";
 "lens.prompt.uncertain.detail" = "We cannot confirm the exact animal. Choose a possibility only if it looks right, or scan again.";
 "lens.prompt.uncertain.no_candidates" = "We cannot confirm the exact animal. Scan again from another angle.";

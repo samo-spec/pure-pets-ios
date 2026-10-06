@@ -16,6 +16,7 @@
 //
 
 import SwiftUI
+import PurePetsMessagingUI
 import AVFoundation
 import UIKit
 
@@ -113,6 +114,7 @@ struct ChatBarView: View {
     var onCameraTap: () -> Void
     var onVideoTap: () -> Void
     var onContactTap: () -> Void
+    var contactEnabled: Bool = false
     var onStickerTap: (PPChatSticker) -> Void = { _ in }
     var onSendAudio: (URL, Double) -> Void
     var onCancelReply: () -> Void = {}
@@ -121,6 +123,7 @@ struct ChatBarView: View {
 
     @State private var attachmentsExpanded = false
     @State private var stickerPickerPresented = false
+    @Namespace private var composerContinuity
 
     // MARK: - Recording Gesture State
 
@@ -354,8 +357,15 @@ struct ChatBarView: View {
     var body: some View {
         VStack(spacing: PPSpace.xs) {
             if state.hasReply {
-                replyPreview
-                    .transition(contentTransition)
+                Group {
+                    if usesMessagingPresentation { messagingReplyPreview }
+                    else { replyPreview }
+                }
+                .transition(contentTransition)
+            }
+            if usesMessagingPresentation, attachmentsExpanded, recorder.state == .idle {
+                messagingAttachmentStage
+                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
             composerBody
         }
@@ -383,8 +393,10 @@ struct ChatBarView: View {
             handleFocusRequest(shouldFocus)
         }
         .sheet(isPresented: $stickerPickerPresented) {
-            PPStickerPickerSheet { sticker in
-                onStickerTap(sticker)
+            if usesMessagingPresentation {
+                PPMessageStickerStage { sticker in onStickerTap(sticker) }
+            } else {
+                PPStickerPickerSheet { sticker in onStickerTap(sticker) }
             }
         }
     }
@@ -396,6 +408,7 @@ struct ChatBarView: View {
 
             if showsRecordControl {
                 recordControl
+                    .matchedGeometryEffect(id: "composer.action", in: composerContinuity, properties: usesMessagingPresentation && !reduceMotion ? .frame : [], isSource: trimmedMessage.isEmpty)
                     .padding(.trailing, PPSpace.sm)
                     .zIndex(4)
             }
@@ -405,23 +418,13 @@ struct ChatBarView: View {
         // prevents the microphone state from becoming a full-screen oval.
         .frame(
             height: usesMessagingPresentation
-                ? resolvedChatBarHeight
+                ? (recorder.state == .idle ? nil : resolvedChatBarHeight)
                 : chatBarHeight
         )
+        .frame(minHeight: usesMessagingPresentation ? resolvedChatBarHeight : nil)
         .background {
             if usesMessagingPresentation {
-                ZStack {
-                    if reduceTransparency {
-                        Capsule(style: .continuous)
-                            .fill(Color.ppElevatedSurface)
-                    } else {
-                        Capsule(style: .continuous)
-                            .fill(.ultraThinMaterial)
-                    }
-
-                    Capsule(style: .continuous)
-                        .fill(composerSurfaceColor)
-                }
+                Color.ppBackground
             } else {
                 Capsule(style: .continuous)
                     .fill(.ultraThinMaterial)
@@ -431,29 +434,22 @@ struct ChatBarView: View {
                     }
             }
         }
-        .overlay {
+        .overlay(alignment: .topLeading) {
             if usesMessagingPresentation {
-                Capsule(style: .continuous)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: [
-                                composerTopHighlight,
-                                composerBorderColor,
-                                composerBorderColor.opacity(0.44)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.0
-                    )
+                Rectangle()
+                    .fill(Color.ppSurfaceBorder)
+                    .frame(height: 1)
+                    .overlay(alignment: .leading) {
+                        Rectangle()
+                            .fill(composerAccent)
+                            .frame(width: state.hasReply ? 64 : (isTextFieldFocused ? 40 : 20), height: 2)
+                            .animation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.9), value: isTextFieldFocused)
+                            .animation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.9), value: state.hasReply)
+                    }
+                    .accessibilityHidden(true)
             }
         }
-        .shadow(
-            color: .black.opacity(usesMessagingPresentation ? 0.07 : 0.075),
-            radius: usesMessagingPresentation ? 10.0 : 12.0,
-            x: 0.0,
-            y: usesMessagingPresentation ? 4.0 : 5.0
-        )
+        .shadow(color: .black.opacity(usesMessagingPresentation ? 0 : 0.075), radius: 12, x: 0, y: 5)
         .animation(stateAnimation, value: recorder.state)
         .animation(stateAnimation, value: attachmentsExpanded)
         .onChange(of: recorder.state) { newState in
@@ -552,7 +548,8 @@ struct ChatBarView: View {
     private var stateContent: some View {
         switch recorder.state {
         case .idle:
-            idleComposer
+            if usesMessagingPresentation { messagingIdleComposer }
+            else { idleComposer }
         case .preparing:
             if usesMessagingPresentation {
                 messagingPreparingComposer
@@ -571,6 +568,157 @@ struct ChatBarView: View {
     }
 
     // MARK: - Idle Composer
+
+    /// The writing edge stays present while tools unfold above it. A draft never
+    /// disappears behind attachment controls and the recorder keeps one owner.
+    private var messagingIdleComposer: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            Button {
+                guard !state.thinking else { return }
+                isTextFieldFocused = false
+                withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.88)) {
+                    attachmentsExpanded.toggle()
+                }
+                UISelectionFeedbackGenerator().selectionChanged()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .light))
+                    .rotationEffect(.degrees(attachmentsExpanded ? 45 : 0))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(state.thinking)
+            .accessibilityLabel(localized(attachmentsExpanded ? "chat_attachment_picker_close" : "chat_attachment_picker_title"))
+            .accessibilityValue(localized(attachmentsExpanded ? "chat_attachment_picker_expanded" : "chat_attachment_picker_collapsed"))
+            .accessibilityIdentifier("pp.chat.composer.attachments")
+
+            messagingTextInput
+                .font(.custom("Beiruti-Medium", size: 18, relativeTo: .body))
+                .environment(\.layoutDirection, PurePetsMessageTextDirection.resolve(state.message, fallback: layoutDirection))
+                .multilineTextAlignment(.leading)
+                .foregroundStyle(Color.ppTextPrimary)
+                .tint(composerAccent)
+                .focused($isTextFieldFocused)
+                .disabled(state.thinking)
+                .submitLabel(.send)
+                .onSubmit(submitMessage)
+                .accessibilityLabel(localized("chat_input_placeholder"))
+                .accessibilityIdentifier("pp.chat.composer.text")
+                .padding(.vertical, 10)
+
+            if state.thinking {
+                ProgressView()
+                    .frame(width: 44, height: 44)
+                    .accessibilityLabel(localized("chat_status_sending"))
+            } else if !trimmedMessage.isEmpty {
+                Button(action: submitMessage) {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(composerOnAccent)
+                        .frame(width: 44, height: 44)
+                        .background(composerAccent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(PPVoiceActionButtonStyle(reduceMotion: reduceMotion))
+                .matchedGeometryEffect(id: "composer.action", in: composerContinuity, properties: reduceMotion ? [] : .frame, isSource: !trimmedMessage.isEmpty)
+                .accessibilityLabel(localized("chat_send_message"))
+                .accessibilityIdentifier("pp.chat.composer.send")
+                .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
+            }
+        }
+        .foregroundStyle(Color.ppTextPrimary)
+        .padding(.trailing, showsRecordControl ? recordControlHitSize + PPSpace.sm : 0)
+        .padding(.vertical, 8)
+        .animation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.88), value: trimmedMessage.isEmpty)
+    }
+
+    @ViewBuilder private var messagingTextInput: some View {
+        if #available(iOS 16.0, *) {
+            TextField(localized("chat_input_placeholder"), text: $state.message, axis: .vertical)
+                .lineLimit(1...(dynamicTypeSize.isAccessibilitySize ? 2 : 5))
+        } else {
+            // iOS 15 retains its native, horizontally scrolling text field.
+            TextField(localized("chat_input_placeholder"), text: $state.message)
+        }
+    }
+
+    @ViewBuilder private var messagingAttachmentStage: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            ScrollView { messagingAttachmentGrid }.frame(height: 180)
+        } else {
+            messagingAttachmentGrid
+        }
+    }
+
+    private var messagingAttachmentGrid: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 144 : 76), spacing: 8)], spacing: 8) {
+            messagingTool("chat_attachment_photo_title", symbol: "camera") { onCameraTap() }
+            messagingTool("chat_stickers_title", symbol: "face.smiling") { stickerPickerPresented = true }
+            messagingTool("chat_attachment_video_title", symbol: "video") { onVideoTap() }
+            if contactEnabled {
+                messagingTool("chat_attachment_contact_title", symbol: "person.crop.rectangle") { onContactTap() }
+            }
+        }
+        .padding(.vertical, 12)
+        .accessibilityIdentifier("pp.chat.composer.tool-stage")
+    }
+
+    private func messagingTool(_ key: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button {
+            closeAttachments()
+            action()
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.system(size: 24, weight: .light))
+                    .frame(height: 32)
+                    .accessibilityHidden(true)
+                Text(localized(key))
+                    .font(.custom("Beiruti-SemiBold", size: 14, relativeTo: .subheadline))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .foregroundStyle(Color.ppTextPrimary)
+        .buttonStyle(PPVoiceActionButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityIdentifier("pp.chat.tool.\(key)")
+    }
+
+    private var messagingReplyPreview: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "arrow.turn.down.forward")
+                .font(.system(size: 18, weight: .light))
+                .foregroundStyle(composerAccent)
+                .frame(width: 28, height: 44)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(state.replyTitle)
+                    .font(.custom("Beiruti-SemiBold", size: 13, relativeTo: .caption))
+                    .foregroundStyle(composerAccent)
+                Text(state.replySubtitle)
+                    .environment(\.layoutDirection, PurePetsMessageTextDirection.resolve(state.replySubtitle, fallback: layoutDirection))
+                    .font(.custom("Beiruti-Regular", size: 15, relativeTo: .subheadline))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                    .foregroundStyle(Color.ppTextSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .multilineTextAlignment(.leading)
+            .padding(.vertical, 8)
+            .accessibilityElement(children: .combine)
+            Button(action: onCancelReply) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(localized("chat_reply_cancel"))
+        }
+        .accessibilityIdentifier("pp.chat.composer.reply")
+    }
 
     private var idleComposer: some View {
         HStack(spacing: PPSpace.xs) {
@@ -1250,7 +1398,18 @@ struct ChatBarView: View {
     }
 
     private var recordingStatusDot: some View {
-        PPVoiceRecordingDot(active: recorder.state != .paused)
+        Group {
+            if usesMessagingPresentation {
+                // The measured waveform already conveys live input; the
+                // recording status remains legible without a second loop.
+                Circle()
+                    .fill(recorder.state == .paused ? Color.ppWarning : Color.ppError)
+                    .frame(width: 8, height: 8)
+                    .accessibilityHidden(true)
+            } else {
+                PPVoiceRecordingDot(active: recorder.state != .paused)
+            }
+        }
     }
 
     private var cancelVisualDirection: CGFloat {
@@ -1641,6 +1800,9 @@ struct ChatBarView: View {
         guard !state.thinking, !trimmedMessage.isEmpty else { return }
         onSendText(trimmedMessage)
         state.message = ""
+        if usesMessagingPresentation {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.65)
+        }
     }
 
     // MARK: - Formatting / Accessibility

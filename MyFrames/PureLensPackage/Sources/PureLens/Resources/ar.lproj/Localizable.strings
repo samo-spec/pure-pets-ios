@@ -89,6 +89,9 @@
 "lens.prompt.unsupported" = "هذا الحيوان غير مدعوم حالياً";
 "lens.prompt.unsupported.detail" = "فئة %@ غير موجودة ضمن فئات الحيوانات الحالية في بيور بتس.";
 "lens.prompt.unsupported.detail_fallback" = "هذه النتيجة غير موجودة ضمن فئات الحيوانات الحالية في بيور بتس.";
+"lens.prompt.unsupported.badge" = "غير متوفر كقسم مباشر";
+"lens.unsupported.ask_nova" = "اسأل نوفا عن هذا الحيوان والمستلزمات";
+"lens.unsupported.ask_nova.hint" = "يفتح مساعد نوفا الذكي لاقتراح المستلزمات والمعلومات المناسبة";
 "lens.prompt.uncertain" = "نحتاج نظرة أوضح";
 "lens.prompt.uncertain.detail" = "لم نتأكد من نوع الحيوان بدقة. اختر احتمالاً إذا بدا صحيحاً، أو امسح من جديد.";
 "lens.prompt.uncertain.no_candidates" = "لم نتأكد من نوع الحيوان بدقة. امسح من جديد من زاوية أخرى.";

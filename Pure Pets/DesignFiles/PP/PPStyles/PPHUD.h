@@ -34,6 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)showLoading;
 + (void)showLoading:(nullable NSString *)title;
 + (void)showLoading:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
++ (void)showWithStatus:(nullable NSString *)status;
 
 /// Ring progress HUD (determinate). Call setProgress: to update.
 + (void)showRingIn:(nullable UIView *)view

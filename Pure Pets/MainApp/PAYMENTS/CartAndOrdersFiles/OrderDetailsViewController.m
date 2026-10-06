@@ -467,6 +467,8 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 @property (nonatomic, strong) NSArray<PPOrderEligibilityDecision *> *eligibilityDecisions;
 @property (nonatomic, strong) NSArray<PPFulfillmentOrder *> *fulfillmentOrders;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, PPFulfillmentOrder *> *fulfillmentOrdersByID;
+@property (nonatomic, strong) NSMutableSet<NSString *> *failedFulfillmentIDs;
+@property (nonatomic, assign) NSUInteger fulfillmentReadGeneration;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, id<FIRListenerRegistration>> *fulfillmentDocumentListeners;
 @property (nonatomic, strong) id<FIRListenerRegistration> orderDocumentListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> requestsListener;
@@ -735,6 +737,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.eligibilityDecisions = @[];
     self.fulfillmentOrders = @[];
     self.fulfillmentOrdersByID = [NSMutableDictionary dictionary];
+    self.failedFulfillmentIDs = [NSMutableSet set];
     self.fulfillmentDocumentListeners = [NSMutableDictionary dictionary];
     self.orderManager = [PPOrderManager shared];
     self.isResolvingAddress = NO;
@@ -4652,12 +4655,14 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             [self.fulfillmentDocumentListeners[existingID] remove];
             [self.fulfillmentDocumentListeners removeObjectForKey:existingID];
             [self.fulfillmentOrdersByID removeObjectForKey:existingID];
+            [self.failedFulfillmentIDs removeObject:existingID];
         }
     }
 
     NSString *parentOrderID = [[self safeString:self.order.orderId] copy];
     NSString *observerUID = [self.realtimeObserverUID copy];
     NSInteger generation = self.realtimeObserverGeneration;
+    NSUInteger fulfillmentGeneration = self.fulfillmentReadGeneration;
     if (parentOrderID.length == 0 ||
         ![self isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:parentOrderID]) {
         [self stopFulfillmentDocumentListeners];
@@ -4675,22 +4680,19 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         id<FIRListenerRegistration> listener = [ref addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) strongSelf = weakSelf;
-                if (!strongSelf ||
+                if (!strongSelf || fulfillmentGeneration != strongSelf.fulfillmentReadGeneration ||
+                    ![[strongSelf normalizedFulfillmentOrderIDs] containsObject:fulfillmentID] ||
                     ![strongSelf isRealtimeObserverGenerationCurrent:generation userID:observerUID orderID:parentOrderID]) return;
 
                 if (error || !snapshot.exists || ![snapshot.data isKindOfClass:NSDictionary.class]) {
-                    NSLog(@"PPBackend > ORDER_DETAILS : FulfillmentOrder snapshot missing/error | fulfillmentID=%@ | exists=%d | error=%@",
-                          fulfillmentID,
-                          snapshot.exists,
-                          error.localizedDescription ?: @"none");
-                    if (!error) {
-                        [strongSelf.fulfillmentOrdersByID removeObjectForKey:fulfillmentID];
-                        [strongSelf renderFulfillmentSectionFromLiveChildren];
-                    }
+                    [strongSelf.fulfillmentOrdersByID removeObjectForKey:fulfillmentID];
+                    [strongSelf.failedFulfillmentIDs addObject:fulfillmentID];
+                    [strongSelf renderFulfillmentSectionFromLiveChildren];
                     return;
                 }
 
-                NSString *childOwnerUID = [strongSelf safeString:snapshot.data[@"parentUserId"]];
+                NSString *childOwnerUID = [strongSelf safeString:[snapshot.data[@"parentUserId"] isKindOfClass:NSString.class]
+                    ? snapshot.data[@"parentUserId"] : snapshot.data[@"customerID"]];
                 PPFulfillmentOrder *fulfillment = [PPFulfillmentOrder fromDictionary:snapshot.data fulfillmentID:snapshot.documentID];
                 if (childOwnerUID.length == 0 || ![childOwnerUID isEqualToString:observerUID] ||
                     fulfillment.parentOrderId.length == 0 || ![fulfillment.parentOrderId isEqualToString:parentOrderID]) {
@@ -4699,7 +4701,9 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
                           ![childOwnerUID isEqualToString:observerUID],
                           ![fulfillment.parentOrderId isEqualToString:parentOrderID]);
                     [strongSelf.fulfillmentOrdersByID removeObjectForKey:fulfillmentID];
+                    [strongSelf.failedFulfillmentIDs addObject:fulfillmentID];
                 } else {
+                    [strongSelf.failedFulfillmentIDs removeObject:fulfillmentID];
                     strongSelf.fulfillmentOrdersByID[fulfillmentID] = fulfillment;
                     NSLog(@"PPBackend > ORDER_DETAILS : ↳ FulfillmentOrder [#%@] ownerID=%@ status=%@ itemCount=%ld",
                           fulfillment.fulfillmentID ?: fulfillmentID,
@@ -4718,11 +4722,19 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (void)stopFulfillmentDocumentListeners
 {
+    self.fulfillmentReadGeneration += 1;
     for (id<FIRListenerRegistration> listener in self.fulfillmentDocumentListeners.allValues.copy) {
         [listener remove];
     }
     [self.fulfillmentDocumentListeners removeAllObjects];
     [self.fulfillmentOrdersByID removeAllObjects];
+    [self.failedFulfillmentIDs removeAllObjects];
+}
+
+- (void)retryFulfillmentReads {
+    [self stopFulfillmentDocumentListeners];
+    [self restartFulfillmentDocumentListeners];
+    [self renderFulfillmentSectionFromLiveChildren];
 }
 
 - (void)renderFulfillmentSectionFromLiveChildren
@@ -4778,7 +4790,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (UIView *)buildFulfillmentGroupsCard:(NSArray<PPFulfillmentOrder *> *)orders
 {
-    if (orders.count == 0) return nil;
+    if (orders.count == 0 && self.failedFulfillmentIDs.count == 0) return nil;
 
     UIView *card = [[UIView alloc] init];
     PPOrderDetailsApplySurface(card, PPCornerCard, NO);
@@ -4813,6 +4825,32 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     ]];
 
     UIView *previous = summaryLabel;
+    if (self.failedFulfillmentIDs.count > 0) {
+        UILabel *errorLabel = [[UILabel alloc] init];
+        errorLabel.text = kLang(@"order_mission_fulfillment_load_error");
+        errorLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+        errorLabel.adjustsFontForContentSizeCategory = YES;
+        errorLabel.textColor = UIColor.systemRedColor;
+        errorLabel.numberOfLines = 0;
+        errorLabel.textAlignment = Language.alignmentForCurrentLanguage;
+        errorLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        [card addSubview:errorLabel];
+        UIButton *retry = [UIButton buttonWithType:UIButtonTypeSystem];
+        [retry setTitle:kLang(@"Retry") forState:UIControlStateNormal];
+        [retry addTarget:self action:@selector(retryFulfillmentReads) forControlEvents:UIControlEventTouchUpInside];
+        retry.translatesAutoresizingMaskIntoConstraints = NO;
+        [card addSubview:retry];
+        [NSLayoutConstraint activateConstraints:@[
+            [errorLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+            [errorLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+            [errorLabel.topAnchor constraintEqualToAnchor:previous.bottomAnchor constant:PPSpaceSM],
+            [retry.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+            [retry.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+            [retry.topAnchor constraintEqualToAnchor:errorLabel.bottomAnchor constant:PPSpaceSM],
+            [retry.heightAnchor constraintGreaterThanOrEqualToConstant:44],
+        ]];
+        previous = retry;
+    }
     for (PPFulfillmentOrder *fo in orders) {
         UIView *group = [self buildFulfillmentGroupCard:fo];
         group.translatesAutoresizingMaskIntoConstraints = NO;

@@ -228,10 +228,10 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark - Fulfillment (Phase 15 — read-only, customer-side)
 
 - (void)fetchFulfillmentOrdersWithIDs:(NSArray<NSString *> *)fulfillmentIDs
-                           completion:(void (^)(NSArray<PPFulfillmentOrder *> *orders))completion;
+                           completion:(void (^)(NSArray<PPFulfillmentOrder *> *orders, NSError * _Nullable error))completion;
 
 - (id<FIRListenerRegistration>)observeFulfillmentEventsForFulfillmentID:(NSString *)fulfillmentID
-                                                               onChange:(void (^)(NSArray<NSDictionary *> *events))onChange;
+                                                               onChange:(void (^)(NSArray<NSDictionary *> *events, NSError * _Nullable error))onChange;
 
 @end
 

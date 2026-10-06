@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AC1050013000000100000001 /* MessagingScreenVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1050013000000100000002 /* MessagingScreenVC.swift */; };
 		020973329FED4C5E282FFD6C /* NovaSpeechSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */; };
 		084CF1F2B02DD8B39A84295C /* NovaVoicePermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */; };
 		1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A83DC70A7020B60DBD910AC /* ChatBarView.swift */; };
@@ -947,6 +948,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AC1050013000000100000002 /* MessagingScreenVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagingScreenVC.swift; sourceTree = "<group>"; };
 		0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileManager.m; sourceTree = "<group>"; };
 		05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
@@ -4718,6 +4720,7 @@
 			isa = PBXGroup;
 			children = (
 				F2C7743C30245E1F000447CD /* PPMessagingScreen.swift */,
+				AC1050013000000100000002 /* MessagingScreenVC.swift */,
 			);
 			path = SwiftUI;
 			sourceTree = "<group>";
@@ -5919,6 +5922,7 @@
 				F2AF384D300AC36600FBF82D /* TransitionView.swift in Sources */,
 				F2AF384E300AC36600FBF82D /* MatchedGeometryState.swift in Sources */,
 				F2C7743E30245E1F000447CD /* PPMessagingScreen.swift in Sources */,
+				AC1050013000000100000001 /* MessagingScreenVC.swift in Sources */,
 				F27A482C2EE07D540044040E /* PPPhotoBrowserBridge.swift in Sources */,
 				F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */,
 				F2B09F962D1E0A2100FB3B26 /* GuideView.m in Sources */,

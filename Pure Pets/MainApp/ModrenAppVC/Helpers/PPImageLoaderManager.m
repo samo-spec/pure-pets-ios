@@ -61,6 +61,14 @@ static os_log_t PPImagePerformanceLog(void) {
         return;
     }
 
+    if ([urlString hasPrefix:@"purepets://support-logo"] || [urlString isEqualToString:@"purepets://support-logo"]) {
+        UIImage *supportLogo = [UIImage imageNamed:@"newlogo"];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(supportLogo);
+        });
+        return;
+    }
+
     NSURL *url = [NSURL URLWithString:urlString];
     if (!url) {
         if (completion) completion(nil);
@@ -112,6 +120,15 @@ static os_log_t PPImagePerformanceLog(void) {
         imageView.image = placeholder;
         if (complation) {
             complation(nil, nil);
+        }
+        return;
+    }
+
+    if ([urlString hasPrefix:@"purepets://support-logo"] || [urlString isEqualToString:@"purepets://support-logo"]) {
+        UIImage *supportLogo = [UIImage imageNamed:@"newlogo"] ?: placeholder;
+        imageView.image = supportLogo;
+        if (complation) {
+            complation(supportLogo, nil);
         }
         return;
     }
@@ -213,6 +230,7 @@ static os_log_t PPImagePerformanceLog(void) {
                                                completion:(dispatch_block_t)completion {
     NSMutableArray<NSURL *> *urls = [NSMutableArray array];
     for (NSString *string in urlStrings) {
+        if ([string hasPrefix:@"purepets://"]) continue;
         NSURL *url = [NSURL URLWithString:string];
         if (url) [urls addObject:url];
     }

@@ -52,11 +52,11 @@ static NSArray<NSString *> *PPPureLensSpeciesAliases(NSString *species)
     NSDictionary<NSString *, NSArray<NSString *> *> *aliases = @{
         @"dog": @[@"dog", @"dogs", @"canine", @"puppy", @"puppies", @"كلب", @"كلاب"],
         @"cat": @[@"cat", @"cats", @"feline", @"kitten", @"kittens", @"قط", @"قطة", @"قطط"],
-        @"bird": @[@"bird", @"birds", @"avian", @"parrot", @"طائر", @"طيور", @"عصفور", @"عصافير"],
+        @"bird": @[@"bird", @"birds", @"avian", @"parrot", @"canary", @"falcon", @"hawk", @"طائر", @"طيور", @"عصفور", @"عصافير", @"ببغاء", @"صقر"],
         @"rabbit": @[@"rabbit", @"rabbits", @"bunny", @"bunnies", @"أرنب", @"ارنب", @"أرانب", @"ارانب"],
         @"fish": @[@"fish", @"fishes", @"aquatic", @"سمك", @"أسماك", @"اسماك"],
-        @"reptile": @[@"reptile", @"reptiles", @"turtle", @"snake", @"lizard", @"زاحف", @"زواحف", @"سلحفاة"],
-        @"small mammal": @[@"small mammal", @"hamster", @"guinea pig", @"ferret", @"ثديي صغير", @"هامستر"],
+        @"reptile": @[@"reptile", @"reptiles", @"turtle", @"tortoise", @"snake", @"lizard", @"chameleon", @"gecko", @"iguana", @"زاحف", @"زواحف", @"سلحفاة"],
+        @"small mammal": @[@"small mammal", @"small mammals", @"hamster", @"guinea pig", @"ferret", @"hedgehog", @"gerbil", @"chinchilla", @"ثديي صغير", @"هامستر", @"قنفذ"],
         @"horse": @[@"horse", @"horses", @"equine", @"حصان", @"خيول"],
         @"camel": @[@"camel", @"camels", @"جمل", @"جمال"],
         @"sheep": @[@"sheep", @"lamb", @"خروف", @"أغنام", @"اغنام"],
@@ -96,7 +96,7 @@ static NSError *PPPureLensDiscoveryError(NSInteger code)
 {
     NSString *normalized = PPPureLensNormalizedText(species);
     NSSet<NSString *> *broadLabels = [NSSet setWithArray:@[
-        @"", @"animal", @"bird", @"mammal", @"reptile", @"fish", @"small mammal"
+        @"", @"animal", @"animals", @"pet", @"pets", @"mammal", @"creature"
     ]];
     if ([broadLabels containsObject:normalized]) {
         if (completion) completion(nil, nil);

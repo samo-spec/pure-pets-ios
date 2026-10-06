@@ -110,6 +110,10 @@ private enum AdoptHaptics {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
+    static func warning() {
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+
     static func error() {
         UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
@@ -296,6 +300,7 @@ final class AddAdoptPetStore: ObservableObject {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+        
         let oldMediaDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
             .appendingPathComponent("AdoptPetDrafts", isDirectory: true)
             .appendingPathComponent(oldScope, isDirectory: true)
@@ -311,23 +316,21 @@ final class AddAdoptPetStore: ObservableObject {
 
     func requestSignIn(completion: ((Bool) -> Void)? = nil) {
         persistDraft(showSuccessFeedback: false)
-        guard let presenter = AppManager.sharedInstance().topViewController() else {
-            UserManager.showPromptOnTopController()
-            completion?(false)
-            return
-        }
+        let presenter = AppManager.sharedInstance().topViewController()
         PPPetAdViewerLegacyBridge.presentSignIn(from: presenter) { [weak self] signedIn in
-            guard let self else { return }
-            if signedIn {
-                let newUID = Self.resolvedCurrentUID()
-                if !newUID.isEmpty {
-                    self.migrateDraft(from: self.draftOwnerUID, to: newUID)
+            Task { @MainActor in
+                guard let self else { return }
+                if signedIn {
+                    let newUID = Self.resolvedCurrentUID()
+                    if !newUID.isEmpty {
+                        self.migrateDraft(from: self.draftOwnerUID, to: newUID)
+                    }
+                    self.errorMessage = nil
+                    self.handleAuthStateRefresh()
+                    completion?(true)
+                } else {
+                    completion?(false)
                 }
-                self.errorMessage = nil
-                self.handleAuthStateRefresh()
-                completion?(true)
-            } else {
-                completion?(false)
             }
         }
     }

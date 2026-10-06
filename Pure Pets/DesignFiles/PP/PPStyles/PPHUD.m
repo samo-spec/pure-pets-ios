@@ -437,6 +437,11 @@ static void PPHUDScheduleDismiss(NSTimeInterval delay)
     [self showIndeterminateIn:nil title:title subtitle:subtitle];
 }
 
++ (void)showWithStatus:(NSString *)status
+{
+    [self showLoading:status];
+}
+
 + (void)showRingIn:(UIView *)view title:(NSString *)title
 {
     [self showRingIn:view title:title subtitle:nil];

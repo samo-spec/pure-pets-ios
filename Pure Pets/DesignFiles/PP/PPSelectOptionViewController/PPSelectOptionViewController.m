@@ -636,16 +636,20 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     container.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     // 1. Sleek top grabber handle
+    BOOL hasNativeGrabber = NO;
+    if (@available(iOS 15.0, *)) {
+        UIViewController *sheetOwner = self.navigationController ?: self;
+        hasNativeGrabber = sheetOwner.sheetPresentationController.prefersGrabberVisible;
+    }
+    BOOL shouldHideCustomGrabber = self.isGenderSelector || isUserMode || hasNativeGrabber;
+
     UIView *grabber = [UIView new];
     grabber.translatesAutoresizingMaskIntoConstraints = NO;
     grabber.backgroundColor = [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.26]
                                                 darkColor:[UIColor colorWithWhite:1.0 alpha:0.38]];
     grabber.layer.cornerRadius = 2.5;
     grabber.layer.cornerCurve = kCACornerCurveContinuous;
-    // Gender already has an explicit close control; keep the decorative
-    // handle out of that focused three-choice sheet without changing spacing
-    // or swipe-to-dismiss behavior for this or any other picker.
-    grabber.hidden = self.isGenderSelector;
+    grabber.hidden = shouldHideCustomGrabber;
     [container addSubview:grabber];
 
     // 2. Circular glass close button
@@ -723,17 +727,27 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 
     CGFloat sideInset = [self pp_effectiveHorizontalInset];
 
-    NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
-        [grabber.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
-        [grabber.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
-        [grabber.widthAnchor constraintEqualToConstant:44.0],
-        [grabber.heightAnchor constraintEqualToConstant:5.0],
+    NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray array];
+    if (shouldHideCustomGrabber) {
+        [constraints addObjectsFromArray:@[
+            [closeBtn.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
+            [closeBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
+            [closeBtn.widthAnchor constraintEqualToConstant:32.0],
+            [closeBtn.heightAnchor constraintEqualToConstant:32.0]
+        ]];
+    } else {
+        [constraints addObjectsFromArray:@[
+            [grabber.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
+            [grabber.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
+            [grabber.widthAnchor constraintEqualToConstant:44.0],
+            [grabber.heightAnchor constraintEqualToConstant:5.0],
 
-        [closeBtn.topAnchor constraintEqualToAnchor:grabber.bottomAnchor constant:12.0],
-        [closeBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
-        [closeBtn.widthAnchor constraintEqualToConstant:32.0],
-        [closeBtn.heightAnchor constraintEqualToConstant:32.0]
-    ]];
+            [closeBtn.topAnchor constraintEqualToAnchor:grabber.bottomAnchor constant:12.0],
+            [closeBtn.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-sideInset],
+            [closeBtn.widthAnchor constraintEqualToConstant:32.0],
+            [closeBtn.heightAnchor constraintEqualToConstant:32.0]
+        ]];
+    }
 
     if (showsHeroSymbol) {
         [constraints addObjectsFromArray:@[

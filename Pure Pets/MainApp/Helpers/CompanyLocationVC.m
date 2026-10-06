@@ -71,7 +71,7 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
     }
 }
 
-@interface CompanyLocationVC () <CLLocationManagerDelegate>
+@interface CompanyLocationVC () <CLLocationManagerDelegate, UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) GMSMapView *mapView;
 @property (nonatomic, strong) CLLocationManager *locationManager;
@@ -88,6 +88,10 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
 @property (nonatomic, strong) UIView *bottomScrimView;
 @property (nonatomic, strong) CAGradientLayer *topScrimLayer;
 @property (nonatomic, strong) CAGradientLayer *bottomScrimLayer;
+
+@property (nonatomic, strong) UIButton *floatingBackButton;
+@property (nonatomic, strong) UIButton *sheetCloseButton;
+@property (nonatomic, assign) BOOL previousNavigationBarHidden;
 
 @property (nonatomic, strong) UIView *sheetView;
 @property (nonatomic, strong) UILabel *sheetTitleLabel;
@@ -130,6 +134,7 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
 
     [self pp_setupMap];
     [self pp_setupAmbientBackground];
+    [self pp_setupFloatingBackButton];
     [self pp_setupBottomSheet];
     [self pp_updateLocalizedCopy];
     [self pp_registerButtonFeedback];
@@ -137,19 +142,22 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
     [self pp_setRouteStatusTitleKey:@"company_location_ready_title"
                       detailTextKey:@"company_location_eta_placeholder"
                       detailOverride:nil
-                        accentTint:[PPLocationAccentColor() colorWithAlphaComponent:0.14]];
+                         accentTint:[PPLocationAccentColor() colorWithAlphaComponent:0.14]];
     [self pp_refreshActionAvailability];
     [self pp_prepareEntranceStateIfNeeded];
+    [self pp_setupGestureRecognizers];
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
 
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
-                      button:nil
-                       title:@""
-                    showBack:YES];
+    if (self.navigationController) {
+        self.previousNavigationBarHidden = self.navigationController.isNavigationBarHidden;
+        [self.navigationController setNavigationBarHidden:YES animated:animated];
+    }
+
+    [self pp_updateNavigationChrome];
     [self pp_applyBottomSurfaceAnimated:animated];
     [self pp_prepareEntranceStateIfNeeded];
     [self pp_startLocationUpdatesIfNeeded];
@@ -163,9 +171,13 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
     [self pp_runEntranceIfNeeded];
 }
 
-- (void)viewDidDisappear:(BOOL)animated
+- (void)viewWillDisappear:(BOOL)animated
 {
-    [super viewDidDisappear:animated];
+    [super viewWillDisappear:animated];
+
+    if (self.navigationController && !self.previousNavigationBarHidden) {
+        [self.navigationController setNavigationBarHidden:NO animated:animated];
+    }
 
     BOOL leavingScreen = self.isMovingFromParentViewController ||
     self.isBeingDismissed ||
@@ -190,6 +202,10 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
     [UIBezierPath bezierPathWithRoundedRect:self.sheetView.bounds cornerRadius:self.sheetView.layer.cornerRadius].CGPath;
     self.markerCalloutView.layer.shadowPath =
     [UIBezierPath bezierPathWithRoundedRect:self.markerCalloutView.bounds cornerRadius:self.markerCalloutView.layer.cornerRadius].CGPath;
+    if (self.floatingBackButton) {
+        self.floatingBackButton.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.floatingBackButton.bounds cornerRadius:self.floatingBackButton.layer.cornerRadius].CGPath;
+    }
 
     CGFloat topInset = self.view.safeAreaInsets.top + 24.0;
     CGFloat bottomInset = MAX(CGRectGetHeight(self.view.bounds) - CGRectGetMinY(self.sheetView.frame) + 30.0, 250.0);
@@ -320,6 +336,48 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
     ]];
 }
 
+- (void)pp_setupFloatingBackButton
+{
+    self.floatingBackButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.floatingBackButton.translatesAutoresizingMaskIntoConstraints = NO;
+    PPLocationApplyCornerRadius(self.floatingBackButton, 22.0);
+
+    if (@available(iOS 26.0, *)) {
+        self.floatingBackButton.backgroundColor = UIColor.clearColor;
+    } else {
+        self.floatingBackButton.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.88];
+    }
+
+    CGFloat borderAlpha = 0.70;
+    if (@available(iOS 26.0, *)) {
+        borderAlpha = 0.25;
+    }
+    self.floatingBackButton.layer.borderWidth = 1.0;
+    self.floatingBackButton.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:borderAlpha].CGColor;
+
+    self.floatingBackButton.layer.shadowColor = [UIColor colorWithWhite:0.10 alpha:1.0].CGColor;
+    self.floatingBackButton.layer.shadowOpacity = 0.12;
+    self.floatingBackButton.layer.shadowRadius = 12.0;
+    self.floatingBackButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    self.floatingBackButton.clipsToBounds = NO;
+    self.floatingBackButton.tintColor = PPLocationPrimaryTextColor();
+
+    [self.floatingBackButton addTarget:self
+                                action:@selector(pp_handleDismissOrBack)
+                      forControlEvents:UIControlEventTouchUpInside];
+
+    [self.view addSubview:self.floatingBackButton];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.floatingBackButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
+        [self.floatingBackButton.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:16.0],
+        [self.floatingBackButton.widthAnchor constraintEqualToConstant:44.0],
+        [self.floatingBackButton.heightAnchor constraintEqualToConstant:44.0]
+    ]];
+
+    [self.view bringSubviewToFront:self.floatingBackButton];
+}
+
 - (void)pp_setupBottomSheet
 {
     UIView *contentView = nil;
@@ -358,6 +416,14 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
     [handle.heightAnchor constraintEqualToConstant:5.0].active = YES;
     [stack addArrangedSubview:[self pp_centeredContainerForView:handle height:5.0]];
 
+    UIStackView *headerRow = [[UIStackView alloc] init];
+    headerRow.translatesAutoresizingMaskIntoConstraints = NO;
+    headerRow.axis = UILayoutConstraintAxisHorizontal;
+    headerRow.alignment = UIStackViewAlignmentCenter;
+    headerRow.distribution = UIStackViewDistributionFill;
+    headerRow.spacing = 10.0;
+    headerRow.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
     self.sheetTitleLabel = [[UILabel alloc] init];
     self.sheetTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.sheetTitleLabel.numberOfLines = 0;
@@ -366,7 +432,29 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
     self.sheetTitleLabel.font = PPLocationScaledFont([GM boldFontWithSize:28.0] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold],
                                                      UIFontTextStyleTitle1);
     self.sheetTitleLabel.adjustsFontForContentSizeCategory = YES;
-    [stack addArrangedSubview:self.sheetTitleLabel];
+    [self.sheetTitleLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [headerRow addArrangedSubview:self.sheetTitleLabel];
+
+    self.sheetCloseButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.sheetCloseButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.sheetCloseButton.widthAnchor constraintEqualToConstant:34.0].active = YES;
+    [self.sheetCloseButton.heightAnchor constraintEqualToConstant:34.0].active = YES;
+    [self.sheetCloseButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.sheetCloseButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    PPLocationApplyCornerRadius(self.sheetCloseButton, 17.0);
+    if (@available(iOS 26.0, *)) {
+        self.sheetCloseButton.backgroundColor = UIColor.clearColor;
+    } else {
+        self.sheetCloseButton.backgroundColor = [[PPLocationPrimaryTextColor() colorWithAlphaComponent:0.06] colorWithAlphaComponent:1.0];
+    }
+    self.sheetCloseButton.tintColor = PPLocationSecondaryTextColor();
+    UIImageSymbolConfiguration *closeConfig = [UIImageSymbolConfiguration configurationWithPointSize:12.5 weight:UIImageSymbolWeightBold];
+    [self.sheetCloseButton setImage:[[UIImage systemImageNamed:@"xmark"] imageWithConfiguration:closeConfig] forState:UIControlStateNormal];
+    self.sheetCloseButton.accessibilityLabel = kLang(@"Close");
+    [self.sheetCloseButton addTarget:self action:@selector(pp_handleDismissOrBack) forControlEvents:UIControlEventTouchUpInside];
+    [headerRow addArrangedSubview:self.sheetCloseButton];
+
+    [stack addArrangedSubview:headerRow];
 
     self.sheetSubtitleLabel = [[UILabel alloc] init];
     self.sheetSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -500,6 +588,11 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
                           vertical:YES];
     self.callButton.accessibilityLabel = kLang(@"company_location_call_accessibility");
     self.supportButton.accessibilityLabel = kLang(@"company_location_support_accessibility");
+
+    BOOL isPushed = (self.navigationController.viewControllers.count > 1);
+    self.floatingBackButton.accessibilityLabel = isPushed ? kLang(@"Back") : kLang(@"Close");
+    self.sheetCloseButton.accessibilityLabel = kLang(@"Close");
+    [self pp_updateNavigationChrome];
 }
 
 #pragma mark - Location
@@ -1395,7 +1488,21 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
 
 - (void)pp_registerButtonFeedback
 {
-    for (UIButton *button in @[self.openMapsButton, self.previewRouteButton, self.recenterButton, self.callButton, self.supportButton, self.shareButton]) {
+    NSMutableArray<UIButton *> *buttons = [NSMutableArray arrayWithObjects:
+        self.openMapsButton,
+        self.previewRouteButton,
+        self.recenterButton,
+        self.callButton,
+        self.supportButton,
+        self.shareButton,
+        nil];
+    if (self.floatingBackButton) {
+        [buttons addObject:self.floatingBackButton];
+    }
+    if (self.sheetCloseButton) {
+        [buttons addObject:self.sheetCloseButton];
+    }
+    for (UIButton *button in buttons) {
         [button addTarget:self action:@selector(pp_buttonTouchDown:) forControlEvents:UIControlEventTouchDown];
         [button addTarget:self action:@selector(pp_buttonTouchUp:) forControlEvents:UIControlEventTouchUpInside];
         [button addTarget:self action:@selector(pp_buttonTouchUp:) forControlEvents:UIControlEventTouchUpOutside];
@@ -1473,6 +1580,57 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
                         title:kLang(@"company_location_alert_title")
                      subtitle:message
                    completion:nil];
+}
+
+#pragma mark - Navigation & Dismiss
+
+- (void)pp_updateNavigationChrome
+{
+    BOOL isPushed = (self.navigationController.viewControllers.count > 1);
+    NSString *symbolName = isPushed ? PPChevronName : @"xmark";
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightSemibold];
+    UIImage *image = [[UIImage systemImageNamed:symbolName] imageWithConfiguration:config];
+    [self.floatingBackButton setImage:image forState:UIControlStateNormal];
+    self.floatingBackButton.accessibilityLabel = isPushed ? kLang(@"Back") : kLang(@"Close");
+}
+
+- (void)pp_handleDismissOrBack
+{
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback impactOccurred];
+
+    if (self.navigationController.viewControllers.count > 1) {
+        [self.navigationController popViewControllerAnimated:YES];
+    } else if (self.presentingViewController || self.navigationController.presentingViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    } else {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
+}
+
+- (void)onBack
+{
+    [self pp_handleDismissOrBack];
+}
+
+- (void)pp_setupGestureRecognizers
+{
+    UISwipeGestureRecognizer *swipeDown = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleDismissOrBack)];
+    swipeDown.direction = UISwipeGestureRecognizerDirectionDown;
+    [self.sheetView addGestureRecognizer:swipeDown];
+
+    if (self.navigationController) {
+        self.navigationController.interactivePopGestureRecognizer.enabled = YES;
+        self.navigationController.interactivePopGestureRecognizer.delegate = self;
+    }
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+{
+    if (gestureRecognizer == self.navigationController.interactivePopGestureRecognizer) {
+        return self.navigationController.viewControllers.count > 1;
+    }
+    return YES;
 }
 
 #pragma mark - PPBottomSurface

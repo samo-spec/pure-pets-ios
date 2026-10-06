@@ -4718,6 +4718,7 @@
 /* PureLens Detector 3.0 host bridge */
 "purelens_remote_processing_disclosure" = "بعد موافقتك، تُرسل لقطة واحدة مختارة إلى خدمة Pure Pets التي تستخدم Google Gemini لتحليل المشهد. لا يُرسل فيديو مستمر، وتُحذف اللقطة بعد إتمام الطلب وفق سياسة الخصوصية.";
 "purelens_nova_context_draft" = "رصدت بيور لينس %@. أحتاج مساعدة في: ";
+"purelens_nova_unsupported_draft" = "تعرفت عدسة بيور لينس على %@، وهو غير متوفر كقسم مباشر في المتجر حالياً. هل يمكنك تزويدي بمعلومات عنه وعن المستلزمات والمنتجات المناسبة التي يمكن استخدامها معه؟";
 "purelens_nova_draft_discard_title" = "هل تريد حذف هذا السؤال؟";
 "purelens_nova_draft_discard_detail" = "لم يُرسل سؤالك إلى نوفا بعد.";
 "purelens_nova_draft_keep_editing" = "متابعة التعديل";
@@ -5037,6 +5038,7 @@
 "community_error_invalid_response" = "أرسل الخادم استجابة غير صالحة للمجتمع.";
 "community_error_invalid_record" = "سجل المجتمع غير مكتمل أو غير متاح.";
 "community_error_sign_in_required" = "سجّل الدخول للمتابعة.";
+"community_error_request_verification_failed" = "تعذر التحقق من الطلب. حاول مرة أخرى.";
 "community_error_feature_unavailable" = "ميزة المجتمع هذه غير متاحة حاليًا.";
 "community_error_refresh_required" = "تغيّر هذا السجل. حدّثه قبل إعادة المحاولة.";
 "community_error_secure_form_required" = "استخدم نموذج المجتمع الآمن لإنشاء هذا الإعلان أو تعديله.";
@@ -5431,3 +5433,25 @@
 "pet_folio_empty_detail" = "أضف صورة حيوانك الأليف وتفاصيله، واحتفظ بتطعيماته وتذكيراته في متناولك.";
 "pet_folio_edit_hint" = "يفتح تفاصيل الحيوان الأليف وسجل تطعيماته";
 "pet_folio_more_records_format" = "%ld إضافية في الملف";
+
+/* Messaging page and sticker stage */
+"chat_passage_you" = "أنت";
+"chat_return_to_present" = "العودة إلى المحادثة";
+"chat_page_empty_title" = "كلمة لطيفة، وبداية جديدة.";
+"chat_page_empty_detail" = "اسأل، شارك لحظة، أو دع ملصقًا يعبّر عنك.";
+"chat_attachment_contact_title" = "جهة اتصال";
+"chat_sticker_stage_title" = "عبّر بلا كلمات.";
+"chat_sticker_stage_subtitle" = "اختر ملصقًا، ودعه يعبّر عنك.";
+"chat_sticker_stage_pick" = "تعبيرك القادم يبدأ هنا.";
+"chat_sticker_stage_preview_hint" = "عاين الملصق، ثم اختر إرسال الملصق.";
+"chat_sticker_stage_send" = "إرسال الملصق";
+"chat_sticker_stage_handoff" = "جارٍ إضافته إلى المحادثة…";
+"chat_sticker_stage_release" = "أفلت للإرسال";
+"chat_sticker_stage_lift" = "ارفعه للإرسال، أو استخدم الزر أدناه.";
+"chat_sticker_stage_selected" = "قيد المعاينة";
+"chat_sticker_stage_unnamed" = "ملصق";
+"chat_sticker_stage_empty_detail" = "ستظهر الملصقات الجديدة هنا عند توفرها.";
+"chat_sticker_stage_retained" = "تعذّر التحديث. ملصقاتك المحفوظة ما زالت متاحة.";
+"chat_passage_retry" = "إعادة محاولة الإرسال";
+"chat_header_last_active_format" = "آخر ظهور %@";
+"chat_keyboard_dismiss" = "إخفاء لوحة المفاتيح";

@@ -4,6 +4,7 @@ import UIKit
 struct VoiceMessageView: View {
   let messageID: MessageID
   let payload: VoicePayload
+  var availableWidth: CGFloat? = nil
   @ObservedObject var audioCoordinator: ConversationAudioCoordinator
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -18,7 +19,7 @@ struct VoiceMessageView: View {
 
   var body: some View {
     Group {
-      if dynamicTypeSize.isAccessibilitySize {
+      if usesStackedLayout {
         VStack(alignment: .leading, spacing: 10) {
           playButton
           waveform
@@ -31,12 +32,16 @@ struct VoiceMessageView: View {
       }
     }
     .frame(
-      width: dynamicTypeSize.isAccessibilitySize ? nil : 246,
+      width: dynamicTypeSize.isAccessibilitySize ? nil : max(88, min(246, availableWidth ?? 246)),
       alignment: .leading
     )
     .onDisappear {
       audioCoordinator.stop(messageID: messageID)
     }
+  }
+
+  private var usesStackedLayout: Bool {
+    dynamicTypeSize.isAccessibilitySize || (availableWidth ?? 246) < 232
   }
 
   private var isPlaying: Bool {

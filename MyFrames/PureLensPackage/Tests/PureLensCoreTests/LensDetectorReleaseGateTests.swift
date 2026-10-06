@@ -52,6 +52,69 @@ final class LensAnimalClassificationTaxonomyTests: XCTestCase {
             XCTAssertEqual(try XCTUnwrap(LensPetRecognition.parse(detection)).species, expected)
         }
     }
+
+    func testTaxonomyIdentifiesDiverseWildAnimals() {
+        let wildAnimals = [
+            "lion", "tiger", "bear", "elephant", "giraffe", "zebra", "monkey",
+            "fennec fox", "fox", "cheetah", "leopard", "wolf", "hyena", "panda", "koala"
+        ]
+
+        for animal in wildAnimals {
+            XCTAssertTrue(
+                LensAnimalClassificationTaxonomy.isAnimal(identifier: animal),
+                "Expected \(animal) to be recognized as an animal"
+            )
+        }
+    }
+
+    func testTaxonomyIdentifiesAvianAndReptilianSpecies() {
+        let species = [
+            "canary", "falcon", "hawk", "parrot", "eagle", "owl", "flamingo",
+            "chameleon", "gecko", "iguana", "tortoise", "snake", "lizard"
+        ]
+
+        for item in species {
+            XCTAssertTrue(
+                LensAnimalClassificationTaxonomy.isAnimal(identifier: item),
+                "Expected \(item) to be recognized as an animal"
+            )
+        }
+    }
+
+    func testParserRecognizesSupportedAvianAndReptilianLabels() throws {
+        let box = LensNormalizedRect(x: 0.2, y: 0.2, width: 0.5, height: 0.5)
+        let canaryDetection = LensLocalDetection(
+            kind: .animal,
+            label: "canary",
+            confidence: 0.89,
+            boundingBox: box
+        )
+        XCTAssertEqual(try XCTUnwrap(LensPetRecognition.parse(canaryDetection)).species, "Bird")
+
+        let falconDetection = LensLocalDetection(
+            kind: .animal,
+            label: "falcon",
+            confidence: 0.92,
+            boundingBox: box
+        )
+        XCTAssertEqual(try XCTUnwrap(LensPetRecognition.parse(falconDetection)).species, "Bird")
+
+        let chameleonDetection = LensLocalDetection(
+            kind: .animal,
+            label: "chameleon",
+            confidence: 0.85,
+            boundingBox: box
+        )
+        XCTAssertEqual(try XCTUnwrap(LensPetRecognition.parse(chameleonDetection)).species, "Reptile")
+
+        let hedgehogDetection = LensLocalDetection(
+            kind: .animal,
+            label: "hedgehog",
+            confidence: 0.87,
+            boundingBox: box
+        )
+        XCTAssertEqual(try XCTUnwrap(LensPetRecognition.parse(hedgehogDetection)).species, "Small Mammal")
+    }
 }
 
 final class LensSpatialTrackingReleaseTests: XCTestCase {

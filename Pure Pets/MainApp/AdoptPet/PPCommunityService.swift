@@ -39,6 +39,18 @@ enum PPCommunityError: LocalizedError {
         }
     }
 
+    private static var authenticationFailureMessage: String {
+        // A callable's 401 can come from its transport or App Check layer,
+        // before Firebase evaluates the signed-in account. Keep that failure
+        // distinct from a missing session; signing in again cannot repair a
+        // service invocation configuration. This only selects recovery copy.
+        let user = Auth.auth().currentUser
+        let hasSignedInSession = user?.uid.isEmpty == false && user?.isAnonymous == false
+        return PPAdoptLang(hasSignedInSession
+            ? "community_error_request_verification_failed"
+            : "community_error_sign_in_required")
+    }
+
     static func userFacingErrorMessage(for error: Error?) -> String {
         guard let error else { return PPAdoptLang("unknownError") }
         if let communityError = error as? PPCommunityError {
@@ -74,17 +86,11 @@ enum PPCommunityError: LocalizedError {
         if message.localizedCaseInsensitiveContains("already exists") {
             return PPAdoptLang("community_error_invalid_record")
         }
-        if message.localizedCaseInsensitiveContains("sign in") ||
-           message.localizedCaseInsensitiveContains("unauthenticated") ||
-           message.localizedCaseInsensitiveContains("unauthorized") {
-            return PPAdoptLang("community_error_sign_in_required")
-        }
-
         if nsError.domain == FunctionsErrorDomain {
             if let code = FunctionsErrorCode(rawValue: nsError.code) {
                 switch code {
                 case .unauthenticated:
-                    return PPAdoptLang("community_error_sign_in_required")
+                    return authenticationFailureMessage
                 case .permissionDenied:
                     return PPAdoptLang("community_unavailable_message")
                 case .unavailable:
@@ -95,6 +101,14 @@ enum PPCommunityError: LocalizedError {
                     break
                 }
             }
+        }
+
+        // Typed permission denials above must keep their permission recovery,
+        // even when a server message also happens to say "unauthorized".
+        if message.localizedCaseInsensitiveContains("sign in") ||
+           message.localizedCaseInsensitiveContains("unauthenticated") ||
+           message.localizedCaseInsensitiveContains("unauthorized") {
+            return authenticationFailureMessage
         }
 
         // Defensive guard: if in RTL/Arabic, prevent raw English leak from server

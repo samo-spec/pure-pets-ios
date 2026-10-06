@@ -77,6 +77,14 @@ struct LensCameraScene: View {
                 theme: store.theme,
                 reduceTransparency: reduceTransparency
             )
+        } else if let animal = store.unsupportedAnimalContext, store.scanPhase == .unsupported {
+            LensAnimalIdentityBadge(
+                animal: animal,
+                species: store.localizedIdentityName(fallback: animal.species),
+                confirmedText: store.localized("lens.prompt.unsupported.badge"),
+                theme: store.theme,
+                reduceTransparency: reduceTransparency
+            )
         } else if store.scanPhase == .searching {
             Label(store.localized("lens.camera.guide"), systemImage: "viewfinder")
                 .font(store.theme.typography.subheadlineEmphasized)

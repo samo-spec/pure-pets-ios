@@ -162,62 +162,408 @@ public enum LensObservationConfidence {
 /// `birdhouse`, or `computer_mouse` from becoming animal detections.
 public enum LensAnimalClassificationTaxonomy {
     public static func species(for identifier: String) -> String? {
-        let normalized = identifier
+        let normalized = normalize(identifier)
+        return speciesByIdentifier[normalized] ?? fallbackAnimalSpecies(for: normalized)
+    }
+
+    public static func specificAnimal(for identifier: String) -> String? {
+        let normalized = normalize(identifier)
+        if let specific = specificAnimalByIdentifier[normalized] {
+            return specific
+        }
+        if let mapped = speciesByIdentifier[normalized] {
+            return mapped.prefix(1).uppercased() + mapped.dropFirst()
+        }
+        return isAnimal(identifier: identifier) ? displayName(for: identifier) : nil
+    }
+
+    public static func isAnimal(identifier: String) -> Bool {
+        let normalized = normalize(identifier)
+        if nonAnimalIdentifiers.contains(normalized) {
+            return false
+        }
+        return speciesByIdentifier[normalized] != nil
+            || specificAnimalByIdentifier[normalized] != nil
+            || animalGroupsByIdentifier[normalized] != nil
+            || biologicalAnimalClasses.contains(normalized)
+    }
+
+    public static func displayName(for identifier: String) -> String? {
+        let normalized = normalize(identifier)
+        if let specific = specificAnimalByIdentifier[normalized] {
+            return specific
+        }
+        guard isAnimal(identifier: identifier) else { return nil }
+        let words = normalized.split(separator: "_")
+        return words.map { word in
+            word.prefix(1).uppercased() + word.dropFirst().lowercased()
+        }.joined(separator: " ")
+    }
+
+    public static func animalGroup(for identifier: String) -> String? {
+        let normalized = normalize(identifier)
+        return animalGroupsByIdentifier[normalized]
+    }
+
+    private static func normalize(_ identifier: String) -> String {
+        identifier
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
             .replacingOccurrences(of: "-", with: "_")
             .replacingOccurrences(of: " ", with: "_")
-        return speciesByIdentifier[normalized]
     }
 
+    private static func fallbackAnimalSpecies(for normalized: String) -> String? {
+        if nonAnimalIdentifiers.contains(normalized) { return nil }
+        if let group = animalGroupsByIdentifier[normalized] {
+            return group
+        }
+        return nil
+    }
+
+    private static let nonAnimalIdentifiers: Set<String> = [
+        "hotdog", "hot_dog", "birdhouse", "bird_house", "fishbowl", "fish_bowl",
+        "computer_mouse", "mouse_pad", "fried_chicken", "chicken_nugget", "chicken_wing",
+        "cat_litter", "dog_food", "cat_food", "bird_feeder", "dog_bone", "cat_toy",
+        "leash", "collar", "aquarium_tank", "cage", "kennel", "carrier", "bed"
+    ]
+
     private static let speciesByIdentifier: [String: String] = [
+        // Retained for backward-compatibility with existing release gate contracts
         "dog": "dog",
         "canine": "dog",
+        "puppy": "dog",
+        "hound": "dog",
+        "terrier": "dog",
+        "retriever": "dog",
+        "golden_retriever": "dog",
+        "labrador_retriever": "dog",
+        "german_shepherd": "dog",
+        "poodle": "dog",
+        "beagle": "dog",
         "bulldog": "dog",
+        "french_bulldog": "dog",
+        "rottweiler": "dog",
+        "doberman": "dog",
+        "boxer": "dog",
+        "husky": "dog",
+        "siberian_husky": "dog",
+        "chihuahua": "dog",
+        "pomeranian": "dog",
+        "shih_tzu": "dog",
+        "cocker_spaniel": "dog",
+        "border_collie": "dog",
+        "mastiff": "dog",
+        "pug": "dog",
         "sheepdog": "dog",
+        "maltese": "dog",
+        "great_dane": "dog",
+        "samoyed": "dog",
+        "cane_corso": "dog",
+        "dalmatian": "dog",
+
         "cat": "cat",
         "adult_cat": "cat",
         "feline": "cat",
         "kitten": "cat",
+        "persian": "cat",
+        "persian_cat": "cat",
+        "siamese": "cat",
+        "siamese_cat": "cat",
+        "maine_coon": "cat",
+        "ragdoll": "cat",
+        "bengal": "cat",
+        "bengal_cat": "cat",
+        "sphynx": "cat",
+        "sphynx_cat": "cat",
+        "british_shorthair": "cat",
+        "scottish_fold": "cat",
+        "abyssinian": "cat",
+        "birman": "cat",
+        "russian_blue": "cat",
+        "american_shorthair": "cat",
+        "norwegian_forest_cat": "cat",
+
         "bird": "bird",
+        "birds": "bird",
+        "avian": "bird",
         "parrot": "bird",
         "cockatoo": "bird",
-        "hummingbird": "bird",
-        "pigeon": "bird",
-        "sparrow": "bird",
+        "cockatiel": "bird",
+        "parakeet": "bird",
+        "budgerigar": "bird",
+        "macaw": "bird",
+        "canary": "bird",
+        "finch": "bird",
+        "lovebird": "bird",
+        "conure": "bird",
+        "african_grey": "bird",
+        "falcon": "bird",
+        "peregrine_falcon": "bird",
+        "hawk": "bird",
         "eagle": "bird",
         "owl": "bird",
+        "barn_owl": "bird",
+        "hummingbird": "bird",
+        "pigeon": "bird",
+        "dove": "bird",
+        "sparrow": "bird",
         "swan": "bird",
         "peacock": "bird",
+        "duck": "bird",
+        "goose": "bird",
+        "chicken": "bird",
+        "rooster": "bird",
+        "turkey": "bird",
+        "quail": "bird",
+        "toucan": "bird",
+        "pelican": "bird",
+        "flamingo": "bird",
+        "penguin": "bird",
+        "ostrich": "bird",
+
         "rabbit": "rabbit",
+        "bunny": "rabbit",
+        "hare": "rabbit",
+        "cottontail": "rabbit",
+
         "fish": "fish",
         "goldfish": "fish",
-        "angelfish": "fish",
+        "betta": "fish",
+        "siamese_fighting_fish": "fish",
         "clownfish": "fish",
+        "angelfish": "fish",
+        "cichlid": "fish",
+        "guppy": "fish",
+        "tetra": "fish",
+        "koi": "fish",
+        "discus": "fish",
         "puffer_fish": "fish",
         "seahorse": "fish",
+        "catfish": "fish",
+
         "reptile": "reptile",
         "lizard": "reptile",
         "monitor_lizard": "reptile",
         "iguana": "reptile",
         "chameleon": "reptile",
         "gecko": "reptile",
+        "bearded_dragon": "reptile",
+        "skink": "reptile",
         "snake": "reptile",
         "snake_other": "reptile",
+        "python": "reptile",
+        "boa": "reptile",
+        "corn_snake": "reptile",
         "rattlesnake": "reptile",
         "turtle": "reptile",
         "tortoise": "reptile",
+        "terrapin": "reptile",
         "alligator_crocodile": "reptile",
+        "alligator": "reptile",
+        "crocodile": "reptile",
+        "frog": "reptile",
+        "toad": "reptile",
+        "salamander": "reptile",
+        "newt": "reptile",
+
         "hamster": "small mammal",
+        "guinea_pig": "small mammal",
         "ferret": "small mammal",
         "gerbil": "small mammal",
         "chinchilla": "small mammal",
         "rat": "small mammal",
+        "mouse": "small mammal",
+        "hedgehog": "small mammal",
+        "squirrel": "small mammal",
+        "chipmunk": "small mammal",
+        "sugar_glider": "small mammal",
+        "degu": "small mammal",
+        "small_mammal": "small mammal",
+
         "horse": "horse",
+        "pony": "horse",
+        "foal": "horse",
+        "equine": "horse",
         "camel": "camel",
+        "dromedary": "camel",
+        "donkey": "donkey",
+        "mule": "donkey",
         "sheep": "sheep",
+        "lamb": "sheep",
         "goat": "goat",
-        "cow": "cow"
+        "cow": "cow",
+        "cattle": "cow",
+        "calf": "cow",
+        "bull": "cow",
+        "pig": "pig",
+        "piglet": "pig",
+        "alpaca": "alpaca",
+        "llama": "llama",
+
+        "lion": "lion",
+        "tiger": "tiger",
+        "cheetah": "cheetah",
+        "leopard": "leopard",
+        "jaguar": "jaguar",
+        "panther": "panther",
+        "bear": "bear",
+        "panda": "panda",
+        "polar_bear": "polar_bear",
+        "koala": "koala",
+        "kangaroo": "kangaroo",
+        "fox": "fox",
+        "fennec_fox": "fox",
+        "wolf": "wolf",
+        "hyena": "hyena",
+        "jackal": "jackal",
+        "raccoon": "raccoon",
+        "badger": "badger",
+        "otter": "otter",
+        "beaver": "beaver",
+        "meerkat": "meerkat",
+        "sloth": "sloth",
+        "monkey": "monkey",
+        "chimpanzee": "chimpanzee",
+        "gorilla": "gorilla",
+        "elephant": "elephant",
+        "giraffe": "giraffe",
+        "zebra": "zebra",
+        "deer": "deer",
+        "stag": "deer",
+        "seal": "seal",
+        "sea_lion": "seal",
+        "dolphin": "dolphin",
+        "whale": "whale"
+    ]
+
+    private static let specificAnimalByIdentifier: [String: String] = [
+        "parrot": "Parrot",
+        "cockatoo": "Cockatoo",
+        "cockatiel": "Cockatiel",
+        "parakeet": "Parakeet",
+        "budgerigar": "Budgerigar",
+        "macaw": "Macaw",
+        "canary": "Canary",
+        "finch": "Finch",
+        "lovebird": "Lovebird",
+        "falcon": "Falcon",
+        "peregrine_falcon": "Peregrine Falcon",
+        "eagle": "Eagle",
+        "owl": "Owl",
+        "pigeon": "Pigeon",
+        "dove": "Dove",
+        "duck": "Duck",
+        "goose": "Goose",
+        "swan": "Swan",
+        "peacock": "Peacock",
+        "chicken": "Chicken",
+        "rooster": "Rooster",
+        "turkey": "Turkey",
+
+        "rabbit": "Rabbit",
+        "bunny": "Rabbit",
+        "hare": "Hare",
+        "hamster": "Hamster",
+        "guinea_pig": "Guinea Pig",
+        "ferret": "Ferret",
+        "gerbil": "Gerbil",
+        "chinchilla": "Chinchilla",
+        "hedgehog": "Hedgehog",
+        "sugar_glider": "Sugar Glider",
+
+        "turtle": "Turtle",
+        "tortoise": "Tortoise",
+        "terrapin": "Terrapin",
+        "chameleon": "Chameleon",
+        "gecko": "Gecko",
+        "iguana": "Iguana",
+        "lizard": "Lizard",
+        "bearded_dragon": "Bearded Dragon",
+        "monitor_lizard": "Monitor Lizard",
+        "snake": "Snake",
+        "python": "Python",
+        "boa": "Boa",
+        "frog": "Frog",
+        "toad": "Toad",
+
+        "goldfish": "Goldfish",
+        "betta": "Betta Fish",
+        "siamese_fighting_fish": "Betta Fish",
+        "clownfish": "Clownfish",
+        "angelfish": "Angelfish",
+        "cichlid": "Cichlid",
+        "koi": "Koi",
+        "guppy": "Guppy",
+        "tetra": "Tetra",
+        "seahorse": "Seahorse",
+        "puffer_fish": "Pufferfish",
+
+        "horse": "Horse",
+        "pony": "Pony",
+        "camel": "Camel",
+        "donkey": "Donkey",
+        "sheep": "Sheep",
+        "lamb": "Lamb",
+        "goat": "Goat",
+        "cow": "Cow",
+        "pig": "Pig",
+        "alpaca": "Alpaca",
+        "llama": "Llama",
+
+        "lion": "Lion",
+        "tiger": "Tiger",
+        "cheetah": "Cheetah",
+        "leopard": "Leopard",
+        "bear": "Bear",
+        "panda": "Panda",
+        "fox": "Fox",
+        "fennec_fox": "Fennec Fox",
+        "wolf": "Wolf",
+        "hyena": "Hyena",
+        "jackal": "Jackal",
+        "meerkat": "Meerkat",
+        "sloth": "Sloth",
+        "monkey": "Monkey",
+        "chimpanzee": "Chimpanzee",
+        "elephant": "Elephant",
+        "giraffe": "Giraffe",
+        "zebra": "Zebra",
+        "deer": "Deer",
+        "kangaroo": "Kangaroo",
+        "koala": "Koala",
+        "penguin": "Penguin",
+        "dolphin": "Dolphin"
+    ]
+
+    private static let animalGroupsByIdentifier: [String: String] = [
+        "dog": "mammal", "cat": "mammal", "horse": "mammal", "camel": "mammal",
+        "rabbit": "mammal", "hamster": "mammal", "guinea_pig": "mammal", "ferret": "mammal",
+        "chinchilla": "mammal", "sheep": "mammal", "goat": "mammal", "cow": "mammal",
+        "lion": "mammal", "tiger": "mammal", "bear": "mammal", "monkey": "mammal",
+        "elephant": "mammal", "deer": "mammal", "fox": "mammal", "fennec_fox": "mammal", "wolf": "mammal",
+        "hyena": "mammal", "jackal": "mammal", "meerkat": "mammal", "sloth": "mammal",
+        "cheetah": "mammal", "leopard": "mammal", "zebra": "mammal", "giraffe": "mammal",
+        "panda": "mammal", "koala": "mammal", "kangaroo": "mammal",
+
+        "bird": "bird", "parrot": "bird", "canary": "bird", "cockatiel": "bird",
+        "cockatoo": "bird", "budgerigar": "bird", "falcon": "bird", "eagle": "bird",
+        "owl": "bird", "pigeon": "bird", "dove": "bird", "duck": "bird", "swan": "bird",
+
+        "reptile": "reptile", "lizard": "reptile", "chameleon": "reptile", "gecko": "reptile",
+        "turtle": "reptile", "tortoise": "reptile", "snake": "reptile", "iguana": "reptile",
+
+        "amphibian": "amphibian", "frog": "amphibian", "toad": "amphibian",
+
+        "fish": "fish", "goldfish": "fish", "betta": "fish", "clownfish": "fish",
+        "angelfish": "fish", "cichlid": "fish", "koi": "fish", "seahorse": "fish"
+    ]
+
+    private static let biologicalAnimalClasses: Set<String> = [
+        "mammal", "mammalia", "bird", "aves", "reptile", "reptilia",
+        "amphibian", "amphibia", "fish", "pisces", "chordata", "vertebrate",
+        "carnivore", "carnivora", "herbivore", "rodent", "rodentia", "canine",
+        "feline", "felidae", "canidae", "equine", "equidae", "bovine", "bovidae"
     ]
 }
 
@@ -428,8 +774,9 @@ public struct LensGuidanceHandoff: Equatable, Sendable {
     public let species: String
     public let breed: String?
     public let displayName: String
+    public let isSupported: Bool
 
-    public init(animal: DetectedAnimalContext, displayName: String) {
+    public init(animal: DetectedAnimalContext, displayName: String, isSupported: Bool = true) {
         let normalizedSpecies = animal.species
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedBreed = animal.breed?
@@ -447,6 +794,7 @@ public struct LensGuidanceHandoff: Equatable, Sendable {
             (normalizedDisplayName.isEmpty ? normalizedSpecies : normalizedDisplayName)
                 .prefix(160)
         )
+        self.isSupported = isSupported
     }
 }
 

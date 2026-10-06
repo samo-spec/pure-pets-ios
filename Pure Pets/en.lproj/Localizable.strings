@@ -4734,6 +4734,7 @@
 /* PureLens Detector 3.0 host bridge */
 "purelens_remote_processing_disclosure" = "After you agree, one selected frame is sent to the Pure Pets service using Google Gemini to understand the scene. Continuous video is never sent, and the frame is deleted after the request according to the privacy policy.";
 "purelens_nova_context_draft" = "Pure Lens detected %@. I need help with: ";
+"purelens_nova_unsupported_draft" = "Pure Lens identified a %@, which isn't currently a direct store category. Can you tell me more about it and suggest compatible supplies or items that can be used with it?";
 "purelens_nova_draft_discard_title" = "Discard this question?";
 "purelens_nova_draft_discard_detail" = "Your question has not been sent to Nova.";
 "purelens_nova_draft_keep_editing" = "Keep Editing";
@@ -5053,6 +5054,7 @@
 "community_error_invalid_response" = "The server returned an invalid Community response.";
 "community_error_invalid_record" = "This Community record is incomplete or unavailable.";
 "community_error_sign_in_required" = "Sign in to continue.";
+"community_error_request_verification_failed" = "We couldn’t verify this request. Please try again.";
 "community_error_feature_unavailable" = "This Community feature is currently unavailable.";
 "community_error_refresh_required" = "This record changed. Refresh it before trying again.";
 "community_error_secure_form_required" = "Use the secure Community form to create or edit this listing.";
@@ -5447,3 +5449,25 @@
 "pet_folio_empty_detail" = "Add your pet’s photo and details, then keep vaccinations and reminders close.";
 "pet_folio_edit_hint" = "Opens pet details and vaccination records";
 "pet_folio_more_records_format" = "%ld more in profile";
+
+/* Messaging page and sticker stage */
+"chat_passage_you" = "You";
+"chat_return_to_present" = "Back to the conversation";
+"chat_page_empty_title" = "A little hello. A new beginning.";
+"chat_page_empty_detail" = "Ask a question, share a moment, or let a sticker say it.";
+"chat_attachment_contact_title" = "Contact";
+"chat_sticker_stage_title" = "Say it without words.";
+"chat_sticker_stage_subtitle" = "Pick a sticker. Give it the stage.";
+"chat_sticker_stage_pick" = "Your next expression starts here.";
+"chat_sticker_stage_preview_hint" = "Preview this sticker, then use Send sticker.";
+"chat_sticker_stage_send" = "Send sticker";
+"chat_sticker_stage_handoff" = "Adding to your conversation…";
+"chat_sticker_stage_release" = "Release to send";
+"chat_sticker_stage_lift" = "Lift to send, or use the button below.";
+"chat_sticker_stage_selected" = "On stage";
+"chat_sticker_stage_unnamed" = "Sticker";
+"chat_sticker_stage_empty_detail" = "New expressions will appear here when available.";
+"chat_sticker_stage_retained" = "Could not refresh. Your saved stickers are still here.";
+"chat_passage_retry" = "Try sending again";
+"chat_header_last_active_format" = "Last seen %@";
+"chat_keyboard_dismiss" = "Dismiss keyboard";

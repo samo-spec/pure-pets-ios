@@ -647,10 +647,13 @@ private enum LensPetLabelParser {
         "dog": "Dog", "dogs": "Dog", "canine": "Dog", "puppy": "Dog",
         "cat": "Cat", "cats": "Cat", "feline": "Cat", "kitten": "Cat",
         "bird": "Bird", "birds": "Bird", "avian": "Bird", "parrot": "Bird",
+        "canary": "Bird", "falcon": "Bird", "hawk": "Bird",
         "rabbit": "Rabbit", "bunny": "Rabbit",
-        "fish": "Fish", "reptile": "Reptile", "turtle": "Reptile",
-        "snake": "Reptile", "lizard": "Reptile",
+        "fish": "Fish", "fishes": "Fish", "aquatic": "Fish",
+        "reptile": "Reptile", "turtle": "Reptile", "tortoise": "Reptile",
+        "snake": "Reptile", "lizard": "Reptile", "chameleon": "Reptile", "gecko": "Reptile", "iguana": "Reptile",
         "hamster": "Small Mammal", "guinea pig": "Small Mammal", "ferret": "Small Mammal",
+        "hedgehog": "Small Mammal", "gerbil": "Small Mammal", "chinchilla": "Small Mammal",
         "small mammal": "Small Mammal", "horse": "Horse", "equine": "Horse",
         "camel": "Camel", "camels": "Camel", "sheep": "Sheep", "lamb": "Sheep",
         "goat": "Goat", "goats": "Goat", "cow": "Cow", "cows": "Cow", "cattle": "Cow"
@@ -716,6 +719,18 @@ private enum LensPetLabelParser {
             return LensPetRecognition(
                 breed: cleaned,
                 species: "Cat",
+                confidence: detection.confidence,
+                boundingBox: detection.boundingBox,
+                sourceLabel: raw
+            )
+        }
+
+        if let mappedSpecies = LensAnimalClassificationTaxonomy.species(for: raw),
+           let canonical = speciesAliases[mappedSpecies.lowercased()] {
+            let specific = LensAnimalClassificationTaxonomy.specificAnimal(for: raw)
+            return LensPetRecognition(
+                breed: (specific != nil && specific?.lowercased() != canonical.lowercased()) ? specific : nil,
+                species: canonical,
                 confidence: detection.confidence,
                 boundingBox: detection.boundingBox,
                 sourceLabel: raw

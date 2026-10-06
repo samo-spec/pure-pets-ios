@@ -1,4 +1,5 @@
 #if canImport(UIKit)
+import AVFoundation
 import Foundation
 import PureLensCore
 import UIKit
@@ -147,6 +148,26 @@ final class PureLensStore: ObservableObject {
                 ["kind": "camera", "errorType": String(message.prefix(120))]
             )
         }
+
+        if module.configuration.isDemoMode {
+            cameraAuthorization = .authorized
+        } else if AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) == nil {
+            cameraAuthorization = .unavailable
+        } else {
+            switch AVCaptureDevice.authorizationStatus(for: .video) {
+            case .authorized:
+                cameraAuthorization = .authorized
+                camera.start()
+            case .denied:
+                cameraAuthorization = .denied
+            case .restricted:
+                cameraAuthorization = .restricted
+            case .notDetermined:
+                cameraAuthorization = .notDetermined
+            @unknown default:
+                cameraAuthorization = .unavailable
+            }
+        }
     }
 
     deinit {
@@ -203,7 +224,7 @@ final class PureLensStore: ObservableObject {
     }
 
     var showsGuidanceAction: Bool {
-        guidanceActions != nil && animalContext != nil
+        guidanceActions != nil && (animalContext != nil || unsupportedAnimalContext != nil)
     }
 
     var canOpenGuidance: Bool {
@@ -211,11 +232,11 @@ final class PureLensStore: ObservableObject {
     }
 
     var localizedAnimalName: String {
-        guard let animalContext else {
+        guard let animal = animalContext ?? unsupportedAnimalContext else {
             return localized("lens.results.animal")
         }
-        let species = localizedIdentityName(fallback: animalContext.species)
-        guard let breed = animalContext.breed, !breed.isEmpty else {
+        let species = localizedIdentityName(fallback: animal.species)
+        guard let breed = animal.breed, !breed.isEmpty else {
             return species
         }
         return "\(species) · \(breed)"
@@ -472,14 +493,15 @@ final class PureLensStore: ObservableObject {
 
     func openGuidance() {
         guard !isOpeningGuidance,
-              let animalContext,
+              let animal = animalContext ?? unsupportedAnimalContext,
               let guidanceActions
         else { return }
 
         isOpeningGuidance = true
         let handoff = LensGuidanceHandoff(
-            animal: animalContext,
-            displayName: localizedAnimalName
+            animal: animal,
+            displayName: localizedAnimalName,
+            isSupported: animalContext != nil
         )
 
         cancelDiscoveryWork()
@@ -490,7 +512,10 @@ final class PureLensStore: ObservableObject {
         pauseCamera()
         analytics.track(
             "pure_lens_guidance_opened",
-            ["species": handoff.species]
+            [
+                "species": handoff.species,
+                "isSupported": handoff.isSupported ? "true" : "false"
+            ]
         )
         guidanceActions.open(handoff)
     }

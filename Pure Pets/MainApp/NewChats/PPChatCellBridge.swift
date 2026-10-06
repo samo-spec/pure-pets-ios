@@ -281,11 +281,21 @@ final class PPChatCellBridge: NSObject {
             return ""
         }()
 
+        // Support detection
+        let isSupport = ChatThreadModel.isSupportThread(thread) ||
+                        user?.id == ChatThreadModel.purePetsOfficialSupportUserID() ||
+                        thread.memberIDs.contains(ChatThreadModel.purePetsOfficialSupportUserID())
+
         // Avatar URL
-        let avatarURL: URL? = user?.userImageUrl
+        let avatarURL: URL? = {
+            if isSupport {
+                return URL(string: "purepets://support-logo")
+            }
+            return user?.userImageUrl
+        }()
 
         // Verified
-        let isVerified = user?.isVerified ?? false
+        let isVerified = (user?.isVerified ?? false) || isSupport
 
         // Presence
         let presence: PPChatPresence = {

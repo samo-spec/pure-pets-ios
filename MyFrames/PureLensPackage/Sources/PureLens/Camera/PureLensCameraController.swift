@@ -438,11 +438,9 @@ private final class PureLensFrameProcessor: NSObject, AVCaptureVideoDataOutputSa
             representativeWindowStartedAt = timestamp
         }
 
-        let elapsed = timestamp - (representativeWindowStartedAt ?? timestamp)
-        guard representativeSampleCount >= 3 || elapsed >= 1.1 else {
+        guard representativeSampleCount >= 1, let selected = bestRepresentativeFrame else {
             return nil
         }
-        let selected = bestRepresentativeFrame
         resetRepresentativeCapture()
         return selected
     }

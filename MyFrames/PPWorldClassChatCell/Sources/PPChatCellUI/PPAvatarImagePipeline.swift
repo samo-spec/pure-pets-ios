@@ -65,6 +65,13 @@ public final class PPAvatarImagePipeline: PPAvatarImageProviding, @unchecked Sen
             return PPAvatarImage(value: cached)
         }
 
+        if url.scheme == "purepets" || url.absoluteString.hasPrefix("purepets://") {
+            if let logo = UIImage(named: "newlogo") {
+                cache.setObject(logo, forKey: key as NSString)
+                return PPAvatarImage(value: logo)
+            }
+        }
+
         let entry: InFlightEntry = withLock {
             if let existing = inFlight[key] {
                 return existing

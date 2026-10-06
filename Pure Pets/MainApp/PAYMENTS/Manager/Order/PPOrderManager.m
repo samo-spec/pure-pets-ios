@@ -2261,50 +2261,98 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
 #pragma mark - Fulfillment (Phase 15 — read-only, customer-side)
 
 - (void)fetchFulfillmentOrdersWithIDs:(NSArray<NSString *> *)fulfillmentIDs
-                           completion:(void (^)(NSArray<PPFulfillmentOrder *> *orders))completion
+                           completion:(void (^)(NSArray<PPFulfillmentOrder *> *orders, NSError * _Nullable error))completion
 {
-    if (fulfillmentIDs.count == 0) {
-        if (completion) completion(@[]);
+    NSString *requestUID = [FIRAuth auth].currentUser.uid ?: @"";
+    if (requestUID.length == 0 || [FIRAuth auth].currentUser.isAnonymous) {
+        if (completion) completion(@[], [NSError errorWithDomain:@"PPOrderFulfillment" code:401
+            userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_mission_permission_denied")}]);
         return;
+    }
+    NSMutableOrderedSet<NSString *> *identifiers = [NSMutableOrderedSet orderedSet];
+    for (id value in fulfillmentIDs) {
+        if ([value isKindOfClass:NSString.class] && [value length] > 0 && ![value containsString:@"/"]) {
+            [identifiers addObject:value];
+        }
+    }
+    if (identifiers.count != fulfillmentIDs.count) {
+        // Duplicate IDs are harmless, but malformed IDs must not become a silent partial result.
+        for (id value in fulfillmentIDs) {
+            if (![value isKindOfClass:NSString.class] || [value length] == 0 || [value containsString:@"/"]) {
+                if (completion) completion(@[], [NSError errorWithDomain:@"PPOrderFulfillment" code:400
+                    userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_mission_fulfillment_load_error")}]);
+                return;
+            }
+        }
     }
     FIRFirestore *db = [FIRFirestore firestore];
     dispatch_group_t group = dispatch_group_create();
-    NSMutableArray<PPFulfillmentOrder *> *results = [NSMutableArray array];
-
-    for (NSString *fid in fulfillmentIDs) {
+    NSMutableDictionary<NSString *, PPFulfillmentOrder *> *results = [NSMutableDictionary dictionary];
+    __block NSError *readError = nil;
+    for (NSString *fid in identifiers) {
         dispatch_group_enter(group);
         [[[db collectionWithPath:@"FulfillmentOrders"] documentWithPath:fid]
          getDocumentWithCompletion:^(FIRDocumentSnapshot *snap, NSError *error) {
-            if (snap.exists && [snap.data isKindOfClass:NSDictionary.class]) {
-                PPFulfillmentOrder *fo = [PPFulfillmentOrder fromDictionary:snap.data fulfillmentID:snap.documentID];
-                [results addObject:fo];
-            }
-            dispatch_group_leave(group);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                NSString *owner = [snap.data[@"parentUserId"] isKindOfClass:NSString.class]
+                    ? snap.data[@"parentUserId"] : snap.data[@"customerID"];
+                if (error || !snap.exists || ![owner isEqualToString:requestUID]) {
+                    readError = readError ?: error ?: [NSError errorWithDomain:@"PPOrderFulfillment" code:404
+                        userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_mission_fulfillment_load_error")}];
+                } else {
+                    results[fid] = [PPFulfillmentOrder fromDictionary:snap.data fulfillmentID:snap.documentID];
+                }
+                dispatch_group_leave(group);
+            });
         }];
     }
-
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        if (completion) completion([results copy]);
+        if (![[FIRAuth auth].currentUser.uid isEqualToString:requestUID]) {
+            if (completion) completion(@[], [NSError errorWithDomain:@"PPOrderFulfillment" code:401
+                userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_mission_permission_denied")}]);
+            return;
+        }
+        NSMutableArray *ordered = [NSMutableArray array];
+        for (NSString *fid in identifiers) if (results[fid]) [ordered addObject:results[fid]];
+        if (completion) completion(ordered.copy, readError);
     });
 }
 
 - (id<FIRListenerRegistration>)observeFulfillmentEventsForFulfillmentID:(NSString *)fulfillmentID
-                                                               onChange:(void (^)(NSArray<NSDictionary *> *events))onChange
+                                                               onChange:(void (^)(NSArray<NSDictionary *> *events, NSError * _Nullable error))onChange
 {
-    if (!onChange || fulfillmentID.length == 0) return nil;
+    if (!onChange) return nil;
+    NSString *listenerUID = [FIRAuth auth].currentUser.uid ?: @"";
+    if (fulfillmentID.length == 0 || [fulfillmentID containsString:@"/"] || listenerUID.length == 0 ||
+        [FIRAuth auth].currentUser.isAnonymous) {
+        onChange(@[], [NSError errorWithDomain:@"PPOrderFulfillment" code:401
+            userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_mission_permission_denied")}]);
+        return nil;
+    }
     FIRFirestore *db = [FIRFirestore firestore];
     FIRQuery *q = [[[[db collectionWithPath:@"FulfillmentOrders"] documentWithPath:fulfillmentID]
                     collectionWithPath:@"events"] queryOrderedByField:@"createdAt" descending:YES];
     q = [q queryLimitedTo:30];
     return [q addSnapshotListener:^(FIRQuerySnapshot *snap, NSError *error) {
-        if (error || !onChange) return;
-        NSMutableArray<NSDictionary *> *events = [NSMutableArray array];
-        for (FIRDocumentSnapshot *doc in snap.documents) {
-            NSMutableDictionary *entry = [[doc data] isKindOfClass:NSDictionary.class] ? [[doc data] mutableCopy] : [NSMutableDictionary dictionary];
-            entry[@"eventId"] = doc.documentID;
-            [events addObject:[entry copy]];
-        }
-        dispatch_async(dispatch_get_main_queue(), ^{ onChange([events copy]); });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (![[FIRAuth auth].currentUser.uid isEqualToString:listenerUID]) {
+                onChange(@[], [NSError errorWithDomain:@"PPOrderFulfillment" code:401
+                    userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_mission_permission_denied")}]);
+                return;
+            }
+            if (error || !snap) {
+                onChange(@[], error ?: [NSError errorWithDomain:@"PPOrderFulfillment" code:503
+                    userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_mission_fulfillment_load_error")}]);
+                return;
+            }
+            NSMutableArray<NSDictionary *> *events = [NSMutableArray array];
+            for (FIRDocumentSnapshot *doc in snap.documents) {
+                NSMutableDictionary *entry = [doc.data mutableCopy] ?: [NSMutableDictionary dictionary];
+                entry[@"eventId"] = doc.documentID;
+                [events addObject:entry.copy];
+            }
+            onChange(events.copy, nil);
+        });
     }];
 }
 

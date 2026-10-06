@@ -1713,47 +1713,95 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)selectUser:(UserModel *)selectedUserClass vcName:(NSString *)vcName {
     (void)vcName;
 
+    if (![self pp_hasAuthenticatedSession]) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
+
+    NSString *targetUID = [selectedUserClass.ID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] ?: @"";
+    if (targetUID.length == 0) {
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"Error")
+                          subtitle:kLang(@"SomethingWentWrong")];
+        return;
+    }
+
+    NSString *currentUID = [self pp_currentChatIdentity];
+    if ([targetUID isEqualToString:currentUID]) {
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"Warning")
+                            subtitle:kLang(@"CannotChatWithSelf") ?: @"Cannot chat with yourself."];
+        return;
+    }
+
+    [PPHUD showLoading:kLang(@"Loading")];
+
+    __weak typeof(self) weakSelf = self;
     [[ChManager sharedManager] createOrGetChatThreadWithUser:selectedUserClass
                                                   completion:^(ChatThreadModel *chatThread, NSError *error) {
-        if (error) {
-            [PPHUD dismiss];
-            return;
-        }
-
-        [PPHUD dismiss];
-
         dispatch_async(dispatch_get_main_queue(), ^{
+            [PPHUD dismiss];
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+
+            if (error) {
+                NSString *errorMsg = error.localizedDescription.length > 0
+                    ? error.localizedDescription
+                    : kLang(@"SomethingWentWrong");
+                [PPAlertHelper showErrorIn:self
+                                     title:kLang(@"Error")
+                                  subtitle:errorMsg];
+                return;
+            }
+
             if (!chatThread) {
+                [PPAlertHelper showErrorIn:self
+                                     title:kLang(@"Error")
+                                  subtitle:kLang(@"SomethingWentWrong")];
                 return;
             }
 
             chatThread.otherUser = selectedUserClass;
 
-            UIViewController *presented = self.presentedViewController;
-            if (presented) {
-                if (presented.isBeingDismissed) {
-                    // Picker is already dismissing itself — wait for the
-                    // transition to finish, then open the chat.
-                    id<UIViewControllerTransitionCoordinator> tc = self.transitionCoordinator;
-                    if (tc) {
-                        [tc animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> _Nonnull context) {
-                            [self openChatWithThread:chatThread];
-                        }];
-                    } else {
-                        // Fallback: transition coordinator already nil — safe to open now
-                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                            [self openChatWithThread:chatThread];
-                        });
-                    }
-                } else {
-                    [self dismissViewControllerAnimated:YES completion:^{
-                        [self openChatWithThread:chatThread];
-                    }];
+            void (^presentChatBlock)(void) = ^{
+                UIViewController *presenter = [PPOverlayCoordinator pp_resolvedPresenterFrom:self];
+                BOOL presented = [PPOverlayCoordinator pp_openChatThread:chatThread
+                                                            petAdContext:nil
+                                                                  fromVC:presenter];
+                if (!presented) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        UIViewController *topPresenter = [PPOverlayCoordinator pp_resolvedPresenterFrom:self];
+                        BOOL retried = [PPOverlayCoordinator pp_openChatThread:chatThread
+                                                                  petAdContext:nil
+                                                                        fromVC:topPresenter];
+                        if (!retried) {
+                            [PPAlertHelper showErrorIn:self
+                                                 title:kLang(@"Error")
+                                              subtitle:kLang(@"SomethingWentWrong")];
+                        }
+                    });
                 }
-                return;
-            }
+            };
 
-            [self openChatWithThread:chatThread];
+            UIViewController *presentedVC = self.presentedViewController;
+            if (presentedVC && !presentedVC.isBeingDismissed) {
+                [presentedVC dismissViewControllerAnimated:YES completion:^{
+                    presentChatBlock();
+                }];
+            } else if (presentedVC && presentedVC.isBeingDismissed) {
+                id<UIViewControllerTransitionCoordinator> tc = presentedVC.transitionCoordinator ?: self.transitionCoordinator;
+                if (tc) {
+                    [tc animateAlongsideTransition:nil completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
+                        presentChatBlock();
+                    }];
+                } else {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        presentChatBlock();
+                    });
+                }
+            } else {
+                presentChatBlock();
+            }
         });
     }];
 }
@@ -1809,6 +1857,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     picker.filteredOptions = options;
     picker.parentForm = self;
     picker.imageLoaded = NO;
+    picker.useUsersOption = YES;
     picker.presentationStyle = PPSelectOptionPresentationSheet;
     picker.title = kLang(@"Select User");
     picker.view.backgroundColor = UIColor.systemBackgroundColor;

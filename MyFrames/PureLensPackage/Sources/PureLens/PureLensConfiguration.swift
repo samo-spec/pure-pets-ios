@@ -54,14 +54,14 @@ public struct PureLensConfiguration: Sendable {
 
     public init(
         frameUploadPolicy: PureLensFrameUploadPolicy = .selectedFrame,
-        analysisInterval: TimeInterval = 0.38,
+        analysisInterval: TimeInterval = 0.12,
         maximumFrameDimension: Int = 1_024,
         maximumSelectedFrameAge: TimeInterval = 4,
         requestTimeout: TimeInterval = 15,
         automaticallyResolvesDetections: Bool = true,
-        minimumDetectionConfidence: Double = 0.45,
+        minimumDetectionConfidence: Double = 0.40,
         minimumBreedConfidence: Double = 0.74,
-        stableDetectionFrameCount: Int = 3,
+        stableDetectionFrameCount: Int = 2,
         replacementStableFrameCount: Int = 4,
         lostDetectionFrameTolerance: Int = 2,
         spatialAssociation: LensSpatialAssociationConfiguration = .default,
@@ -83,7 +83,7 @@ public struct PureLensConfiguration: Sendable {
         policy: LensPolicyConfiguration = .init()
     ) {
         self.frameUploadPolicy = frameUploadPolicy
-        self.analysisInterval = min(max(0.20, analysisInterval), 1)
+        self.analysisInterval = min(max(0.08, analysisInterval), 1)
         self.maximumFrameDimension = min(max(512, maximumFrameDimension), 2_048)
         self.maximumSelectedFrameAge = min(max(1, maximumSelectedFrameAge), 8)
         self.requestTimeout = min(max(5, requestTimeout), 30)

@@ -1439,6 +1439,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         }
     }
     if (identifiers.count == 0) {
+        self.fulfillmentErrorMessage = @"";
         self.fulfillmentLoading = NO;
         [self emitState];
         return;
@@ -1453,18 +1454,24 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             PPMissionOnMain(^{
                 __strong typeof(weakSelf) self = weakSelf;
                 if (!self || !self.running || generation != self.generation ||
+                    ![[self normalizedFulfillmentOrderIDs] containsObject:identifier] ||
                     ![self hasCurrentOwnerAuthority]) return;
                 if (error) {
+                    [self.fulfillmentByID removeObjectForKey:identifier];
                     self.fulfillmentErrorMessage = kLang(@"order_mission_fulfillment_load_error");
                     [self.missingFulfillmentIDs addObject:identifier];
                 } else if (!snapshot.exists) {
                     [self.fulfillmentByID removeObjectForKey:identifier];
+                    self.fulfillmentErrorMessage = kLang(@"order_mission_fulfillment_load_error");
                     [self.missingFulfillmentIDs addObject:identifier];
                 } else {
                     NSString *parentID = PPMissionSafeString(snapshot.data[@"parentOrderId"] ?: snapshot.data[@"orderId"]);
-                    NSString *parentUserID = PPMissionSafeString(snapshot.data[@"parentUserId"]);
+                    // Rules permit customerID only when canonical ownership is absent/non-string.
+                    NSString *parentUserID = PPMissionSafeString([snapshot.data[@"parentUserId"] isKindOfClass:NSString.class]
+                        ? snapshot.data[@"parentUserId"] : snapshot.data[@"customerID"]);
                     if (parentID.length == 0 || ![parentID isEqualToString:self.order.orderId] ||
                         parentUserID.length == 0 || ![parentUserID isEqualToString:self.verifiedOwnerUID]) {
+                        [self.fulfillmentByID removeObjectForKey:identifier];
                         self.fulfillmentErrorMessage = kLang(@"order_mission_permission_denied");
                         [self.missingFulfillmentIDs addObject:identifier];
                     } else {

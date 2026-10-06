@@ -117,7 +117,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
 
     private let screenState = PPMessagingScreenState()
     private var actionRelay: PPMessagingActionRelay?
-    private var hostingController: UIHostingController<PPMessagingScreen>?
+    private var hostingController: UIHostingController<MessagingScreenVC>?
     private var chatThread: ChatThreadModel?
     private var launchPetAdContext: PetAd?
     private var launchAccessoryContext: PetAccessory?
@@ -390,7 +390,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
         }
         actionRelay = relay
 
-        let screen = PPMessagingScreen(state: screenState, relay: relay)
+        let screen = MessagingScreenVC(state: screenState, relay: relay)
         let host = UIHostingController(rootView: screen)
         host.view.backgroundColor = .clear
         host.view.translatesAutoresizingMaskIntoConstraints = false
@@ -2044,7 +2044,7 @@ public final class PPMessagingSwiftUIHostController: UIViewController, UIImagePi
 
 // MARK: - Presentation State
 
-private final class PPMessagingScreenState: ObservableObject {
+final class PPMessagingScreenState: ObservableObject {
     @Published private(set) var messages: [PPMessagingMessageSnapshot] = []
     @Published var isLoading = true
     @Published var initialLoadCompleted = false
@@ -2675,7 +2675,7 @@ private final class PPMessagingScreenState: ObservableObject {
     }
 }
 
-private struct PPMessagingMessageSnapshot: Identifiable {
+struct PPMessagingMessageSnapshot: Identifiable {
     let id: String
     let text: String
     let senderID: String
@@ -2839,7 +2839,7 @@ private extension Dictionary where Key == String, Value == Any {
 
 // MARK: - Action Relay
 
-private final class PPMessagingActionRelay {
+final class PPMessagingActionRelay {
     weak var delegate: PPMessagingSwiftUIHostControllerDelegate?
     var onSendText: ((String) -> Void)?
     var onSendAudio: ((URL, Double) -> Void)?
@@ -2911,7 +2911,7 @@ private final class PPMessagingActionRelay {
     }
 }
 
-private enum PPMessagingAction: String {
+enum PPMessagingAction: String {
     case close
     case more
     case profile
@@ -3300,7 +3300,7 @@ private struct PPMessagingConversationActionsSheet: View {
 
 // MARK: - Screen
 
-private struct PPMessagingHeaderHeightPreferenceKey: PreferenceKey {
+struct PPMessagingHeaderHeightPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -3308,776 +3308,35 @@ private struct PPMessagingHeaderHeightPreferenceKey: PreferenceKey {
     }
 }
 
-private struct PPMessagingScreen: View {
-    @ObservedObject var state: PPMessagingScreenState
-    let relay: PPMessagingActionRelay
+private struct PPMessagingHeaderDetailsHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.layoutDirection) private var layoutDirection
-    @State private var languageCode = Language.currentLanguageCode() ?? "en"
-    @State private var presentedMedia: PPMessagingMessageSnapshot?
-    @State private var hasPositionedInitially = false
-    @State private var isAtLatest = true
-    @State private var unseenMessageCount = 0
-    @State private var paginationAnchorID: String?
-    @State private var highlightedMessageID: String?
-    @State private var activeReplyGestureMessageID: String?
-    @State private var replyGestureOffset: CGFloat = 0
-    @State private var replyGestureActivityToken = 0
-    @State private var headerLayoutRevision = 0
-    @State private var preservesLatestDuringHeaderLayout = false
-    @State private var measuredHeaderHeight: CGFloat = 0
-    @State private var packageAudioCoordinator = ConversationAudioCoordinator()
-    @State private var unsendEligibilityNow = Date()
-
-    var body: some View {
-        GeometryReader { proxy in
-            VStack(spacing: 0) {
-                conversationContent(availableWidth: proxy.size.width)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.clear)
-                    // Keep the transcript as the full-height owner. SwiftUI
-                    // derives both content and indicator insets from the real
-                    // collapsed/expanded header height, including Dynamic Type.
-                    .safeAreaInset(edge: .top, spacing: 0) {
-                        conversationHeaderInset
-                            .background {
-                                GeometryReader { headerProxy in
-                                    Color.clear.preference(
-                                        key: PPMessagingHeaderHeightPreferenceKey.self,
-                                        value: headerProxy.size.height
-                                    )
-                                }
-                            }
-                    }
-                    .onPreferenceChange(
-                        PPMessagingHeaderHeightPreferenceKey.self,
-                        perform: handleMeasuredHeaderHeightChange
-                    )
-
-                composerRegion
-            }
-            .ignoresSafeArea(.container, edges: .bottom)
-            .background {
-                PPMessagingCanvas(backgroundImage: state.backgroundImage)
-                    .ignoresSafeArea()
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if state.keyboardIsPresented {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                }
-            }
-            .accessibilityIdentifier("pp.messaging.screen")
-        }
-        .environment(
-            \.layoutDirection,
-            languageCode == "ar" ? .rightToLeft : .leftToRight
-        )
-        .environment(\.locale, Locale(identifier: languageCode))
-        .onAppear {
-            refreshLanguage()
-        }
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for: Notification.Name("LanguageDidChangeNotification")
-            )
-        ) { _ in
-            refreshLanguage()
-        }
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for: Notification.Name("PPLanguageDidChangeNotification")
-            )
-        ) { _ in
-            refreshLanguage()
-        }
-        .onReceive(
-            Timer.publish(every: 30, on: .main, in: .common).autoconnect()
-        ) { now in
-            unsendEligibilityNow = now
-        }
-        .fullScreenCover(item: $presentedMedia) { message in
-            PPMessagingMediaViewer(message: message) {
-                presentedMedia = nil
-            } onSave: {
-                relay.request(.saveMedia, messageID: message.id)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var composerRegion: some View {
-        if state.isConversationBlocked {
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "hand.raised.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(PPMessagingPalette.failure)
-                    .accessibilityHidden(true)
-
-                Text(localized("chat.blocked.message"))
-                    .font(Font.ppBeirutiSemiBold(size: 15, relativeTo: .body))
-                    .foregroundStyle(PPMessagingPalette.primaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
-            .background(PPMessagingComposerBackdrop())
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("pp.messaging.composer.blocked")
-        } else {
-            ChatBarView(
-                state: state.composerState,
-                presentation: .messaging,
-                chatBarHeight: 54,
-                onSendText: { relay.sendText($0) },
-                onCameraTap: { relay.tapCamera() },
-                onVideoTap: { relay.tapVideo() },
-                onContactTap: { relay.tapContact() },
-                onStickerTap: { relay.selectSticker($0) },
-                onSendAudio: { url, duration in
-                    relay.sendAudio(url: url, duration: duration)
-                },
-                onCancelReply: {
-                    relay.request(.composerCancelledReply)
-                }
-            )
-            .accessibilityIdentifier("pp.messaging.composer")
-            .onReceive(state.composerState.$message.dropFirst()) { text in
-                relay.delegate?.messagingHostDidChangeText(text)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, state.keyboardIsPresented ? 8 : 22)
-            .animation(
-                reduceMotion ? nil : .timingCurve(0.23, 1, 0.32, 1, duration: 0.22),
-                value: state.keyboardIsPresented
-            )
-            .background {
-                PPMessagingComposerBackdrop()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var conversationHeaderInset: some View {
-        VStack(spacing: 0) {
-            PPMessagingHeader(
-                state: state,
-                relay: relay,
-                onExpansionChanged: handleHeaderExpansionChange
-            )
-
-            if state.connectionInterrupted {
-                PPMessagingConnectionRibbon {
-                    relay.request(.retryConnection)
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-    }
-
-    private func refreshLanguage() {
-        let nextLanguageCode = Language.currentLanguageCode() ?? "en"
-        guard nextLanguageCode != languageCode else { return }
-        languageCode = nextLanguageCode
-    }
-
-    private func handleHeaderExpansionChange(_: Bool) {
-        guard hasPositionedInitially else { return }
-        preservesLatestDuringHeaderLayout = isAtLatest
-        guard preservesLatestDuringHeaderLayout else { return }
-        headerLayoutRevision &+= 1
-    }
-
-    private func handleMeasuredHeaderHeightChange(_ height: CGFloat) {
-        guard height > 0 else { return }
-        if measuredHeaderHeight == 0 {
-            measuredHeaderHeight = height
-            return
-        }
-
-        // Expansion already publishes before its state mutation. This path
-        // covers other real inset changes such as language, Dynamic Type,
-        // context reflow, and the connection ribbon. Once preservation begins,
-        // intermediate animation frames are ignored until the existing settle.
-        guard abs(height - measuredHeaderHeight) > 0.5,
-              hasPositionedInitially,
-              isAtLatest,
-              !preservesLatestDuringHeaderLayout else { return }
-        measuredHeaderHeight = height
-        preservesLatestDuringHeaderLayout = true
-        headerLayoutRevision &+= 1
-    }
-
-    @ViewBuilder
-    private func conversationContent(availableWidth: CGFloat) -> some View {
-        if state.isLoading && state.messages.isEmpty {
-            PPMessagingLoadingState()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if state.connectionInterrupted && state.messages.isEmpty {
-            PPMessagingOfflineState {
-                relay.request(.retryConnection)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if state.initialLoadCompleted && state.messages.isEmpty {
-            PPMessagingEmptyState {
-                state.composerState.isFocusedTrigger = true
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            messageScroller(availableWidth: availableWidth)
-        }
-    }
-
-    private func messageScroller(availableWidth: CGFloat) -> some View {
-        ScrollViewReader { proxy in
-            ZStack(alignment: .bottom) {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        Color.clear
-                            .frame(height: 1)
-                            .id(PPMessagingScrollID.top)
-                            .onAppear {
-                                guard hasPositionedInitially,
-                                      state.canLoadOlder,
-                                      !state.isLoadingOlder,
-                                      !state.messages.isEmpty else { return }
-                                paginationAnchorID = state.messages.first?.id
-                                relay.request(.loadOlder)
-                            }
-
-                        if state.isLoadingOlder {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                    .controlSize(.small)
-                                    .tint(PPMessagingPalette.highlight)
-
-                                Text(localized("chat_loading_older"))
-                                    .font(Font.ppBeirutiMedium(size: 12, relativeTo: .caption))
-                                    .foregroundStyle(PPMessagingPalette.secondaryText)
-                            }
-                            .padding(.horizontal, 12)
-                            .frame(minHeight: 32)
-                            .background(PPMessagingPalette.separatorSurface, in: Capsule())
-                            .overlay {
-                                Capsule()
-                                    .strokeBorder(PPMessagingPalette.controlStroke, lineWidth: 0.6)
-                            }
-                            .padding(.vertical, 10)
-                            .accessibilityElement(children: .combine)
-                        }
-
-                        ForEach(Array(state.messages.enumerated()), id: \.element.id) { index, message in
-                            if needsDateSeparator(at: index) {
-                                PPMessagingDateSeparator(date: message.timestamp)
-                                    .padding(.vertical, index == 0 ? 8 : 10)
-                            }
-
-                            if state.unreadBoundaryMessageID == message.id {
-                                PPMessagingUnreadSeparator()
-                                    .id(PPMessagingScrollID.unreadBoundary)
-                                    .padding(.vertical, 8)
-                            }
-
-                            SmartMessageCell(
-                                message: PPMessagingAdapter.chatMessage(
-                                    from: message,
-                                    groupPosition: packageGroupPosition(at: index),
-                                    replySource: replySource(for: message),
-                                    audioState: audioState(for: message),
-                                    conversationName: state.conversationName
-                                ),
-                                showsAvatar: grouping(at: index) == .single || grouping(at: index) == .last,
-                                audioCoordinator: packageAudioCoordinator,
-                                actions: SmartMessageCell.Actions(
-                                    onReply: { handleMessageAction(.reply, message: message, proxy: proxy) },
-                                    onCopy: { handleMessageAction(.copy, message: message, proxy: proxy) },
-                                    onForward: {},
-                                    onDelete: { handleMessageAction(.unsend, message: message, proxy: proxy) },
-                                    onRetry: { handleMessageAction(.retry, message: message, proxy: proxy) },
-                                    onOpenReply: { _ in handleMessageAction(.openReplySource, message: message, proxy: proxy) },
-                                    onOpenImage: { _ in handleMessageAction(.openMedia, message: message, proxy: proxy) },
-                                    onOpenVideo: { _ in handleMessageAction(.openMedia, message: message, proxy: proxy) },
-                                    onReactionTap: { _ in },
-                                    onUpdateApp: openAppStore,
-                                    canDelete: message.isUnsendEligible(at: unsendEligibilityNow),
-                                    canForward: false
-                                ),
-                                animatesEntrance: message.animatesEntrance,
-                                isHighlighted: highlightedMessageID == message.id,
-                                replyOffset: activeReplyGestureMessageID == message.id
-                                    ? replyGestureOffset
-                                    : 0,
-                                maximumBubbleWidth: maximumBubbleWidth(
-                                    for: message,
-                                    availableWidth: availableWidth
-                                ),
-                                contentLayoutDirection: layoutDirection
-                            )
-                            // Sender lanes are physical, not semantic: outgoing
-                            // remains on the screen's right edge in both Arabic
-                            // and English. Payload text receives the captured
-                            // locale direction through SmartMessageCell.
-                            .environment(\.layoutDirection, .leftToRight)
-                            .id(message.id)
-                            .accessibilityIdentifier("pp.messaging.message.\(message.id)")
-                            .padding(.bottom, rowSpacing(after: index))
-                        }
-
-                        if state.isTyping {
-                            PPMessagingTypingRow(name: state.conversationName)
-                                .id(PPMessagingScrollID.typing)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-
-                        Color.clear
-                            .frame(height: 1)
-                            .id(PPMessagingScrollID.bottom)
-                            .onAppear {
-                                isAtLatest = true
-                                unseenMessageCount = 0
-                            }
-                            .onDisappear {
-                                if hasPositionedInitially,
-                                   !preservesLatestDuringHeaderLayout {
-                                    isAtLatest = false
-                                }
-                            }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 10)
-                    .padding(.bottom, 16)
-                }
-                .background(Color.clear)
-                .accessibilityIdentifier("pp.messaging.messages")
-                .ppInteractiveKeyboardDismissal()
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 6, coordinateSpace: .local)
-                        .onChanged { value in
-                            guard preservesLatestDuringHeaderLayout,
-                                  abs(value.translation.height) >
-                                    abs(value.translation.width) else { return }
-                            preservesLatestDuringHeaderLayout = false
-                            isAtLatest = false
-                        }
-                )
-                .overlayPreferenceValue(
-                    SmartMessageReplyRegionPreferenceKey.self
-                ) { regions in
-                    GeometryReader { geometry in
-                        PPMessagingTranscriptReplyPanGesture(
-                            targets: state.messages.compactMap { message in
-                                let packageID = PPMessagingAdapter.messageID(
-                                    from: message.id
-                                )
-                                guard let anchor = regions[packageID] else {
-                                    return nil
-                                }
-                                return PPMessagingReplyPanTarget(
-                                    messageID: message.id,
-                                    isOutgoing: message.isOutgoing,
-                                    frame: geometry[anchor]
-                                )
-                            },
-                            axisBias: PPMessagingReplyGestureMetrics.axisBias,
-                            onChanged: updateReplyGesture,
-                            onEnded: { target, horizontal, vertical in
-                                finishReplyGesture(
-                                    target: target,
-                                    horizontalDistance: horizontal,
-                                    verticalDistance: vertical,
-                                    proxy: proxy
-                                )
-                            },
-                            onCancelled: cancelReplyGesture
-                        )
-                    }
-                }
-                .onChange(of: state.initialLoadCompleted) { completed in
-                    guard completed else { return }
-                    positionInitially(using: proxy)
-                }
-                .onChange(of: state.messageRevision) { _ in
-                    handleMessageRevision(using: proxy)
-                }
-                .onChange(of: state.isTyping) { typing in
-                    guard typing, isAtLatest else { return }
-                    scrollToLatest(using: proxy, animated: true)
-                }
-                .onChange(of: state.keyboardIsPresented) { presented in
-                    guard presented else { return }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        scrollToLatest(using: proxy, animated: !reduceMotion)
-                    }
-                }
-                .onChange(of: state.keyboardExpansionRevision) { _ in
-                    // The host publishes keyboard frame expansion. Scroll message list to bottom
-                    // so the user's focus and latest messages follow the keyboard expansion.
-                    guard hasPositionedInitially else { return }
-                    DispatchQueue.main.async {
-                        scrollToLatest(using: proxy, animated: !reduceMotion)
-                    }
-                }
-                .onChange(of: headerLayoutRevision) { revision in
-                    guard hasPositionedInitially,
-                          preservesLatestDuringHeaderLayout else { return }
-
-                    DispatchQueue.main.async {
-                        guard headerLayoutRevision == revision,
-                              preservesLatestDuringHeaderLayout else { return }
-                        scrollToLatest(using: proxy, animated: false)
-                    }
-                    DispatchQueue.main.asyncAfter(
-                        deadline: .now() + (reduceMotion ? 0.02 : 0.42)
-                    ) {
-                        guard headerLayoutRevision == revision,
-                              preservesLatestDuringHeaderLayout else { return }
-                        scrollToLatest(using: proxy, animated: false)
-                        preservesLatestDuringHeaderLayout = false
-                    }
-                }
-                .onAppear {
-                    if state.initialLoadCompleted {
-                        positionInitially(using: proxy)
-                    }
-                }
-                .onDisappear {
-                    cancelReplyGesture()
-                }
-
-                if !isAtLatest || unseenMessageCount > 0 {
-                    PPMessagingLatestButton(count: unseenMessageCount) {
-                        scrollToLatest(using: proxy, animated: true)
-                    }
-                    // Overlay-only placement keeps the button above the date
-                    // and composer without changing message scroll insets.
-                    .padding(.bottom, 18)
-                    .zIndex(2)
-                    .transition(.scale(scale: 0.94).combined(with: .opacity))
-                }
-            }
-        }
-    }
-
-    private func positionInitially(using proxy: ScrollViewProxy) {
-        guard !hasPositionedInitially else { return }
-        DispatchQueue.main.async {
-            if state.unreadBoundaryMessageID != nil {
-                proxy.scrollTo(PPMessagingScrollID.unreadBoundary, anchor: .top)
-                isAtLatest = false
-            } else {
-                proxy.scrollTo(PPMessagingScrollID.bottom, anchor: .bottom)
-                isAtLatest = true
-            }
-            hasPositionedInitially = true
-        }
-    }
-
-    private func handleMessageRevision(using proxy: ScrollViewProxy) {
-        guard state.initialLoadCompleted else { return }
-        if !hasPositionedInitially {
-            positionInitially(using: proxy)
-            return
-        }
-
-        if let anchor = paginationAnchorID,
-           state.messages.first?.id != anchor,
-           !state.isLoadingOlder {
-            DispatchQueue.main.async {
-                proxy.scrollTo(anchor, anchor: .top)
-                paginationAnchorID = nil
-            }
-            return
-        }
-
-        guard state.latestAppendedCount > 0 else { return }
-        if isAtLatest || state.latestAppendContainsOutgoing {
-            scrollToLatest(using: proxy, animated: true)
-        } else {
-            unseenMessageCount += state.latestAppendedCount
-        }
-    }
-
-    private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
-        let operation = {
-            proxy.scrollTo(PPMessagingScrollID.bottom, anchor: .bottom)
-            isAtLatest = true
-            unseenMessageCount = 0
-        }
-        if animated && !reduceMotion {
-            withAnimation(.timingCurve(0.23, 1, 0.32, 1, duration: 0.28), operation)
-        } else {
-            operation()
-        }
-    }
-
-    private func handleMessageAction(
-        _ action: PPMessagingRowAction,
-        message: PPMessagingMessageSnapshot,
-        proxy: ScrollViewProxy
-    ) {
-        switch action {
-        case .reply:
-            relay.request(.reply, messageID: message.id)
-        case .copy:
-            UIPasteboard.general.string = message.text
-            relay.request(.copy, messageID: message.id)
-        case .unsend:
-            relay.request(.unsend, messageID: message.id)
-        case .retry:
-            relay.request(.retryMessage, messageID: message.id)
-        case .save:
-            relay.request(.saveMedia, messageID: message.id)
-        case .openMedia:
-            presentedMedia = message
-        case .toggleAudio:
-            relay.request(.audioToggle, messageID: message.id)
-        case .openReplySource:
-            guard let sourceID = message.replyToMessageID,
-                  state.messages.contains(where: { $0.id == sourceID }) else {
-                relay.request(.replyUnavailable, messageID: message.id)
-                return
-            }
-            if reduceMotion {
-                proxy.scrollTo(sourceID, anchor: .center)
-            } else {
-                withAnimation(.timingCurve(0.23, 1, 0.32, 1, duration: 0.28)) {
-                    proxy.scrollTo(sourceID, anchor: .center)
-                }
-            }
-            highlightedMessageID = sourceID
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                if highlightedMessageID == sourceID {
-                    highlightedMessageID = nil
-                }
-            }
-        }
-    }
-
-    private func openAppStore() {
-        guard let appStoreURL = URL(
-            string: "itms-apps://itunes.apple.com/app/id1594016239"
-        ) else { return }
-        UIApplication.shared.open(appStoreURL)
-    }
-
-    private func updateReplyGesture(
-        _ target: PPMessagingReplyPanTarget,
-        horizontalDistance: CGFloat,
-        verticalDistance: CGFloat
-    ) {
-        replyGestureActivityToken &+= 1
-        activeReplyGestureMessageID = target.messageID
-        guard horizontalDistance >
-                verticalDistance * PPMessagingReplyGestureMetrics.axisBias else {
-            replyGestureOffset = 0
-            return
-        }
-
-        replyGestureOffset = min(
-            max(horizontalDistance, 0),
-            PPMessagingReplyGestureMetrics.maximumOffset
-        )
-    }
-
-    private func finishReplyGesture(
-        target: PPMessagingReplyPanTarget,
-        horizontalDistance: CGFloat,
-        verticalDistance: CGFloat,
-        proxy: ScrollViewProxy
-    ) {
-        let commitsReply =
-            activeReplyGestureMessageID == target.messageID &&
-            horizontalDistance >= PPMessagingReplyGestureMetrics.commitThreshold &&
-            horizontalDistance >
-                verticalDistance * PPMessagingReplyGestureMetrics.axisBias
-
-        if commitsReply,
-           let message = state.messages.first(where: { $0.id == target.messageID }) {
-            handleMessageAction(.reply, message: message, proxy: proxy)
-        }
-        settleReplyGesture()
-    }
-
-    private func cancelReplyGesture() {
-        settleReplyGesture()
-    }
-
-    private func settleReplyGesture() {
-        replyGestureActivityToken &+= 1
-        let settlementToken = replyGestureActivityToken
-        let messageID = activeReplyGestureMessageID
-
-        guard !reduceMotion else {
-            replyGestureOffset = 0
-            activeReplyGestureMessageID = nil
-            return
-        }
-
-        withAnimation(
-            .interactiveSpring(
-                response: 0.25,
-                dampingFraction: 0.88,
-                blendDuration: 0.08
-            )
-        ) {
-            replyGestureOffset = 0
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            guard replyGestureActivityToken == settlementToken,
-                  activeReplyGestureMessageID == messageID else { return }
-            activeReplyGestureMessageID = nil
-        }
-    }
-
-    private func replySource(for message: PPMessagingMessageSnapshot) -> PPMessagingMessageSnapshot? {
-        guard let replyID = message.replyToMessageID else { return nil }
-        return state.messages.first(where: { $0.id == replyID })
-    }
-
-    private func grouping(at index: Int) -> PPMessagingGrouping {
-        let message = state.messages[index]
-        let previous = index > 0 ? state.messages[index - 1] : nil
-        let next = index + 1 < state.messages.count ? state.messages[index + 1] : nil
-        let joinsPrevious =
-            state.unreadBoundaryMessageID != message.id &&
-            (previous.map { canGroup(message, with: $0) } ?? false)
-        let joinsNext =
-            next?.id != state.unreadBoundaryMessageID &&
-            (next.map { canGroup(message, with: $0) } ?? false)
-
-        switch (joinsPrevious, joinsNext) {
-        case (false, false): return .single
-        case (false, true): return .first
-        case (true, true): return .middle
-        case (true, false): return .last
-        }
-    }
-
-    private func packageGroupPosition(at index: Int) -> MessageGroupPosition {
-        switch grouping(at: index) {
-        case .single: return .isolated
-        case .first: return .first
-        case .middle: return .middle
-        case .last: return .last
-        }
-    }
-
-    private func canGroup(
-        _ message: PPMessagingMessageSnapshot,
-        with other: PPMessagingMessageSnapshot
-    ) -> Bool {
-        guard message.senderID == other.senderID,
-              groupingFamily(for: message) == groupingFamily(for: other),
-              Calendar.current.isDate(message.timestamp, inSameDayAs: other.timestamp) else {
-            return false
-        }
-        return abs(message.timestamp.timeIntervalSince(other.timestamp)) <= 5 * 60
-    }
-
-    private func rowSpacing(after index: Int) -> CGFloat {
-        // Internal bubble padding carries readability; external spacing stays
-        // compact so short conversational runs feel connected. Exposed group
-        // edges retain enough separation to preserve sender and time changes.
-        grouping(at: index) == .last || grouping(at: index) == .single ? 7 : 3
-    }
-
-    private func groupingFamily(
-        for message: PPMessagingMessageSnapshot
-    ) -> String {
-        // A quote is a complete conversational thought, not a continuation of
-        // the preceding short text run. Keeping it isolated also gives the
-        // reply source and terminal delivery metadata a stable layout contract.
-        if message.replyToMessageID != nil {
-            return "reply:\(message.id)"
-        }
-        if message.isDeleted { return "text" }
-        switch message.kind {
-        case "image", "video":
-            return "media"
-        case "audio":
-            return "voice"
-        case "sticker":
-            return "sticker"
-        default:
-            return "text"
-        }
-    }
-
-    private func maximumBubbleWidth(
-        for message: PPMessagingMessageSnapshot,
-        availableWidth: CGFloat
-    ) -> CGFloat {
-        let transcriptWidth = max(availableWidth - 24, 220)
-        if dynamicTypeSize.isAccessibilitySize {
-            return min(max(transcriptWidth - 40, 232), 440)
-        }
-
-        switch message.kind {
-        case "audio":
-            return min(max(transcriptWidth * 0.70, 244), 272)
-        case "image", "video":
-            return min(max(transcriptWidth * 0.74, 238), 288)
-        case "sticker":
-            return min(max(transcriptWidth * 0.54, 194), 224)
-        default:
-            return min(max(transcriptWidth * 0.76, 214), 330)
-        }
-    }
-
-    private func needsDateSeparator(at index: Int) -> Bool {
-        guard index > 0 else { return true }
-        return !Calendar.current.isDate(
-            state.messages[index].timestamp,
-            inSameDayAs: state.messages[index - 1].timestamp
-        )
-    }
-
-    private func audioState(for message: PPMessagingMessageSnapshot) -> PPMessagingAudioState {
-        guard state.audioMessageID == message.id else {
-            return .init(
-                progress: 0,
-                duration: message.duration,
-                isPlaying: false,
-                isLoading: false
-            )
-        }
-        return .init(
-            progress: state.audioProgress,
-            duration: state.audioDuration > 0 ? state.audioDuration : message.duration,
-            isPlaying: state.audioPlaying,
-            isLoading: state.audioLoading
-        )
-    }
-
-    private func localized(_ key: String) -> String {
-        Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
-private enum PPMessagingScrollID: Hashable {
+
+enum PPMessagingScrollID: Hashable {
     case top
     case typing
     case bottom
     case unreadBoundary
 }
 
-private enum PPMessagingReplyGestureMetrics {
+enum PPMessagingReplyGestureMetrics {
     static let axisBias: CGFloat = 1.15
     static let commitThreshold: CGFloat = 56
     static let maximumOffset: CGFloat = 72
 }
 
-private struct PPMessagingReplyPanTarget {
+struct PPMessagingReplyPanTarget {
     let messageID: String
     let isOutgoing: Bool
     let frame: CGRect
 }
 
-private struct PPMessagingTranscriptReplyPanGesture: UIViewRepresentable {
+struct PPMessagingTranscriptReplyPanGesture: UIViewRepresentable {
     let targets: [PPMessagingReplyPanTarget]
     let axisBias: CGFloat
     let onChanged: (PPMessagingReplyPanTarget, CGFloat, CGFloat) -> Void
@@ -4250,125 +3509,222 @@ private struct PPMessagingTranscriptReplyPanGesture: UIViewRepresentable {
 
 // MARK: - Header and Screen States
 
-private struct PPMessagingHeader: View {
+struct PPMessagingHeader: View {
     @ObservedObject var state: PPMessagingScreenState
     let relay: PPMessagingActionRelay
     let onExpansionChanged: (Bool) -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var expanded = false
+    @State private var expandedDetailsHeight: CGFloat = 0
+
     var body: some View {
-        SpearChatHeader(
-            state: spearHeaderState,
-            style: SpearChatHeaderStyle(
-                brandColor: Color.ppPrimary,
-                // Keep the header in the same environmental field as the
-                // transcript. The support context becomes a semantic seam
-                // below the identity row instead of a second white page.
-                mainBackgroundColor: Color.ppBackground,
-                cornerRadius: 18,
-                horizontalPadding: 12
-            ),
-            copy: headerCopy,
-            actions: spearActions,
-            onExpansionChanged: onExpansionChanged,
-            contextThumbnail: { url in
-                AnyView(
-                    PPMessagingRemoteImage(
-                        localImage: nil,
-                        url: url,
-                        contentMode: .fill
-                    )
-                )
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 8) {
+                Button { relay.request(.close) } label: {
+                    Image(systemName: "chevron.backward")
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(localized("Back"))
+
+                Button {
+                    onExpansionChanged(!expanded)
+                    withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.9)) {
+                        expanded.toggle()
+                    }
+                    UISelectionFeedbackGenerator().selectionChanged()
+                } label: {
+                    HStack(spacing: 12) {
+                        PPMessagingAvatar(
+                            name: state.conversationName,
+                            urlString: state.avatarURLString,
+                            isOnline: state.isOnline,
+                            usesSupportLogo: state.usesSupportLogo
+                        )
+                        .frame(width: 46, height: 46)
+                        .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(state.conversationName.isEmpty ? localized("Chat") : state.conversationName)
+                                .font(.ppBeirutiBold(size: 24, relativeTo: .title2))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                            Text(headerPresence)
+                                .font(.ppBeirutiMedium(size: 13, relativeTo: .caption))
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .rotationEffect(.degrees(expanded ? 180 : 0))
+                            .accessibilityHidden(true)
+                    }
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityValue(localized(expanded ? "chat_header_expanded" : "chat_header_collapsed"))
+                .accessibilityHint(localized(expanded ? "chat_header_collapse_hint" : "chat_header_expand_hint"))
+                .accessibilityIdentifier("pp.messaging.identity")
+
+                Button { relay.request(.more) } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 19, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(localized("chat_header_more_accessibility"))
             }
-        ) { _ in
-            PPMessagingAvatar(
-                name: state.conversationName,
-                urlString: state.avatarURLString,
-                isOnline: false,
-                usesSupportLogo: state.usesSupportLogo
-            )
+            .padding(.horizontal, 8)
+
+            if expanded {
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        trustLabel
+                        ForEach(reputationMetrics) { metric in
+                            Text(metric.value + " · " + metric.label)
+                                .foregroundStyle(Color.ppTextSecondary)
+                        }
+                        if !state.isSupportThread {
+                            Button { relay.request(.profile) } label: {
+                                Label(localized("chat_header_view_stories"), systemImage: "person.crop.circle")
+                                    .frame(minHeight: 44)
+                            }
+                            Button { relay.request(.report) } label: {
+                                Label(localized("chat.report"), systemImage: "shield")
+                                    .frame(minHeight: 44)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .background {
+                        GeometryReader { detailsProxy in
+                            Color.clear.preference(
+                                key: PPMessagingHeaderDetailsHeightPreferenceKey.self,
+                                value: detailsProxy.size.height
+                            )
+                        }
+                    }
+                }
+                // A single trust line should not reserve an entire scroll pane.
+                // Long profiles still scroll within the existing accessible cap.
+                .frame(height: min(expandedDetailsHeight, dynamicTypeSize.isAccessibilitySize ? 180 : 148))
+                .onPreferenceChange(PPMessagingHeaderDetailsHeightPreferenceKey.self) { height in
+                    guard height.isFinite, height > 0 else { return }
+                    let fittedHeight = height.rounded(.up)
+                    guard expandedDetailsHeight != fittedHeight else { return }
+                    expandedDetailsHeight = fittedHeight
+                }
+                .font(.ppBeirutiMedium(size: 16, relativeTo: .body))
+                .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+            }
+
+            if let context = headerContext {
+                Button { relay.request(.context, messageID: context.backendID) } label: {
+                    contextDetail(context)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityIdentifier("pp.messaging.context")
+            }
+            Rectangle().fill(Color.ppSurfaceBorder).frame(height: 1)
         }
-        .frame(minHeight: 62)
+        .foregroundStyle(Color.ppTextPrimary)
+        .background(Color.ppBackground)
+        .buttonStyle(.plain)
     }
 
-    private var spearHeaderState: SpearChatHeaderLoadState {
-        let name = state.conversationName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else {
-            return state.isLoading
-                ? .loading
-                : .unavailable(title: localized("Chat"), retryTitle: nil)
+    private var headerPresence: String {
+        if state.isTyping { return localized("chat_header_typing") }
+        if state.isOnline {
+            return localized(state.isSupportThread ? "chat_header_support_online" : "chat_header_online_now")
         }
-
-        let presence: SpearPresence
-        if state.isTyping {
-            presence = .typing
-        } else if state.isOnline {
-            presence = .online(responseSpeed: nil)
-        } else if let lastActiveAt = state.lastActiveAt {
-            presence = .offline(lastActiveAt: lastActiveAt)
-        } else {
-            presence = .unavailable
+        if let lastActiveAt = state.lastActiveAt {
+            let formatter = RelativeDateTimeFormatter()
+            formatter.locale = Locale(identifier: Language.currentLanguageCode() ?? "en")
+            return ppMessagingFormat(localized("chat_header_last_active_format"), formatter.localizedString(for: lastActiveAt, relativeTo: Date()))
         }
-
-        let initials = name
-            .split(separator: " ")
-            .prefix(2)
-            .compactMap(\.first)
-            .map(String.init)
-            .joined()
-        let fallback = initials.isEmpty
-            ? SpearAvatarFallback.systemImage("person.crop.circle.fill")
-            : SpearAvatarFallback.initials(initials.uppercased())
-
-        let model = SpearChatHeaderModel(
-            id: state.participantID.isEmpty ? "legacy:\(name)" : state.participantID,
-            name: name,
-            avatarFallback: fallback,
-            trust: trustState,
-            presence: presence,
-            metrics: reputationMetrics,
-            context: headerContext,
-            isModal: state.isModal
-        )
-        return .ready(model)
+        if !state.presenceText.isEmpty { return state.presenceText }
+        return localized("chat_header_activity_unavailable")
     }
 
-    private var headerCopy: SpearChatHeaderCopy {
-        SpearChatHeaderCopy(
-            localeIdentifier: Language.isRTL() ? "ar_QA" : "en_QA",
-            backAccessibilityLabel: localized("Back"),
-            callButtonTitle: localized("Call"),
-            startCallAccessibilityLabel: localized("chat_header_start_call_accessibility"),
-            endCallAccessibilityLabel: localized("chat_header_end_call_accessibility"),
-            moreButtonTitle: localized("more"),
-            moreAccessibilityLabel: localized("chat_header_more_accessibility"),
-            verifiedSellerAccessibilityLabel: localized("chat_header_verified_seller"),
-            verifiedBusinessAccessibilityLabel: localized("chat_header_verified_business"),
-            restrictedAccessibilityLabel: localized("chat_header_restricted_account"),
-            profileButtonTitle: localized("chat_header_view_stories"),
-            safetyButtonTitle: localized("chat.report"),
-            loadingAccessibilityLabel: localized("chat_header_loading_identity"),
-            conversationAccessibilityPrefix: localized("chat_header_conversation_with"),
-            onlineNowText: state.isSupportThread
-                ? localized("chat_header_support_online")
-                : localized("chat_header_online_now"),
-            repliesFastText: localized("chat_header_replies_fast"),
-            repliesTypicallyText: localized("chat_header_replies_typically"),
-            typingText: localized("chat_header_typing"),
-            viewingOfferText: localized("chat_header_viewing_offer"),
-            lastSeenPrefix: localized("chat.last_seen"),
-            secureCallText: localized("chat_header_secure_call"),
-            expandAccessibilityHint: localized("chat_header_expand_hint"),
-            collapseAccessibilityHint: localized("chat_header_collapse_hint"),
-            expandedAccessibilityValue: localized("chat_header_expanded"),
-            collapsedAccessibilityValue: localized("chat_header_collapsed"),
-            unavailableText: localized("chat_header_activity_unavailable"),
-            closeAccessibilityLabel: localized("Close")
-        )
+    @ViewBuilder private func contextDetail(_ context: SpearConversationContext) -> some View {
+        switch context {
+        case .listing(let value):
+            HStack(spacing: 12) {
+                if let url = value.thumbnailURL {
+                    PPMessagingRemoteImage(localImage: nil, url: url, contentMode: .fill)
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .accessibilityHidden(true)
+                }
+                contextLine(title: value.title, detail: value.detail, symbol: value.symbolSystemName ?? "pawprint", action: value.actionTitle)
+            }
+        case .order(let value):
+            VStack(alignment: .leading, spacing: 8) {
+                contextLine(title: value.title, detail: value.detail, symbol: "shippingbox", action: value.actionTitle)
+                if expanded, let progress = value.progress {
+                    ProgressView(value: progress)
+                        .tint(Color.ppPrimary)
+                        .accessibilityLabel(value.title)
+                        .accessibilityValue(Text(progress, format: .percent))
+                }
+            }
+        case .support(let value):
+            contextLine(title: value.title, detail: value.detail, symbol: "lifepreserver", action: value.actionTitle)
+        }
+    }
+
+    private func contextLine(title: String, detail: String, symbol: String, action: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Image(systemName: symbol).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.ppBeirutiSemiBold(size: 15, relativeTo: .subheadline))
+                    .fixedSize(horizontal: false, vertical: true)
+                if expanded, !detail.isEmpty {
+                    Text(detail)
+                        .font(.ppBeirutiRegular(size: 14, relativeTo: .subheadline))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "arrow.up.forward")
+                .font(.system(size: 12, weight: .medium))
+                .accessibilityHidden(true)
+        }
+        .multilineTextAlignment(.leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(action)
+    }
+
+    @ViewBuilder private var trustLabel: some View {
+        switch trustState {
+        case .restricted(let reason):
+            Label(reason, systemImage: "exclamationmark.shield")
+                .foregroundStyle(Color.ppWarning)
+        case .verifiedBusiness:
+            Label(localized("chat_header_verified_business"), systemImage: "checkmark.seal")
+        case .verifiedSeller(let role, _):
+            Label(role, systemImage: "checkmark.seal")
+        case .standard(let role):
+            if let role, !role.isEmpty { Text(role) }
+        }
     }
 
     private var trustState: SpearTrustState {
         if state.participantRestricted {
-            return .restricted(reason: headerCopy.restrictedAccessibilityLabel)
+            return .restricted(reason: localized("chat_header_restricted_account"))
         }
         if state.usesSupportLogo {
             let name = state.supportDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -4379,7 +3735,7 @@ private struct PPMessagingHeader: View {
             || state.providerReviewCount > 0
         if state.participantVerified && isProvider {
             return .verifiedSeller(
-                role: headerCopy.verifiedSellerAccessibilityLabel,
+                role: localized("chat_header_verified_seller"),
                 location: nil
             )
         }
@@ -4530,22 +3886,6 @@ private struct PPMessagingHeader: View {
         return localizedSupportStatus(rawStatus)
     }
 
-    private var spearActions: SpearChatHeaderActions {
-        let contextAction: SpearContextHeaderAction = headerContext == nil
-            ? .hidden
-            : .enabled { context in
-                relay.request(.context, messageID: context.backendID)
-            }
-
-        return SpearChatHeaderActions(
-            onBack: { relay.request(.close) },
-            more: .enabled { relay.request(.more) },
-            profile: state.isSupportThread ? .hidden : .enabled { relay.request(.profile) },
-            safety: state.isSupportThread ? .hidden : .enabled { relay.request(.report) },
-            context: contextAction
-        )
-    }
-
     private func localized(_ key: String) -> String {
         Language.get(key, alter: key) ?? NSLocalizedString(key, comment: "")
     }
@@ -4560,14 +3900,14 @@ private struct PPMessagingAvatar: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Group {
-                if usesSupportLogo {
+                if usesSupportLogo || urlString == "purepets://support-logo" || urlString.hasPrefix("purepets://") {
                     ZStack {
                         Circle()
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color(red: 225 / 255.0, green: 29 / 255.0, blue: 72 / 255.0),
-                                        Color(red: 159 / 255.0, green: 18 / 255.0, blue: 57 / 255.0)
+                                        Color(uiColor: .secondarySystemBackground),
+                                        Color(uiColor: .systemBackground)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -4575,24 +3915,21 @@ private struct PPMessagingAvatar: View {
                             )
                         Circle()
                             .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        Color.white.opacity(0.40),
-                                        Color.clear,
-                                        Color.black.opacity(0.20)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
+                                Color(uiColor: .separator).opacity(0.35),
                                 lineWidth: 1
                             )
-                        Image("tintLogo")
-                            .renderingMode(.template)
-                            .resizable()
-                            .scaledToFit()
-                            .foregroundStyle(.white)
-                            .padding(8)
-                            .shadow(color: Color.black.opacity(0.30), radius: 2, x: 0, y: 1.5)
+                        if let image = UIImage(named: "newlogo") {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .padding(5)
+                        } else {
+                            Image(systemName: "lifepreserver.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .foregroundStyle(Color.ppPrimary)
+                                .padding(6)
+                        }
                     }
                 } else if let url = URL(string: urlString), !urlString.isEmpty {
                     AsyncImage(url: url) { phase in
@@ -4662,7 +3999,7 @@ private struct PPMessagingAvatar: View {
     }
 }
 
-private struct PPMessagingConnectionRibbon: View {
+struct PPMessagingConnectionRibbon: View {
     let retry: () -> Void
 
     var body: some View {
@@ -4760,7 +4097,7 @@ private struct PPMessagingStateMark: View {
     }
 }
 
-private struct PPMessagingLoadingState: View {
+struct PPMessagingLoadingState: View {
     var body: some View {
         GeometryReader { proxy in
             ScrollView {
@@ -4802,7 +4139,7 @@ private struct PPMessagingLoadingState: View {
     }
 }
 
-private struct PPMessagingEmptyState: View {
+struct PPMessagingEmptyState: View {
     let focusComposer: () -> Void
 
     var body: some View {
@@ -4866,7 +4203,7 @@ private struct PPMessagingEmptyState: View {
     }
 }
 
-private struct PPMessagingEmptyStateMark: View {
+struct PPMessagingEmptyStateMark: View {
     @ScaledMetric(relativeTo: .title3) private var markSize = 60
 
     var body: some View {
@@ -4889,7 +4226,7 @@ private struct PPMessagingEmptyStateMark: View {
     }
 }
 
-private struct PPMessagingOfflineState: View {
+struct PPMessagingOfflineState: View {
     let retry: () -> Void
 
     var body: some View {
@@ -4948,14 +4285,14 @@ private func ppMessagingVisibleHeight(in proxy: GeometryProxy) -> CGFloat {
 
 // MARK: - Message Rows
 
-private enum PPMessagingGrouping {
+enum PPMessagingGrouping {
     case single
     case first
     case middle
     case last
 }
 
-private enum PPMessagingRowAction {
+enum PPMessagingRowAction {
     case reply
     case copy
     case unsend
@@ -4966,7 +4303,7 @@ private enum PPMessagingRowAction {
     case openReplySource
 }
 
-private struct PPMessagingAudioState {
+struct PPMessagingAudioState {
     let progress: Double
     let duration: Double
     let isPlaying: Bool
@@ -4975,7 +4312,7 @@ private struct PPMessagingAudioState {
 
 // MARK: - Snapshot → Package ChatMessage Adapter
 
-private enum PPMessagingAdapter {
+enum PPMessagingAdapter {
     /// Create a deterministic UUID from any string (Firestore doc IDs are not UUIDs).
     /// Uses XOR-folded hashing to produce stable identity across renders.
 
@@ -5341,7 +4678,7 @@ private struct PPMessagingRemoteImage: View {
     }
 }
 
-private struct PPMessagingTypingRow: View {
+struct PPMessagingTypingRow: View {
     let name: String
     @Environment(\.layoutDirection) private var layoutDirection
 
@@ -5422,7 +4759,7 @@ private struct PPMessagingTypingDots: View {
     }
 }
 
-private struct PPMessagingDateSeparator: View {
+struct PPMessagingDateSeparator: View {
     let date: Date
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -5475,7 +4812,7 @@ private struct PPMessagingDateSeparator: View {
     }
 }
 
-private struct PPMessagingUnreadSeparator: View {
+struct PPMessagingUnreadSeparator: View {
     var body: some View {
         HStack(spacing: 9) {
             line
@@ -5585,7 +4922,7 @@ private struct PPMessagingLatestButton: View {
 
 // MARK: - Media Viewer
 
-private struct PPMessagingMediaViewer: View {
+struct PPMessagingMediaViewer: View {
     let message: PPMessagingMessageSnapshot
     let close: () -> Void
     let onSave: () -> Void
@@ -5963,7 +5300,7 @@ private struct PPMessagingComposerBackdrop: View {
 
 private typealias PPMessagingPressButtonStyle = PurePetsMessagingPressButtonStyle
 
-private extension View {
+extension View {
     @ViewBuilder
     func ppInteractiveKeyboardDismissal() -> some View {
         if #available(iOS 16.0, *) {
@@ -6073,7 +5410,7 @@ private enum PPMessagingFormatters {
 
 }
 
-private enum PPMessagingPalette {
+enum PPMessagingPalette {
     static let canvasUIColor = UIColor { traits in
         let increasedContrast = traits.accessibilityContrast == .high
         if traits.userInterfaceStyle == .dark {

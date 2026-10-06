@@ -161,6 +161,24 @@ struct LensBottomPrompt: View {
                     .accessibilityHint(store.localized("lens.privacy.consent.resume.hint"))
                 }
 
+                if store.scanPhase == .unsupported && store.canOpenGuidance {
+                    Button(action: store.openGuidance) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 16, weight: .semibold))
+                            Text(store.localized("lens.unsupported.ask_nova"))
+                                .font(store.theme.typography.headline)
+                        }
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(LensPrimaryButtonStyle(theme: store.theme, reduceMotion: motionDisabled))
+                    .accessibilityHint(store.localized("lens.unsupported.ask_nova.hint"))
+                }
+
                 Button(action: store.scanAgain) {
                     Label(store.localized("lens.scan_again"), systemImage: "viewfinder")
                         .font(store.theme.typography.headline)

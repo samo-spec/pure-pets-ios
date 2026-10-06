@@ -65,6 +65,28 @@ final class LensContractTests: XCTestCase {
         XCTAssertEqual(handoff.species, "Cat")
         XCTAssertEqual(handoff.breed, "Persian")
         XCTAssertEqual(handoff.displayName, "القطة الفارسية")
+        XCTAssertTrue(handoff.isSupported)
+    }
+
+    func testGuidanceHandoffSupportsUnsupportedAnimals() {
+        let animal = DetectedAnimalContext(
+            species: "Giraffe",
+            breed: nil,
+            confidence: 0.88,
+            detectionSource: .onDeviceVision,
+            boundingBox: LensNormalizedRect(x: 0.1, y: 0.1, width: 0.8, height: 0.8)
+        )
+
+        let handoff = LensGuidanceHandoff(
+            animal: animal,
+            displayName: "زرافة",
+            isSupported: false
+        )
+
+        XCTAssertEqual(handoff.species, "Giraffe")
+        XCTAssertNil(handoff.breed)
+        XCTAssertEqual(handoff.displayName, "زرافة")
+        XCTAssertFalse(handoff.isSupported)
     }
 
     func testDiscoveryRankingKeepsReliableBreedAheadOfVisualSimilarity() {
