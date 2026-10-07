@@ -79,6 +79,7 @@ static NSDate * PPDateFromValue(id value) {
     _imageURL = [PPSafeString(dictionary[@"imageURL"]) copy];
     _isDefaultPet = [dictionary[@"isDefaultPet"] respondsToSelector:@selector(boolValue)]
                     ? [dictionary[@"isDefaultPet"] boolValue] : NO;
+    _source = [PPSafeString(dictionary[@"source"]) copy];
     _createdAt = PPDateFromValue(dictionary[@"createdAt"]);
     _updatedAt = PPDateFromValue(dictionary[@"updatedAt"]);
 
@@ -114,6 +115,7 @@ static NSDate * PPDateFromValue(id value) {
         @"ageInMonths": @(MAX(0, self.ageInMonths)),
         @"imageURL": self.imageURL ?: @"",
         @"isDefaultPet": @(self.isDefaultPet),
+        @"source": self.source ?: @"",
         @"vaccinations": records.copy,
         @"createdAt": self.createdAt ?: [FIRFieldValue fieldValueForServerTimestamp],
         @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]

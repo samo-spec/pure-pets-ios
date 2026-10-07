@@ -55,6 +55,7 @@
 		A9F200030000000000000003 /* PPPetProfilesHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */; };
+		AA70C0012026100700000001 /* PPPetCareDiscoveryView.m in Sources */ = {isa = PBXBuildFile; fileRef = AA70C0012026100700000002 /* PPPetCareDiscoveryView.m */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
 		B7A100022FF6000100A7A002 /* PPWaveCardBG.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A100012FF6000100A7A001 /* PPWaveCardBG.swift */; };
 		B7DA10020000000000000002 /* PPMarketplaceDataViewBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = B7DA00020000000000000002 /* PPMarketplaceDataViewBridge.m */; };
@@ -1034,6 +1035,8 @@
 		C1A0000000000000000000B1 /* PPHomeZoneComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeZoneComponents.swift; sourceTree = "<group>"; };
 		C1A0000000000000000000C1 /* PPHomePresentationResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomePresentationResolverTests.swift; sourceTree = "<group>"; };
 		C29F0C84BAB44CEDB1ECD4CC /* PPAgentResponseParser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PPAgentResponseParser.m; sourceTree = "<group>"; };
+		AA70C0012026100700000002 /* PPPetCareDiscoveryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareDiscoveryView.m; sourceTree = "<group>"; };
+		AA70C0012026100700000003 /* PPPetCareDiscoveryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareDiscoveryView.h; sourceTree = "<group>"; };
 		C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareViewController.m; sourceTree = "<group>"; };
 		C919979EA9824470B116C5B4 /* PPAgentResponseParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentResponseParser.h; sourceTree = "<group>"; };
 		CD265F6B6EB1BDC3367DBB26 /* PPOfflineBannerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOfflineBannerView.h; sourceTree = "<group>"; };
@@ -2515,6 +2518,8 @@
 				F2A903432F9E7B4E0097485B /* PPPetCareVetCell.h */,
 				F2A903442F9E7B680097485B /* PPPetCareVetCell.m */,
 				40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */,
+				AA70C0012026100700000002 /* PPPetCareDiscoveryView.m */,
+				AA70C0012026100700000003 /* PPPetCareDiscoveryView.h */,
 				C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */,
 				F2A903492F9E84F30097485B /* PPPetCareViewerVC.h */,
 				F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */,
@@ -5756,6 +5761,7 @@
 				F27146802CCE6B5300F7F3BA /* XLFormTextView.m in Sources */,
 				F27146812CCE6B5300F7F3BA /* XLFormRowDescriptor.m in Sources */,
 				F2DF5DD42EFC9196009C7B6F /* PPHomeViewController.m in Sources */,
+				AA70C0012026100700000001 /* PPPetCareDiscoveryView.m in Sources */,
 				B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */,
 				F283FABC2E542933001EF0BA /* UserContactView.m in Sources */,
 				F21C2B0F2CD01E3A00B2373D /* XLFormCustomCell.m in Sources */,

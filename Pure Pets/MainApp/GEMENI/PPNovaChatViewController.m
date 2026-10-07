@@ -3970,17 +3970,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
     NSSet<NSString *> *exact = [NSSet setWithArray:@[
         @"hi", @"hello", @"hey", @"salam", @"ok", @"okay",
-        @"thanks", @"thank you", @"how are you", @"nova",
+        @"thanks", @"thank you", @"how are you", @"nova", @"pura",
         @"هاي", @"هاى", @"هلا", @"اهلا", @"اهلين", @"مرحبا",
-        @"السلام عليكم", @"نوفا", @"نوڤا", @"شكرا", @"تمام", @"اوكي"
+        @"السلام عليكم", @"نوفا", @"نوڤا", @"بيورا", @"بورا", @"شكرا", @"تمام", @"اوكي"
     ]];
     if ([exact containsObject:normalized]) {
         return YES;
     }
     NSSet<NSString *> *tokensAllowed = [NSSet setWithArray:@[
         @"hi", @"hello", @"hey", @"ok", @"okay", @"thanks", @"thank", @"you", @"how", @"are",
-        @"nova",
-        @"هاي", @"هاى", @"هلا", @"اهلا", @"اهلين", @"مرحبا", @"نوفا", @"نوڤا", @"السلام", @"عليكم", @"شكرا", @"تمام", @"اوكي"
+        @"nova", @"pura",
+        @"هاي", @"هاى", @"هلا", @"اهلا", @"اهلين", @"مرحبا", @"نوفا", @"نوڤا", @"بيورا", @"بورا", @"السلام", @"عليكم", @"شكرا", @"تمام", @"اوكي"
     ]];
     NSArray<NSString *> *tokens = [normalized componentsSeparatedByString:@" "];
     if (tokens.count > 0 && tokens.count <= 4) {

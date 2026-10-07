@@ -554,402 +554,495 @@ private struct PPSellerProfileScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.locale) private var locale
+    @State private var compactIdentity = false
+    @State private var expandedStory = false
+    @State private var storyHeights: [Bool: CGFloat] = [:]
+    @State private var searchText = ""
+    @FocusState private var searchFocused: Bool
 
-    private let columns = [
-        GridItem(.flexible(), spacing: PPSpace.md),
-        GridItem(.flexible(), spacing: PPSpace.md)
-    ]
+    private var query: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var visibleItems: [PetAccessory] {
+        guard !query.isEmpty else { return store.items }
+        // Search is explicitly scoped to the already-authorized catalog. It
+        // preserves source ordering, IDs, stock authority and card delegates.
+        let words = query.split(whereSeparator: \.isWhitespace).map(String.init)
+        return store.items.filter { item in
+            words.allSatisfy { item.name.range(of: $0, options: [.caseInsensitive, .diacriticInsensitive], locale: locale) != nil }
+        }
+    }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: PPSpace.lg) {
-                topNavigationBar
-                heroCard
-                assuranceBanner
-                productsSection
+        GeometryReader { viewport in
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: PPSpace.xl) {
+                    storefrontIdentity
+                        .background {
+                            GeometryReader { geometry in
+                                Color.clear.preference(
+                                    key: PPSellerIdentityScrolledKey.self,
+                                    value: geometry.frame(in: .named("providerStorefrontScroll")).maxY < 20
+                                )
+                            }
+                        }
+                    productsSection(width: min(viewport.size.width, 1080))
+                }
+                .padding(.horizontal, PPSpace.base)
+                .padding(.top, PPSpace.lg)
+                .padding(.bottom, max(PPSpace.xxxl, store.bottomClearance + PPSpace.xl))
+                .frame(maxWidth: 1080)
+                .frame(maxWidth: .infinity, alignment: .center)
             }
-            .padding(.horizontal, PPSpace.base)
-            .padding(.top, PPSpace.xs)
-            .padding(.bottom, max(PPSpace.xxxl, store.bottomClearance + PPSpace.xl))
+            .coordinateSpace(name: "providerStorefrontScroll")
+            .modifier(PPSellerKeyboardDismissal())
+            .onPreferenceChange(PPSellerIdentityScrolledKey.self) { isScrolled in
+                guard compactIdentity != isScrolled else { return }
+                compactIdentity = isScrolled
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                topNavigationBar
+            }
         }
         .background(Color.ppBackground.ignoresSafeArea())
         .sheet(isPresented: $store.showsRatingSheet) {
             PPSellerProfileRatingSheet(store: store)
+                .environment(\.locale, locale)
+                .environment(\.layoutDirection, layoutDirection)
+        }
+        .onChange(of: store.sellerID) { _ in
+            searchText = ""
+            expandedStory = false
+            compactIdentity = false
+            searchFocused = false
         }
         .accessibilityIdentifier("sellerProfileSwiftUIScreen")
     }
 
-    // MARK: - Top Navigation Bar
+    // The identity moves into the navigation line when it leaves the viewport.
+    // Native scrolling, interactive back and the shared floating cart retain ownership.
     private var topNavigationBar: some View {
-        HStack(spacing: PPSpace.md) {
-            Button(action: {
-                PPAccessoryViewerLegacyBridge.playSelectionFeedback()
+        HStack(spacing: PPSpace.sm) {
+            Button {
+                searchFocused = false
                 onBack()
-            }) {
+            } label: {
                 Image(systemName: "chevron.backward")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.ppTextPrimary)
+                    .font(.system(size: 19, weight: .medium))
                     .frame(width: 44, height: 44)
-                    .background(Color.ppSurface, in: Circle())
-                    .overlay(Circle().stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 1.0))
-                    .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PPSellerProfileScaleButtonStyle())
             .accessibilityLabel(PPProviderStorefrontL10n.text("Back"))
+            .accessibilityIdentifier("storefront.back")
 
-            Spacer(minLength: 0)
+            Text(compactIdentity ? isolated(store.sellerDisplayName) : store.categoryTitle)
+                .font(.custom("Beiruti-Medium", size: 17, relativeTo: .headline))
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .id(compactIdentity)
+                .transition(.opacity)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: compactIdentity)
 
-            // Centered Category Pill
-            HStack(spacing: 5) {
-                Image(systemName: store.isPharmacyStorefront ? "cross.case.fill" : "storefront.fill")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color.ppPrimary)
-                Text(store.categoryTitle)
-                    .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                    .foregroundStyle(Color.ppTextPrimary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.ppSurface, in: Capsule(style: .continuous))
-            .overlay(Capsule(style: .continuous).stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 1.0))
-            .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
-
-            Spacer(minLength: 0)
-
-            // Cart Action
-            Button(action: {
+            Button {
+                searchFocused = false
                 PPAccessoryViewerLegacyBridge.playSelectionFeedback()
                 onCart()
-            }) {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "cart.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .frame(width: 44, height: 44)
-                        .background(Color.ppSurface, in: Circle())
-                        .overlay(Circle().stroke(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 1.0))
-                        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
-
-                    if store.cartCount > 0 {
-                        Text("\(store.cartCount)")
-                            .font(.custom("Beiruti-Bold", size: 11, relativeTo: .caption2))
-                            .foregroundStyle(Color.white)
-                            .frame(minWidth: 18, minHeight: 18)
-                            .background(Color.ppPrimary, in: Capsule(style: .continuous))
-                            .overlay(Capsule(style: .continuous).stroke(Color.ppSurface, lineWidth: 1.5))
-                            .offset(x: 3, y: -3)
+            } label: {
+                Image(systemName: "cart")
+                    .font(.system(size: 20, weight: .regular))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .overlay(alignment: .topTrailing) {
+                        if store.cartCount > 0 {
+                            Text("\u{2066}\(store.cartCount > 99 ? PPProviderStorefrontL10n.text("storefront_cart_overflow") : number(store.cartCount))\u{2069}")
+                                .font(.custom("Beiruti-Bold", size: 11, relativeTo: .caption2))
+                                .foregroundStyle(Color.white)
+                                .padding(.horizontal, 4)
+                                .frame(minWidth: 18, minHeight: 18)
+                                .background(Color.ppPrimary, in: Capsule())
+                                .offset(x: layoutDirection == .rightToLeft ? -2 : 2, y: 0)
+                        }
                     }
-                }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PPSellerProfileScaleButtonStyle())
             .accessibilityLabel(PPProviderStorefrontL10n.text("Cart"))
+            .accessibilityValue(PPProviderStorefrontL10n.format("storefront_cart_count_format", isolated(number(store.cartCount))))
             .accessibilityHint(PPProviderStorefrontL10n.text("a11y_btn_cart_hint"))
+            .accessibilityIdentifier("storefront.cart")
         }
+        .foregroundStyle(Color.ppTextPrimary)
+        .padding(.horizontal, PPSpace.md)
         .padding(.vertical, PPSpace.xs)
+        .frame(maxWidth: 1080)
+        .frame(maxWidth: .infinity)
+        .background(Color.ppBackground.ignoresSafeArea(edges: .top))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color(uiColor: .separator).opacity(compactIdentity ? (contrast == .increased ? 1 : 0.35) : 0))
+                .frame(height: 0.5)
+                .allowsHitTesting(false)
+        }
     }
 
-    // MARK: - Hero Card
-    private var heroCard: some View {
+    private var storefrontIdentity: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
-            // Identity Row: Avatar + Details
-            HStack(alignment: .center, spacing: PPSpace.base) {
-                // Avatar with Squircle & Verified Seal
-                ZStack(alignment: .bottomTrailing) {
-                    AppRemoteImage(
-                        urlString: store.sellerAvatarURL,
-                        displaySize: CGSize(width: 82, height: 82),
-                        contentMode: .fill,
-                        showsRetryAction: false,
-                        placeholder: {
-                            Color.ppSecondarySurface
-                        },
-                        failurePlaceholder: {
-                            Color.ppSecondarySurface
-                        }
-                    )
-                    .frame(width: 82, height: 82)
-                    .clipped()
-                    .background(Color.ppSecondarySurface)
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Color.ppSurfaceBorder.opacity(0.9), lineWidth: 1.2)
-                    }
-                    .shadow(color: Color.black.opacity(0.06), radius: 10, y: 4)
-
-                    if store.sellerIsVerified {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundStyle(Color.ppSuccess)
-                            .background(Color.ppSurface, in: Circle())
-                            .overlay(Circle().stroke(Color.ppSurface, lineWidth: 2))
-                            .offset(x: 4, y: 4)
-                            .shadow(color: Color.ppSuccess.opacity(0.3), radius: 4, y: 2)
-                    }
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    sellerPortrait
+                    identityCopy
                 }
+            } else {
+                HStack(alignment: .top, spacing: PPSpace.base) {
+                    identityCopy
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    sellerPortrait
+                }
+            }
 
-                // Info Stack with enhanced breathing room
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 6) {
-                        Text(store.categoryTitle)
-                            .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                            .foregroundStyle(Color.ppPrimary)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 3.5)
-                            .background(Color.ppPrimary.opacity(0.09), in: Capsule(style: .continuous))
-
-                        if store.sellerIsVerified {
-                            Text(store.statusText)
-                                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
-                                .foregroundStyle(Color.ppSuccess)
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 3.5)
-                                .background(Color.ppSuccess.opacity(0.09), in: Capsule(style: .continuous))
-                        }
-                    }
-                    .padding(.top, 2)
-                    .padding(.bottom, 2)
-
-                    Text(store.sellerDisplayName)
-                        .font(.custom("Beiruti-Bold", size: 23, relativeTo: .title2))
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-
-                    Text(store.sellerAbout.isEmpty ? store.categorySupportText : store.sellerAbout)
-                        .font(.custom("Beiruti-Regular", size: 13.5, relativeTo: .body))
+            if !store.sellerAbout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(isolated(store.sellerAbout))
+                        .font(.custom("Beiruti-Regular", size: 16, relativeTo: .body))
                         .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(2)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            // Bento Metrics Horizon
-            HStack(spacing: PPSpace.sm) {
-                // Metric 1: Rating
-                HStack(spacing: 6) {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Color.ppPremiumAccent)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(store.ratingText)
-                            .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
-                            .foregroundStyle(Color.ppTextPrimary)
-                        Text(store.reviewCount > 0 ? "\(store.reviewCount) " + PPProviderStorefrontL10n.text("ratings_word") : PPProviderStorefrontL10n.text("provider_rating_new"))
-                            .font(.custom("Beiruti-Regular", size: 11, relativeTo: .caption2))
-                            .foregroundStyle(Color.ppTextSecondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.ppSecondarySurface.opacity(0.6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                // Metric 2: Products Count
-                HStack(spacing: 6) {
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Color.ppPrimary)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("\(store.items.count)")
-                            .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
-                            .foregroundStyle(Color.ppTextPrimary)
-                        Text(PPProviderStorefrontL10n.text("products_count_word"))
-                            .font(.custom("Beiruti-Regular", size: 11, relativeTo: .caption2))
-                            .foregroundStyle(Color.ppTextSecondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.ppSecondarySurface.opacity(0.6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                // Metric 3: Pure Pets Guarantee
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.shield.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Color.ppSuccess)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(PPProviderStorefrontL10n.text("verified_guarantee_title"))
-                            .font(.custom("Beiruti-Bold", size: 13, relativeTo: .subheadline))
-                            .foregroundStyle(Color.ppTextPrimary)
-                        Text(PPProviderStorefrontL10n.text("pure_pets_assurance"))
-                            .font(.custom("Beiruti-Regular", size: 11, relativeTo: .caption2))
-                            .foregroundStyle(Color.ppTextSecondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.ppSecondarySurface.opacity(0.6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-
-            // Action Buttons
-            HStack(spacing: PPSpace.sm) {
-                // Direct Message Button
-                Button(action: {
-                    PPAccessoryViewerLegacyBridge.playSelectionFeedback()
-                    onMessage()
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "bubble.left.and.bubble.right.fill")
-                            .font(.system(size: 15, weight: .bold))
-                        Text(PPProviderStorefrontL10n.text("message"))
-                            .font(.custom("Beiruti-Bold", size: 15, relativeTo: .headline))
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .foregroundStyle(Color.white)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.ppPrimary, Color.ppPrimary.opacity(0.90)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    )
-                    .shadow(color: Color.ppPrimary.opacity(0.25), radius: 8, y: 3)
-                }
-                .buttonStyle(PPSellerProfileScaleButtonStyle())
-                .disabled(store.seller == nil)
-
-                // Rate Action Button
-                if store.shouldShowRateAction {
-                    Button(action: {
-                        PPAccessoryViewerLegacyBridge.playSelectionFeedback()
-                        onRate()
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: store.rateActionSymbol)
-                                .font(.system(size: 14, weight: .bold))
-                            Text(store.rateActionTitle)
-                                .font(.custom("Beiruti-Bold", size: 14, relativeTo: .headline))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
+                        .lineLimit(expandedStory || dynamicTypeSize.isAccessibilitySize ? nil : 3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .overlay(alignment: .topLeading) {
+                            // Measure the real font and width rather than
+                            // guessing truncation from a character count.
+                            ZStack(alignment: .topLeading) {
+                                storyMeasurement(expanded: false)
+                                storyMeasurement(expanded: true)
+                            }
+                            .hidden()
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .foregroundStyle(store.canRateProvider ? Color.ppPremiumAccent : Color.ppTextSecondary)
-                        .background(
-                            (store.canRateProvider ? Color.ppPremiumAccent.opacity(0.12) : Color.ppSecondarySurface.opacity(0.8)),
-                            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(store.canRateProvider ? Color.ppPremiumAccent.opacity(0.3) : Color.ppSurfaceBorder, lineWidth: 1.0)
-                        )
+                    if !dynamicTypeSize.isAccessibilitySize,
+                       (storyHeights[true] ?? 0) > (storyHeights[false] ?? 0) + 1 {
+                        Button {
+                            withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.9)) {
+                                expandedStory.toggle()
+                            }
+                        } label: {
+                            Label(PPProviderStorefrontL10n.text(expandedStory ? "storefront_story_less" : "storefront_story_more"),
+                                  systemImage: expandedStory ? "minus" : "plus")
+                                .font(.custom("Beiruti-Medium", size: 14, relativeTo: .subheadline))
+                                .frame(minHeight: 44, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(PPSellerProfileScaleButtonStyle())
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .accessibilityValue(PPProviderStorefrontL10n.text(expandedStory ? "storefront_expanded" : "storefront_collapsed"))
                     }
-                    .buttonStyle(PPSellerProfileScaleButtonStyle())
-                    .disabled(store.rateActionDisabled)
+                }
+                .onPreferenceChange(PPSellerStoryHeightsKey.self) { heights in
+                    guard heights != storyHeights else { return }
+                    storyHeights = heights
+                }
+            } else {
+                Text(PPProviderStorefrontL10n.text(store.isPharmacyStorefront ? "storefront_intro_pharmacy" : "storefront_intro_marketplace"))
+                    .font(.custom("Beiruti-Regular", size: 16, relativeTo: .body))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
+                    messageAction
+                    ratingAction
+                }
+            } else {
+                HStack(spacing: PPSpace.md) {
+                    messageAction
+                    ratingAction
                 }
             }
         }
-        .padding(PPSpace.base)
-        .background(
-            ZStack {
-                Color.ppSurface
-                RadialGradient(
-                    colors: [Color.ppPrimary.opacity(0.05), Color.clear],
-                    center: .topTrailing,
-                    startRadius: 0,
-                    endRadius: 280
-                )
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.ppSurfaceBorder.opacity(contrast == .increased ? 1.0 : 0.8), lineWidth: 1.0)
-        }
-        .shadow(color: Color.black.opacity(0.04), radius: 16, y: 6)
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("storefront.identity")
     }
 
-    // MARK: - Storefront Assurance Banner
-    private var assuranceBanner: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: "shield.lefthalf.filled.badge.checkmark")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Color.ppPrimary)
+    private var identityCopy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            if store.sellerIsVerified {
+                Label(PPProviderStorefrontL10n.text("storefront_verified_provider"), systemImage: "checkmark.seal.fill")
+                    .font(.custom("Beiruti-Medium", size: 13, relativeTo: .subheadline))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .accessibilityElement(children: .combine)
+            } else {
+                Text(PPProviderStorefrontL10n.text("storefront_on_pure_pets"))
+                    .font(.custom("Beiruti-Medium", size: 13, relativeTo: .subheadline))
+                    .foregroundStyle(Color.ppTextSecondary)
+            }
 
-            Text(store.storefrontDescription)
-                .font(.custom("Beiruti-Regular", size: 13, relativeTo: .body))
-                .foregroundStyle(Color.ppTextSecondary)
+            Text(isolated(store.sellerDisplayName))
+                .font(.custom("Beiruti-Bold", size: 30, relativeTo: .largeTitle))
+                .foregroundStyle(Color.ppTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
 
-            Spacer(minLength: 0)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: store.reviewCount > 0 ? "star.fill" : "star")
+                    .font(.system(size: 12, weight: .regular))
+                    .accessibilityHidden(true)
+                if store.reviewCount > 0, store.ratingValue > 0 {
+                    Text(isolated(store.ratingValue.formatted(.number.precision(.fractionLength(1)).locale(locale))))
+                        .font(.custom("Beiruti-Bold", size: 15, relativeTo: .subheadline))
+                    Text(PPProviderStorefrontL10n.format("storefront_reviews_format", isolated(number(store.reviewCount))))
+                        .font(.custom("Beiruti-Regular", size: 14, relativeTo: .subheadline))
+                } else {
+                    Text(PPProviderStorefrontL10n.text("provider_rating_no_reviews"))
+                        .font(.custom("Beiruti-Regular", size: 14, relativeTo: .subheadline))
+                }
+            }
+            .foregroundStyle(Color.ppTextSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(store.reviewCount > 0 && store.ratingValue > 0
+                ? PPProviderStorefrontL10n.format("provider_rating_accessibility_format", store.ratingValue, store.reviewCount)
+                : PPProviderStorefrontL10n.text("provider_rating_no_reviews"))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color.ppSurface.opacity(0.7), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.ppSurfaceBorder.opacity(0.6), lineWidth: 0.8)
-        )
     }
 
-    // MARK: - Products Section
-    private var productsSection: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(alignment: .center) {
-                Text(store.itemsTitle)
-                    .font(.custom("Beiruti-Bold", size: 21, relativeTo: .title3))
-                    .foregroundStyle(Color.ppTextPrimary)
-
-                if !store.items.isEmpty {
-                    Text("(\(store.items.count))")
-                        .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
-                        .foregroundStyle(Color.ppPrimary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.ppPrimary.opacity(0.10), in: Capsule(style: .continuous))
+    private func storyMeasurement(expanded: Bool) -> some View {
+        Text(isolated(store.sellerAbout))
+            .font(.custom("Beiruti-Regular", size: 16, relativeTo: .body))
+            .lineLimit(expanded ? nil : 3)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                GeometryReader { geometry in
+                    Color.clear.preference(key: PPSellerStoryHeightsKey.self, value: [expanded: geometry.size.height])
                 }
+            }
+    }
 
+    private var sellerPortrait: some View {
+        AppRemoteImage(
+            urlString: store.sellerAvatarURL,
+            displaySize: CGSize(width: 76, height: 76),
+            contentMode: .fill,
+            showsRetryAction: false,
+            placeholder: { portraitFallback },
+            failurePlaceholder: { portraitFallback }
+        )
+        .frame(width: 76, height: 76)
+        .background(Color.ppSurface)
+        .clipShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
+        .accessibilityHidden(true)
+    }
+
+    private var portraitFallback: some View {
+        ZStack {
+            Color.ppSurface
+            Image(systemName: store.isPharmacyStorefront ? "cross.case" : "storefront")
+                .font(.system(size: 27, weight: .light))
+                .foregroundStyle(Color.ppTextSecondary)
+        }
+    }
+
+    private var messageAction: some View {
+        Button {
+            searchFocused = false
+            onMessage()
+        } label: {
+            Label(PPProviderStorefrontL10n.text("storefront_message_action"), systemImage: "bubble.left.and.bubble.right")
+                .font(.custom("Beiruti-Medium", size: 16, relativeTo: .headline))
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, PPSpace.base)
+                .padding(.vertical, PPSpace.sm)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .foregroundStyle(Color.ppSurface)
+                .background(Color.ppTextPrimary, in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+        }
+        .buttonStyle(PPSellerProfileScaleButtonStyle())
+        .disabled(store.seller == nil)
+        .opacity(store.seller == nil ? 0.5 : 1)
+        .accessibilityIdentifier("storefront.message")
+    }
+
+    @ViewBuilder
+    private var ratingAction: some View {
+        if store.shouldShowRateAction {
+            Button {
+                searchFocused = false
+                PPAccessoryViewerLegacyBridge.playSelectionFeedback()
+                onRate()
+            } label: {
+                HStack(spacing: PPSpace.sm) {
+                    if store.isCheckingRatingEligibility || store.isSubmittingProviderReview {
+                        ProgressView().tint(Color.ppTextSecondary)
+                    } else {
+                        Image(systemName: store.rateActionSymbol)
+                            .font(.system(size: 14, weight: .regular))
+                    }
+                    Text(store.rateActionTitle)
+                        .font(.custom("Beiruti-Medium", size: 15, relativeTo: .subheadline))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, PPSpace.md)
+                .padding(.vertical, PPSpace.sm)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .foregroundStyle(Color.ppTextSecondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PPSellerProfileScaleButtonStyle())
+            .disabled(store.rateActionDisabled)
+            .accessibilityHint(PPProviderStorefrontL10n.text("storefront_rating_hint"))
+            .accessibilityIdentifier("storefront.rate")
+        }
+    }
+
+    private func productsSection(width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            Rectangle()
+                .fill(Color(uiColor: .separator).opacity(contrast == .increased ? 1 : 0.3))
+                .frame(height: 0.5)
+                .accessibilityHidden(true)
+
+            HStack(alignment: .firstTextBaseline, spacing: PPSpace.md) {
+                Text(store.itemsTitle)
+                    .font(.custom("Beiruti-Bold", size: 23, relativeTo: .title2))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
+                if !store.items.isEmpty {
+                    Text(isolated(number(store.items.count)))
+                        .font(.custom("Beiruti-Regular", size: 22, relativeTo: .title2))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .monospacedDigit()
+                        .fixedSize()
+                        .accessibilityLabel(PPProviderStorefrontL10n.format("storefront_product_count_format", isolated(number(store.items.count))))
+                }
             }
 
-            switch store.itemsPhase {
-            case .loading:
-                ProgressView()
-                    .tint(Color.ppPrimary)
-                    .frame(maxWidth: .infinity, minHeight: 140)
-                    .accessibilityLabel(PPProviderStorefrontL10n.text("provider_companies_loading_title"))
-            case .failed:
+            if !store.items.isEmpty {
+                catalogSearch
+            }
+            catalogContent(width: width)
+        }
+    }
+
+    private var catalogSearch: some View {
+        HStack(spacing: PPSpace.sm) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .accessibilityHidden(true)
+                TextField(PPProviderStorefrontL10n.text("storefront_search_placeholder"), text: $searchText)
+                    .font(.custom("Beiruti-Regular", size: 16, relativeTo: .body))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .multilineTextAlignment(.leading)
+                    .submitLabel(.search)
+                    .focused($searchFocused)
+                    .onSubmit { searchFocused = false }
+                    .accessibilityLabel(PPProviderStorefrontL10n.text("storefront_search_placeholder"))
+                    .accessibilityIdentifier("storefront.catalogSearch")
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(PPProviderStorefrontL10n.text("storefront_clear_search"))
+                }
+            }
+            .padding(.leading, PPSpace.md)
+            .padding(.trailing, searchText.isEmpty ? PPSpace.md : 0)
+            .frame(minHeight: 48)
+            .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
+                    .strokeBorder(Color(uiColor: .separator).opacity(contrast == .increased ? 1 : 0.3), lineWidth: searchFocused ? 1 : 0.5)
+            }
+            if searchFocused {
+                Button(PPProviderStorefrontL10n.text("Cancel")) {
+                    searchFocused = false
+                    searchText = ""
+                }
+                .font(.custom("Beiruti-Medium", size: 15, relativeTo: .subheadline))
+                .foregroundStyle(Color.ppTextPrimary)
+                .frame(minWidth: 44, minHeight: 44)
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func catalogContent(width: CGFloat) -> some View {
+        switch store.itemsPhase {
+        case .loading:
+            VStack(spacing: PPSpace.md) {
+                ProgressView().tint(Color.ppTextSecondary)
+                Text(PPProviderStorefrontL10n.text("storefront_loading"))
+                    .font(.custom("Beiruti-Regular", size: 16, relativeTo: .body))
+                    .foregroundStyle(Color.ppTextSecondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 160)
+            .accessibilityElement(children: .combine)
+        case .failed:
+            PPSellerProfileItemsState(
+                symbol: "wifi.exclamationmark",
+                title: PPProviderStorefrontL10n.text("provider_storefront_error_message"),
+                actionTitle: PPProviderStorefrontL10n.text("provider_retry"),
+                action: store.retryItems
+            )
+        case .empty:
+            PPSellerProfileItemsState(symbol: "shippingbox", title: store.emptyItemsText, actionTitle: nil, action: nil)
+        case .loaded:
+            let items = visibleItems
+            if items.isEmpty {
                 PPSellerProfileItemsState(
-                    symbol: "wifi.exclamationmark",
-                    title: PPProviderStorefrontL10n.text("provider_storefront_error_message"),
-                    actionTitle: PPProviderStorefrontL10n.text("provider_retry"),
-                    action: store.retryItems
+                    symbol: "magnifyingglass",
+                    title: PPProviderStorefrontL10n.text("storefront_search_empty"),
+                    actionTitle: PPProviderStorefrontL10n.text("storefront_clear_search"),
+                    action: { searchText = ""; searchFocused = false }
                 )
-            case .empty:
-                PPSellerProfileItemsState(
-                    symbol: "shippingbox",
-                    title: store.emptyItemsText,
-                    actionTitle: nil,
-                    action: nil
-                )
-            case .loaded:
-                LazyVGrid(columns: columns, spacing: PPSpace.md) {
-                    ForEach(store.items, id: \.accessoryID) { item in
+            } else {
+                if !query.isEmpty {
+                    Text(PPProviderStorefrontL10n.format("storefront_search_results_format", isolated(number(items.count))))
+                        .font(.custom("Beiruti-Regular", size: 13, relativeTo: .caption))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .accessibilityIdentifier("storefront.searchResults")
+                }
+                LazyVGrid(columns: columns(for: width), spacing: PPSpace.md) {
+                    ForEach(items, id: \.accessoryID) { item in
                         if #available(iOS 16.0, *) {
-                            PPSellerProfileUniversalProductCard(
-                                accessory: item,
-                                delegate: delegate
-                            )
+                            PPSellerProfileUniversalProductCard(accessory: item, delegate: delegate)
                         } else {
                             PPSellerProfileCompatibilityProductCard(
                                 accessory: item,
-                                onTap: {
-                                    delegateItemTap(item)
-                                },
-                                onAdd: {
-                                    delegateQuantityChange(item, quantity: 1)
-                                }
+                                onTap: { delegateItemTap(item) },
+                                onAdd: { delegateQuantityChange(item, quantity: 1) }
                             )
                         }
                     }
                 }
+                // Preserve the existing cart-refresh contract of these cells.
                 .id(store.cartRevision)
             }
         }
     }
+
+    private func columns(for width: CGFloat) -> [GridItem] {
+        let count = dynamicTypeSize.isAccessibilitySize ? 1 : (width >= 700 ? max(2, min(4, Int((width - 32) / 220))) : 2)
+        return Array(repeating: GridItem(.flexible(), spacing: PPSpace.md), count: count)
+    }
+
+    private func number(_ value: Int) -> String { value.formatted(.number.locale(locale)) }
+    private func isolated(_ value: String) -> String { "\u{2068}\(value)\u{2069}" }
 
     private func delegateItemTap(_ item: PetAccessory) {
         let model = PPUniversalCellViewModel(model: item, context: item.isFood ? .forFood : .forMarket)
@@ -962,13 +1055,35 @@ private struct PPSellerProfileScreen: View {
     }
 }
 
-// MARK: - Scale Button Style
+private struct PPSellerIdentityScrolledKey: PreferenceKey {
+    static var defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
+private struct PPSellerStoryHeightsKey: PreferenceKey {
+    static var defaultValue: [Bool: CGFloat] = [:]
+    static func reduce(value: inout [Bool: CGFloat], nextValue: () -> [Bool: CGFloat]) {
+        value.merge(nextValue(), uniquingKeysWith: max)
+    }
+}
+
+private struct PPSellerKeyboardDismissal: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.scrollDismissesKeyboard(.interactively)
+        } else {
+            content
+        }
+    }
+}
+
 private struct PPSellerProfileScaleButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .opacity(configuration.isPressed ? 0.88 : 1.0)
-            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.76 : 1)
+            .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.86), value: configuration.isPressed)
     }
 }
 
@@ -979,23 +1094,27 @@ private struct PPSellerProfileItemsState: View {
     let action: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: PPSpace.sm) {
+        VStack(spacing: PPSpace.md) {
             Image(systemName: symbol)
-                .font(.system(size: 30, weight: .regular))
-                .foregroundStyle(Color.ppPrimary)
+                .font(.system(size: 30, weight: .light))
+                .foregroundStyle(Color.ppTextSecondary)
+                .accessibilityHidden(true)
             Text(title)
-                .font(.custom("Beiruti-Regular", size: 15, relativeTo: .body))
+                .font(.custom("Beiruti-Regular", size: 17, relativeTo: .body))
                 .foregroundStyle(Color.ppTextSecondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
-                    .tint(Color.ppPrimary)
+                    .font(.custom("Beiruti-Medium", size: 16, relativeTo: .headline))
+                    .foregroundStyle(Color.ppPrimary)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .buttonStyle(PPSellerProfileScaleButtonStyle())
             }
         }
         .padding(PPSpace.xl)
-        .frame(maxWidth: .infinity, minHeight: 150)
-        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: 170)
+        .accessibilityElement(children: .contain)
     }
 }
 

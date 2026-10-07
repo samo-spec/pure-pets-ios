@@ -45,7 +45,7 @@ public struct NovaVoiceConfiguration {
         synthesisVoiceIdentifier: String? = nil,
         onDeviceRecognitionPolicy: OnDeviceRecognitionPolicy = .prefer,
         addsPunctuation: Bool = true,
-        contextualStrings: [String] = ["Nova", "نوفا", "Pure Pets", "بيور بيتس"],
+        contextualStrings: [String] = ["PURA", "بيورا", "Nova", "نوفا", "Pure Pets", "بيور بيتس"],
         taskHint: SFSpeechRecognitionTaskHint = .dictation,
         silenceAutoSubmitInterval: TimeInterval = 1.15,
         maximumUtteranceDuration: TimeInterval = 45,
@@ -94,7 +94,7 @@ public struct NovaVoiceConfiguration {
     public static var arabicMarketplace: NovaVoiceConfiguration {
         NovaVoiceConfiguration(
             contextualStrings: [
-                "Nova", "نوفا", "Pure Pets", "بيور بيتس",
+                "PURA", "بيورا", "Nova", "نوفا", "Pure Pets", "بيور بيتس",
                 "marketplace", "السوق", "متجر", "منتج"
             ]
         )
@@ -104,7 +104,7 @@ public struct NovaVoiceConfiguration {
         NovaVoiceConfiguration(
             recognitionLocaleIdentifier: "en-US",
             synthesisLanguageIdentifier: "en-US",
-            contextualStrings: ["Nova", "Pure Pets", "marketplace"]
+            contextualStrings: ["PURA", "Nova", "Pure Pets", "marketplace"]
         )
     }
 }

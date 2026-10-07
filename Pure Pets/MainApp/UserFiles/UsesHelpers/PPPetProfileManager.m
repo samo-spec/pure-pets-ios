@@ -74,7 +74,9 @@ NSNotificationName const PPPetProfileManagerDidChangeNotification =
         NSMutableArray<PPPetProfile *> *items = [NSMutableArray array];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             PPPetProfile *pet = [[PPPetProfile alloc] initWithSnapshot:doc];
-            if (pet) [items addObject:pet];
+            if (pet && ![pet.source isEqualToString:@"community_adoption"]) {
+                [items addObject:pet];
+            }
         }
         if (completion) completion(items.copy, error);
     }];

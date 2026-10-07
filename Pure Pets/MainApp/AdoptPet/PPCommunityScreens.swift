@@ -217,11 +217,17 @@ struct PPCommunityGatewayScreen: View {
     @StateObject private var store = CommunityGatewayStore()
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let onSelectAdoption: (AdoptPetModel) -> Void
     let onCreateAdoption: () -> Void
     let onClose: () -> Void
     let initialRoute: String
+
     @State private var opensInitialActivity = false
+    @State private var opensAdoption = false
+    @State private var presentedQuickForm: CommunityCaseKind? = nil
+    @State private var showsQuickReportDialog = false
 
     init(
         onSelectAdoption: @escaping (AdoptPetModel) -> Void,
@@ -242,17 +248,45 @@ struct PPCommunityGatewayScreen: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.ppBackground.ignoresSafeArea()
+                CommunityAmbientCanvas()
                 content
             }
             .background {
-                NavigationLink(
-                    destination: CommunityActivityScreen(messagingEnabled: store.configuration?.messagingEnabled ?? false),
-                    isActive: $opensInitialActivity
-                ) { EmptyView() }
-                .hidden()
+                // Programmatic navigation destinations
+                ZStack {
+                    NavigationLink(
+                        destination: CommunityActivityScreen(messagingEnabled: store.configuration?.messagingEnabled ?? false),
+                        isActive: $opensInitialActivity
+                    ) { EmptyView() }
+                    .hidden()
+
+                    NavigationLink(
+                        destination: CommunityAdoptionDestination(onSelect: onSelectAdoption, onCreate: onCreateAdoption),
+                        isActive: $opensAdoption
+                    ) { EmptyView() }
+                    .hidden()
+                }
             }
             .navigationBarHidden(true)
+            .sheet(item: $presentedQuickForm) { kind in
+                CommunityCaseFormScreen(kind: kind) {
+                    presentedQuickForm = nil
+                    Task { await store.load() }
+                }
+            }
+            .confirmationDialog(
+                PPAdoptLang("community_quick_report_title"),
+                isPresented: $showsQuickReportDialog,
+                titleVisibility: .visible
+            ) {
+                Button(PPAdoptLang("community_report_missing")) {
+                    presentedQuickForm = .missing
+                }
+                Button(PPAdoptLang("community_report_found")) {
+                    presentedQuickForm = .found
+                }
+                Button(PPAdoptLang("Cancel"), role: .cancel) { }
+            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .onChange(of: store.loading) { loading in
@@ -265,12 +299,7 @@ struct PPCommunityGatewayScreen: View {
     @ViewBuilder
     private var content: some View {
         if store.loading {
-            CommunityStateView(
-                symbol: "pawprint.circle.fill",
-                title: PPAdoptLang("community_loading_title"),
-                message: PPAdoptLang("community_loading_message"),
-                showsProgress: true
-            )
+            CommunitySanctuaryLoadingView()
         } else if let error = store.errorMessage {
             CommunityStateView(
                 symbol: "wifi.exclamationmark",
@@ -294,228 +323,746 @@ struct PPCommunityGatewayScreen: View {
 
     private var gateway: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: isPad ? 28 : 20) {
+            VStack(spacing: isPad ? 26 : 18) {
                 CommunityGatewayHeader(onClose: onClose)
 
-                if isPad {
-                    HStack(alignment: .top, spacing: 24) {
-                        hero
-                            .frame(maxWidth: 390)
-                        featureGrid
-                    }
-                } else {
-                    hero
-                    featureGrid
-                }
+                CommunitySanctuaryHero(
+                    isPad: isPad,
+                    onExploreAdoption: { opensAdoption = true },
+                    onQuickReport: { showsQuickReportDialog = true }
+                )
 
-                safetyBanner
+                featureBentoGrid
+
+                quickEmergencyBanner
+
+                pillarsOfTrust
             }
             .frame(maxWidth: 1100)
-            .padding(.horizontal, isPad ? 34 : 18)
-            .padding(.bottom, 40)
+            .padding(.horizontal, isPad ? 32 : 18)
+            .padding(.bottom, 36)
         }
     }
 
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [CommunityPalette.adoption.opacity(0.92), Color.purple.opacity(0.78)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                VStack(alignment: .leading, spacing: 12) {
-                    Image(systemName: "heart.circle.fill")
-                        .font(.system(size: 46, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .accessibilityHidden(true)
-                    Text(PPAdoptLang("community_hero_title"))
-                        .font(CommunityFont.bold(isPad ? 34 : 29, relativeTo: .largeTitle))
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(PPAdoptLang("community_hero_message"))
-                        .font(CommunityFont.regular(16, relativeTo: .body))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(24)
-            }
-            .frame(minHeight: isPad ? 310 : 245)
-            .accessibilityElement(children: .combine)
+    // MARK: - Bento Grid
+    private var featureBentoGrid: some View {
+        VStack(spacing: 14) {
+            let hasLostFound = store.configuration?.missingPetsEnabled == true || store.configuration?.foundPetReportsEnabled == true
 
-            Text(PPAdoptLang("community_privacy_note"))
-                .font(CommunityFont.medium(13, relativeTo: .footnote))
-                .foregroundStyle(Color.ppTextSecondary)
-                .padding(.horizontal, 4)
+            if isPad {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 16),
+                        GridItem(.flexible(), spacing: 16)
+                    ],
+                    spacing: 16
+                ) {
+                    adoptionCard
+                    if hasLostFound {
+                        lostFoundCard
+                    }
+                    activityCard
+                    savedCard
+                    if store.configuration?.organizationsEnabled == true {
+                        organizationsCard
+                    }
+                }
+            } else {
+                if hasLostFound {
+                    adoptionCard
+                    lostFoundCard
+                    HStack(spacing: 12) {
+                        activityCard
+                        savedCard
+                    }
+                    if store.configuration?.organizationsEnabled == true {
+                        organizationsCard
+                    }
+                } else {
+                    adoptionCard
+                    HStack(spacing: 12) {
+                        activityCard
+                        savedCard
+                    }
+                    if store.configuration?.organizationsEnabled == true {
+                        organizationsCard
+                    }
+                }
+            }
         }
     }
 
-    private var featureGrid: some View {
-        LazyVGrid(
-            columns: [GridItem(.adaptive(minimum: isPad ? 250 : 150), spacing: 14)],
-            spacing: 14
-        ) {
-            if store.configuration?.adoptionEnabled == true {
-                NavigationLink {
-                    CommunityAdoptionDestination(onSelect: onSelectAdoption, onCreate: onCreateAdoption)
-                } label: {
-                    CommunityGatewayCard(
-                        symbol: "heart.fill",
-                        color: CommunityPalette.adoption,
-                        title: PPAdoptLang("community_adoption_title"),
-                        message: PPAdoptLang("community_adoption_message")
-                    )
-                }
-                .buttonStyle(CommunityPressStyle())
-            }
+    // MARK: - Individual Feature Cards
+    private var adoptionCard: some View {
+        NavigationLink {
+            CommunityAdoptionDestination(onSelect: onSelectAdoption, onCreate: onCreateAdoption)
+        } label: {
+            CommunityAdoptionShowcaseCard()
+        }
+        .buttonStyle(CommunityPressStyle())
+    }
 
-            if store.configuration?.missingPetsEnabled == true || store.configuration?.foundPetReportsEnabled == true {
-                NavigationLink {
-                    CommunityLostFoundScreen(configuration: store.configuration!)
-                } label: {
-                    CommunityGatewayCard(
-                        symbol: "location.magnifyingglass",
-                        color: CommunityPalette.missing,
-                        title: PPAdoptLang("community_lost_found_title"),
-                        message: PPAdoptLang("community_lost_found_message")
-                    )
-                }
-                .buttonStyle(CommunityPressStyle())
-            }
-
+    @ViewBuilder
+    private var lostFoundCard: some View {
+        if let config = store.configuration, config.missingPetsEnabled || config.foundPetReportsEnabled {
             NavigationLink {
-                CommunityActivityScreen(messagingEnabled: store.configuration?.messagingEnabled ?? false)
+                CommunityLostFoundScreen(configuration: config)
             } label: {
-                CommunityGatewayCard(
-                    symbol: "clock.arrow.circlepath",
-                    color: Color.blue,
-                    title: PPAdoptLang("community_activity_title"),
-                    message: PPAdoptLang("community_activity_message")
+                CommunityLostFoundBeaconCard()
+            }
+            .buttonStyle(CommunityPressStyle())
+        }
+    }
+
+    private var activityCard: some View {
+        NavigationLink {
+            CommunityActivityScreen(messagingEnabled: store.configuration?.messagingEnabled ?? false)
+        } label: {
+            CommunityFeatureTile(
+                symbol: "clock.arrow.circlepath",
+                color: Color.blue,
+                title: PPAdoptLang("community_activity_title"),
+                message: PPAdoptLang("community_activity_message"),
+                tag: Language.isRTL() ? "محادثات مشفرة 🔒" : "Encrypted 🔒"
+            )
+        }
+        .buttonStyle(CommunityPressStyle())
+    }
+
+    private var savedCard: some View {
+        NavigationLink {
+            CommunitySavedScreen(sightingsEnabled: store.configuration?.sightingsEnabled ?? false)
+        } label: {
+            CommunityFeatureTile(
+                symbol: "bookmark.fill",
+                color: Color.indigo,
+                title: PPAdoptLang("community_saved_title"),
+                message: PPAdoptLang("community_saved_message"),
+                tag: Language.isRTL() ? "سجلات محفوظة" : "Saved"
+            )
+        }
+        .buttonStyle(CommunityPressStyle())
+    }
+
+    @ViewBuilder
+    private var organizationsCard: some View {
+        if store.configuration?.organizationsEnabled == true {
+            NavigationLink {
+                CommunityOrganizationsScreen()
+            } label: {
+                CommunityFeatureTile(
+                    symbol: "checkmark.seal.fill",
+                    color: CommunityPalette.safe,
+                    title: PPAdoptLang("community_organizations_title"),
+                    message: PPAdoptLang("community_organizations_message"),
+                    tag: Language.isRTL() ? "شركاء معتمدون" : "Verified"
                 )
             }
             .buttonStyle(CommunityPressStyle())
-
-            NavigationLink {
-                CommunitySavedScreen(sightingsEnabled: store.configuration?.sightingsEnabled ?? false)
-            } label: {
-                CommunityGatewayCard(
-                    symbol: "bookmark.fill",
-                    color: Color.indigo,
-                    title: PPAdoptLang("community_saved_title"),
-                    message: PPAdoptLang("community_saved_message")
-                )
-            }
-            .buttonStyle(CommunityPressStyle())
-
-            if store.configuration?.organizationsEnabled == true {
-                NavigationLink {
-                    CommunityOrganizationsScreen()
-                } label: {
-                    CommunityGatewayCard(
-                        symbol: "checkmark.seal.fill",
-                        color: CommunityPalette.safe,
-                        title: PPAdoptLang("community_organizations_title"),
-                        message: PPAdoptLang("community_organizations_message")
-                    )
-                }
-                .buttonStyle(CommunityPressStyle())
-            }
         }
     }
 
-    private var safetyBanner: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "hand.raised.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(CommunityPalette.safe)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(PPAdoptLang("community_safety_title"))
-                    .font(CommunityFont.bold(16, relativeTo: .headline))
+    // MARK: - Quick Emergency Banner
+    private var quickEmergencyBanner: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: "bolt.shield.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.orange)
+                    .accessibilityHidden(true)
+                Text(PPAdoptLang("community_quick_report_title"))
+                    .font(CommunityFont.bold(15, relativeTo: .headline))
                     .foregroundStyle(Color.ppTextPrimary)
-                Text(PPAdoptLang("community_safety_message"))
-                    .font(CommunityFont.regular(14, relativeTo: .subheadline))
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
             }
-            Spacer(minLength: 0)
+
+            Text(PPAdoptLang("community_quick_report_prompt"))
+                .font(CommunityFont.regular(13, relativeTo: .subheadline))
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 10) {
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    presentedQuickForm = .missing
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "pawprint.fill")
+                            .font(.system(size: 12, weight: .bold))
+                        Text(PPAdoptLang("community_report_missing"))
+                            .font(CommunityFont.bold(13, relativeTo: .footnote))
+                    }
+                    .foregroundStyle(Color.orange)
+                    .frame(maxWidth: .infinity, minHeight: 40)
+                    .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.orange.opacity(0.24), lineWidth: 0.8)
+                    }
+                }
+                .buttonStyle(CommunityPressStyle())
+
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    presentedQuickForm = .found
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "hand.raised.fill")
+                            .font(.system(size: 12, weight: .bold))
+                        Text(PPAdoptLang("community_report_found"))
+                            .font(CommunityFont.bold(13, relativeTo: .footnote))
+                    }
+                    .foregroundStyle(Color.teal)
+                    .frame(maxWidth: .infinity, minHeight: 40)
+                    .background(Color.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(Color.teal.opacity(0.24), lineWidth: 0.8)
+                    }
+                }
+                .buttonStyle(CommunityPressStyle())
+            }
+        }
+        .padding(16)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8)
+        }
+        .shadow(color: Color.black.opacity(0.025), radius: 10, x: 0, y: 4)
+    }
+
+    // MARK: - Pillars of Trust
+    private var pillarsOfTrust: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "shield.lefthalf.filled")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(CommunityPalette.safe)
+                    .frame(width: 42, height: 42)
+                    .background(CommunityPalette.safe.opacity(0.12), in: Circle())
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(PPAdoptLang("community_safety_title"))
+                        .font(CommunityFont.bold(16, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+                    Text(PPAdoptLang("community_safety_message"))
+                        .font(CommunityFont.regular(13, relativeTo: .subheadline))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: 8) {
+                TrustPill(
+                    icon: "location.slash.fill",
+                    title: PPAdoptLang("community_trust_badge_location_title"),
+                    subtitle: PPAdoptLang("community_trust_badge_location_desc")
+                )
+                TrustPill(
+                    icon: "lock.shield.fill",
+                    title: PPAdoptLang("community_trust_badge_chat_title"),
+                    subtitle: PPAdoptLang("community_trust_badge_chat_desc")
+                )
+                TrustPill(
+                    icon: "checkmark.seal.fill",
+                    title: PPAdoptLang("community_trust_badge_review_title"),
+                    subtitle: PPAdoptLang("community_trust_badge_review_desc")
+                )
+            }
         }
         .padding(18)
-        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 22).stroke(Color.ppBorder.opacity(0.7), lineWidth: 0.8) }
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8)
+        }
+        .shadow(color: Color.black.opacity(0.025), radius: 10, x: 0, y: 4)
         .accessibilityElement(children: .combine)
     }
 }
 
+// MARK: - Ambient Background Canvas
+private struct CommunityAmbientCanvas: View {
+    var body: some View {
+        ZStack {
+            Color.ppBackground.ignoresSafeArea()
+            GeometryReader { proxy in
+                Circle()
+                    .fill(Color(hex: "CB2654").opacity(0.04))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 65)
+                    .offset(x: proxy.size.width * 0.5 - 160, y: -80)
+
+                Circle()
+                    .fill(Color.orange.opacity(0.03))
+                    .frame(width: 250, height: 250)
+                    .blur(radius: 55)
+                    .offset(x: -60, y: proxy.size.height * 0.3)
+            }
+            .ignoresSafeArea()
+        }
+    }
+}
+
+// MARK: - Studio Header
 private struct CommunityGatewayHeader: View {
     @Environment(\.layoutDirection) private var direction
     let onClose: () -> Void
 
     var body: some View {
-        HStack {
-            Button(action: onClose) {
+        HStack(alignment: .center, spacing: 12) {
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onClose()
+            }) {
                 Image(systemName: direction == .rightToLeft ? "chevron.right" : "chevron.left")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Color.ppTextPrimary)
                     .frame(width: 44, height: 44)
                     .background(Color.ppSurface, in: Circle())
+                    .overlay { Circle().stroke(Color.ppBorder.opacity(0.7), lineWidth: 0.8) }
+                    .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: 3)
             }
             .buttonStyle(CommunityPressStyle())
             .accessibilityLabel(PPAdoptLang("Close"))
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(PPAdoptLang("community_title"))
                     .font(CommunityFont.bold(22, relativeTo: .title2))
                     .foregroundStyle(Color.ppTextPrimary)
                 Text(PPAdoptLang("community_subtitle"))
                     .font(CommunityFont.regular(12, relativeTo: .caption))
                     .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(1)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(Color.green)
+                    .frame(width: 6, height: 6)
+                Text(PPAdoptLang("community_verified_network"))
+                    .font(CommunityFont.medium(11, relativeTo: .caption2))
+                    .foregroundStyle(Color.green)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.green.opacity(0.1), in: Capsule())
+            .overlay { Capsule().stroke(Color.green.opacity(0.2), lineWidth: 0.7) }
         }
-        .padding(.top, 8)
+        .padding(.top, 6)
     }
 }
 
-private struct CommunityGatewayCard: View {
+// MARK: - Sanctuary Hero
+private struct CommunitySanctuaryHero: View {
+    let isPad: Bool
+    let onExploreAdoption: () -> Void
+    let onQuickReport: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(hex: "CB2654").opacity(0.96),
+                                Color(hex: "D9644A").opacity(0.92),
+                                Color(hex: "7E3F98").opacity(0.88)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay {
+                        GeometryReader { proxy in
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white.opacity(0.12))
+                                    .frame(width: 170, height: 170)
+                                    .blur(radius: 20)
+                                    .offset(x: proxy.size.width - 90, y: -40)
+
+                                Image(systemName: "pawprint.fill")
+                                    .font(.system(size: 130))
+                                    .foregroundStyle(Color.white.opacity(0.065))
+                                    .rotationEffect(.degrees(-15))
+                                    .offset(x: proxy.size.width - 100, y: proxy.size.height - 100)
+                            }
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    .shadow(color: Color(hex: "CB2654").opacity(0.22), radius: 18, x: 0, y: 10)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(Color.white)
+                        Text(PPAdoptLang("community_verified_network"))
+                            .font(CommunityFont.medium(12, relativeTo: .caption))
+                            .foregroundStyle(Color.white)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.2), in: Capsule())
+                    .overlay { Capsule().stroke(Color.white.opacity(0.32), lineWidth: 0.6) }
+
+                    Text(PPAdoptLang("community_hero_title"))
+                        .font(CommunityFont.bold(isPad ? 32 : 25, relativeTo: .title))
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .shadow(color: Color.black.opacity(0.12), radius: 3, x: 0, y: 2)
+
+                    Text(PPAdoptLang("community_hero_message"))
+                        .font(CommunityFont.regular(14, relativeTo: .subheadline))
+                        .foregroundStyle(Color.white.opacity(0.92))
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 10) {
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            onExploreAdoption()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text(PPAdoptLang("community_explore_pets"))
+                                    .font(CommunityFont.bold(14, relativeTo: .subheadline))
+                            }
+                            .foregroundStyle(Color(hex: "CB2654"))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.white, in: Capsule())
+                            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                        }
+                        .buttonStyle(CommunityPressStyle())
+
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            onQuickReport()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.shield.fill")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text(PPAdoptLang("community_quick_report_title"))
+                                    .font(CommunityFont.bold(14, relativeTo: .subheadline))
+                            }
+                            .foregroundStyle(Color.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.white.opacity(0.2), in: Capsule())
+                            .overlay { Capsule().stroke(Color.white.opacity(0.35), lineWidth: 0.8) }
+                        }
+                        .buttonStyle(CommunityPressStyle())
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(22)
+            }
+            .accessibilityElement(children: .combine)
+
+            HStack(spacing: 7) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(CommunityPalette.safe)
+                Text(PPAdoptLang("community_privacy_note"))
+                    .font(CommunityFont.medium(12, relativeTo: .footnote))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 4)
+        }
+    }
+}
+
+// MARK: - Showcase Adoption Card
+private struct CommunityAdoptionShowcaseCard: View {
+    @Environment(\.layoutDirection) private var direction
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [CommunityPalette.adoption, Color(hex: "E87A3B")],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .shadow(color: CommunityPalette.adoption.opacity(0.25), radius: 8, x: 0, y: 4)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(PPAdoptLang("community_adoption_title"))
+                        .font(CommunityFont.bold(18, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+
+                    Text(PPAdoptLang("community_adoption_message"))
+                        .font(CommunityFont.regular(13, relativeTo: .footnote))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+
+            HStack {
+                HStack(spacing: 5) {
+                    Image(systemName: "pawprint.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(PPAdoptLang("community_browse_listings"))
+                        .font(CommunityFont.medium(12, relativeTo: .caption))
+                }
+                .foregroundStyle(CommunityPalette.adoption)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(CommunityPalette.adoption.opacity(0.1), in: Capsule())
+
+                Spacer()
+
+                CommunityDirectionalArrow(color: CommunityPalette.adoption)
+            }
+            .padding(.top, 4)
+        }
+        .padding(18)
+        .background(
+            Color.ppSurface,
+            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(CommunityPalette.adoption.opacity(0.18), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.03), radius: 10, x: 0, y: 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - Lost & Found Beacon Card
+private struct CommunityLostFoundBeaconCard: View {
+    @Environment(\.layoutDirection) private var direction
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [CommunityPalette.missing, Color.teal],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "location.magnifyingglass")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .shadow(color: CommunityPalette.missing.opacity(0.25), radius: 8, x: 0, y: 4)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(PPAdoptLang("community_lost_found_title"))
+                        .font(CommunityFont.bold(18, relativeTo: .headline))
+                        .foregroundStyle(Color.ppTextPrimary)
+
+                    Text(PPAdoptLang("community_lost_found_message"))
+                        .font(CommunityFont.regular(13, relativeTo: .footnote))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+
+            HStack {
+                HStack(spacing: 5) {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(PPAdoptLang("community_match_radar_badge"))
+                        .font(CommunityFont.medium(12, relativeTo: .caption))
+                }
+                .foregroundStyle(CommunityPalette.missing)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(CommunityPalette.missing.opacity(0.1), in: Capsule())
+
+                Spacer()
+
+                CommunityDirectionalArrow(color: CommunityPalette.missing)
+            }
+            .padding(.top, 4)
+        }
+        .padding(18)
+        .background(
+            Color.ppSurface,
+            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(CommunityPalette.missing.opacity(0.18), lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.03), radius: 10, x: 0, y: 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - Companion Feature Tile
+private struct CommunityFeatureTile: View {
     let symbol: String
     let color: Color
     let title: String
     let message: String
+    let tag: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.system(size: 25, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: 48, height: 48)
-                .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: symbol)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(color)
+                    .frame(width: 42, height: 42)
+                    .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .accessibilityHidden(true)
+
+                Spacer()
+
+                CommunityDirectionalArrow(color: color)
+            }
+
             Text(title)
-                .font(CommunityFont.bold(18, relativeTo: .headline))
+                .font(CommunityFont.bold(16, relativeTo: .headline))
                 .foregroundStyle(Color.ppTextPrimary)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
+
             Text(message)
-                .font(CommunityFont.regular(13, relativeTo: .footnote))
+                .font(CommunityFont.regular(12, relativeTo: .footnote))
                 .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "arrow.forward.circle.fill")
-                .font(.system(size: 19, weight: .semibold))
+
+            Text(tag)
+                .font(CommunityFont.medium(10, relativeTo: .caption2))
                 .foregroundStyle(color)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .accessibilityHidden(true)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(color.opacity(0.08), in: Capsule())
+                .padding(.top, 2)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 195, alignment: .topLeading)
-        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 24).stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8) }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 165, alignment: .topLeading)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color.ppBorder.opacity(0.65), lineWidth: 0.8)
+        }
+        .shadow(color: Color.black.opacity(0.02), radius: 8, x: 0, y: 3)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - Direction-Aware Arrow
+private struct CommunityDirectionalArrow: View {
+    @Environment(\.layoutDirection) private var direction
+    let color: Color
+
+    private var isRTL: Bool {
+        direction == .rightToLeft || Language.isRTL()
+    }
+
+    var body: some View {
+        Image(systemName: isRTL ? "arrow.left.circle.fill" : "arrow.right.circle.fill")
+            .font(.system(size: 20, weight: .semibold))
+            .foregroundStyle(color)
+            .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Trust Pill
+private struct TrustPill: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(CommunityPalette.safe)
+            Text(title)
+                .font(CommunityFont.bold(11, relativeTo: .caption))
+                .foregroundStyle(Color.ppTextPrimary)
+                .lineLimit(1)
+            Text(subtitle)
+                .font(CommunityFont.regular(9, relativeTo: .caption2))
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .background(Color.ppBackground.opacity(0.7), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.ppBorder.opacity(0.4), lineWidth: 0.6)
+        }
+    }
+}
+
+// MARK: - Sanctuary Loading State
+private struct CommunitySanctuaryLoadingView: View {
+    @State private var isPulsing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(CommunityPalette.adoption.opacity(0.12))
+                    .frame(width: 88, height: 88)
+                    .scaleEffect(isPulsing && !reduceMotion ? 1.15 : 0.95)
+                    .opacity(isPulsing && !reduceMotion ? 0.7 : 0.3)
+
+                Image(systemName: "pawprint.circle.fill")
+                    .font(.system(size: 48, weight: .bold))
+                    .foregroundStyle(CommunityPalette.adoption)
+            }
+            .onAppear {
+                if !reduceMotion {
+                    withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                        isPulsing = true
+                    }
+                }
+            }
+
+            VStack(spacing: 6) {
+                Text(PPAdoptLang("community_loading_title"))
+                    .font(CommunityFont.bold(20, relativeTo: .title3))
+                    .foregroundStyle(Color.ppTextPrimary)
+                Text(PPAdoptLang("community_loading_message"))
+                    .font(CommunityFont.regular(14, relativeTo: .body))
+                    .foregroundStyle(Color.ppTextSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(32)
     }
 }
 
@@ -1603,18 +2150,32 @@ private struct CommunityCaseFormScreen: View {
                 floatingActionDock
 
                 if store.submitting {
-                    Color.black.opacity(0.35).ignoresSafeArea()
-                    VStack(spacing: 14) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                            .tint(Color.white)
+                    Color.black.opacity(0.40).ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(Color(hex: 0xC41E3A).opacity(0.08))
+                                .frame(width: 56, height: 56)
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: 0xC41E3A)))
+                                .scaleEffect(1.2)
+                        }
                         Text(PPAdoptLang("community_submitting"))
                             .font(CommunityFont.bold(16))
-                            .foregroundStyle(.white)
+                            .foregroundColor(Color(UIColor.label))
                     }
-                    .padding(28)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.15), radius: 16)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 24)
+                    .background(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color(UIColor.secondarySystemGroupedBackground).opacity(0.96))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color(UIColor.separator).opacity(0.2), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.16), radius: 24, y: 10)
+                    .transition(.scale(scale: 0.95).combined(with: .opacity))
                 }
             }
             .navigationBarHidden(true)
@@ -5207,10 +5768,15 @@ private struct CommunityConfiguredQuestionField: View {
 
 @objc(PPCommunityViewController)
 final class PPCommunityViewController: UIViewController {
-    private var hosting: UIHostingController<PPCommunityGatewayScreen>?
+    private var hosting: UIHostingController<AnyView>?
     @objc var initialRoute: String = ""
     override func viewDidLoad() {
         super.viewDidLoad()
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
+        navigationController?.view.semanticContentAttribute = attr
+        navigationController?.navigationBar.semanticContentAttribute = attr
+
         weak var weakSelf = self
         let screen = PPCommunityGatewayScreen(
             onSelectAdoption: { weakSelf?.openDetails($0) },
@@ -5218,11 +5784,26 @@ final class PPCommunityViewController: UIViewController {
             onClose: { weakSelf?.close() },
             initialRoute: initialRoute
         )
-        let host = UIHostingController(rootView: screen)
+        let isRTL = Language.isRTL()
+        let directionalRoot = AnyView(
+            screen
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
+        )
+        let host = UIHostingController(rootView: directionalRoot)
+        host.view.semanticContentAttribute = attr
         hosting = host; addChild(host); host.view.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(host.view)
         NSLayoutConstraint.activate([host.view.topAnchor.constraint(equalTo: view.topAnchor), host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor), host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor), host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)])
         host.didMove(toParent: self)
         hidesBottomBarWhenPushed = true
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
+        navigationController?.view.semanticContentAttribute = attr
+        navigationController?.navigationBar.semanticContentAttribute = attr
+        hosting?.view.semanticContentAttribute = attr
     }
     private func openDetails(_ pet: AdoptPetModel) { let controller = AdoptPetDetailsViewController(model: pet); if let nav = navigationController { nav.pushViewController(controller, animated: true) } else { controller.modalPresentationStyle = .fullScreen; present(controller, animated: true) } }
     private func openCreateAdoption() { guard UserManager.shared().isUserLoggedIn() else { UserManager.showPromptOnTopController(); return }; let controller = AddAdoptPetHostingController(pet: nil, onDismiss: nil, onSuccess: nil); controller.modalPresentationStyle = .fullScreen; present(controller, animated: true) }
@@ -5232,10 +5813,27 @@ final class PPCommunityViewController: UIViewController {
 @objc(PPAdoptionApplicationHostingController)
 final class PPAdoptionApplicationHostingController: UIViewController {
     private let listing: AdoptPetModel
-    private var hosting: UIHostingController<PPAdoptionApplicationScreen>?
+    private var hosting: UIHostingController<AnyView>?
     @objc(initWithListing:) init(listing: AdoptPetModel) { self.listing = listing; super.init(nibName: nil, bundle: nil); modalPresentationStyle = .pageSheet }
     required init?(coder: NSCoder) { return nil }
-    override func viewDidLoad() { super.viewDidLoad(); weak var weakSelf = self; let host = UIHostingController(rootView: PPAdoptionApplicationScreen(listing: listing) { weakSelf?.dismiss(animated: true) }); hosting = host; addChild(host); host.view.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(host.view); NSLayoutConstraint.activate([host.view.topAnchor.constraint(equalTo: view.topAnchor), host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor), host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor), host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)]); host.didMove(toParent: self) }
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
+        weak var weakSelf = self
+        let isRTL = Language.isRTL()
+        let screen = PPAdoptionApplicationScreen(listing: listing) { weakSelf?.dismiss(animated: true) }
+        let directionalRoot = AnyView(
+            screen
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
+        )
+        let host = UIHostingController(rootView: directionalRoot)
+        host.view.semanticContentAttribute = attr
+        hosting = host; addChild(host); host.view.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(host.view)
+        NSLayoutConstraint.activate([host.view.topAnchor.constraint(equalTo: view.topAnchor), host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor), host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor), host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor)])
+        host.didMove(toParent: self)
+    }
 }
 
 @objc(PPCommunityCaseFormHostingController)
@@ -5259,13 +5857,22 @@ final class PPCommunityCaseFormHostingController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
         let kind: CommunityCaseKind = isMissing ? .missing : .found
         weak var weakSelf = self
         let form = CommunityCaseFormScreen(kind: kind) {
             weakSelf?.onFinishedCallback?()
             weakSelf?.dismiss(animated: true)
         }
-        let host = UIHostingController(rootView: AnyView(form))
+        let isRTL = Language.isRTL()
+        let directionalRoot = AnyView(
+            form
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
+        )
+        let host = UIHostingController(rootView: directionalRoot)
+        host.view.semanticContentAttribute = attr
         hosting = host
         addChild(host)
         host.view.translatesAutoresizingMaskIntoConstraints = false

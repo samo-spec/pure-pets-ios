@@ -90,8 +90,8 @@
 "lens.prompt.unsupported.detail" = "فئة %@ غير موجودة ضمن فئات الحيوانات الحالية في بيور بتس.";
 "lens.prompt.unsupported.detail_fallback" = "هذه النتيجة غير موجودة ضمن فئات الحيوانات الحالية في بيور بتس.";
 "lens.prompt.unsupported.badge" = "غير متوفر كقسم مباشر";
-"lens.unsupported.ask_nova" = "اسأل نوفا عن هذا الحيوان والمستلزمات";
-"lens.unsupported.ask_nova.hint" = "يفتح مساعد نوفا الذكي لاقتراح المستلزمات والمعلومات المناسبة";
+"lens.unsupported.ask_nova" = "اسأل بيورا عن هذا الحيوان والمستلزمات";
+"lens.unsupported.ask_nova.hint" = "يفتح مساعد بيورا الذكي لاقتراح المستلزمات والمعلومات المناسبة";
 "lens.prompt.uncertain" = "نحتاج نظرة أوضح";
 "lens.prompt.uncertain.detail" = "لم نتأكد من نوع الحيوان بدقة. اختر احتمالاً إذا بدا صحيحاً، أو امسح من جديد.";
 "lens.prompt.uncertain.no_candidates" = "لم نتأكد من نوع الحيوان بدقة. امسح من جديد من زاوية أخرى.";
@@ -134,12 +134,12 @@
 "lens.results.open_failed.detail" = "شاشة التفاصيل الحالية غير متاحة الآن. حاول مرة أخرى.";
 "lens.results.open.hint" = "يفتح شاشة تفاصيل العنصر الحالية";
 "lens.results.opening" = "جارٍ الفتح";
-"lens.results.nova.status" = "نوفا جاهزة لسؤالك";
+"lens.results.nova.status" = "بيورا جاهزة لسؤالك";
 "lens.results.nova.title" = "هل تحتاج إجابة أدق؟";
 "lens.results.nova.detail" = "اسأل عن %@، ثم عدّل سؤالك كما تريد قبل إرساله.";
-"lens.results.nova.action" = "اسأل نوفا";
-"lens.results.nova.privacy" = "لن يُرسل سؤالك إلى نوفا حتى تختار الإرسال.";
-"lens.results.nova.hint" = "يغلق بيور لينس ويفتح نوفا بسؤال قابل للتعديل عن الحيوان المرصود";
+"lens.results.nova.action" = "اسأل بيورا";
+"lens.results.nova.privacy" = "لن يُرسل سؤالك إلى بيورا حتى تختار الإرسال.";
+"lens.results.nova.hint" = "يغلق بيور لينس ويفتح بيورا بسؤال قابل للتعديل عن الحيوان المرصود";
 "lens.scan_again" = "مسح من جديد";
 "lens.scan_again.hint" = "يمسح هذا الاكتشاف ويستأنف جلسة الكاميرا الحالية";
 "lens.species.diet_tip" = "أفضل نظام غذائي";

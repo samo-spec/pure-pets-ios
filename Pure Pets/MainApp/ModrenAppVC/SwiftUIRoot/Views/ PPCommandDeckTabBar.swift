@@ -216,22 +216,44 @@ public struct PPCommandDeckTabBar: View {
     }
 
     private var deckContent: some View {
-        // Semantic order only. SwiftUI places the first destination at the
-        // leading edge, which becomes the right edge for Arabic RTL. Create is
-        // therefore the far-left command in Arabic and mirrors in English.
+        // Semantic order:
+        // Index 0: Home, Index 1: MyAds, Index 2: Create (+), Index 3: Chats, Index 4: Menu.
+        // SwiftUI handles RTL mirroring natively.
         HStack(alignment: .center, spacing: 0) {
-            ForEach(PPCommandDeckTab.allCases) { tab in
-                PPCommandDeckTile(
-                    tab: tab,
-                    isSelected: selection == tab,
-                    unreadChats: unreadChats,
-                    theme: theme,
-                    onTap: { handleTap(on: tab) }
-                )
-            }
+            PPCommandDeckTile(
+                tab: .home,
+                isSelected: selection == .home,
+                unreadChats: unreadChats,
+                theme: theme,
+                onTap: { handleTap(on: .home) }
+            )
+
+            PPCommandDeckTile(
+                tab: .myAds,
+                isSelected: selection == .myAds,
+                unreadChats: unreadChats,
+                theme: theme,
+                onTap: { handleTap(on: .myAds) }
+            )
 
             createButton
                 .frame(maxWidth: .infinity)
+
+            PPCommandDeckTile(
+                tab: .chats,
+                isSelected: selection == .chats,
+                unreadChats: unreadChats,
+                theme: theme,
+                onTap: { handleTap(on: .chats) }
+            )
+
+            PPCommandDeckTile(
+                tab: .menu,
+                isSelected: selection == .menu,
+                unreadChats: unreadChats,
+                theme: theme,
+                onTap: { handleTap(on: .menu) }
+            )
         }
         .padding(.horizontal, PPCommandDeckMetrics.deckHorizontalPadding)
         .frame(maxWidth: .infinity)

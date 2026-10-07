@@ -121,7 +121,7 @@ static BOOL PPNovaLocalMemoryIsInternalMarkerText(NSString *text) {
     // chronological sort (array order) is unambiguous even within the same
     // millisecond window.
     NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
-    BOOL isModel = [role isEqualToString:@"nova"] || [role isEqualToString:@"model"] || [role isEqualToString:@"assistant"];
+    BOOL isModel = [role isEqualToString:@"nova"] || [role isEqualToString:@"pura"] || [role isEqualToString:@"model"] || [role isEqualToString:@"assistant"];
     if (isModel) {
         NSTimeInterval lastUserTs = 0;
         for (NSDictionary *m in self.messages.reverseObjectEnumerator) {
@@ -177,7 +177,7 @@ static BOOL PPNovaLocalMemoryIsInternalMarkerText(NSString *text) {
         if (PPNovaLocalMemoryIsInternalMarkerText(text)) {
             continue;
         }
-        if ([role isEqualToString:@"nova"]) role = @"model";
+        if ([role isEqualToString:@"nova"] || [role isEqualToString:@"pura"]) role = @"model";
         [formatted addObject:@{
             @"role": role ?: @"user",
             @"text": text ?: @""

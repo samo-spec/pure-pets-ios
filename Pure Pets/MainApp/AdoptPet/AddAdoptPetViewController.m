@@ -144,8 +144,12 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     [super viewDidLoad];
     self.view.backgroundColor = AppBackgroundClr;
     self.modalPresentationStyle = UIModalPresentationFullScreen;
+    UISemanticContentAttribute attr = PPAdoptCurrentSemanticAttribute();
+    self.view.semanticContentAttribute = attr;
     if (self.navigationController) {
         self.navigationController.modalPresentationStyle = UIModalPresentationFullScreen;
+        self.navigationController.view.semanticContentAttribute = attr;
+        self.navigationController.navigationBar.semanticContentAttribute = attr;
     }
 
     __weak typeof(self) weakSelf = self;
@@ -157,6 +161,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     }];
     [self addChildViewController:host];
     host.view.translatesAutoresizingMaskIntoConstraints = NO;
+    host.view.semanticContentAttribute = attr;
     [self.view addSubview:host.view];
     [NSLayoutConstraint activateConstraints:@[
         [host.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -173,6 +178,12 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    UISemanticContentAttribute attr = PPAdoptCurrentSemanticAttribute();
+    self.view.semanticContentAttribute = attr;
+    if (self.navigationController) {
+        self.navigationController.view.semanticContentAttribute = attr;
+        self.navigationController.navigationBar.semanticContentAttribute = attr;
+    }
     [self.navigationController setNavigationBarHidden:YES animated:animated];
     [self pp_setPremiumTabDockHidden:YES animated:animated];
 }

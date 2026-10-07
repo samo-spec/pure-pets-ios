@@ -2,471 +2,272 @@
 //  PPReminderEditorViewController.m
 //  Pure Pets
 //
-//  Created by Mohammed Ahmed on 4/7/26.
-//  Modern UI — matches ProfileVC.m form style exactly (accent-bar headers,
-//  PPProfileTextFieldCell-pattern cells, inset base cells, UITableViewStylePlain).
+//  Native care-note editor. This controller remains the sole draft, navigation,
+//  persistence and local-notification owner; the private views only render it.
 //
 
 #import "PPReminderEditorViewController.h"
 #import "PPPetReminder.h"
 #import "PPPetProfile.h"
+#import "PPPetProfileEditorViewController.h"
+#import "PPReminderNotificationManager.h"
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
- 
-#import "PPReminderNotificationManager.h"
+#import <Pure_Pets-Swift.h>
+@import UserNotifications;
 
-// ─── Constants (ProfileVC pattern) ────────────────────────
-
-static const CGFloat kPPRemEdCellHInset = 20.0;
-static const CGFloat kPPRemEdCellVInset = 10.0;
-
-static NSString *const kPPRemEdTextFieldCellID  = @"PPRemEdTextFieldCell";
-static NSString *const kPPRemEdSegmentCellID    = @"PPRemEdSegmentCell";
-static NSString *const kPPRemEdSelectorCellID   = @"PPRemEdSelectorCell";
-static NSString *const kPPRemEdDatePickerCellID = @"PPRemEdDatePickerCell";
-static NSString *const kPPRemEdSwitchCellID     = @"PPRemEdSwitchCell";
-
-// Repeat-rule values stored in Firestore (must stay stable)
-static NSString *const kPPRepeatNone    = @"";
-static NSString *const kPPRepeatDaily   = @"daily";
-static NSString *const kPPRepeatWeekly  = @"weekly";
-static NSString *const kPPRepeatMonthly = @"monthly";
-static NSString *const kPPRepeatYearly  = @"yearly";
-
-/// Returns a localized display string for a repeat-rule value.
-static NSString * PPRepeatRuleDisplayText(NSString *rule) {
-    if ([rule isEqualToString:kPPRepeatDaily])   return kLang(@"pet_reminder_repeat_daily")   ?: @"Every Day";
-    if ([rule isEqualToString:kPPRepeatWeekly])  return kLang(@"pet_reminder_repeat_weekly")  ?: @"Every Week";
-    if ([rule isEqualToString:kPPRepeatMonthly]) return kLang(@"pet_reminder_repeat_monthly") ?: @"Every Month";
-    if ([rule isEqualToString:kPPRepeatYearly])  return kLang(@"pet_reminder_repeat_yearly")  ?: @"Every Year";
-    return kLang(@"pet_reminder_repeat_none") ?: @"Never";
+static BOOL PPRemEdMatchesOwner(NSString *ownerUID) {
+    return ownerUID.length > 0 && [ownerUID isEqualToString:[UserManager sharedManager].currentAuthUser.uid];
 }
 
-static inline UISemanticContentAttribute PPRemEdSemanticAttr(void) {
-    return PPPetsCurrentSemanticAttribute();
+// Stored values are a compatibility contract with the existing scheduler.
+static NSArray<NSString *> *PPRemEdRepeatRules(void) {
+    return @[@"", @"daily", @"weekly", @"monthly", @"yearly"];
 }
 
-// ─── Sections ─────────────────────────────────────────────
-
-typedef NS_ENUM(NSInteger, PPRemEdSection) {
-    PPRemEdSectionTitle   = 0,
-    PPRemEdSectionType    = 1,
-    PPRemEdSectionPet     = 2,
-    PPRemEdSectionDate    = 3,
-    PPRemEdSectionRepeat  = 4,
-    PPRemEdSectionToggle  = 5,
-    PPRemEdSectionCount   = 6
-};
-
-// ═══════════════════════════════════════════════════════════
-// MARK: - PPRemEdBaseCell  (ProfileVC PPProfileBaseCell pattern)
-// ═══════════════════════════════════════════════════════════
-
-@interface PPRemEdBaseCell : UITableViewCell
-@end
-
-@implementation PPRemEdBaseCell
-
-- (void)setFrame:(CGRect)frame {
-    frame.origin.x    = kPPRemEdCellHInset;
-    frame.size.width -= kPPRemEdCellHInset * 2.0;
-    frame.origin.y   += kPPRemEdCellVInset * 0.5;
-    frame.size.height -= kPPRemEdCellVInset;
-    if (frame.size.width  < 0.0) frame.size.width  = 0.0;
-    if (frame.size.height < 0.0) frame.size.height = 0.0;
-    [super setFrame:frame];
+static NSString *PPRemEdRepeatLabel(NSString *rule) {
+    NSArray *rules = PPRemEdRepeatRules();
+    NSArray *keys = @[@"pet_reminder_repeat_none", @"pet_reminder_repeat_daily",
+                      @"pet_reminder_repeat_weekly", @"pet_reminder_repeat_monthly",
+                      @"pet_reminder_repeat_yearly"];
+    NSUInteger index = [rules indexOfObject:rule ?: @""];
+    return kLang(keys[index == NSNotFound ? 0 : index]);
 }
 
-@end
+static UIFont *PPRemEdFont(CGFloat size, UIFontTextStyle style, BOOL bold) {
+    UIFont *base = bold ? [GM boldFontWithSize:size] : [GM fontWithSize:size];
+    return [[UIFontMetrics metricsForTextStyle:style] scaledFontForFont:
+            base ?: [UIFont systemFontOfSize:size weight:bold ? UIFontWeightSemibold : UIFontWeightRegular]];
+}
 
-// ═══════════════════════════════════════════════════════════
-// MARK: - PPRemEdTextFieldCell  (ProfileVC PPProfileTextFieldCell pattern)
-// ═══════════════════════════════════════════════════════════
+static UILabel *PPRemEdLabel(NSString *text, CGFloat size, UIFontTextStyle style, BOOL bold, UIColor *color) {
+    UILabel *label = [UILabel new];
+    label.text = text;
+    label.font = PPRemEdFont(size, style, bold);
+    label.adjustsFontForContentSizeCategory = YES;
+    label.numberOfLines = 0;
+    label.textColor = color;
+    label.textAlignment = Language.alignmentForCurrentLanguage;
+    label.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    return label;
+}
 
-@interface PPRemEdTextFieldCell : PPRemEdBaseCell
-@property (nonatomic, strong, readonly) UILabel     *cellTitleLabel;
-@property (nonatomic, strong, readonly) UITextField *cellTextField;
-@end
+static UIStackView *PPRemEdStack(NSArray<UIView *> *views, CGFloat spacing) {
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:views];
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.spacing = spacing;
+    stack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    return stack;
+}
 
-@implementation PPRemEdTextFieldCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
-    self = [super initWithStyle:style reuseIdentifier:rid];
-    if (!self) return nil;
-
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.preservesSuperviewLayoutMargins = NO;
-    self.contentView.preservesSuperviewLayoutMargins = NO;
-    self.semanticContentAttribute = PPRemEdSemanticAttr();
-    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
-
-    _cellTitleLabel = [UILabel new];
-    _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _cellTitleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    _cellTitleLabel.textColor = AppPrimaryTextClr ;
-    _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:_cellTitleLabel];
-
-    _cellTextField = [UITextField new];
-    _cellTextField.translatesAutoresizingMaskIntoConstraints = NO;
-    _cellTextField.borderStyle       = UITextBorderStyleNone;
-    _cellTextField.backgroundColor   = UIColor.clearColor;
-    _cellTextField.textColor         = AppPrimaryTextClr;
-    _cellTextField.font              = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _cellTextField.clearButtonMode   = UITextFieldViewModeWhileEditing;
-    _cellTextField.autocorrectionType = UITextAutocorrectionTypeNo;
-    _cellTextField.textAlignment     = Language.alignmentForCurrentLanguage;
-    _cellTextField.semanticContentAttribute = PPRemEdSemanticAttr();
-    [self.contentView addSubview:_cellTextField];
-
+static UIView *PPRemEdSurface(UIView *content, CGFloat inset) {
+    UIView *surface = [UIView new];
+    surface.backgroundColor = UIColor.ppSurface;
+    surface.layer.cornerRadius = 24.0;
+    surface.layer.cornerCurve = kCACornerCurveContinuous;
+    content.translatesAutoresizingMaskIntoConstraints = NO;
+    [surface addSubview:content];
+    // UIStackView collapses hidden surfaces to zero height. Let this one edge
+    // yield while their controls retain their intrinsic and minimum heights.
+    NSLayoutConstraint *bottom = [content.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-inset];
+    bottom.priority = UILayoutPriorityRequired - 1;
     [NSLayoutConstraint activateConstraints:@[
-        [_cellTitleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor     constant:14.0],
-        [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [_cellTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [_cellTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
-        [_cellTextField.topAnchor      constraintEqualToAnchor:_cellTitleLabel.bottomAnchor constant:6.0],
-        [_cellTextField.leadingAnchor  constraintEqualToAnchor:_cellTitleLabel.leadingAnchor],
-        [_cellTextField.trailingAnchor constraintEqualToAnchor:_cellTitleLabel.trailingAnchor],
-        [_cellTextField.bottomAnchor   constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
-        [_cellTextField.heightAnchor   constraintGreaterThanOrEqualToConstant:24.0],
+        [content.topAnchor constraintEqualToAnchor:surface.topAnchor constant:inset],
+        bottom,
+        [content.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:inset],
+        [content.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-inset]
     ]];
+    return surface;
+}
+
+static UIView *PPRemEdDivider(void) {
+    UIView *divider = [UIView new];
+    divider.backgroundColor = UIColor.separatorColor;
+    [divider.heightAnchor constraintEqualToConstant:0.5].active = YES;
+    divider.isAccessibilityElement = NO;
+    return divider;
+}
+
+#pragma mark - Self-sizing title
+
+@interface PPRemEdTitleView : UITextView
+@property (nonatomic, strong) UILabel *placeholderLabel;
+@property (nonatomic, assign) CGFloat measuredWidth;
+@end
+
+@implementation PPRemEdTitleView
+
+- (instancetype)initWithFrame:(CGRect)frame textContainer:(NSTextContainer *)container {
+    self = [super initWithFrame:frame textContainer:container];
+    if (!self) return nil;
+    self.scrollEnabled = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.textContainerInset = UIEdgeInsetsMake(4, 0, 4, 0);
+    self.textContainer.lineFragmentPadding = 0;
+    self.font = PPRemEdFont(30, UIFontTextStyleTitle1, YES);
+    self.adjustsFontForContentSizeCategory = YES;
+    self.textColor = UIColor.ppTextPrimary;
+    self.tintColor = UIColor.ppAccentText;
+    self.textAlignment = Language.alignmentForCurrentLanguage;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.autocorrectionType = UITextAutocorrectionTypeDefault;
+    self.autocapitalizationType = UITextAutocapitalizationTypeSentences;
+    self.returnKeyType = UIReturnKeyDone;
+    self.placeholderLabel = PPRemEdLabel(kLang(@"reminder_editor_title_prompt"), 30, UIFontTextStyleTitle1, YES, UIColor.ppTextSecondary);
+    self.placeholderLabel.isAccessibilityElement = NO;
+    self.placeholderLabel.userInteractionEnabled = NO;
+    [self addSubview:self.placeholderLabel];
+    self.accessibilityLabel = kLang(@"pet_reminder_title");
+    self.accessibilityHint = kLang(@"pet_reminder_title_required_msg");
+    self.accessibilityIdentifier = @"reminderEditor.title";
     return self;
 }
 
-- (void)prepareForReuse {
-    [super prepareForReuse];
-    _cellTitleLabel.text = nil;
-    _cellTextField.text  = nil;
-    _cellTextField.placeholder = nil;
-    [_cellTextField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
-    _cellTextField.delegate = nil;
+- (CGSize)intrinsicContentSize {
+    CGFloat width = CGRectGetWidth(self.bounds);
+    if (width <= 0) return CGSizeMake(UIViewNoIntrinsicMetric, 60);
+    CGFloat textHeight = [self sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)].height;
+    CGFloat hintHeight = [self.placeholderLabel sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)].height + 8;
+    return CGSizeMake(UIViewNoIntrinsicMetric, MAX(60, self.text.length ? textHeight : hintHeight));
 }
 
-- (void)configureWithTitle:(NSString *)title
-                      text:(NSString *)text
-               placeholder:(NSString *)placeholder
-                  delegate:(id<UITextFieldDelegate>)delegate
-                    target:(id)target
-                    action:(SEL)action {
-    _cellTitleLabel.text     = title;
-    _cellTextField.text      = text;
-    _cellTextField.placeholder = placeholder;
-    _cellTextField.delegate  = delegate;
-    _cellTextField.returnKeyType = UIReturnKeyDone;
-    if (target && action) {
-        [_cellTextField addTarget:target action:action forControlEvents:UIControlEventEditingChanged];
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat width = CGRectGetWidth(self.bounds);
+    self.placeholderLabel.frame = CGRectMake(0, 4, width,
+        [self.placeholderLabel sizeThatFits:CGSizeMake(width, CGFLOAT_MAX)].height);
+    self.placeholderLabel.hidden = self.text.length > 0;
+    if (fabs(width - self.measuredWidth) > 0.5) {
+        self.measuredWidth = width;
+        [self invalidateIntrinsicContentSize];
     }
 }
-
 @end
 
-// ═══════════════════════════════════════════════════════════
-// MARK: - PPRemEdSegmentCell  (inset base + full-width segmented control)
-// ═══════════════════════════════════════════════════════════
+#pragma mark - Native action row
 
-@interface PPRemEdSegmentCell : PPRemEdBaseCell
-@property (nonatomic, strong, readonly) UIView *controlContainer;
+@interface PPRemEdActionRow : UIControl
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *valueLabel;
+@property (nonatomic, strong) UILabel *hintLabel;
+@property (nonatomic, strong) UIImageView *symbolView;
+@property (nonatomic, strong) UIImageView *chevronView;
+@property (nonatomic, strong) UIActivityIndicatorView *activity;
+- (void)configureTitle:(NSString *)title value:(NSString *)value hint:(NSString *)hint symbol:(NSString *)symbol loading:(BOOL)loading;
 @end
 
-@implementation PPRemEdSegmentCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
-    self = [super initWithStyle:style reuseIdentifier:rid];
+@implementation PPRemEdActionRow
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
     if (!self) return nil;
-
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.preservesSuperviewLayoutMargins = NO;
-    self.contentView.preservesSuperviewLayoutMargins = NO;
-    self.semanticContentAttribute = PPRemEdSemanticAttr();
-    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
-
-    _controlContainer = [UIView new];
-    _controlContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    _controlContainer.backgroundColor = UIColor.clearColor;
-    [self.contentView addSubview:_controlContainer];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_controlContainer.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor      constant:14.0],
-        [_controlContainer.bottomAnchor   constraintEqualToAnchor:self.contentView.bottomAnchor   constant:-14.0],
-        [_controlContainer.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:18.0],
-        [_controlContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-    ]];
-    return self;
-}
-
-- (void)embedControl:(UIView *)control {
-    for (UIView *sub in _controlContainer.subviews) {
-        [sub removeFromSuperview];
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.titleLabel = PPRemEdLabel(@"", 12, UIFontTextStyleCaption1, YES, UIColor.ppTextSecondary);
+    self.valueLabel = PPRemEdLabel(@"", 18, UIFontTextStyleHeadline, YES, UIColor.ppTextPrimary);
+    self.hintLabel = PPRemEdLabel(@"", 13, UIFontTextStyleFootnote, NO, UIColor.ppTextSecondary);
+    self.symbolView = [[UIImageView alloc] init];
+    self.symbolView.contentMode = UIViewContentModeScaleAspectFit;
+    self.symbolView.tintColor = UIColor.ppAccentText;
+    self.chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.forward"]];
+    self.chevronView.contentMode = UIViewContentModeScaleAspectFit;
+    self.chevronView.tintColor = UIColor.ppTextSecondary;
+    self.activity = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    self.activity.hidesWhenStopped = YES;
+    UIView *symbolContainer = [UIView new];
+    for (UIView *view in @[self.symbolView, self.activity]) {
+        view.translatesAutoresizingMaskIntoConstraints = NO;
+        [symbolContainer addSubview:view];
+        [NSLayoutConstraint activateConstraints:@[
+            [view.centerXAnchor constraintEqualToAnchor:symbolContainer.centerXAnchor],
+            [view.centerYAnchor constraintEqualToAnchor:symbolContainer.centerYAnchor],
+            [view.widthAnchor constraintEqualToConstant:24], [view.heightAnchor constraintEqualToConstant:24]
+        ]];
     }
-    control.translatesAutoresizingMaskIntoConstraints = NO;
-    [_controlContainer addSubview:control];
+    [symbolContainer.widthAnchor constraintEqualToConstant:28].active = YES;
+    [symbolContainer.heightAnchor constraintEqualToConstant:28].active = YES;
+    UIStackView *copy = PPRemEdStack(@[self.titleLabel, self.valueLabel, self.hintLabel], 4);
+    UIStackView *row = [[UIStackView alloc] initWithArrangedSubviews:@[symbolContainer, copy, self.chevronView]];
+    row.axis = UILayoutConstraintAxisHorizontal;
+    row.alignment = UIStackViewAlignmentCenter;
+    row.spacing = 12;
+    row.userInteractionEnabled = NO;
+    row.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    row.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addSubview:row];
+    NSLayoutConstraint *chevronWidth = [self.chevronView.widthAnchor constraintEqualToConstant:12];
+    chevronWidth.priority = UILayoutPriorityRequired - 1;
     [NSLayoutConstraint activateConstraints:@[
-        [control.topAnchor      constraintEqualToAnchor:_controlContainer.topAnchor],
-        [control.bottomAnchor   constraintEqualToAnchor:_controlContainer.bottomAnchor],
-        [control.leadingAnchor  constraintEqualToAnchor:_controlContainer.leadingAnchor],
-        [control.trailingAnchor constraintEqualToAnchor:_controlContainer.trailingAnchor],
+        [row.topAnchor constraintEqualToAnchor:self.topAnchor constant:16],
+        [row.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-16],
+        [row.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16],
+        [row.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16],
+        chevronWidth,
+        [self.chevronView.heightAnchor constraintEqualToConstant:16],
+        [self.heightAnchor constraintGreaterThanOrEqualToConstant:72]
     ]];
-}
-
-@end
-
-// ═══════════════════════════════════════════════════════════
-// MARK: - PPRemEdSelectorCell  (ProfileVC PPProfileSelectorCell pattern)
-// ═══════════════════════════════════════════════════════════
-
-@interface PPRemEdSelectorCell : PPRemEdBaseCell
-@property (nonatomic, strong, readonly) UILabel     *cellTitleLabel;
-@property (nonatomic, strong, readonly) UIImageView *iconView;
-@property (nonatomic, strong, readonly) UILabel     *valueLabel;
-@property (nonatomic, strong, readonly) UIImageView *chevronView;
-@end
-
-@implementation PPRemEdSelectorCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
-    self = [super initWithStyle:style reuseIdentifier:rid];
-    if (!self) return nil;
-
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.preservesSuperviewLayoutMargins = NO;
-    self.contentView.preservesSuperviewLayoutMargins = NO;
-    self.semanticContentAttribute = PPRemEdSemanticAttr();
-    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
-
-    _cellTitleLabel = [UILabel new];
-    _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _cellTitleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    _cellTitleLabel.textColor = AppPrimaryTextClr;
-    _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:_cellTitleLabel];
-
-    _iconView = [[UIImageView alloc] init];
-    _iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconView.contentMode = UIViewContentModeScaleAspectFit;
-    _iconView.tintColor = PPPetsUIBrandColor();
-    [self.contentView addSubview:_iconView];
-
-    _valueLabel = [UILabel new];
-    _valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _valueLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _valueLabel.textColor = AppPrimaryTextClr;
-    _valueLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    _valueLabel.numberOfLines = 2;
-    [self.contentView addSubview:_valueLabel];
-
-    _chevronView = [[UIImageView alloc] init];
-    _chevronView.translatesAutoresizingMaskIntoConstraints = NO;
-    _chevronView.contentMode = UIViewContentModeCenter;
-    _chevronView.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.6];
-    _chevronView.image = [UIImage systemImageNamed:PPPetsForwardChevronSymbolName()
-                                 withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightMedium]];
-    [self.contentView addSubview:_chevronView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_cellTitleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor     constant:14.0],
-        [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [_cellTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [_cellTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:14.0],
-        [_iconView.topAnchor    constraintEqualToAnchor:_cellTitleLabel.bottomAnchor constant:8.0],
-        [_iconView.leadingAnchor constraintEqualToAnchor:_cellTitleLabel.leadingAnchor],
-        [_iconView.widthAnchor  constraintEqualToConstant:22.0],
-        [_iconView.heightAnchor constraintEqualToConstant:22.0],
-        [_iconView.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
-
-        [_valueLabel.centerYAnchor constraintEqualToAnchor:_iconView.centerYAnchor],
-        [_valueLabel.leadingAnchor constraintEqualToAnchor:_iconView.trailingAnchor constant:8.0],
-        [_valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_chevronView.leadingAnchor constant:-8.0],
-        [_valueLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
-
-        [_chevronView.centerYAnchor constraintEqualToAnchor:_iconView.centerYAnchor],
-        [_chevronView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [_chevronView.widthAnchor  constraintEqualToConstant:12.0],
-        [_chevronView.heightAnchor constraintEqualToConstant:12.0],
-    ]];
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
     return self;
 }
 
-- (void)prepareForReuse {
-    [super prepareForReuse];
-    _cellTitleLabel.text = nil;
-    _valueLabel.text     = nil;
-    _iconView.image      = nil;
+- (void)configureTitle:(NSString *)title value:(NSString *)value hint:(NSString *)hint symbol:(NSString *)symbol loading:(BOOL)loading {
+    self.titleLabel.text = title;
+    self.valueLabel.text = value;
+    self.hintLabel.text = hint;
+    self.hintLabel.hidden = hint.length == 0;
+    self.symbolView.image = [UIImage systemImageNamed:symbol];
+    self.symbolView.hidden = loading;
+    self.chevronView.hidden = loading;
+    if (loading) [self.activity startAnimating]; else [self.activity stopAnimating];
+    self.accessibilityLabel = title;
+    self.accessibilityValue = value;
+    self.accessibilityHint = hint;
 }
 
-- (void)configureWithTitle:(NSString *)title value:(NSString *)value iconName:(NSString *)iconName {
-    _cellTitleLabel.text = title;
-    _valueLabel.text     = value;
-    _iconView.image      = [[UIImage systemImageNamed:iconName ?: @"pawprint.fill"]
-                             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+- (void)setHighlighted:(BOOL)highlighted {
+    [super setHighlighted:highlighted];
+    self.alpha = highlighted ? 0.72 : 1.0;
 }
 
+- (void)setEnabled:(BOOL)enabled {
+    [super setEnabled:enabled];
+    self.accessibilityTraits = UIAccessibilityTraitButton | (enabled ? 0 : UIAccessibilityTraitNotEnabled);
+}
 @end
 
-// ═══════════════════════════════════════════════════════════
-// MARK: - PPRemEdDatePickerCell  (inset base + label + compact date picker)
-// ═══════════════════════════════════════════════════════════
+#pragma mark - Coordinator
 
-@interface PPRemEdDatePickerCell : PPRemEdBaseCell
-@property (nonatomic, strong, readonly) UILabel *cellTitleLabel;
-@property (nonatomic, strong, readonly) UIView  *pickerContainer;
-@end
-
-@implementation PPRemEdDatePickerCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
-    self = [super initWithStyle:style reuseIdentifier:rid];
-    if (!self) return nil;
-
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.preservesSuperviewLayoutMargins = NO;
-    self.contentView.preservesSuperviewLayoutMargins = NO;
-    self.semanticContentAttribute = PPRemEdSemanticAttr();
-    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
-
-    _cellTitleLabel = [UILabel new];
-    _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _cellTitleLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _cellTitleLabel.textColor = AppPrimaryTextClr;
-    _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:_cellTitleLabel];
-
-    _pickerContainer = [UIView new];
-    _pickerContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    _pickerContainer.backgroundColor = UIColor.clearColor;
-    [self.contentView addSubview:_pickerContainer];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [_cellTitleLabel.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_cellTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_pickerContainer.leadingAnchor constant:-8.0],
-        [_cellTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
-        [_pickerContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [_pickerContainer.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_pickerContainer.topAnchor      constraintGreaterThanOrEqualToAnchor:self.contentView.topAnchor    constant:8.0],
-        [_pickerContainer.bottomAnchor   constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-8.0],
-    ]];
-    return self;
-}
-
-- (void)embedDatePicker:(UIDatePicker *)picker {
-    for (UIView *sub in _pickerContainer.subviews) {
-        [sub removeFromSuperview];
-    }
-    picker.translatesAutoresizingMaskIntoConstraints = NO;
-    [_pickerContainer addSubview:picker];
-    [NSLayoutConstraint activateConstraints:@[
-        [picker.topAnchor      constraintEqualToAnchor:_pickerContainer.topAnchor],
-        [picker.bottomAnchor   constraintEqualToAnchor:_pickerContainer.bottomAnchor],
-        [picker.leadingAnchor  constraintEqualToAnchor:_pickerContainer.leadingAnchor],
-        [picker.trailingAnchor constraintEqualToAnchor:_pickerContainer.trailingAnchor],
-    ]];
-}
-
-@end
-
-// ═══════════════════════════════════════════════════════════
-// MARK: - PPRemEdSwitchCell  (inset base + icon + title + switch)
-// ═══════════════════════════════════════════════════════════
-
-@interface PPRemEdSwitchCell : PPRemEdBaseCell
-@property (nonatomic, strong, readonly) UIImageView *iconView;
-@property (nonatomic, strong, readonly) UILabel     *cellTitleLabel;
-@end
-
-@implementation PPRemEdSwitchCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
-    self = [super initWithStyle:style reuseIdentifier:rid];
-    if (!self) return nil;
-
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.preservesSuperviewLayoutMargins = NO;
-    self.contentView.preservesSuperviewLayoutMargins = NO;
-    self.semanticContentAttribute = PPRemEdSemanticAttr();
-    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
-
-    _iconView = [[UIImageView alloc] init];
-    _iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconView.contentMode = UIViewContentModeScaleAspectFit;
-    _iconView.tintColor = PPPetsUIBrandColor();
-    [self.contentView addSubview:_iconView];
-
-    _cellTitleLabel = [UILabel new];
-    _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _cellTitleLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _cellTitleLabel.textColor = AppPrimaryTextClr;
-    _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:_cellTitleLabel];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_iconView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [_iconView.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_iconView.widthAnchor    constraintEqualToConstant:20.0],
-        [_iconView.heightAnchor   constraintEqualToConstant:20.0],
-
-        [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:_iconView.trailingAnchor constant:10.0],
-        [_cellTitleLabel.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_cellTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-60.0],
-        [_cellTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
-        [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
-    ]];
-    return self;
-}
-
-- (void)prepareForReuse {
-    [super prepareForReuse];
-    _cellTitleLabel.text = nil;
-    _iconView.image      = nil;
-    self.accessoryView   = nil;
-}
-
-- (void)configureWithTitle:(NSString *)title iconName:(NSString *)iconName switchControl:(UISwitch *)sw {
-    _cellTitleLabel.text = title;
-    _iconView.image = [[UIImage systemImageNamed:iconName ?: @"bell.badge.fill"]
-                        imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    self.accessoryView = sw;
-}
-
-@end
-
-// ═══════════════════════════════════════════════════════════
-// MARK: - View Controller
-// ═══════════════════════════════════════════════════════════
-
-@interface PPReminderEditorViewController () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate>
+@interface PPReminderEditorViewController () <UITextViewDelegate>
 @property (nonatomic, strong) PPPetReminder *reminder;
+@property (nonatomic, strong) PPPetReminder *originalReminder;
+@property (nonatomic, copy) NSString *ownerUID;
 @property (nonatomic, assign) BOOL isNewReminder;
-
 @property (nonatomic, strong) NSArray<PPPetProfile *> *pets;
-@property (nonatomic, assign) NSInteger selectedPetIndex;
+@property (nonatomic, assign) BOOL isLoadingPets;
 @property (nonatomic, assign) BOOL petsLoaded;
+@property (nonatomic, assign) BOOL petsLoadFailed;
+@property (nonatomic, assign) BOOL reloadPetsOnReturn;
 @property (nonatomic, assign) BOOL isSaving;
-
-@property (nonatomic, strong) UITableView            *tableView;
-@property (nonatomic, strong) UITextField             *titleField;
-@property (nonatomic, strong) UISegmentedControl      *typeControl;
-@property (nonatomic, strong) UIDatePicker            *datePicker;
-@property (nonatomic, strong) UISwitch                *enableSwitch;
-@property (nonatomic, strong) UIView                  *headerRoot;
-@property (nonatomic, strong) UIView                  *headerCardView;
-@property (nonatomic, strong) PPInsetLabel            *heroEyebrowLabel;
-@property (nonatomic, strong) UILabel                 *heroTitleLabel;
-@property (nonatomic, strong) UILabel                 *heroSubtitleLabel;
-@property (nonatomic, strong) PPInsetLabel            *heroMetaLabel;
-@property (nonatomic, strong) UIImageView             *heroSymbolView;
-@property (nonatomic, strong) UIView                  *backgroundGlowViewTop;
-@property (nonatomic, strong) UIView                  *backgroundGlowViewBottom;
-@property (nonatomic, strong) NSArray<UIView *>       *floatingCircles;
+@property (nonatomic, assign) BOOL saveSucceeded;
+@property (nonatomic, assign) BOOL notificationsDenied;
+@property (nonatomic, assign) BOOL needsNotificationPermission;
+@property (nonatomic, assign) NSUInteger petRequestID;
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, strong) UIStackView *contentStack;
+@property (nonatomic, strong) PPRemEdTitleView *titleField;
+@property (nonatomic, strong) UIStackView *typeStack;
+@property (nonatomic, strong) NSArray<UIButton *> *typeButtons;
+@property (nonatomic, strong) PPRemEdActionRow *petRow;
+@property (nonatomic, strong) PPRemEdActionRow *repeatRow;
+@property (nonatomic, strong) PPRemEdActionRow *permissionRow;
+@property (nonatomic, strong) UIView *permissionSurface;
+@property (nonatomic, strong) UIDatePicker *datePicker;
+@property (nonatomic, strong) UIDatePicker *timePicker;
+@property (nonatomic, strong) NSArray<UIStackView *> *dateRows;
+@property (nonatomic, strong) UIStackView *enabledRow;
+@property (nonatomic, strong) UISwitch *enableSwitch;
+@property (nonatomic, strong) UILabel *validationLabel;
+@property (nonatomic, strong) UIButton *saveButton;
 @end
 
 @implementation PPReminderEditorViewController
@@ -475,16 +276,17 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
 - (instancetype)initWithReminder:(PPPetReminder *)reminder {
     self = [super initWithNibName:nil bundle:nil];
-    if (self) {
-        _isNewReminder = (reminder == nil);
-        _reminder = reminder ?: [PPPetReminder new];
-        if (_isNewReminder) {
-            _reminder.enabled = YES;
-            _reminder.type    = PPPetReminderTypeVaccination;
-        }
-        _pets             = @[];
-        _selectedPetIndex = NSNotFound;
-    }
+    if (!self) return nil;
+    _originalReminder = reminder;
+    _ownerUID = [[UserManager sharedManager].currentAuthUser.uid copy];
+    _isNewReminder = reminder == nil;
+    _reminder = reminder ? [[PPPetReminder alloc] initWithDictionary:reminder.toDictionary] : [PPPetReminder new];
+    _reminder.fireDate = reminder.fireDate;
+    _reminder.createdAt = reminder.createdAt;
+    _reminder.updatedAt = reminder.updatedAt;
+    // Give a new reminder a usable future time; never silently change an edited date.
+    if (!_reminder.fireDate) _reminder.fireDate = [NSDate dateWithTimeIntervalSinceNow:3600];
+    _pets = @[];
     return self;
 }
 
@@ -492,830 +294,549 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
-    // ── Table (ProfileVC pattern: UITableViewStylePlain) ──
-    UITableView *tv = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
-    tv.translatesAutoresizingMaskIntoConstraints = NO;
-    tv.dataSource       = self;
-    tv.delegate         = self;
-    tv.backgroundColor  = UIColor.clearColor;
-    tv.separatorStyle   = UITableViewCellSeparatorStyleNone;
-    tv.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    tv.rowHeight        = UITableViewAutomaticDimension;
-    tv.estimatedRowHeight = 84.0;
-    tv.contentInset     = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
-    tv.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
-    tv.showsVerticalScrollIndicator = NO;
-    tv.showsHorizontalScrollIndicator = NO;
-    tv.semanticContentAttribute = PPRemEdSemanticAttr();
-    if (@available(iOS 15.0, *)) {
-        tv.sectionHeaderTopPadding = 0.0;
-    }
-
-    [tv registerClass:[PPRemEdTextFieldCell  class] forCellReuseIdentifier:kPPRemEdTextFieldCellID];
-    [tv registerClass:[PPRemEdSegmentCell    class] forCellReuseIdentifier:kPPRemEdSegmentCellID];
-    [tv registerClass:[PPRemEdSelectorCell   class] forCellReuseIdentifier:kPPRemEdSelectorCellID];
-    [tv registerClass:[PPRemEdDatePickerCell class] forCellReuseIdentifier:kPPRemEdDatePickerCellID];
-    [tv registerClass:[PPRemEdSwitchCell     class] forCellReuseIdentifier:kPPRemEdSwitchCellID];
-
-    [self.view addSubview:tv];
-    [NSLayoutConstraint activateConstraints:@[
-        [tv.topAnchor      constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
-        [tv.bottomAnchor   constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
-        [tv.leadingAnchor  constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
-        [tv.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
-    ]];
-    self.tableView = tv;
-
-    self.title = self.isNewReminder
-        ? (kLang(@"pet_reminder_add")  ?: @"Add Reminder")
-        : (kLang(@"pet_reminder_edit") ?: @"Edit Reminder");
-
-    // Nav — AddressFormVC style
-    self.navigationItem.leftBarButtonItem =
-        [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName)
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(pp_handleBack)];
-    UIButton *saveButton = [PPButtonHelper pp_buttonWithTitle:kLang(@"Save") ?: @"Save"
-                                                          font:[GM fontWithSize:17]
-                                                     imageName:@""
-                                                        target:self
-                                                        config:[UIButtonConfiguration tintedButtonConfiguration]
-                                                        action:@selector(pp_save)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveButton];
-
-    [self pp_setupBackdrop];
-    [self pp_buildControls];
-    [self pp_buildHeroHeader];
-    [self pp_applyCanvasBackground];
-    [self pp_refreshHeroHeader];
+    self.view.backgroundColor = UIColor.ppBackground;
+    self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.title = kLang(self.isNewReminder ? @"pet_reminder_add" : @"pet_reminder_edit");
+    [self pp_buildNavigation];
+    [self pp_buildEditor];
+    [self pp_refreshPresentation];
     [self pp_loadPets];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_refreshNotificationPermission)
+                                                name:UIApplicationDidBecomeActiveNotification object:nil];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    if (self.reloadPetsOnReturn) {
+        self.reloadPetsOnReturn = NO;
+        [self pp_loadPets];
+    }
+    [self pp_refreshNotificationPermission];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    [self pp_applyAdaptiveLayout];
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-#pragma mark - Appearance
+#pragma mark - Composition
 
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    self.view.semanticContentAttribute = PPRemEdSemanticAttr();
-    self.tableView.semanticContentAttribute = PPRemEdSemanticAttr();
-    [self pp_applyCanvasBackground];
-    [self pp_refreshHeroHeader];
+- (void)pp_buildNavigation {
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]
+        initWithImage:[UIImage systemImageNamed:@"chevron.backward"] style:UIBarButtonItemStylePlain
+        target:self action:@selector(pp_handleBack)];
+    self.navigationItem.leftBarButtonItem.accessibilityLabel = kLang(@"Back");
+    self.saveButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.saveButton.accessibilityIdentifier = @"reminderEditor.save";
+    [self.saveButton addTarget:self action:@selector(pp_save) forControlEvents:UIControlEventTouchUpInside];
+    [self.saveButton.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
+    [self.saveButton.widthAnchor constraintGreaterThanOrEqualToConstant:72].active = YES;
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:self.saveButton];
 }
 
-- (void)viewDidAppear:(BOOL)animated {
-    [super viewDidAppear:animated];
-    PPPetsBeginFloatingAnimations(self.backgroundGlowViewTop, self.backgroundGlowViewBottom, self.floatingCircles);
+- (UILabel *)pp_heading:(NSString *)key {
+    UILabel *label = PPRemEdLabel(kLang(key), 21, UIFontTextStyleTitle2, YES, UIColor.ppTextPrimary);
+    label.accessibilityTraits |= UIAccessibilityTraitHeader;
+    return label;
 }
 
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    [self pp_applyCanvasBackground];
-    self.backgroundGlowViewTop.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewTop.bounds) * 0.5;
-    self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
-    [self.view sendSubviewToBack:self.backgroundGlowViewBottom];
-    [self.view sendSubviewToBack:self.backgroundGlowViewTop];
-    [self pp_updateHeaderLayout];
-}
-
-- (void)pp_applyCanvasBackground {
-    PPPetsApplyCanvasBackground(self, self.tableView);
-}
-
-- (void)pp_setupBackdrop {
-    if (self.backgroundGlowViewTop || self.backgroundGlowViewBottom) {
-        return;
-    }
-
-    UIView *containerView = self.view;
-
-    UIView *topGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.93, 0.80, 0.69, 0.12),
-                                          PPPetsGlowFill(0.98, 0.82, 0.60, 1.0),
-                                          0.10,
-                                          64.0);
-    UIView *bottomGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.72, 0.45, 0.42, 0.06),
-                                             PPPetsGlowFill(0.68, 0.27, 0.33, 1.0),
-                                             0.08,
-                                             72.0);
-
-    [containerView insertSubview:bottomGlow atIndex:0];
-    [containerView insertSubview:topGlow atIndex:0];
-
+- (void)pp_buildEditor {
+    self.scrollView = [UIScrollView new];
+    self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    self.scrollView.showsVerticalScrollIndicator = NO;
+    self.scrollView.alwaysBounceVertical = YES;
+    [self.view addSubview:self.scrollView];
     [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:220.0],
-        [topGlow.heightAnchor constraintEqualToConstant:220.0],
-        [topGlow.topAnchor constraintEqualToAnchor:containerView.topAnchor constant:-22.0],
-        [topGlow.trailingAnchor constraintEqualToAnchor:containerView.trailingAnchor constant:84.0],
-
-        [bottomGlow.widthAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:containerView.bottomAnchor constant:48.0],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:containerView.leadingAnchor constant:-64.0],
+        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor]
     ]];
 
-    self.backgroundGlowViewTop = topGlow;
-    self.backgroundGlowViewBottom = bottomGlow;
+    self.titleField = [[PPRemEdTitleView alloc] initWithFrame:CGRectZero textContainer:nil];
+    self.titleField.delegate = self;
+    self.titleField.text = self.reminder.title;
+    UIToolbar *keyboardToolbar = [UIToolbar new];
+    keyboardToolbar.items = @[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil],
+        [[UIBarButtonItem alloc] initWithTitle:kLang(@"Done") style:UIBarButtonItemStyleDone target:self action:@selector(pp_endEditing)]];
+    [keyboardToolbar sizeToFit];
+    keyboardToolbar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.titleField.inputAccessoryView = keyboardToolbar;
+    UILabel *titleLabel = PPRemEdLabel(kLang(@"reminder_editor_title_label"), 12, UIFontTextStyleCaption1, YES, UIColor.ppTextSecondary);
+    titleLabel.isAccessibilityElement = NO;
+    UIStackView *identity = PPRemEdStack(@[titleLabel, self.titleField], 4);
 
-    self.floatingCircles = PPPetsBuildFloatingCircles(self.view);
-}
+    [self pp_buildTypeButtons];
+    self.petRow = [[PPRemEdActionRow alloc] initWithFrame:CGRectZero];
+    self.petRow.accessibilityIdentifier = @"reminderEditor.pet";
+    [self.petRow addTarget:self action:@selector(pp_showPetPicker) forControlEvents:UIControlEventTouchUpInside];
 
-#pragma mark - Build Controls
-
-- (void)pp_buildControls {
-    _titleField = [UITextField new];
-    _titleField.placeholder    = kLang(@"pet_reminder_title") ?: @"Reminder title";
-    _titleField.text           = self.reminder.title;
-    _titleField.font           = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _titleField.textColor      = AppPrimaryTextClr;
-    _titleField.textAlignment  = Language.alignmentForCurrentLanguage;
-    _titleField.clearButtonMode = UITextFieldViewModeWhileEditing;
-    _titleField.returnKeyType  = UIReturnKeyDone;
-    _titleField.delegate       = self;
-    _titleField.borderStyle    = UITextBorderStyleNone;
-    _titleField.autocorrectionType = UITextAutocorrectionTypeNo;
-    _titleField.semanticContentAttribute = PPRemEdSemanticAttr();
-    [_titleField addTarget:self action:@selector(pp_controlValueChanged:) forControlEvents:UIControlEventEditingChanged];
-
-    NSArray *typeItems = @[
-        [NSString stringWithFormat:@"💉 %@", kLang(@"pet_reminder_vaccination") ?: @"Vaccination"],
-        [NSString stringWithFormat:@"🍖 %@", kLang(@"pet_reminder_food") ?: @"Food"],
-        [NSString stringWithFormat:@"📅 %@", kLang(@"pet_reminder_appointment") ?: @"Appointment"]
-    ];
-    _typeControl = [[UISegmentedControl alloc] initWithItems:typeItems];
-    _typeControl.selectedSegmentIndex = self.reminder.type;
-    _typeControl.selectedSegmentTintColor = PPPetsUIBrandColor();
-    _typeControl.semanticContentAttribute = PPRemEdSemanticAttr();
-    UIFont *segFont = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightMedium];
-    [_typeControl setTitleTextAttributes:@{NSFontAttributeName: segFont,
-                                           NSForegroundColorAttributeName: UIColor.whiteColor}
-                                forState:UIControlStateSelected];
-    [_typeControl setTitleTextAttributes:@{NSFontAttributeName: segFont,
-                                           NSForegroundColorAttributeName: AppPrimaryTextClr}
-                                forState:UIControlStateNormal];
-    [_typeControl addTarget:self action:@selector(pp_controlValueChanged:) forControlEvents:UIControlEventValueChanged];
-
-    _datePicker = [UIDatePicker new];
-    _datePicker.datePickerMode = UIDatePickerModeDateAndTime;
-    _datePicker.tintColor      = PPPetsUIBrandColor();
-    _datePicker.minimumDate    = [NSDate date];
-    if (@available(iOS 13.4, *)) {
-        _datePicker.preferredDatePickerStyle = UIDatePickerStyleCompact;
+    NSLocale *locale = [NSLocale localeWithLocaleIdentifier:Language.isRTL ? @"ar_QA" : @"en_QA"];
+    self.datePicker = [UIDatePicker new];
+    self.timePicker = [UIDatePicker new];
+    self.datePicker.datePickerMode = UIDatePickerModeDate;
+    self.timePicker.datePickerMode = UIDatePickerModeTime;
+    NSMutableArray<UIStackView *> *dateRows = [NSMutableArray array];
+    NSArray *pickers = @[self.datePicker, self.timePicker];
+    NSArray *labelKeys = @[@"reminder_editor_date", @"reminder_editor_time"];
+    for (NSUInteger i = 0; i < pickers.count; i++) {
+        UIDatePicker *picker = pickers[i];
+        picker.preferredDatePickerStyle = UIDatePickerStyleCompact;
+        picker.locale = locale;
+        picker.date = self.reminder.fireDate;
+        picker.tintColor = UIColor.ppAccentText;
+        picker.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+        picker.accessibilityLabel = kLang(labelKeys[i]);
+        picker.accessibilityIdentifier = i == 0 ? @"reminderEditor.date" : @"reminderEditor.time";
+        [picker setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [picker.heightAnchor constraintGreaterThanOrEqualToConstant:44].active = YES;
+        [picker addTarget:self action:@selector(pp_dateChanged:) forControlEvents:UIControlEventValueChanged];
+        UILabel *label = PPRemEdLabel(kLang(labelKeys[i]), 16, UIFontTextStyleBody, NO, UIColor.ppTextPrimary);
+        label.isAccessibilityElement = NO;
+        UIStackView *row = PPRemEdStack(@[label, picker], 8);
+        [dateRows addObject:row];
     }
-    if (self.reminder.fireDate) _datePicker.date = self.reminder.fireDate;
-    _datePicker.semanticContentAttribute = PPRemEdSemanticAttr();
-    [_datePicker addTarget:self action:@selector(pp_controlValueChanged:) forControlEvents:UIControlEventValueChanged];
+    self.dateRows = dateRows;
+    // A historical value can still be inspected. Saving an enabled past date asks
+    // the owner to choose a future time, matching the scheduler's existing guard.
+    self.repeatRow = [[PPRemEdActionRow alloc] initWithFrame:CGRectZero];
+    self.repeatRow.accessibilityIdentifier = @"reminderEditor.repeat";
+    [self.repeatRow addTarget:self action:@selector(pp_showRepeatPicker) forControlEvents:UIControlEventTouchUpInside];
+    UIStackView *calendarRows = PPRemEdStack(@[dateRows[0], PPRemEdDivider(), dateRows[1]], 12);
+    UIView *calendarContent = PPRemEdSurface(calendarRows, 16);
+    calendarContent.layer.cornerRadius = 0;
+    UIStackView *scheduleRows = PPRemEdStack(@[calendarContent, PPRemEdDivider(), self.repeatRow], 0);
+    UIView *scheduleSurface = PPRemEdSurface(scheduleRows, 0);
+    scheduleSurface.clipsToBounds = YES;
+    UIStackView *schedule = PPRemEdStack(@[[self pp_heading:@"reminder_editor_schedule"], scheduleSurface], 12);
 
-    _enableSwitch = [UISwitch new];
-    _enableSwitch.on        = self.reminder.enabled;
-    _enableSwitch.onTintColor = PPPetsUIBrandColor();
-    [_enableSwitch addTarget:self action:@selector(pp_controlValueChanged:) forControlEvents:UIControlEventValueChanged];
-}
+    self.enableSwitch = [UISwitch new];
+    self.enableSwitch.on = self.reminder.enabled;
+    self.enableSwitch.onTintColor = UIColor.ppPrimary;
+    self.enableSwitch.accessibilityLabel = kLang(@"reminder_editor_enabled");
+    self.enableSwitch.accessibilityIdentifier = @"reminderEditor.enabled";
+    [self.enableSwitch addTarget:self action:@selector(pp_enabledChanged:) forControlEvents:UIControlEventValueChanged];
+    UILabel *enabledLabel = PPRemEdLabel(kLang(@"reminder_editor_enabled"), 18, UIFontTextStyleHeadline, YES, UIColor.ppTextPrimary);
+    UILabel *enabledHint = PPRemEdLabel(kLang(@"reminder_editor_enabled_hint"), 13, UIFontTextStyleFootnote, NO, UIColor.ppTextSecondary);
+    UIStackView *enabledCopy = PPRemEdStack(@[enabledLabel, enabledHint], 4);
+    self.enabledRow = PPRemEdStack(@[enabledCopy, self.enableSwitch], 16);
+    [self.enableSwitch setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.enableSwitch setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
-#pragma mark - Hero Header
+    self.permissionRow = [[PPRemEdActionRow alloc] initWithFrame:CGRectZero];
+    [self.permissionRow configureTitle:kLang(@"reminder_editor_notifications_title")
+                                 value:kLang(@"reminder_editor_notifications_action")
+                                  hint:kLang(@"reminder_editor_notifications_hint") symbol:@"bell.slash" loading:NO];
+    [self.permissionRow addTarget:self action:@selector(pp_openNotificationSettings) forControlEvents:UIControlEventTouchUpInside];
+    self.permissionSurface = PPRemEdSurface(self.permissionRow, 0);
+    self.permissionSurface.hidden = YES;
+    self.validationLabel = PPRemEdLabel(@"", 14, UIFontTextStyleFootnote, NO, UIColor.ppError);
+    self.validationLabel.hidden = YES;
 
-- (void)pp_buildHeroHeader {
-    self.headerRoot = [[UIView alloc] init];
-    self.headerRoot.backgroundColor = UIColor.clearColor;
-
-    UIView *cardView = [[UIView alloc] init];
-    cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    PPPetsApplySurfaceStyle(cardView, 34.0);
-    [self.headerRoot addSubview:cardView];
-
-    UIView *tintView = [[UIView alloc] init];
-    tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = PPPetsUISurfaceTintColor();
-    tintView.layer.cornerRadius = 34.0;
-    tintView.layer.masksToBounds = YES;
-    [cardView addSubview:tintView];
-
-    UIView *ambientGlow = PPPetsBuildGlowView([PPPetsUIBrandColor() colorWithAlphaComponent:0.16],
-                                              [PPPetsUIBrandColor() colorWithAlphaComponent:0.50],
-                                              0.16,
-                                              42.0);
-    ambientGlow.layer.cornerRadius = 94.0;
-    [cardView addSubview:ambientGlow];
-
-    UIView *secondaryGlow = PPPetsBuildGlowView(PPPetsCardOverlay(0.40),
-                                                PPPetsCardOverlay(0.45),
-                                                0.20,
-                                                22.0);
-    secondaryGlow.layer.cornerRadius = 58.0;
-    [cardView addSubview:secondaryGlow];
-
-    UIView *accentBar = [[UIView alloc] init];
-    accentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    accentBar.backgroundColor = PPPetsUIBrandColor();
-    accentBar.layer.cornerRadius = 2.0;
-    [cardView addSubview:accentBar];
-
-    UIView *eyebrowPill = [[UIView alloc] init];
-    eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
-    eyebrowPill.layer.cornerRadius = 13.0;
-    eyebrowPill.layer.borderWidth = 1.0;
-    [eyebrowPill pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.10]];
-    eyebrowPill.layer.masksToBounds = YES;
-    [cardView addSubview:eyebrowPill];
-
-    PPInsetLabel *eyebrowLabel = [[PPInsetLabel alloc] init];
-    eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    eyebrowLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
-    eyebrowLabel.textAlignment = NSTextAlignmentCenter;
-    eyebrowLabel.textInsets = UIEdgeInsetsMake(2.0, 2.0, 2.0, 2.0);
-    [eyebrowPill addSubview:eyebrowLabel];
-
-    UIView *iconHalo = [[UIView alloc] init];
-    iconHalo.translatesAutoresizingMaskIntoConstraints = NO;
-    iconHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
-    iconHalo.layer.cornerRadius = 28.0;
-    iconHalo.layer.borderWidth = 1.0;
-    [iconHalo pp_setBorderColor:PPPetsCardOverlay(0.48)];
-    [iconHalo pp_setShadowColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.30]];
-    iconHalo.layer.shadowOpacity = 0.12;
-    iconHalo.layer.shadowRadius = 12.0;
-    iconHalo.layer.shadowOffset = CGSizeMake(0.0, 6.0);
-    [cardView addSubview:iconHalo];
-
-    UIImageView *symbolView = [[UIImageView alloc] init];
-    symbolView.translatesAutoresizingMaskIntoConstraints = NO;
-    symbolView.contentMode = UIViewContentModeCenter;
-    symbolView.tintColor = PPPetsUIBrandColor();
-    symbolView.backgroundColor = PPPetsCardOverlay(0.66);
-    symbolView.layer.cornerRadius = 22.0;
-    symbolView.layer.masksToBounds = YES;
-    [iconHalo addSubview:symbolView];
-
-    UILabel *titleLabel = [[UILabel alloc] init];
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:21.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
-    titleLabel.textColor = AppPrimaryTextClr;
-    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    titleLabel.numberOfLines = 2;
-    [cardView addSubview:titleLabel];
-
-    UILabel *subtitleLabel = [[UILabel alloc] init];
-    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
-    subtitleLabel.textColor = PPPetsUISecondaryTextColor();
-    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    subtitleLabel.numberOfLines = 2;
-    [cardView addSubview:subtitleLabel];
-
-    PPInsetLabel *metaLabel = [[PPInsetLabel alloc] init];
-    metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    metaLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
-    metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    metaLabel.numberOfLines = 2;
-    metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
-    metaLabel.layer.cornerRadius = 17.0;
-    metaLabel.layer.borderWidth = 1.0;
-    [metaLabel pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.10]];
-    metaLabel.layer.masksToBounds = YES;
-    metaLabel.textInsets = UIEdgeInsetsMake(6.0, 12.0, 6.0, 12.0);
-    [cardView addSubview:metaLabel];
-
+    self.contentStack = PPRemEdStack(@[identity, self.validationLabel, self.typeStack, PPRemEdSurface(self.petRow, 0),
+                                      schedule, self.enabledRow, self.permissionSurface], 24);
+    self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.scrollView addSubview:self.contentStack];
+    NSLayoutConstraint *preferredWidth = [self.contentStack.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor constant:-40];
+    preferredWidth.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        [cardView.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:10.0],
-        [cardView.leadingAnchor constraintEqualToAnchor:self.headerRoot.leadingAnchor constant:20.0],
-        [cardView.trailingAnchor constraintEqualToAnchor:self.headerRoot.trailingAnchor constant:-20.0],
-        [cardView.bottomAnchor constraintEqualToAnchor:self.headerRoot.bottomAnchor constant:-14.0],
-
-        [tintView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
-        [tintView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
-        [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
-        [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
-
-        [ambientGlow.widthAnchor constraintEqualToConstant:188.0],
-        [ambientGlow.heightAnchor constraintEqualToConstant:188.0],
-        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-82.0],
-        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:82.0],
-
-        [secondaryGlow.widthAnchor constraintEqualToConstant:116.0],
-        [secondaryGlow.heightAnchor constraintEqualToConstant:116.0],
-        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:42.0],
-        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:-34.0],
-
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:14.0],
-        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [accentBar.widthAnchor constraintEqualToConstant:56.0],
-        [accentBar.heightAnchor constraintEqualToConstant:4.0],
-
-        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:8.0],
-        [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-24.0],
-        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
-
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:6.0],
-        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:12.0],
-        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-12.0],
-        [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
-
-        [iconHalo.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [iconHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:12.0],
-        [iconHalo.widthAnchor constraintEqualToConstant:56.0],
-        [iconHalo.heightAnchor constraintEqualToConstant:56.0],
-
-        [symbolView.centerXAnchor constraintEqualToAnchor:iconHalo.centerXAnchor],
-        [symbolView.centerYAnchor constraintEqualToAnchor:iconHalo.centerYAnchor],
-        [symbolView.widthAnchor constraintEqualToConstant:44.0],
-        [symbolView.heightAnchor constraintEqualToConstant:44.0],
-
-        [titleLabel.topAnchor constraintEqualToAnchor:iconHalo.topAnchor constant:0.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:iconHalo.trailingAnchor constant:14.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
-
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
-        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
-
-        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:8.0],
-        [metaLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-34.0],
-        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-16.0],
-        [iconHalo.bottomAnchor constraintLessThanOrEqualToAnchor:cardView.bottomAnchor constant:-18.0],
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor constant:20],
+        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor constant:-32],
+        [self.contentStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.scrollView.contentLayoutGuide.leadingAnchor constant:20],
+        [self.contentStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.scrollView.contentLayoutGuide.trailingAnchor constant:-20],
+        [self.contentStack.centerXAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.centerXAnchor],
+        [self.contentStack.widthAnchor constraintLessThanOrEqualToConstant:600], preferredWidth,
+        [self.scrollView.contentLayoutGuide.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor]
     ]];
-
-    self.headerCardView = cardView;
-    self.heroEyebrowLabel = eyebrowLabel;
-    self.heroTitleLabel = titleLabel;
-    self.heroSubtitleLabel = subtitleLabel;
-    self.heroMetaLabel = metaLabel;
-    self.heroSymbolView = symbolView;
-    self.tableView.tableHeaderView = self.headerRoot;
 }
 
-- (void)pp_refreshHeroHeader {
-    NSString *title = [self.titleField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    PPPetReminderType currentType = (PPPetReminderType)self.typeControl.selectedSegmentIndex;
-    NSString *typeText = nil;
-    switch (currentType) {
-        case PPPetReminderTypeFood:
-            typeText = kLang(@"pet_reminder_food") ?: @"Food";
-            break;
-        case PPPetReminderTypeAppointment:
-            typeText = kLang(@"pet_reminder_appointment") ?: @"Appointment";
-            break;
-        default:
-            typeText = kLang(@"pet_reminder_vaccination") ?: @"Vaccination";
-            break;
+- (void)pp_buildTypeButtons {
+    NSMutableArray *buttons = [NSMutableArray array];
+    for (NSInteger type = PPPetReminderTypeVaccination; type <= PPPetReminderTypeAppointment; type++) {
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+        button.tag = type;
+        button.titleLabel.adjustsFontForContentSizeCategory = YES;
+        button.accessibilityIdentifier = [NSString stringWithFormat:@"reminderEditor.type.%ld", (long)type];
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:76].active = YES;
+        [button addTarget:self action:@selector(pp_typeChanged:) forControlEvents:UIControlEventTouchUpInside];
+        [buttons addObject:button];
     }
-    if (title.length == 0) {
-        title = typeText;
-    }
+    self.typeButtons = buttons;
+    self.typeStack = PPRemEdStack(buttons, 8);
+    self.typeStack.distribution = UIStackViewDistributionFillEqually;
+}
 
-    NSString *petName = @"";
-    if (self.selectedPetIndex != NSNotFound && self.selectedPetIndex < (NSInteger)self.pets.count) {
-        PPPetProfile *pet = self.pets[self.selectedPetIndex];
-        petName = pet.name.length ? pet.name : (kLang(@"pet_unknown") ?: @"Pet");
+- (void)pp_applyAdaptiveLayout {
+    BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    self.typeStack.axis = accessibility ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    self.enabledRow.axis = accessibility ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    self.enabledRow.alignment = accessibility ? UIStackViewAlignmentLeading : UIStackViewAlignmentCenter;
+    BOOL stackDates = accessibility || CGRectGetWidth(self.view.bounds) < 390;
+    for (UIStackView *row in self.dateRows) {
+        row.axis = stackDates ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+        row.alignment = stackDates ? UIStackViewAlignmentLeading : UIStackViewAlignmentCenter;
+    }
+}
+
+#pragma mark - State rendering
+
+- (PPPetProfile *)pp_selectedPet {
+    for (PPPetProfile *pet in self.pets) {
+        if ([pet.petID isEqualToString:self.reminder.petID]) return pet;
+    }
+    return nil;
+}
+
+- (void)pp_refreshPresentation {
+    BOOL busy = self.isSaving || self.saveSucceeded;
+    NSArray *keys = @[@"pet_reminder_vaccination", @"pet_reminder_food", @"pet_reminder_appointment"];
+    NSArray *symbols = @[@"syringe", @"fork.knife", @"calendar"];
+    BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    for (UIButton *button in self.typeButtons) {
+        BOOL selected = button.tag == self.reminder.type;
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+        config.attributedTitle = [[NSAttributedString alloc] initWithString:kLang(keys[button.tag])
+            attributes:@{NSFontAttributeName:PPRemEdFont(15, UIFontTextStyleSubheadline, selected)}];
+        config.image = [UIImage systemImageNamed:symbols[button.tag]];
+        config.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium];
+        config.imagePlacement = accessibility ? NSDirectionalRectEdgeLeading : NSDirectionalRectEdgeTop;
+        config.imagePadding = 8;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(14, 8, 14, 8);
+        config.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+        config.titleLineBreakMode = NSLineBreakByWordWrapping;
+        config.baseForegroundColor = selected ? UIColor.whiteColor : UIColor.ppTextPrimary;
+        config.background.backgroundColor = selected ? UIColor.ppPrimary : UIColor.ppSurface;
+        config.background.cornerRadius = 20;
+        button.configuration = config;
+        button.titleLabel.numberOfLines = 0;
+        button.selected = selected;
+        button.enabled = !busy;
+        button.accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
+    }
+    NSString *petValue;
+    NSString *petHint = @"";
+    NSString *petSymbol = @"pawprint.fill";
+    if (self.isLoadingPets) {
+        petValue = kLang(@"reminder_editor_pets_loading");
+    } else if (self.petsLoadFailed) {
+        petValue = kLang(@"reminder_editor_pets_error");
+        petHint = kLang(@"reminder_editor_pets_retry");
+        petSymbol = @"arrow.clockwise";
     } else if (self.petsLoaded && self.pets.count == 0) {
-        petName = kLang(@"pet_no_pets") ?: @"No pets added";
+        petValue = kLang(@"reminder_editor_add_pet");
+        petHint = kLang(@"reminder_editor_add_pet_hint");
+        petSymbol = @"plus";
     } else {
-        petName = kLang(@"pet_reminder_select_pet") ?: @"Choose a pet";
+        PPPetProfile *pet = [self pp_selectedPet];
+        petValue = pet ? (pet.name.length ? pet.name : kLang(@"pet_unknown")) : kLang(@"pet_reminder_select_pet");
+        if (!pet && self.reminder.petID.length) petHint = kLang(@"reminder_editor_pet_unavailable");
     }
-
-    self.heroEyebrowLabel.text = self.isNewReminder
-        ? (kLang(@"pet_reminder_add") ?: @"Add Reminder")
-        : (kLang(@"pet_reminder_edit") ?: @"Edit Reminder");
-    self.heroTitleLabel.text = title.length ? title : (kLang(@"pet_reminder_title") ?: @"Reminder");
-    self.heroSubtitleLabel.text = [NSString stringWithFormat:@"%@ · %@", petName, typeText ?: @""];
-
-    NSString *dateText = self.datePicker.date ? [GM formattedDate:self.datePicker.date] : (kLang(@"pet_reminder_no_date") ?: @"No date set");
-    NSString *statusText = self.enableSwitch.isOn ? (kLang(@"pet_reminder_enable") ?: @"Enabled") : (kLang(@"pet_reminder_disable") ?: @"Disabled");
-    NSString *repeatText = PPRepeatRuleDisplayText(self.reminder.repeatRule ?: @"");
-    self.heroMetaLabel.text = [NSString stringWithFormat:@"%@ · %@ · %@", dateText, repeatText, statusText];
-
-    NSString *symbolName = @"bell.badge.fill";
-    switch (currentType) {
-        case PPPetReminderTypeFood:
-            symbolName = @"fork.knife.circle.fill";
-            break;
-        case PPPetReminderTypeAppointment:
-            symbolName = @"calendar.badge.clock";
-            break;
-        default:
-            symbolName = @"syringe.fill";
-            break;
-    }
-    self.heroSymbolView.image = [UIImage systemImageNamed:symbolName
-                                        withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:24.0 weight:UIImageSymbolWeightMedium]];
-
-    [self pp_updateHeaderLayout];
+    [self.petRow configureTitle:kLang(@"pet_reminder_pet_section") value:petValue hint:petHint symbol:petSymbol loading:self.isLoadingPets];
+    self.petRow.enabled = !self.isLoadingPets && !busy;
+    [self.repeatRow configureTitle:kLang(@"pet_reminder_repeat_label") value:PPRemEdRepeatLabel(self.reminder.repeatRule)
+                             hint:@"" symbol:@"repeat" loading:NO];
+    self.repeatRow.enabled = !busy;
+    self.titleField.editable = !busy;
+    self.datePicker.enabled = !busy;
+    self.timePicker.enabled = !busy;
+    self.enableSwitch.enabled = !busy;
+    self.permissionRow.enabled = !busy;
+    [self.permissionRow configureTitle:kLang(self.needsNotificationPermission ? @"reminder_editor_notifications_setup" : @"reminder_editor_notifications_title")
+                                 value:kLang(self.needsNotificationPermission ? @"reminder_editor_notifications_enable" : @"reminder_editor_notifications_action")
+                                  hint:kLang(@"reminder_editor_notifications_hint") symbol:@"bell.slash" loading:NO];
+    self.permissionSurface.hidden = !self.notificationsDenied || !self.reminder.enabled;
+    self.navigationItem.leftBarButtonItem.enabled = !busy;
+    BOOL hasTitle = [self.reminder.title stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet].length > 0;
+    BOOL canSave = hasTitle && [self pp_selectedPet] != nil && self.petsLoaded && !self.isLoadingPets && !self.petsLoadFailed && !busy;
+    self.saveButton.enabled = canSave;
+    UIButtonConfiguration *save = [UIButtonConfiguration filledButtonConfiguration];
+    save.title = kLang(self.isSaving ? @"please_wait" : self.saveSucceeded ? @"Done" : @"Save");
+    save.showsActivityIndicator = self.isSaving;
+    save.baseBackgroundColor = canSave ? UIColor.ppPrimary : UIColor.ppSurface;
+    save.baseForegroundColor = canSave ? UIColor.whiteColor : UIColor.ppTextSecondary;
+    save.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    save.contentInsets = NSDirectionalEdgeInsetsMake(8, 16, 8, 16);
+    self.saveButton.configuration = save;
+    self.saveButton.accessibilityHint = kLang(@"reminder_editor_save_hint");
 }
 
-- (void)pp_updateHeaderLayout {
-    if (!self.headerRoot) {
-        return;
-    }
-
-    CGFloat headerWidth = CGRectGetWidth(self.tableView.bounds);
-    if (headerWidth <= 0.0) {
-        headerWidth = CGRectGetWidth(self.view.bounds);
-    }
-
-    CGRect bounds = self.headerRoot.bounds;
-    if (ABS(bounds.size.width - headerWidth) > 0.5) {
-        bounds.size.width = headerWidth;
-        self.headerRoot.bounds = bounds;
-    }
-
-    [self.headerRoot setNeedsLayout];
-    [self.headerRoot layoutIfNeeded];
-    CGFloat headerHeight = [self.headerRoot systemLayoutSizeFittingSize:CGSizeMake(headerWidth, UILayoutFittingCompressedSize.height)
-                                         withHorizontalFittingPriority:UILayoutPriorityRequired
-                                               verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
-    CGRect frame = self.headerRoot.frame;
-    frame.size.width = headerWidth;
-    frame.size.height = headerHeight;
-    self.headerRoot.frame = frame;
-    self.tableView.tableHeaderView = self.headerRoot;
-}
-
-#pragma mark - Load Pets
+#pragma mark - Pets and recovery
 
 - (void)pp_loadPets {
-    __weak typeof(self) ws = self;
+    if (self.isLoadingPets) return;
+    if (!PPRemEdMatchesOwner(self.ownerUID)) { [self pp_rejectChangedOwner]; return; }
+    self.isLoadingPets = YES;
+    self.petsLoadFailed = NO;
+    NSUInteger requestID = ++self.petRequestID;
+    [self pp_refreshPresentation];
+    __weak typeof(self) weakSelf = self;
     [[UserManager sharedManager] fetchPetProfilesForCurrentUserWithCompletion:^(NSArray<PPPetProfile *> *pets, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            ws.pets = pets ?: @[];
-            ws.petsLoaded = YES;
-            ws.selectedPetIndex = NSNotFound;
-            for (NSUInteger i = 0; i < ws.pets.count; i++) {
-                if ([ws.pets[i].petID isEqualToString:ws.reminder.petID]) {
-                    ws.selectedPetIndex = (NSInteger)i;
-                    break;
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || requestID != self.petRequestID) return;
+            if (!PPRemEdMatchesOwner(self.ownerUID)) { [self pp_rejectChangedOwner]; return; }
+            self.isLoadingPets = NO;
+            self.petsLoadFailed = error != nil;
+            if (!error) {
+                self.pets = pets ?: @[];
+                self.petsLoaded = YES;
+                // Preserve a missing existing association until the owner chooses.
+                if (self.isNewReminder && self.reminder.petID.length == 0 && self.pets.count) {
+                    self.reminder.petID = self.pets.firstObject.petID;
                 }
             }
-            if (ws.selectedPetIndex == NSNotFound && ws.pets.count > 0) {
-                ws.selectedPetIndex = 0;
-            }
-            [ws pp_refreshHeroHeader];
-            CGPoint savedOffset = ws.tableView.contentOffset;
-            [UIView performWithoutAnimation:^{
-                [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPRemEdSectionPet]
-                            withRowAnimation:UITableViewRowAnimationNone];
-            }];
-            [ws.tableView layoutIfNeeded];
-            ws.tableView.contentOffset = savedOffset;
+            [self pp_refreshPresentation];
         });
     }];
 }
 
-#pragma mark - Section Header (ProfileVC accent-bar pattern)
-
-- (UIView *)pp_sectionHeaderWithTitle:(NSString *)title subtitle:(NSString *)subtitle {
-    return PPPetsBuildSectionHeaderView(title, subtitle);
-}
-
-#pragma mark - UITableViewDataSource
-
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return PPRemEdSectionCount;
-}
-
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return 1;
-}
-
-- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return nil; // Custom header views used
-}
-
-- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
-    switch (section) {
-        case PPRemEdSectionTitle:
-            return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_title_section") ?: @"Title")
-                                         subtitle:(kLang(@"pet_reminder_title_hint") ?: @"Give the reminder a short name you can recognize in one glance.")];
-        case PPRemEdSectionType:
-            return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_type_section") ?: @"Type")
-                                         subtitle:(kLang(@"pet_reminder_type_hint") ?: @"Choose the care context so the reminder feels immediately scannable later.")];
-        case PPRemEdSectionPet:
-            return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_pet_section") ?: @"Pet")
-                                         subtitle:(kLang(@"pet_reminder_pet_hint") ?: @"Attach the reminder to the right profile before saving.")];
-        case PPRemEdSectionDate:
-            return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_date_section") ?: @"Date & Time")
-                                         subtitle:(kLang(@"pet_reminder_date_hint") ?: @"Set the next moment this reminder should surface in the care flow.")];
-        case PPRemEdSectionRepeat:
-            return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_repeat_section") ?: @"Repeat")
-                                         subtitle:(kLang(@"pet_reminder_repeat_hint") ?: @"Choose how often this reminder should repeat after it fires.")];
-        case PPRemEdSectionToggle:
-            return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_toggle_section") ?: @"Status")
-                                         subtitle:(kLang(@"pet_reminder_toggle_hint") ?: @"Keep it active now or save it disabled until the schedule is ready.")];
-        default:
-            return [UIView new];
+- (void)pp_presentSheet:(UIAlertController *)sheet fromRow:(UIView *)row {
+    [self.view endEditing:YES];
+    sheet.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    if (sheet.popoverPresentationController) {
+        sheet.popoverPresentationController.sourceView = row;
+        sheet.popoverPresentationController.sourceRect = row.bounds;
     }
+    [self presentViewController:sheet animated:YES completion:nil];
 }
-
-- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
-    return 76.0;
-}
-
-- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
-    return 0.000001;
-}
-
-- (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section {
-    return [UIView new];
-}
-
-- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForHeaderInSection:(NSInteger)section {
-    return 76.0;
-}
-
-- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForFooterInSection:(NSInteger)section {
-    return 0.000001;
-}
-
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (indexPath.section == PPRemEdSectionType) {
-        return 83.0;
-    }
-    
-    else if (indexPath.section == PPRemEdSectionDate ||
-             indexPath.section == PPRemEdSectionToggle ||
-             indexPath.section == PPRemEdSectionRepeat) {
-        return 60.0;
-    }
-    
-    return UITableViewAutomaticDimension;
-}
-
-
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    switch (indexPath.section) {
-        case PPRemEdSectionTitle: {
-            PPRemEdTextFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdTextFieldCellID forIndexPath:indexPath];
-            // Hide cell's built-in text field, embed the shared titleField instead
-            cell.cellTitleLabel.text = kLang(@"pet_reminder_title") ?: @"Reminder Title";
-            cell.cellTextField.hidden = YES;
-
-            [self.titleField removeFromSuperview];
-            self.titleField.translatesAutoresizingMaskIntoConstraints = NO;
-            [cell.contentView addSubview:self.titleField];
-            [NSLayoutConstraint activateConstraints:@[
-                [self.titleField.topAnchor      constraintEqualToAnchor:cell.cellTitleLabel.bottomAnchor constant:6.0],
-                [self.titleField.leadingAnchor  constraintEqualToAnchor:cell.cellTitleLabel.leadingAnchor],
-                [self.titleField.trailingAnchor constraintEqualToAnchor:cell.cellTitleLabel.trailingAnchor],
-                [self.titleField.bottomAnchor   constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-14.0],
-                [self.titleField.heightAnchor   constraintGreaterThanOrEqualToConstant:24.0],
-            ]];
-            return cell;
-        }
-        case PPRemEdSectionType: {
-            PPRemEdSegmentCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSegmentCellID forIndexPath:indexPath];
-            [cell embedControl:self.typeControl];
-            return cell;
-        }
-        case PPRemEdSectionPet: {
-            PPRemEdSelectorCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSelectorCellID forIndexPath:indexPath];
-
-            NSString *value = nil;
-            UIColor *valueColor = AppPrimaryTextClr;
-
-            if (self.petsLoaded && self.selectedPetIndex != NSNotFound && self.selectedPetIndex < (NSInteger)self.pets.count) {
-                PPPetProfile *pet = self.pets[self.selectedPetIndex];
-                value = pet.name.length ? pet.name : (kLang(@"pet_unknown") ?: @"Pet");
-                valueColor = PPPetsUIBrandColor();
-            } else if (self.petsLoaded && self.pets.count == 0) {
-                value = kLang(@"pet_no_pets") ?: @"No pets added";
-                valueColor = UIColor.tertiaryLabelColor;
-            } else {
-                value = kLang(@"please_wait") ?: @"Loading…";
-                valueColor = UIColor.tertiaryLabelColor;
-            }
-
-            [cell configureWithTitle:(kLang(@"pet_reminder_select_pet") ?: @"Select Pet")
-                               value:value
-                            iconName:@"pawprint.fill"];
-            cell.valueLabel.textColor = valueColor;
-            return cell;
-        }
-        case PPRemEdSectionDate: {
-            PPRemEdDatePickerCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdDatePickerCellID forIndexPath:indexPath];
-            cell.cellTitleLabel.text = kLang(@"pet_reminder_fire_date") ?: @"Date & Time";
-            [cell embedDatePicker:self.datePicker];
-            return cell;
-        }
-        case PPRemEdSectionToggle: {
-            PPRemEdSwitchCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSwitchCellID forIndexPath:indexPath];
-            [cell configureWithTitle:(kLang(@"pet_reminder_enabled") ?: @"Enabled")
-                            iconName:@"bell.badge.fill"
-                       switchControl:self.enableSwitch];
-            return cell;
-        }
-        case PPRemEdSectionRepeat: {
-            PPRemEdSelectorCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSelectorCellID forIndexPath:indexPath];
-            NSString *ruleDisplay = PPRepeatRuleDisplayText(self.reminder.repeatRule ?: @"");
-            [cell configureWithTitle:(kLang(@"pet_reminder_repeat_label") ?: @"Repeat")
-                               value:ruleDisplay
-                            iconName:@"repeat"];
-            cell.valueLabel.textColor = (self.reminder.repeatRule.length > 0) ? PPPetsUIBrandColor() : AppPrimaryTextClr;
-            return cell;
-        }
-        default:
-            return [UITableViewCell new];
-    }
-}
-
-#pragma mark - UITableViewDelegate
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-
-    if (indexPath.section == PPRemEdSectionPet) {
-        [self pp_showPetPicker];
-    } else if (indexPath.section == PPRemEdSectionRepeat) {
-        [self pp_showRepeatPicker];
-    }
-}
-
-- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
-    PPPetsApplySurfaceCellStyle(cell, 20.0);
-}
-
-#pragma mark - Pet Picker
 
 - (void)pp_showPetPicker {
-    if (self.pets.count == 0) {
-        [PPAlertHelper showErrorIn:self
-                             title:kLang(@"pet_no_pets_title") ?: @"No Pets"
-                          subtitle:kLang(@"pet_no_pets_msg") ?: @"Add a pet profile first."];
+    if (self.isLoadingPets || self.isSaving || self.saveSucceeded) return;
+    if (self.petsLoadFailed) { [self pp_loadPets]; return; }
+    if (!self.pets.count) {
+        [self.view endEditing:YES];
+        self.reloadPetsOnReturn = YES;
+        PPPetProfileEditorViewController *editor = [[PPPetProfileEditorViewController alloc] initWithPet:nil];
+        if (self.navigationController) {
+            [self.navigationController pushViewController:editor animated:YES];
+        } else {
+            UINavigationController *navigation = [[UINavigationController alloc] initWithRootViewController:editor];
+            navigation.modalPresentationStyle = UIModalPresentationFullScreen;
+            [self presentViewController:navigation animated:YES completion:nil];
+        }
         return;
     }
-
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:kLang(@"pet_reminder_select_pet") ?: @"Select Pet"
-                                                                  message:nil
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
-    __weak typeof(self) ws = self;
-    for (NSUInteger i = 0; i < self.pets.count; i++) {
-        PPPetProfile *pet = self.pets[i];
-        NSString *name = pet.name.length ? pet.name : [NSString stringWithFormat:@"Pet %lu", (unsigned long)i + 1];
-        UIAlertAction *act = [UIAlertAction actionWithTitle:name style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
-            ws.selectedPetIndex = (NSInteger)i;
-            CGPoint savedOffset = ws.tableView.contentOffset;
-            [UIView performWithoutAnimation:^{
-                [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPRemEdSectionPet]
-                            withRowAnimation:UITableViewRowAnimationNone];
-            }];
-            [ws.tableView layoutIfNeeded];
-            ws.tableView.contentOffset = savedOffset;
-            [ws pp_refreshHeroHeader];
-        }];
-        if ((NSInteger)i == self.selectedPetIndex) {
-            [act setValue:[UIImage systemImageNamed:@"checkmark.circle.fill"] forKey:@"image"];
-        }
-        [sheet addAction:act];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:kLang(@"pet_reminder_select_pet") message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak typeof(self) weakSelf = self;
+    for (PPPetProfile *pet in self.pets) {
+        NSString *petID = pet.petID;
+        [sheet addAction:[UIAlertAction actionWithTitle:pet.name.length ? pet.name : kLang(@"pet_unknown")
+            style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+                weakSelf.reminder.petID = petID;
+                weakSelf.validationLabel.hidden = YES;
+                [weakSelf pp_refreshPresentation];
+            }]];
     }
-    [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel") ?: @"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-
-    if (sheet.popoverPresentationController) {
-        sheet.popoverPresentationController.sourceView = self.view;
-        sheet.popoverPresentationController.sourceRect = CGRectMake(self.view.bounds.size.width / 2, self.view.bounds.size.height / 2, 1, 1);
-    }
-    [self presentViewController:sheet animated:YES completion:nil];
+    [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [self pp_presentSheet:sheet fromRow:self.petRow];
 }
-
-#pragma mark - Repeat Picker
 
 - (void)pp_showRepeatPicker {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:(kLang(@"pet_reminder_repeat_label") ?: @"Repeat")
-                                                                   message:(kLang(@"pet_reminder_repeat_hint") ?: @"Choose how often this reminder should repeat.")
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-
-    NSArray<NSDictionary *> *options = @[
-        @{ @"key": kPPRepeatNone,    @"icon": @"xmark.circle",       @"label": kLang(@"pet_reminder_repeat_none")    ?: @"Never" },
-        @{ @"key": kPPRepeatDaily,   @"icon": @"sunrise.fill",       @"label": kLang(@"pet_reminder_repeat_daily")   ?: @"Every Day" },
-        @{ @"key": kPPRepeatWeekly,  @"icon": @"calendar.circle",    @"label": kLang(@"pet_reminder_repeat_weekly")  ?: @"Every Week" },
-        @{ @"key": kPPRepeatMonthly, @"icon": @"calendar.badge.plus",@"label": kLang(@"pet_reminder_repeat_monthly") ?: @"Every Month" },
-        @{ @"key": kPPRepeatYearly,  @"icon": @"gift.fill",          @"label": kLang(@"pet_reminder_repeat_yearly")  ?: @"Every Year" },
-    ];
-
-    NSString *currentRule = self.reminder.repeatRule ?: @"";
-    __weak typeof(self) ws = self;
-
-    for (NSDictionary *opt in options) {
-        NSString *key   = opt[@"key"];
-        NSString *label = opt[@"label"];
-        NSString *icon  = opt[@"icon"];
-        UIAlertAction *action = [UIAlertAction actionWithTitle:label
-                                                         style:UIAlertActionStyleDefault
-                                                       handler:^(__unused UIAlertAction *a) {
-            ws.reminder.repeatRule = key;
-            CGPoint savedOffset = ws.tableView.contentOffset;
-            [UIView performWithoutAnimation:^{
-                [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPRemEdSectionRepeat]
-                            withRowAnimation:UITableViewRowAnimationNone];
-            }];
-            [ws.tableView layoutIfNeeded];
-            ws.tableView.contentOffset = savedOffset;
-            [ws pp_refreshHeroHeader];
-        }];
-        [action setValue:[[UIImage systemImageNamed:icon] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forKey:@"image"];
-        if ([currentRule isEqualToString:key]) {
-            [action setValue:[UIImage systemImageNamed:@"checkmark.circle.fill"] forKey:@"image"];
-        }
-        [sheet addAction:action];
+    if (self.isSaving || self.saveSucceeded) return;
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:kLang(@"pet_reminder_repeat_label") message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak typeof(self) weakSelf = self;
+    for (NSString *rule in PPRemEdRepeatRules()) {
+        [sheet addAction:[UIAlertAction actionWithTitle:PPRemEdRepeatLabel(rule) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            weakSelf.reminder.repeatRule = rule;
+            [weakSelf pp_refreshPresentation];
+        }]];
     }
-
-    [sheet addAction:[UIAlertAction actionWithTitle:(kLang(@"Cancel") ?: @"Cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-
-    if (sheet.popoverPresentationController) {
-        sheet.popoverPresentationController.sourceView = self.view;
-        sheet.popoverPresentationController.sourceRect = CGRectMake(self.view.bounds.size.width / 2.0,
-                                                                    self.view.bounds.size.height / 2.0, 1, 1);
-    }
-    [self presentViewController:sheet animated:YES completion:nil];
+    [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [self pp_presentSheet:sheet fromRow:self.repeatRow];
 }
 
-#pragma mark - Save
+#pragma mark - Input
+
+- (void)textViewDidChange:(UITextView *)textView {
+    self.reminder.title = textView.text ?: @"";
+    self.titleField.placeholderLabel.hidden = textView.text.length > 0;
+    [textView invalidateIntrinsicContentSize];
+    self.validationLabel.hidden = YES;
+    [self pp_refreshPresentation];
+}
+
+- (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text {
+    if ([text isEqualToString:@"\n"]) { [textView resignFirstResponder]; return NO; }
+    return YES;
+}
+
+- (void)textViewDidBeginEditing:(UITextView *)textView {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        CGRect rect = [textView convertRect:textView.bounds toView:self.scrollView];
+        [self.scrollView scrollRectToVisible:rect animated:!UIAccessibilityIsReduceMotionEnabled()];
+    });
+}
+
+- (void)pp_endEditing { [self.view endEditing:YES]; }
+
+- (void)pp_typeChanged:(UIButton *)sender {
+    if (self.isSaving || self.saveSucceeded) return;
+    self.reminder.type = sender.tag;
+    [self pp_refreshPresentation];
+}
+
+- (void)pp_dateChanged:(UIDatePicker *)sender {
+    NSCalendar *calendar = NSCalendar.currentCalendar;
+    NSDateComponents *day = [calendar components:NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay fromDate:self.datePicker.date];
+    NSDateComponents *time = [calendar components:NSCalendarUnitHour | NSCalendarUnitMinute fromDate:self.timePicker.date];
+    day.hour = time.hour;
+    day.minute = time.minute;
+    day.second = 0;
+    NSDate *date = [calendar dateFromComponents:day];
+    if (!date) return;
+    self.reminder.fireDate = date;
+    // Keep both native controls on the same absolute draft date.
+    self.datePicker.date = date;
+    self.timePicker.date = date;
+    self.validationLabel.hidden = YES;
+}
+
+- (void)pp_enabledChanged:(UISwitch *)sender {
+    self.reminder.enabled = sender.isOn;
+    self.validationLabel.hidden = YES;
+    [self pp_refreshPresentation];
+}
+
+#pragma mark - Notification settings
+
+- (void)pp_refreshNotificationPermission {
+    __weak typeof(self) weakSelf = self;
+    [UNUserNotificationCenter.currentNotificationCenter getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings *settings) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.needsNotificationPermission = settings.authorizationStatus == UNAuthorizationStatusNotDetermined;
+            weakSelf.notificationsDenied = settings.authorizationStatus == UNAuthorizationStatusDenied ||
+                settings.authorizationStatus == UNAuthorizationStatusNotDetermined;
+            [weakSelf pp_refreshPresentation];
+        });
+    }];
+}
+
+- (void)pp_openNotificationSettings {
+    if (self.needsNotificationPermission) {
+        __weak typeof(self) weakSelf = self;
+        [UNUserNotificationCenter.currentNotificationCenter requestAuthorizationWithOptions:
+            (UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
+            completionHandler:^(BOOL granted, NSError *error) {
+                [weakSelf pp_refreshNotificationPermission];
+            }];
+        return;
+    }
+    NSURL *url = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+    [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
+}
+
+#pragma mark - Persistence
 
 - (void)pp_handleBack {
-    if (self.navigationController.viewControllers.count > 1) {
-        [self.navigationController popViewControllerAnimated:YES];
-    } else {
-        [self dismissViewControllerAnimated:YES completion:nil];
+    if (self.isSaving) return;
+    [self.view endEditing:YES];
+    if (self.navigationController.viewControllers.count > 1) [self.navigationController popViewControllerAnimated:YES];
+    else [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)pp_showValidation:(NSString *)message {
+    self.validationLabel.text = message;
+    self.validationLabel.hidden = NO;
+    [self.view layoutIfNeeded];
+    CGRect rect = [self.validationLabel convertRect:self.validationLabel.bounds toView:self.scrollView];
+    [self.scrollView scrollRectToVisible:rect animated:!UIAccessibilityIsReduceMotionEnabled()];
+    if (self.view.window) UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, message);
+}
+
+- (void)pp_rejectChangedOwner {
+    self.isSaving = NO;
+    self.isLoadingPets = NO;
+    self.petsLoaded = NO;
+    self.petsLoadFailed = YES;
+    self.pets = @[];
+    [self pp_refreshPresentation];
+    NSString *message = kLang(self.ownerUID.length ? @"pet_editor_session_changed_message" : @"login_required_message");
+    [self pp_showValidation:message];
+    if (self.view.window) {
+        [PPHUD showError:kLang(self.ownerUID.length ? @"pet_editor_session_changed_title" : @"login_required_title") subtitle:message];
     }
 }
 
 - (void)pp_save {
-    if (self.isSaving) return;
-
-    NSString *title = [self.titleField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (title.length == 0) {
-        CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
-        shake.values   = @[@0, @(-10), @(10), @(-8), @(8), @(-4), @(4), @0];
-        shake.duration = 0.4;
-        [self.titleField.layer addAnimation:shake forKey:@"shake"];
-        [PPHUD showError:(kLang(@"pet_reminder_title_required") ?: @"Title Required")
-                subtitle:(kLang(@"pet_reminder_title_required_msg") ?: @"Please enter a reminder title.")];
+    if (self.isSaving || self.saveSucceeded || self.isLoadingPets || self.petsLoadFailed) return;
+    if (!PPRemEdMatchesOwner(self.ownerUID)) { [self pp_rejectChangedOwner]; return; }
+    [self.view endEditing:YES];
+    NSString *title = [self.titleField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (!title.length) {
+        [self pp_showValidation:kLang(@"pet_reminder_title_required_msg")];
+        [self.titleField becomeFirstResponder];
         return;
     }
-
-    if (self.selectedPetIndex == NSNotFound || self.selectedPetIndex >= (NSInteger)self.pets.count) {
-        [PPHUD showError:(kLang(@"pet_reminder_pet_required") ?: @"Pet Required")
-                subtitle:(kLang(@"pet_reminder_pet_required_msg") ?: @"Please select a pet for this reminder.")];
+    if (![self pp_selectedPet]) {
+        [self pp_showValidation:kLang(@"pet_reminder_pet_required_msg")];
         return;
     }
-
-    self.reminder.title    = title;
-    self.reminder.type     = self.typeControl.selectedSegmentIndex;
-    self.reminder.petID    = self.pets[self.selectedPetIndex].petID ?: @"";
-    self.reminder.fireDate = self.datePicker.date;
-    self.reminder.enabled  = self.enableSwitch.isOn;
-    // repeatRule is already set by the picker — no extra assignment needed
-
-    [PPHUD showIndeterminateIn:self.view title:(kLang(@"please_wait") ?: @"Saving…") subtitle:nil];
-    self.navigationItem.rightBarButtonItem.enabled = NO;
+    if (self.reminder.enabled && [self.reminder.fireDate compare:NSDate.date] != NSOrderedDescending) {
+        [self pp_showValidation:kLang(@"reminder_editor_future_date")];
+        return;
+    }
+    self.reminder.title = title;
     self.isSaving = YES;
-
-    __weak typeof(self) ws = self;
-    [[UserManager sharedManager] savePetReminder:self.reminder completion:^(NSError *error) {
+    self.validationLabel.hidden = YES;
+    [self pp_refreshPresentation];
+    [PPHUD showIndeterminateIn:self.view title:kLang(@"please_wait") subtitle:nil];
+    // Keep the save snapshot alive even if UIKit dismisses the screen during I/O.
+    PPPetReminder *savedReminder = self.reminder;
+    PPPetReminder *originalReminder = self.originalReminder;
+    NSString *ownerUID = self.ownerUID;
+    __weak typeof(self) weakSelf = self;
+    [[UserManager sharedManager] savePetReminder:savedReminder completion:^(NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            ws.isSaving = NO;
-            ws.navigationItem.rightBarButtonItem.enabled = YES;
+            __strong typeof(weakSelf) self = weakSelf;
+            self.isSaving = NO;
+            // Never schedule an old account's alert in a new account's session.
+            if (!PPRemEdMatchesOwner(ownerUID)) { [self pp_rejectChangedOwner]; return; }
             if (error) {
-                [PPHUD showError:(kLang(@"SomethingWentWrong") ?: @"Error") subtitle:error.localizedDescription];
-            } else {
-                // Schedule (or cancel) local notification
-                [[PPReminderNotificationManager sharedManager] scheduleNotificationForReminder:ws.reminder];
-
-                [PPHUD showSuccess:(kLang(@"Done") ?: @"Saved") subtitle:nil];
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                    [ws.navigationController popViewControllerAnimated:YES];
-                });
+                [self pp_refreshPresentation];
+                if (self.view.window) {
+                    [PPHUD showError:kLang(@"SomethingWentWrong") subtitle:error.localizedDescription];
+                    [self pp_showValidation:kLang(@"reminder_editor_save_error")];
+                }
+                return;
             }
+            originalReminder.reminderID = savedReminder.reminderID;
+            originalReminder.petID = savedReminder.petID;
+            originalReminder.title = savedReminder.title;
+            originalReminder.type = savedReminder.type;
+            originalReminder.fireDate = savedReminder.fireDate;
+            originalReminder.repeatRule = savedReminder.repeatRule;
+            originalReminder.enabled = savedReminder.enabled;
+            originalReminder.createdAt = savedReminder.createdAt;
+            originalReminder.updatedAt = savedReminder.updatedAt;
+            [[PPReminderNotificationManager sharedManager] scheduleNotificationForReminder:savedReminder];
+            self.saveSucceeded = YES;
+            [self pp_refreshPresentation];
+            if (!self.view.window) return;
+            [PPHUD showSuccess:kLang(@"Done") subtitle:nil];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                if (self.navigationController.topViewController == self || (!self.navigationController && self.presentingViewController)) {
+                    [self pp_handleBack];
+                }
+            });
         });
     }];
 }
 
-#pragma mark - UITextFieldDelegate
-
-- (BOOL)textFieldShouldReturn:(UITextField *)textField {
-    [textField resignFirstResponder];
-    [self pp_refreshHeroHeader];
-    return YES;
-}
-
-- (void)pp_controlValueChanged:(id)sender {
-    [self pp_refreshHeroHeader];
-}
-
-#pragma mark - Dark Mode
+#pragma mark - Appearance and accessibility
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
-    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-        PPPetsApplyCanvasBackground(self, self.tableView);
-        PPPetsRefreshDynamicLayerColors(self.tableView);
+    if (!self.isViewLoaded) return;
+    if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory] ||
+        [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self.titleField invalidateIntrinsicContentSize];
+        [self pp_applyAdaptiveLayout];
+        [self pp_refreshPresentation];
     }
 }
 

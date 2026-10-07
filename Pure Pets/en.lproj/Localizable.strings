@@ -3160,11 +3160,11 @@
 "pet_care_vet_viewer_whatsapp" = "WhatsApp";
 "pet_care_vet_viewer_contact_unavailable" = "Contact unavailable";
 "AdViewerLocationSelectedFallback" = "Location selected for this ad";
-"nova_title" = "Nova";
+"nova_title" = "PURA";
 "nova_subtitle" = "Pure Pets smart shopping assistant";
 "nova_status_online" = "Ready";
 "nova_status_thinking" = "Thinking";
-"nova_empty_title" = "Ask Nova";
+"nova_empty_title" = "Ask PURA";
 "nova_empty_subtitle" = "Tell me your pet and what you need. I'll guide you to the right Pure Pets pick.";
 "nova_smart_suggestions_title" = "Smart suggestions";
 "nova_suggestion_picker_title" = "Choose suggestion";
@@ -3222,24 +3222,24 @@
 "nova_provider_services_prompt" = "Show me pet care services";
 "nova_provider_vets_title" = "Veterinary clinics";
 "nova_provider_vets_prompt" = "Show me nearby veterinary clinics";
-"nova_chat_history" = "Nova history";
+"nova_chat_history" = "PURA history";
 "nova_chat_history_subtitle_format" = "%ld recent messages";
 "nova_chat_history_starred_subtitle_format" = "%ld starred messages";
-"nova_no_history" = "No Nova history yet";
+"nova_no_history" = "No PURA history yet";
 "nova_no_starred_history" = "No starred messages yet";
-"nova_history_accessibility" = "Open Nova history";
+"nova_history_accessibility" = "Open PURA history";
 "nova_history_tab_all" = "All";
 "nova_history_tab_starred" = "Starred";
 "nova_history_role_user" = "You";
-"nova_history_role_nova" = "Nova";
+"nova_history_role_nova" = "PURA";
 "nova_history_empty_title" = "No saved chats yet";
-"nova_history_empty_subtitle" = "Your Nova conversations will appear here after you start chatting.";
+"nova_history_empty_subtitle" = "Your PURA conversations will appear here after you start chatting.";
 "nova_history_starred_empty_title" = "No starred messages yet";
-"nova_history_starred_empty_subtitle" = "Long-press any Nova bubble and star it to keep it here.";
+"nova_history_starred_empty_subtitle" = "Long-press any PURA bubble and star it to keep it here.";
 "nova_history_empty_message" = "Message unavailable";
 "nova_history_clear_button" = "Clear history";
 "nova_history_clear_confirm_title" = "Clear chat history";
-"nova_history_clear_confirm_message" = "Are you sure you want to clear all Nova history messages? This cannot be undone.";
+"nova_history_clear_confirm_message" = "Are you sure you want to clear all PURA history messages? This cannot be undone.";
 "nova_history_clear_confirm_action" = "Clear";
 "nova_history_cleared_title" = "Cleared";
 "nova_history_cleared_subtitle" = "Chat history cleared successfully.";
@@ -3247,17 +3247,17 @@
 "nova_message_action_unstar" = "Unstar";
 "nova_message_action_resend" = "Resend";
 "nova_message_action_reply" = "Reply";
-"nova_message_reply_role_nova" = "Nova";
+"nova_message_reply_role_nova" = "PURA";
 "nova_message_reply_role_you" = "you";
 "nova_message_reply_draft_format" = "Replying to %@: \"%@\"\n";
-"nova_typing" = "Nova is thinking";
-"nova_input_placeholder" = "Message Nova...";
+"nova_typing" = "PURA is thinking";
+"nova_input_placeholder" = "Message PURA...";
 "nova_input_attach_accessibility" = "Add attachment";
 "nova_input_microphone_accessibility" = "Record voice message";
 "nova_input_suggestions_accessibility" = "Show smart suggestions";
 "nova_input_send_accessibility" = "Send message";
-"nova_attachment_unavailable" = "Attachments are not supported in Nova chat right now.";
-"nova_microphone_unavailable" = "Voice messages are not supported in Nova chat right now.";
+"nova_attachment_unavailable" = "Attachments are not supported in PURA chat right now.";
+"nova_microphone_unavailable" = "Voice messages are not supported in PURA chat right now.";
 "nova_scroll_to_latest_accessibility" = "Scroll to latest message";
 "nova_product_results" = "Curated picks";
 "nova_product_count_format" = "%ld items";
@@ -3272,9 +3272,9 @@
 "nova_cart_item_unavailable" = "This item is no longer available to add. Please choose it again from the latest results.";
 "nova_close_accessibility" = "Close";
 "nova_error_auth" = "Couldn't verify your session. Try again.";
-"nova_error_signin_required" = "Sign in first so I can help you with Nova.";
-"nova_error_account_blocked" = "This account can't use Nova. Please contact Pure Pets support.";
-"nova_error_unavailable" = "Nova is unavailable right now. Try again in a moment.";
+"nova_error_signin_required" = "Sign in first so I can help you with PURA.";
+"nova_error_account_blocked" = "This account can't use PURA. Please contact Pure Pets support.";
+"nova_error_unavailable" = "PURA is unavailable right now. Try again in a moment.";
 "nova_cell_render_missing" = "Results were found, but the cards were not displayed because of a UI binding issue.";
 "nova_suggestions_unavailable" = "I couldn't load those picks. Tell me your pet and what you need, and I'll try again.";
 "nova_render_price_label" = "Price:";
@@ -3283,7 +3283,7 @@
 /* Nova chat */
 "nova_thinking" = "Thinking…";
 "nova_empty_sub" = "Orders, pharmacy, services, vets — your pet, one chat.";
-"nova_error_generic" = "Couldn't reach Nova. Try again.";
+"nova_error_generic" = "Couldn't reach PURA. Try again.";
 "nova_error_offline" = "You appear to be offline.";
 
 /* Purchased items */
@@ -3902,9 +3902,9 @@
 "nova_ambient_browsing" = "Want me to narrow this down for you?";
 "nova_ambient_category" = "Want me to narrow this down for you?";
 "nova_ambient_empty_state" = "I can help you search another way.";
-"nova_ambient_shake" = "Nova is here if you need help.";
-"nova_ambient_close_accessibility" = "Dismiss Nova";
-"nova_ambient_accessibility_hint" = "Opens Nova assistant chat.";
+"nova_ambient_shake" = "PURA is here if you need help.";
+"nova_ambient_close_accessibility" = "Dismiss PURA";
+"nova_ambient_accessibility_hint" = "Opens PURA assistant chat.";
 
 /* Accessory and City Form Fields */
 "accessory_form_category_title" = "Accessory Category";
@@ -4383,7 +4383,7 @@
 "home_pulse_no_pet_title" = "Home made for pets";
 "home_pulse_notify_available" = "Notify me";
 "home_pulse_notify_registered" = "You will be notified";
-"home_pulse_nova_a11y" = "Open Nova assistant";
+"home_pulse_nova_a11y" = "Open PURA assistant";
 "home_pulse_nova_hint_a11y" = "Ask Pure Pets for help";
 "home_pulse_offline" = "You are offline";
 "home_pulse_offline_stale" = "Offline — showing saved content";
@@ -4736,7 +4736,7 @@
 "purelens_nova_context_draft" = "Pure Lens detected %@. I need help with: ";
 "purelens_nova_unsupported_draft" = "Pure Lens identified a %@, which isn't currently a direct store category. Can you tell me more about it and suggest compatible supplies or items that can be used with it?";
 "purelens_nova_draft_discard_title" = "Discard this question?";
-"purelens_nova_draft_discard_detail" = "Your question has not been sent to Nova.";
+"purelens_nova_draft_discard_detail" = "Your question has not been sent to PURA.";
 "purelens_nova_draft_keep_editing" = "Keep Editing";
 "purelens_nova_draft_discard" = "Discard";
 "purelens_action_order_ready" = "Order ready";
@@ -5046,6 +5046,17 @@
 "community_lost_found_message" = "Search nearby reports, share sightings, and coordinate a safe reunion.";
 "community_safety_title" = "Designed for trust";
 "community_safety_message" = "Listings and media are reviewed. Sensitive contact and location data stay protected.";
+"community_verified_network" = "Verified Network";
+"community_quick_report_title" = "Quick Report";
+"community_quick_report_prompt" = "Lost a companion or found an animal in need?";
+"community_explore_pets" = "Explore Adoption";
+"community_browse_listings" = "Browse Listings";
+"community_trust_badge_location_title" = "Coarse Location";
+"community_trust_badge_location_desc" = "Exact coordinates protected";
+"community_trust_badge_chat_title" = "Protected Chat";
+"community_trust_badge_chat_desc" = "Encrypted in-app messaging";
+"community_trust_badge_review_title" = "Verified Review";
+"community_trust_badge_review_desc" = "Human & AI content screening";
 "community_loading_title" = "Preparing Community";
 "community_loading_message" = "Loading the latest verified information…";
 "community_error_title" = "Community could not load";
@@ -5445,8 +5456,14 @@
 "pet_folio_breed" = "Breed";
 "pet_folio_actions_format" = "Actions for %@";
 "pet_folio_select_format" = "Show %@’s profile";
-"pet_folio_empty_title" = "A little profile. A lifetime of care.";
-"pet_folio_empty_detail" = "Add your pet’s photo and details, then keep vaccinations and reminders close.";
+"pet_folio_empty_title" = "Their story starts here.";
+"pet_folio_empty_detail" = "Add your companion and keep their details and vaccinations together.";
+"pet_folio_cover_title" = "Your pet’s folio";
+"pet_folio_cover_note" = "A little story begins";
+"pet_folio_details_label" = "Their details";
+"pet_folio_vaccines_label" = "Vaccinations";
+"pet_folio_reminders_label" = "Reminders";
+"pet_folio_retained_error" = "Couldn’t refresh. Your last loaded profiles are still here.";
 "pet_folio_edit_hint" = "Opens pet details and vaccination records";
 "pet_folio_more_records_format" = "%ld more in profile";
 
@@ -5476,8 +5493,8 @@
 "home_pet_context_browse" = "Select a pet to browse its category";
 "home_pet_context_active_format" = "Home recommendations follow %@’s category";
 "home_personal_hero_eyebrow" = "Your companion, at the heart of Pure Pets";
-"home_personal_hero_title" = "Every day with %@";
-"home_personal_hero_subtitle" = "Food, essentials and care from your companion’s category, in one place.";
+"home_personal_hero_title" = "%@’s world";
+"home_personal_hero_subtitle" = "Food, essentials and care for their category.";
 "home_personal_hero_action" = "Explore for %@";
 "home_for_pet_recommendations" = "Discoveries for %@";
 "home_for_pet_essentials" = "Essentials for %@";
@@ -5494,3 +5511,116 @@
 "home_restore_pet_context" = "Show %@’s picks";
 
 "home_universal_search_hint" = "Search products, pets and services. Touch and hold for care and category destinations.";
+
+"home_search_direct_hint" = "Search products, pets and services";
+"home_search_destinations" = "Browse Pure Pets destinations";
+"home_context_manage_pets" = "Manage companions";
+"home_context_selected_format" = "Companion: %@";
+"home_context_change_hint" = "Choose a companion to browse its category or open its profile";
+"home_context_add_pet" = "Add your companion";
+"home_context_category_matched" = "Home follows your companion’s category";
+"home_context_browsing_format" = "Browsing %@";
+"home_context_browsing_all" = "Exploring every companion’s world";
+"home_lens_camera_purpose" = "Identify an animal, then explore its world.";
+
+/* Provider storefront — identity and catalog */
+"storefront_cart_overflow" = "99+";
+"storefront_cart_count_format" = "%@ in cart";
+"storefront_story_less" = "Show less";
+"storefront_story_more" = "About this store";
+"storefront_expanded" = "Expanded";
+"storefront_collapsed" = "Collapsed";
+"storefront_intro_pharmacy" = "Explore this pharmacy’s care essentials. Get in touch when you need help.";
+"storefront_intro_marketplace" = "Discover what this store offers your companion. Get in touch when you need help.";
+"storefront_verified_provider" = "Verified provider";
+"storefront_on_pure_pets" = "On Pure Pets";
+"storefront_reviews_format" = "Reviews: %@";
+"storefront_message_action" = "Message store";
+"storefront_rating_hint" = "Rating is available after a purchase from this provider is verified.";
+"storefront_product_count_format" = "Listed products: %@";
+"storefront_search_placeholder" = "Search this selection";
+"storefront_clear_search" = "Clear search";
+"storefront_loading" = "Loading the store’s selection…";
+"storefront_search_empty" = "No matching products. Try another name or clear your search.";
+"storefront_search_results_format" = "Results: %@";
+
+/* Home companion canvas */
+"home_companion_open_profile_format" = "Open %@’s profile";
+"home_companion_switch" = "Switch";
+"home_companion_switch_a11y" = "Change Home’s companion";
+"home_companion_add_detail" = "Their profile and everyday care, together";
+
+/* Pet Care — discovery and recovery */
+"pet_care_discovery_title" = "Care starts here";
+"pet_care_discovery_medicines" = "Medicines and care essentials, for your kind of companion.";
+"pet_care_discovery_vets" = "Find a veterinarian or clinic and get in touch.";
+"pet_care_refresh" = "Refresh list";
+"pet_care_retry" = "Try again";
+"pet_care_refreshing" = "Updating the list…";
+"pet_care_loading" = "Loading…";
+"pet_care_results_format" = "Results: %@";
+"pet_care_retained_error" = "Couldn’t refresh. These are the last loaded results. Tap refresh to try again.";
+"pet_care_directory_empty_medicines" = "No medicines listed yet";
+"pet_care_directory_empty_medicines_body" = "Published medicines will appear here when available. Refresh the list or explore veterinarians.";
+"pet_care_directory_empty_vets" = "No veterinarians listed yet";
+"pet_care_directory_empty_vets_body" = "Veterinarian and clinic profiles will appear here when available. Refresh the list or explore medicines.";
+"pet_care_loading_title" = "Finding care options";
+"pet_care_loading_body" = "We’re loading the list so you can explore care for your companion.";
+"pet_care_load_error" = "The list couldn’t load";
+"pet_care_load_error_body" = "We couldn’t retrieve the information. Please try again shortly.";
+"pet_care_no_matches" = "No matches for these choices";
+"pet_care_no_matches_body" = "Clear the search and filters to see the full list, then narrow it down again.";
+"pet_care_clear_search_filters" = "Clear search and filters";
+"pet_care_explore_medicines" = "Explore medicines and care essentials";
+"pet_care_explore_vets" = "Explore veterinarians and clinics";
+"pet_care_cart_count_format" = "Items in cart: %@";
+"pet_care_count_over_99" = "99+";
+
+// Pet profile editor — portrait and care
+"pet_editor_add_photo" = "Add a photo";
+"pet_editor_name_label" = "Your pet’s name · required";
+"pet_editor_name_prompt" = "What’s their name?";
+"pet_editor_name_hint" = "Enter your pet’s name to save their profile.";
+"pet_editor_identity_hint" = "Start with a name. The rest can come later.";
+"pet_editor_save_hint" = "Save your pet’s details, photo, and vaccinations.";
+"pet_editor_details_title" = "A little about them";
+"pet_editor_breed_prompt" = "Choose a breed";
+"pet_editor_age_prompt" = "Add their age";
+"pet_editor_age_unit" = "In months · optional";
+"pet_editor_default_hint" = "This pet is selected by default across your experience.";
+"pet_editor_vaccinations_hint" = "Their care dates, together.";
+"pet_editor_first_vaccine" = "Add their first vaccination";
+"pet_editor_vaccine_optional" = "Optional for now. You can add records later.";
+"pet_editor_remove_vaccine_format" = "Delete vaccination %@";
+"pet_editor_remove_vaccine_title" = "Delete this vaccination?";
+"pet_editor_remove_vaccine_message" = "The record will be removed from this profile when you save your changes.";
+"pet_editor_photo_error_title" = "Couldn’t add the photo";
+"pet_editor_photo_load_error" = "This photo couldn’t be opened. Choose another photo and try again.";
+"pet_editor_photo_upload_error" = "Your changes weren’t saved because the photo didn’t finish uploading. Your edits are still here. Try saving again.";
+"pet_editor_age_error_title" = "Check the age";
+"pet_editor_age_error_message" = "Enter the age as a whole number of months, or leave it empty.";
+"pet_editor_session_changed_title" = "Reopen this page";
+"pet_editor_session_changed_message" = "Your account has changed. Reopen this page from the right account to continue.";
+
+// Reminder editor — native care note
+"reminder_editor_title_label" = "Reminder · required";
+"reminder_editor_title_prompt" = "What should we remember?";
+"reminder_editor_schedule" = "Make time for care";
+"reminder_editor_date" = "Date";
+"reminder_editor_time" = "Time";
+"reminder_editor_enabled" = "Reminder on";
+"reminder_editor_enabled_hint" = "Turn it off to keep the reminder without an alert.";
+"reminder_editor_pets_loading" = "Loading your pets…";
+"reminder_editor_pets_error" = "Couldn’t load your pets";
+"reminder_editor_pets_retry" = "Tap to try again. Your edits are still here.";
+"reminder_editor_add_pet" = "Add your pet";
+"reminder_editor_add_pet_hint" = "Create their profile, then return to finish this reminder.";
+"reminder_editor_pet_unavailable" = "The linked profile is unavailable. Choose the right pet.";
+"reminder_editor_notifications_title" = "Device notifications are off";
+"reminder_editor_notifications_action" = "Open notification settings";
+"reminder_editor_notifications_hint" = "You can save the reminder. Enable notifications to receive its alerts.";
+"reminder_editor_save_hint" = "Add a title and choose a pet to save the reminder.";
+"reminder_editor_future_date" = "Choose a future time for an active reminder, or turn it off to save without an alert.";
+"reminder_editor_save_error" = "Couldn’t save. Your edits are still here. Please try again.";
+"reminder_editor_notifications_setup" = "Enable reminder notifications";
+"reminder_editor_notifications_enable" = "Allow notifications";

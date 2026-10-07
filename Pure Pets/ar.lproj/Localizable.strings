@@ -3137,11 +3137,11 @@
 "pet_care_vet_viewer_whatsapp" = "واتساب";
 "pet_care_vet_viewer_contact_unavailable" = "التواصل غير متاح";
 "AdViewerLocationSelectedFallback" = "تم تحديد موقع الإعلان";
-"nova_title" = "نوفا";
+"nova_title" = "بيورا";
 "nova_subtitle" = "مساعد التسوق الذكي من بيور بتس";
 "nova_status_online" = "جاهزة";
 "nova_status_thinking" = "تفكر";
-"nova_empty_title" = "اسأل نوفا";
+"nova_empty_title" = "اسأل بيورا";
 "nova_empty_subtitle" = "اكتب نوع حيوانك وما تبحث عنه، وسأرشح لك الاختيار الأنسب من بيور بتس.";
 "nova_smart_suggestions_title" = "اقتراحات ذكية";
 "nova_suggestion_picker_title" = "اختر اقتراحًا";
@@ -3199,24 +3199,24 @@
 "nova_provider_services_prompt" = "اعرض خدمات العناية بالحيوانات";
 "nova_provider_vets_title" = "عيادات بيطرية";
 "nova_provider_vets_prompt" = "اعرض العيادات البيطرية القريبة";
-"nova_chat_history" = "سجل نوفا";
+"nova_chat_history" = "سجل بيورا";
 "nova_chat_history_subtitle_format" = "%ld رسالة حديثة";
 "nova_chat_history_starred_subtitle_format" = "%ld رسالة مميزة";
-"nova_no_history" = "لا يوجد سجل لنوفا بعد";
+"nova_no_history" = "لا يوجد سجل لبيورا بعد";
 "nova_no_starred_history" = "لا توجد رسائل مميزة بعد";
-"nova_history_accessibility" = "فتح سجل نوفا";
+"nova_history_accessibility" = "فتح سجل بيورا";
 "nova_history_tab_all" = "الكل";
 "nova_history_tab_starred" = "المميزة";
 "nova_history_role_user" = "أنت";
-"nova_history_role_nova" = "نوفا";
+"nova_history_role_nova" = "بيورا";
 "nova_history_empty_title" = "لا توجد محادثات محفوظة بعد";
-"nova_history_empty_subtitle" = "ستظهر محادثاتك مع نوفا هنا بعد بدء الدردشة.";
+"nova_history_empty_subtitle" = "ستظهر محادثاتك مع بيورا هنا بعد بدء الدردشة.";
 "nova_history_starred_empty_title" = "لا توجد رسائل مميزة بعد";
-"nova_history_starred_empty_subtitle" = "اضغط مطولاً على أي فقاعة من نوفا وميزها لتظهر هنا.";
+"nova_history_starred_empty_subtitle" = "اضغط مطولاً على أي فقاعة من بيورا وميزها لتظهر هنا.";
 "nova_history_empty_message" = "الرسالة غير متاحة";
 "nova_history_clear_button" = "مسح السجل";
 "nova_history_clear_confirm_title" = "مسح سجل المحادثة";
-"nova_history_clear_confirm_message" = "هل أنت متأكد من مسح جميع رسائل سجل نوفا؟ لا يمكن التراجع عن هذا الإجراء.";
+"nova_history_clear_confirm_message" = "هل أنت متأكد من مسح جميع رسائل سجل بيورا؟ لا يمكن التراجع عن هذا الإجراء.";
 "nova_history_clear_confirm_action" = "مسح";
 "nova_history_cleared_title" = "تم المسح";
 "nova_history_cleared_subtitle" = "تم مسح سجل المحادثة بنجاح.";
@@ -3224,17 +3224,17 @@
 "nova_message_action_unstar" = "إلغاء التمييز";
 "nova_message_action_resend" = "إعادة إرسال";
 "nova_message_action_reply" = "رد";
-"nova_message_reply_role_nova" = "نوفا";
+"nova_message_reply_role_nova" = "بيورا";
 "nova_message_reply_role_you" = "رسالتك";
 "nova_message_reply_draft_format" = "رد على %@: \"%@\"\n";
-"nova_typing" = "نوفا تفكر";
-"nova_input_placeholder" = "راسل نوفا...";
+"nova_typing" = "بيورا تفكر";
+"nova_input_placeholder" = "راسل بيورا...";
 "nova_input_attach_accessibility" = "إضافة مرفق";
 "nova_input_microphone_accessibility" = "تسجيل رسالة صوتية";
 "nova_input_suggestions_accessibility" = "عرض الاقتراحات الذكية";
 "nova_input_send_accessibility" = "إرسال الرسالة";
-"nova_attachment_unavailable" = "المرفقات غير مدعومة في محادثة نوفا حالياً.";
-"nova_microphone_unavailable" = "الرسائل الصوتية غير مدعومة في محادثة نوفا حالياً.";
+"nova_attachment_unavailable" = "المرفقات غير مدعومة في محادثة بيورا حالياً.";
+"nova_microphone_unavailable" = "الرسائل الصوتية غير مدعومة في محادثة بيورا حالياً.";
 "nova_scroll_to_latest_accessibility" = "الانتقال إلى أحدث رسالة";
 "nova_product_results" = "اختيارات مناسبة";
 "nova_product_count_format" = "%ld عنصر";
@@ -3249,8 +3249,8 @@
 "nova_cart_item_unavailable" = "لم يعد هذا المنتج متاحاً للإضافة. يرجى اختياره مرة أخرى من أحدث النتائج.";
 "nova_close_accessibility" = "إغلاق";
 "nova_error_auth" = "تعذّر التحقق من الجلسة. حاول مرة أخرى.";
-"nova_error_signin_required" = "سجّل دخولك أولًا حتى أساعدك من خلال نوفا.";
-"nova_error_account_blocked" = "هذا الحساب لا يمكنه استخدام نوفا. تواصل مع دعم بيور بتس.";
+"nova_error_signin_required" = "سجّل دخولك أولًا حتى أساعدك من خلال بيورا.";
+"nova_error_account_blocked" = "هذا الحساب لا يمكنه استخدام بيورا. تواصل مع دعم بيور بتس.";
 "nova_error_unavailable" = "الخدمة غير متاحة حالياً. حاول بعد قليل.";
 "nova_cell_render_missing" = "تم العثور على نتائج، لكن لم يتم عرض البطاقات بسبب مشكلة في ربط الواجهة.";
 "nova_suggestions_unavailable" = "لم أستطع تحميل هذه الاختيارات. اكتب نوع حيوانك وما تحتاجه وسأحاول مرة أخرى.";
@@ -3260,7 +3260,7 @@
 /* Nova chat */
 "nova_thinking" = "يفكر…";
 "nova_empty_sub" = "الطلبات، الصيدلية، الخدمات، الأطباء — حيوانك الأليف في محادثة واحدة.";
-"nova_error_generic" = "تعذّر الوصول إلى نوفا. حاول مرة أخرى.";
+"nova_error_generic" = "تعذّر الوصول إلى بيورا. حاول مرة أخرى.";
 "nova_error_offline" = "يبدو أنك غير متصل بالإنترنت.";
 
 /* Purchased items */
@@ -3878,9 +3878,9 @@
 "nova_ambient_browsing" = "هل تريد أن أضيّق النتائج لك؟";
 "nova_ambient_category" = "هل تريد أن أضيّق النتائج لك؟";
 "nova_ambient_empty_state" = "يمكنني مساعدتك في البحث بطريقة أخرى.";
-"nova_ambient_shake" = "نوفا هنا إذا احتجت مساعدة.";
-"nova_ambient_close_accessibility" = "إخفاء نوفا";
-"nova_ambient_accessibility_hint" = "يفتح محادثة نوفا.";
+"nova_ambient_shake" = "بيورا هنا إذا احتجت مساعدة.";
+"nova_ambient_close_accessibility" = "إخفاء بيورا";
+"nova_ambient_accessibility_hint" = "يفتح محادثة بيورا.";
 
 /* Accessory and City Form Fields */
 "accessory_form_category_title" = "تصنيف المستلزمات";
@@ -4359,7 +4359,7 @@
 "home_pulse_no_pet_title" = "بيت مصمم لحيوانك";
 "home_pulse_notify_available" = "نبّهني عند التوفر";
 "home_pulse_notify_registered" = "سننبّهك عند التوفر";
-"home_pulse_nova_a11y" = "افتح مساعد نوفا";
+"home_pulse_nova_a11y" = "افتح مساعد بيورا";
 "home_pulse_nova_hint_a11y" = "اطلب المساعدة من بيور بتس";
 "home_pulse_offline" = "لا يوجد اتصال بالإنترنت";
 "home_pulse_offline_stale" = "دون اتصال — نعرض المحتوى المحفوظ";
@@ -4720,7 +4720,7 @@
 "purelens_nova_context_draft" = "رصدت بيور لينس %@. أحتاج مساعدة في: ";
 "purelens_nova_unsupported_draft" = "تعرفت عدسة بيور لينس على %@، وهو غير متوفر كقسم مباشر في المتجر حالياً. هل يمكنك تزويدي بمعلومات عنه وعن المستلزمات والمنتجات المناسبة التي يمكن استخدامها معه؟";
 "purelens_nova_draft_discard_title" = "هل تريد حذف هذا السؤال؟";
-"purelens_nova_draft_discard_detail" = "لم يُرسل سؤالك إلى نوفا بعد.";
+"purelens_nova_draft_discard_detail" = "لم يُرسل سؤالك إلى بيورا بعد.";
 "purelens_nova_draft_keep_editing" = "متابعة التعديل";
 "purelens_nova_draft_discard" = "حذف";
 "purelens_action_order_ready" = "أصبح الطلب جاهزاً";
@@ -5030,6 +5030,17 @@
 "community_lost_found_message" = "ابحث في البلاغات القريبة، وشارك المشاهدات، ونسّق عودة آمنة.";
 "community_safety_title" = "مصمم للثقة";
 "community_safety_message" = "تخضع الإعلانات والوسائط للمراجعة، وتبقى بيانات الاتصال والموقع الحساسة محمية.";
+"community_verified_network" = "شبكة موثوقة";
+"community_quick_report_title" = "إبلاغ عاجل";
+"community_quick_report_prompt" = "هل تبحث عن أليف مفقود أو عثرت على حيوان بحاجة لمساعدة؟";
+"community_explore_pets" = "استكشف التبني";
+"community_browse_listings" = "تصفح الحيوانات";
+"community_trust_badge_location_title" = "موقع تقريبي";
+"community_trust_badge_location_desc" = "حماية الإحداثيات الدقيقة";
+"community_trust_badge_chat_title" = "محادثات محمية";
+"community_trust_badge_chat_desc" = "تواصل داخلي مشفر";
+"community_trust_badge_review_title" = "فحص ومراجعة";
+"community_trust_badge_review_desc" = "تدقيق بشري وآلي للبلاغات";
 "community_loading_title" = "جارٍ تجهيز المجتمع";
 "community_loading_message" = "نحمّل أحدث المعلومات الموثقة…";
 "community_error_title" = "تعذر تحميل المجتمع";
@@ -5429,8 +5440,14 @@
 "pet_folio_breed" = "السلالة";
 "pet_folio_actions_format" = "خيارات %@";
 "pet_folio_select_format" = "عرض ملف %@";
-"pet_folio_empty_title" = "ملف صغير. ورعاية تدوم.";
-"pet_folio_empty_detail" = "أضف صورة حيوانك الأليف وتفاصيله، واحتفظ بتطعيماته وتذكيراته في متناولك.";
+"pet_folio_empty_title" = "هنا تبدأ حكايتهم.";
+"pet_folio_empty_detail" = "أضف رفيقك، واحتفظ بتفاصيله وتطعيماته في مكان واحد.";
+"pet_folio_cover_title" = "ملف رفيقك";
+"pet_folio_cover_note" = "بداية حكاية جميلة";
+"pet_folio_details_label" = "تفاصيلهم";
+"pet_folio_vaccines_label" = "تطعيماتهم";
+"pet_folio_reminders_label" = "تذكيراتهم";
+"pet_folio_retained_error" = "تعذّر تحديث الملفات. آخر ملفاتك المحمّلة ما زالت معروضة.";
 "pet_folio_edit_hint" = "يفتح تفاصيل الحيوان الأليف وسجل تطعيماته";
 "pet_folio_more_records_format" = "%ld إضافية في الملف";
 
@@ -5460,9 +5477,9 @@
 "home_pet_context_browse" = "اختر رفيقك لعرض اختيارات من فئته";
 "home_pet_context_active_format" = "اختيارات المنزل تتبع فئة %@";
 "home_personal_hero_eyebrow" = "رفيقك في قلب بيوربتس";
-"home_personal_hero_title" = "كل يوم مع %@";
-"home_personal_hero_subtitle" = "طعام ومستلزمات ورعاية من فئة رفيقك، في مكان واحد.";
-"home_personal_hero_action" = "استكشف احتياجات %@";
+"home_personal_hero_title" = "عالم %@";
+"home_personal_hero_subtitle" = "طعام ومستلزمات ورعاية، من فئة رفيقك.";
+"home_personal_hero_action" = "اكتشف احتياجات %@";
 "home_for_pet_recommendations" = "اختيارات لـ%@";
 "home_for_pet_essentials" = "مستلزمات %@";
 "home_for_pet_food" = "طعام لـ%@";
@@ -5478,3 +5495,116 @@
 "home_restore_pet_context" = "عرض اختيارات %@";
 
 "home_universal_search_hint" = "ابحث عن منتجات وحيوانات وخدمات. اضغط مطولًا للوصول إلى وجهات الرعاية والفئات.";
+
+"home_search_direct_hint" = "ابحث عن منتجات وحيوانات وخدمات";
+"home_search_destinations" = "تصفّح أقسام بيوربتس";
+"home_context_manage_pets" = "إدارة رفاقك";
+"home_context_selected_format" = "رفيقك: %@";
+"home_context_change_hint" = "اختر رفيقًا لعرض فئته أو افتح ملفه";
+"home_context_add_pet" = "أضف رفيقك";
+"home_context_category_matched" = "اختيارات من فئة رفيقك";
+"home_context_browsing_format" = "تتصفّح الآن: %@";
+"home_context_browsing_all" = "اكتشف عالم كل رفيق";
+"home_lens_camera_purpose" = "تعرّف على الحيوان، ثم استكشف عالمه.";
+
+/* Provider storefront — identity and catalog */
+"storefront_cart_overflow" = "٩٩+";
+"storefront_cart_count_format" = "%@ في السلة";
+"storefront_story_less" = "عرض أقل";
+"storefront_story_more" = "عن المتجر";
+"storefront_expanded" = "موسّع";
+"storefront_collapsed" = "مطوي";
+"storefront_intro_pharmacy" = "تصفّح مستلزمات الرعاية من هذه الصيدلية، وتواصل معها لأي استفسار.";
+"storefront_intro_marketplace" = "اكتشف ما يقدّمه هذا المتجر لرفيقك، وتواصل معه لأي استفسار.";
+"storefront_verified_provider" = "مزوّد موثّق";
+"storefront_on_pure_pets" = "على بيوربتس";
+"storefront_reviews_format" = "التقييمات: %@";
+"storefront_message_action" = "تواصل مع المتجر";
+"storefront_rating_hint" = "التقييم متاح بعد التحقق من الشراء من هذا المزوّد.";
+"storefront_product_count_format" = "المنتجات المعروضة: %@";
+"storefront_search_placeholder" = "ابحث في المنتجات المعروضة";
+"storefront_clear_search" = "مسح البحث";
+"storefront_loading" = "جارٍ تحميل منتجات المتجر…";
+"storefront_search_empty" = "لا توجد منتجات مطابقة. جرّب اسمًا آخر أو امسح البحث.";
+"storefront_search_results_format" = "النتائج: %@";
+
+/* Home companion canvas */
+"home_companion_open_profile_format" = "افتح ملف %@";
+"home_companion_switch" = "تبديل";
+"home_companion_switch_a11y" = "غيّر رفيق الصفحة الرئيسية";
+"home_companion_add_detail" = "ملفه ورعايته اليومية، في مكان واحد";
+
+/* Pet Care — discovery and recovery */
+"pet_care_discovery_title" = "العناية تبدأ من هنا";
+"pet_care_discovery_medicines" = "أدوية ومستلزمات عناية، حسب نوع حيوانك.";
+"pet_care_discovery_vets" = "اعثر على طبيب أو عيادة وتواصل مباشرة.";
+"pet_care_refresh" = "تحديث القائمة";
+"pet_care_retry" = "إعادة المحاولة";
+"pet_care_refreshing" = "جارٍ تحديث القائمة…";
+"pet_care_loading" = "جارٍ التحميل…";
+"pet_care_results_format" = "النتائج: %@";
+"pet_care_retained_error" = "تعذّر التحديث. هذه آخر نتائج تم تحميلها؛ اضغط زر التحديث للمحاولة مجددًا.";
+"pet_care_directory_empty_medicines" = "لا توجد أدوية مدرجة بعد";
+"pet_care_directory_empty_medicines_body" = "ستظهر الأدوية المنشورة هنا عند توفرها. يمكنك تحديث القائمة أو استكشاف الأطباء البيطريين.";
+"pet_care_directory_empty_vets" = "لا يوجد أطباء مدرجون بعد";
+"pet_care_directory_empty_vets_body" = "ستظهر ملفات الأطباء والعيادات هنا عند توفرها. يمكنك تحديث القائمة أو استكشاف الأدوية.";
+"pet_care_loading_title" = "نحمّل خيارات العناية";
+"pet_care_loading_body" = "نجلب القائمة لتختار ما يناسب رفيقك.";
+"pet_care_load_error" = "تعذّر تحميل القائمة";
+"pet_care_load_error_body" = "لم نتمكن من جلب البيانات. أعد المحاولة بعد قليل.";
+"pet_care_no_matches" = "لا نتائج لهذه الخيارات";
+"pet_care_no_matches_body" = "وسّع البحث بإزالة الفلاتر وكلمة البحث، ثم اختر ما يناسبك من القائمة.";
+"pet_care_clear_search_filters" = "مسح البحث والفلاتر";
+"pet_care_explore_medicines" = "استكشف الأدوية ومستلزمات العناية";
+"pet_care_explore_vets" = "استكشف الأطباء والعيادات";
+"pet_care_cart_count_format" = "عدد القطع في السلة: %@";
+"pet_care_count_over_99" = "٩٩+";
+
+// Pet profile editor — portrait and care
+"pet_editor_add_photo" = "أضف صورة";
+"pet_editor_name_label" = "اسم رفيقك · مطلوب";
+"pet_editor_name_prompt" = "بماذا تناديه؟";
+"pet_editor_name_hint" = "أدخل اسم الحيوان لتتمكن من حفظ ملفه.";
+"pet_editor_identity_hint" = "ابدأ بالاسم، وأضف بقية التفاصيل وقتما تشاء.";
+"pet_editor_save_hint" = "حفظ تفاصيل الحيوان وصورته وتطعيماته.";
+"pet_editor_details_title" = "نتعرّف عليه أكثر";
+"pet_editor_breed_prompt" = "اختر السلالة";
+"pet_editor_age_prompt" = "أضف العمر";
+"pet_editor_age_unit" = "بالأشهر · اختياري";
+"pet_editor_default_hint" = "يُختار هذا الحيوان تلقائيًا في تجربتك.";
+"pet_editor_vaccinations_hint" = "تواريخ الرعاية، في مكان واحد.";
+"pet_editor_first_vaccine" = "أضف أول تطعيم";
+"pet_editor_vaccine_optional" = "اختياري الآن. يمكنك إضافة السجل لاحقًا.";
+"pet_editor_remove_vaccine_format" = "حذف تطعيم %@";
+"pet_editor_remove_vaccine_title" = "حذف سجل التطعيم؟";
+"pet_editor_remove_vaccine_message" = "يُحذف السجل من هذا الملف عند حفظ التغييرات.";
+"pet_editor_photo_error_title" = "تعذّر إضافة الصورة";
+"pet_editor_photo_load_error" = "تعذّر فتح هذه الصورة. اختر صورة أخرى وحاول مجددًا.";
+"pet_editor_photo_upload_error" = "لم تُحفظ التغييرات لأن رفع الصورة لم يكتمل. احتفظنا بتعديلاتك؛ حاول الحفظ مجددًا.";
+"pet_editor_age_error_title" = "تحقّق من العمر";
+"pet_editor_age_error_message" = "أدخل العمر بعدد صحيح من الأشهر، أو اتركه فارغًا.";
+"pet_editor_session_changed_title" = "أعِد فتح الصفحة";
+"pet_editor_session_changed_message" = "تغيّر حسابك. أعِد فتح هذه الصفحة من الحساب الصحيح للمتابعة.";
+
+// Reminder editor — native care note
+"reminder_editor_title_label" = "التذكير · مطلوب";
+"reminder_editor_title_prompt" = "بماذا نذكّرك؟";
+"reminder_editor_schedule" = "موعد الرعاية";
+"reminder_editor_date" = "اليوم";
+"reminder_editor_time" = "الوقت";
+"reminder_editor_enabled" = "تذكير مفعّل";
+"reminder_editor_enabled_hint" = "أوقفه للاحتفاظ بالتذكير دون تنبيه.";
+"reminder_editor_pets_loading" = "جارٍ تحميل حيواناتك…";
+"reminder_editor_pets_error" = "تعذّر تحميل الحيوانات";
+"reminder_editor_pets_retry" = "اضغط لإعادة المحاولة. تعديلاتك محفوظة هنا.";
+"reminder_editor_add_pet" = "أضف حيوانك الأليف";
+"reminder_editor_add_pet_hint" = "أنشئ ملفًا له، ثم عُد لإكمال التذكير.";
+"reminder_editor_pet_unavailable" = "الملف المرتبط غير متاح. اختر الحيوان المناسب.";
+"reminder_editor_notifications_title" = "إشعارات الجهاز متوقفة";
+"reminder_editor_notifications_action" = "فتح إعدادات الإشعارات";
+"reminder_editor_notifications_hint" = "يمكنك حفظ التذكير. فعّل الإشعارات لتصلك تنبيهاته.";
+"reminder_editor_save_hint" = "أضف عنوانًا واختر حيوانًا لحفظ التذكير.";
+"reminder_editor_future_date" = "اختر موعدًا قادمًا للتذكير المفعّل، أو أوقفه لحفظه دون تنبيه.";
+"reminder_editor_save_error" = "تعذّر الحفظ. احتفظنا بتعديلاتك؛ حاول مجددًا.";
+"reminder_editor_notifications_setup" = "فعّل إشعارات التذكير";
+"reminder_editor_notifications_enable" = "السماح بالإشعارات";

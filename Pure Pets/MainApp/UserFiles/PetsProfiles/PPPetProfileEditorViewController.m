@@ -3,8 +3,8 @@
 //  Pure Pets
 //
 //  Created by Mohammed Ahmed on 4/7/26.
-//  Modern UI — matches ProfileVC.m form style exactly (accent-bar headers,
-//  PPProfileTextFieldCell-pattern fields, hero image, vaccine cards, PPHUD).
+//  Native pet-profile coordinator. The existing SwiftUI host renders the
+//  portrait-led editor; this owner keeps navigation, media, and persistence.
 //
 
 #import "PPPetProfileEditorViewController.h"
@@ -21,6 +21,10 @@
 #import <Pure_Pets-Swift.h>
  
 @import PhotosUI;
+
+static BOOL PPEditorMatchesOwner(NSString *ownerUID) {
+    return ownerUID.length > 0 && [ownerUID isEqualToString:[UserManager sharedManager].currentAuthUser.uid];
+}
 
 // ─── Shared Image Loader ──────────────────────────────────
 
@@ -49,6 +53,25 @@ static const CGFloat kPPEditorCellVerticalInset   = 10.0;
 
 static inline UISemanticContentAttribute PPEditorSemanticAttr(void) {
     return PPPetsCurrentSemanticAttribute();
+}
+
+// Accept the number keyboards used by both app languages without silently
+// turning Arabic digits, pasted fractions, or overflowing values into zero.
+static BOOL PPEditorParseAge(NSString *text, NSInteger *months) {
+    NSString *value = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSInteger result = 0;
+    for (NSUInteger index = 0; index < value.length; index++) {
+        unichar character = [value characterAtIndex:index];
+        NSInteger digit;
+        if (character >= '0' && character <= '9') digit = character - '0';
+        else if (character >= 0x0660 && character <= 0x0669) digit = character - 0x0660;
+        else if (character >= 0x06F0 && character <= 0x06F9) digit = character - 0x06F0;
+        else return NO;
+        if (result > (NSIntegerMax - digit) / 10) return NO;
+        result = result * 10 + digit;
+    }
+    if (months) *months = result;
+    return YES;
 }
 
 // ─── Section / Row Enums ──────────────────────────────────
@@ -210,6 +233,8 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
 @interface PPPetProfileEditorViewController () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate, PHPickerViewControllerDelegate>
 @property (nonatomic, strong) PPPetProfile *pet;
+@property (nonatomic, strong) PPPetProfile *originalPet;
+@property (nonatomic, copy) NSString *ownerUID;
 @property (nonatomic, strong) UITableView  *tableView;
 @property (nonatomic, strong) NSMutableArray<PPPetVaccinationRecord *> *records;
 @property (nonatomic, strong) UIImage      *selectedImage;
@@ -224,6 +249,9 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 @property (nonatomic, strong) PPFormEngineView *infoFormView;
 @property (nonatomic, strong) UISwitch     *defaultSwitch;
 @property (nonatomic, assign) BOOL isSaving;
+@property (nonatomic, assign) BOOL isLoadingPhoto;
+@property (nonatomic, assign) NSUInteger photoRequestID;
+@property (nonatomic, strong) NSProgress *photoLoadProgress;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, strong) UIView       *backgroundGlowViewTop;
 @property (nonatomic, strong) UIView       *backgroundGlowViewBottom;
@@ -245,7 +273,13 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 - (instancetype)initWithPet:(PPPetProfile *)pet {
     self = [super init];
     if (self) {
-        _pet     = pet ?: [PPPetProfile new];
+        // A cancelled editor must not leak category/vaccination edits into the
+        // Home or profiles-list model before the server accepts a save.
+        _originalPet = pet;
+        _ownerUID = [[UserManager sharedManager].currentAuthUser.uid copy];
+        _pet = pet ? [[PPPetProfile alloc] initWithDictionary:pet.toDictionary] : [PPPetProfile new];
+        _pet.createdAt = pet.createdAt;
+        _pet.updatedAt = pet.updatedAt;
         _records = [(_pet.vaccinations ?: @[]) mutableCopy] ?: [NSMutableArray array];
     }
     return self;
@@ -271,7 +305,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         vaccinations:self.records ?: @[]
         selectedImage:self.selectedImage
         remoteImage:self.swiftUIRemoteImage
-        isSaving:self.isSaving
+        isSaving:(self.isSaving || self.isLoadingPhoto)
         saveSucceeded:self.swiftUISaveSucceeded
         isEditing:(self.pet.petID.length > 0)
         onBack:^{ [weakSelf pp_handleBack]; }
@@ -306,10 +340,12 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
     __weak typeof(self) weakSelf = self;
     PPEditorLoadImageValue(urlString, ^(UIImage *image) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || ![self.pet.imageURL isEqualToString:urlString] || !image) return;
-        self.swiftUIRemoteImage = image;
-        [self pp_updateSwiftUIEditorHost];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || ![self.pet.imageURL isEqualToString:urlString] || !image) return;
+            self.swiftUIRemoteImage = image;
+            [self pp_updateSwiftUIEditorHost];
+        });
     });
 }
 
@@ -322,7 +358,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
                      vaccinations:self.records ?: @[]
                     selectedImage:self.selectedImage
                       remoteImage:self.swiftUIRemoteImage
-                         isSaving:self.isSaving
+                         isSaving:(self.isSaving || self.isLoadingPhoto)
                     saveSucceeded:self.swiftUISaveSucceeded];
 }
 
@@ -337,6 +373,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 }
 
 - (void)dealloc {
+    [self.photoLoadProgress cancel];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -724,6 +761,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 #pragma mark - Photo Picker
 
 - (void)pp_handleBack {
+    if (self.isSaving || self.isLoadingPhoto) return;
     if (self.navigationController.viewControllers.count > 1) {
         [self.navigationController popViewControllerAnimated:YES];
     } else {
@@ -732,6 +770,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 }
 
 - (void)pp_pickPhoto {
+    if (self.isSaving || self.isLoadingPhoto) return;
     PHPickerConfiguration *cfg = [[PHPickerConfiguration alloc] init];
     cfg.selectionLimit = 1;
     cfg.filter = [PHPickerFilter imagesFilter];
@@ -745,16 +784,27 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     PHPickerResult *result = results.firstObject;
     if (!result) return;
 
+    self.isLoadingPhoto = YES;
+    NSUInteger requestID = ++self.photoRequestID;
+    [self pp_updateSwiftUIEditorHost];
     __weak typeof(self) ws = self;
-    [result.itemProvider loadObjectOfClass:UIImage.class completionHandler:^(UIImage *image, NSError *error) {
-        if (![image isKindOfClass:UIImage.class]) return;
+    self.photoLoadProgress = [result.itemProvider loadObjectOfClass:UIImage.class completionHandler:^(UIImage *image, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            ws.selectedImage = image;
-            if (ws.swiftUIHost) {
-                [ws pp_updateSwiftUIEditorHost];
+            __strong typeof(ws) self = ws;
+            if (!self || requestID != self.photoRequestID) return;
+            self.isLoadingPhoto = NO;
+            self.photoLoadProgress = nil;
+            if (error || ![image isKindOfClass:UIImage.class]) {
+                [self pp_updateSwiftUIEditorHost];
+                [PPHUD showError:kLang(@"pet_editor_photo_error_title") subtitle:kLang(@"pet_editor_photo_load_error")];
+                return;
+            }
+            self.selectedImage = image;
+            if (self.swiftUIHost) {
+                [self pp_updateSwiftUIEditorHost];
             } else {
-                ws.heroImageView.image = image;
-                [ws pp_refreshHeroHeader];
+                self.heroImageView.image = image;
+                [self pp_refreshHeroHeader];
             }
         });
     }];
@@ -1044,8 +1094,19 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
 #pragma mark - Save
 
+- (void)pp_rejectChangedOwner {
+    self.isSaving = NO;
+    self.swiftUISaveSucceeded = NO;
+    [self pp_updateSwiftUIEditorHost];
+    if (self.view.window) {
+        [PPHUD showError:kLang(self.ownerUID.length ? @"pet_editor_session_changed_title" : @"login_required_title")
+                subtitle:kLang(self.ownerUID.length ? @"pet_editor_session_changed_message" : @"login_required_message")];
+    }
+}
+
 - (void)pp_save {
-    if (self.isSaving) return;
+    if (self.isSaving || self.isLoadingPhoto || self.swiftUISaveSucceeded) return;
+    if (!PPEditorMatchesOwner(self.ownerUID)) { [self pp_rejectChangedOwner]; return; }
 
     NSString *nameSource = self.swiftUIHost
         ? (self.swiftUIName ?: @"")
@@ -1066,37 +1127,71 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         return;
     }
 
+    NSString *ageSource = self.swiftUIHost
+        ? (self.swiftUIAge ?: @"")
+        : ([self.infoFormView valueForIdentifier:@"age"] ?: @"");
+    NSInteger ageInMonths = 0;
+    if (!PPEditorParseAge(ageSource, &ageInMonths)) {
+        [PPHUD showError:kLang(@"pet_editor_age_error_title") subtitle:kLang(@"pet_editor_age_error_message")];
+        return;
+    }
+
     self.isSaving = YES;
     self.swiftUISaveSucceeded = NO;
     self.pet.name = name;
     self.pet.breed = self.swiftUIHost
         ? (self.swiftUIBreed ?: @"")
         : ([self.infoFormView valueForIdentifier:@"breed"] ?: @"");
-    NSString *ageSource = self.swiftUIHost
-        ? (self.swiftUIAge ?: @"")
-        : ([self.infoFormView valueForIdentifier:@"age"] ?: @"");
-    self.pet.ageInMonths = MAX(0, ageSource.integerValue);
+    self.pet.ageInMonths = ageInMonths;
     self.pet.isDefaultPet = self.swiftUIHost ? self.swiftUIDefault : self.defaultSwitch.isOn;
     self.pet.vaccinations = self.records.copy;
     [self pp_updateSwiftUIEditorHost];
 
     [PPHUD showIndeterminateIn:self.view title:(kLang(@"please_wait") ?: @"Saving…") subtitle:nil];
 
+    // The operation owns its snapshot until completion; navigation owns only UI.
+    PPPetProfile *savedPet = self.pet;
+    PPPetProfile *originalPet = self.originalPet;
+    NSString *ownerUID = self.ownerUID;
     __weak typeof(self) ws = self;
     void (^persist)(void) = ^{
-        [[UserManager sharedManager] savePetProfile:ws.pet completion:^(NSError *error) {
+        // A photo upload may finish after sign-out or an account switch.
+        if (!PPEditorMatchesOwner(ownerUID)) { [ws pp_rejectChangedOwner]; return; }
+        [[UserManager sharedManager] savePetProfile:savedPet completion:^(NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                ws.isSaving = NO;
+                __strong typeof(ws) self = ws;
+                self.isSaving = NO;
+                if (!PPEditorMatchesOwner(ownerUID)) { [self pp_rejectChangedOwner]; return; }
                 if (error) {
-                    ws.swiftUISaveSucceeded = NO;
-                    [ws pp_updateSwiftUIEditorHost];
-                    [PPHUD showError:(kLang(@"SomethingWentWrong") ?: @"Error") subtitle:error.localizedDescription];
+                    self.swiftUISaveSucceeded = NO;
+                    [self pp_updateSwiftUIEditorHost];
+                    if (self.view.window) {
+                        [PPHUD showError:(kLang(@"SomethingWentWrong") ?: @"Error") subtitle:error.localizedDescription];
+                    }
                 } else {
-                    ws.swiftUISaveSucceeded = YES;
-                    [ws pp_updateSwiftUIEditorHost];
+                    // Refresh the caller's in-memory object only after persistence.
+                    originalPet.petID = savedPet.petID;
+                    originalPet.name = savedPet.name;
+                    originalPet.breed = savedPet.breed;
+                    originalPet.categoryId = savedPet.categoryId;
+                    originalPet.categoryName = savedPet.categoryName;
+                    originalPet.ageInMonths = savedPet.ageInMonths;
+                    originalPet.imageURL = savedPet.imageURL;
+                    originalPet.isDefaultPet = savedPet.isDefaultPet;
+                    originalPet.vaccinations = savedPet.vaccinations;
+                    originalPet.createdAt = savedPet.createdAt;
+                    originalPet.updatedAt = savedPet.updatedAt;
+                    self.swiftUISaveSucceeded = YES;
+                    [self pp_updateSwiftUIEditorHost];
+                    if (!self.view.window) return;
                     [PPHUD showSuccess:(kLang(@"Done") ?: @"Saved") subtitle:nil];
                     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                        [ws.navigationController popViewControllerAnimated:YES];
+                        // Do not pop a different route if the user left during I/O.
+                        if (ws.navigationController.topViewController == ws) {
+                            [ws pp_handleBack];
+                        } else if (!ws.navigationController && ws.presentingViewController) {
+                            [ws pp_handleBack];
+                        }
                     });
                 }
             });
@@ -1107,8 +1202,20 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         NSString *petID = self.pet.petID.length ? self.pet.petID : [NSUUID UUID].UUIDString;
         self.pet.petID = petID;
         [[UserManager sharedManager] uploadPetImage:self.selectedImage petID:petID completion:^(NSString *imageURL, NSError *error) {
-            if (imageURL.length) ws.pet.imageURL = imageURL;
-            persist();
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(ws) self = ws;
+                if (error || imageURL.length == 0) {
+                    self.isSaving = NO;
+                    self.swiftUISaveSucceeded = NO;
+                    [self pp_updateSwiftUIEditorHost];
+                    if (self.view.window) {
+                        [PPHUD showError:kLang(@"pet_editor_photo_error_title") subtitle:kLang(@"pet_editor_photo_upload_error")];
+                    }
+                    return;
+                }
+                savedPet.imageURL = imageURL;
+                persist();
+            });
         }];
     } else {
         persist();

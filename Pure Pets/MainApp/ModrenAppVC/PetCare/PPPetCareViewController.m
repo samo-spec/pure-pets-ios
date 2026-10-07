@@ -1,4 +1,6 @@
 #import "PPPetCareViewController.h"
+#import "PPPetCareDiscoveryView.h"
+#import "PPDesignTokens.h"
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
 #import "PPImageLoaderManager.h"
@@ -41,32 +43,12 @@ typedef NS_ENUM(NSInteger, PPPetCareVetFilter) {
 
 
 
-static CGFloat PPPetCareNavigationSegmentWidth(void)
-{
-    CGFloat screenWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
-    CGFloat availableWidth = screenWidth > 0.0 ? screenWidth - 156.0 : 260.0;
-    return floor(MAX(240.0, MIN(280.0, availableWidth)));
-}
-
 static BOOL PPPetCareUsesAccessibilityLayout(UITraitCollection *traitCollection)
 {
     return UIContentSizeCategoryIsAccessibilityCategory(traitCollection.preferredContentSizeCategory);
 }
 
 
-
-static UIColor *PPPetCareSearchSurfaceColor(void)
-{
-    if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-            BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-            return dark
-                ? [UIColor colorWithWhite:0.12 alpha:0.86]
-                : [UIColor colorWithWhite:1.0 alpha:0.88];
-        }];
-    }
-    return [UIColor colorWithWhite:1.0 alpha:0.88];
-}
 
 static NSString *PPPetCareNormalizedText(NSString *value)
 {
@@ -78,216 +60,6 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     return normalized.lowercaseString;
 }
 
-static NSString *PPPetCareHeroAnimationName(PPPetCareInitialSection section)
-{
-    return section == PPPetCareInitialSectionVeterinarians ? @"Femaleveterinarian" : @"pet-care4";
-}
-static NSString *PPPetCarePremiumMedicineHeroAnimationBase64(void)
-{
-    return
-    @"eyJ2IjoiNS43LjQiLCJmciI6NjAsImlwIjowLCJvcCI6MTgwLCJ3IjoyNTYsImgiOjI1Niwibm0iOiJQZXRDYXJlIE1lZGljaW5lIEhlcm8iLCJkZGQiOjAs"
-    @"ImFzc2V0cyI6W10sImxheWVycyI6W3siZGRkIjowLCJpbmQiOjEsInR5Ijo0LCJubSI6IkhhbG8iLCJzciI6MSwia3MiOnsibyI6eyJhIjoxLCJrIjpbeyJ0"
-    @"IjowLCJzIjpbMThdLCJlIjpbMzBdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijo5MCwicyI6WzMw"
-    @"XSwiZSI6WzE4XSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbMThdfV19LCJyIjp7"
-    @"ImEiOjAsImsiOlswXX0sInAiOnsiYSI6MSwiayI6W3sidCI6MCwicyI6WzEyOCwxMjYsMF0sImUiOlsxMjgsMTMyLDBdLCJpIjp7IngiOlswLjY2N10sInki"
-    @"OlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijo5MCwicyI6WzEyOCwxMzIsMF0sImUiOlsxMjgsMTI2LDBdLCJpIjp7IngiOlswLjY2N10s"
-    @"InkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0IjoxODAsInMiOlsxMjgsMTI2LDBdfV19LCJhIjp7ImEiOjAsImsiOlswLDAsMF19LCJz"
-    @"Ijp7ImEiOjEsImsiOlt7InQiOjAsInMiOls4Miw4MiwxMDBdLCJlIjpbMTA2LDEwNiwxMDBdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6"
-    @"WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijo5MCwicyI6WzEwNiwxMDYsMTAwXSwiZSI6WzgyLDgyLDEwMF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6"
-    @"eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjE4MCwicyI6WzgyLDgyLDEwMF19XX19LCJhbyI6MCwic2hhcGVzIjpbeyJ0eSI6ImdyIiwibm0iOiJIYWxv"
-    @"IEdyb3VwIiwiaXQiOlt7InR5IjoiZWwiLCJkIjoxLCJwIjp7ImEiOjAsImsiOlswLDBdfSwicyI6eyJhIjowLCJrIjpbMTY4LDE2OF19LCJubSI6IkVsbGlw"
-    @"c2UgUGF0aCAxIn0seyJ0eSI6ImZsIiwiYyI6eyJhIjowLCJrIjpbMC45ODgsMC42MTIsMC4zMzcsMV19LCJvIjp7ImEiOjAsImsiOjEwMH0sInIiOjEsImJt"
-    @"IjowLCJubSI6IkZpbGwgMSJ9LHsidHkiOiJ0ciIsInAiOnsiYSI6MCwiayI6WzAsMF19LCJhIjp7ImEiOjAsImsiOlswLDBdfSwicyI6eyJhIjowLCJrIjpb"
-    @"MTAwLDEwMF19LCJyIjp7ImEiOjAsImsiOlswXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwic2siOnsiYSI6MCwiayI6WzBdfSwic2EiOnsiYSI6MCwiayI6WzBd"
-    @"fSwibm0iOiJUcmFuc2Zvcm0ifV19XSwiaXAiOjAsIm9wIjoxODAsInN0IjowLCJibSI6MH0seyJkZGQiOjAsImluZCI6MiwidHkiOjQsIm5tIjoiUmluZyIs"
-    @"InNyIjoxLCJrcyI6eyJvIjp7ImEiOjEsImsiOlt7InQiOjAsInMiOlszNF0sImUiOls1NF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4Ijpb"
-    @"MC4zMzNdLCJ5IjpbMF19fSx7InQiOjkwLCJzIjpbNTRdLCJlIjpbMzRdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6"
-    @"WzBdfX0seyJ0IjoxODAsInMiOlszNF19XX0sInIiOnsiYSI6MSwiayI6W3sidCI6MCwicyI6WzBdLCJlIjpbMzYwXSwiaSI6eyJ4IjpbMC42NjddLCJ5Ijpb"
-    @"MV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbMzYwXX1dfSwicCI6eyJhIjowLCJrIjpbMTI4LDEyOCwwXX0sImEiOnsiYSI6"
-    @"MCwiayI6WzAsMCwwXX0sInMiOnsiYSI6MSwiayI6W3sidCI6MCwicyI6Wzk0LDk0LDEwMF0sImUiOlsxMDIsMTAyLDEwMF0sImkiOnsieCI6WzAuNjY3XSwi"
-    @"eSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjkwLCJzIjpbMTAyLDEwMiwxMDBdLCJlIjpbOTQsOTQsMTAwXSwiaSI6eyJ4IjpbMC42"
-    @"NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbOTQsOTQsMTAwXX1dfX0sImFvIjowLCJzaGFwZXMiOlt7InR5"
-    @"IjoiZ3IiLCJubSI6IlJpbmcgR3JvdXAiLCJpdCI6W3sidHkiOiJlbCIsImQiOjEsInAiOnsiYSI6MCwiayI6WzAsMF19LCJzIjp7ImEiOjAsImsiOlsxNzAs"
-    @"MTcwXX0sIm5tIjoiRWxsaXBzZSBQYXRoIDEifSx7InR5Ijoic3QiLCJjIjp7ImEiOjAsImsiOlsxLDAuOTI5LDAuODMxLDFdfSwibyI6eyJhIjowLCJrIjox"
-    @"MDB9LCJ3Ijp7ImEiOjAsImsiOls0XX0sImxjIjoyLCJsaiI6MiwibWwiOjQsImJtIjowLCJubSI6IlN0cm9rZSAxIn0seyJ0eSI6InRyIiwicCI6eyJhIjow"
-    @"LCJrIjpbMCwwXX0sImEiOnsiYSI6MCwiayI6WzAsMF19LCJzIjp7ImEiOjAsImsiOlsxMDAsMTAwXX0sInIiOnsiYSI6MCwiayI6WzBdfSwibyI6eyJhIjow"
-    @"LCJrIjoxMDB9LCJzayI6eyJhIjowLCJrIjpbMF19LCJzYSI6eyJhIjowLCJrIjpbMF19LCJubSI6IlRyYW5zZm9ybSJ9XX1dLCJpcCI6MCwib3AiOjE4MCwi"
-    @"c3QiOjAsImJtIjowfSx7ImRkZCI6MCwiaW5kIjozLCJ0eSI6NCwibm0iOiJTcGFya2xlcyIsInNyIjoxLCJrcyI6eyJvIjp7ImEiOjEsImsiOlt7InQiOjAs"
-    @"InMiOls0Nl0sImUiOls3Ml0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjkwLCJzIjpbNzJdLCJl"
-    @"IjpbNDZdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0IjoxODAsInMiOls0Nl19XX0sInIiOnsiYSI6"
-    @"MSwiayI6W3sidCI6MCwicyI6WzBdLCJlIjpbLTM2MF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQi"
-    @"OjE4MCwicyI6Wy0zNjBdfV19LCJwIjp7ImEiOjEsImsiOlt7InQiOjAsInMiOlsxMjgsMTI2LDBdLCJlIjpbMTI4LDEzMCwwXSwiaSI6eyJ4IjpbMC42Njdd"
-    @"LCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6OTAsInMiOlsxMjgsMTMwLDBdLCJlIjpbMTI4LDEyNiwwXSwiaSI6eyJ4IjpbMC42"
-    @"NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbMTI4LDEyNiwwXX1dfSwiYSI6eyJhIjowLCJrIjpbMCwwLDBd"
-    @"fSwicyI6eyJhIjoxLCJrIjpbeyJ0IjowLCJzIjpbOTYsOTYsMTAwXSwiZSI6WzEwNCwxMDQsMTAwXSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7"
-    @"IngiOlswLjMzM10sInkiOlswXX19LHsidCI6OTAsInMiOlsxMDQsMTA0LDEwMF0sImUiOls5Niw5NiwxMDBdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0s"
-    @"Im8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0IjoxODAsInMiOls5Niw5NiwxMDBdfV19fSwiYW8iOjAsInNoYXBlcyI6W3sidHkiOiJnciIsIm5tIjoi"
-    @"U3BhcmtsZSBBIiwiaXQiOlt7InR5IjoiZWwiLCJkIjoxLCJwIjp7ImEiOjAsImsiOlstNjQsLTQyXX0sInMiOnsiYSI6MCwiayI6WzE4LDE4XX0sIm5tIjoi"
-    @"RWxsaXBzZSBQYXRoIDEifSx7InR5IjoiZmwiLCJjIjp7ImEiOjAsImsiOlsxLDAuODUxLDAuNjYzLDFdfSwibyI6eyJhIjowLCJrIjoxMDB9LCJyIjoxLCJi"
-    @"bSI6MCwibm0iOiJGaWxsIDEifSx7InR5IjoidHIiLCJwIjp7ImEiOjAsImsiOlswLDBdfSwiYSI6eyJhIjowLCJrIjpbMCwwXX0sInMiOnsiYSI6MCwiayI6"
-    @"WzEwMCwxMDBdfSwiciI6eyJhIjowLCJrIjpbMF19LCJvIjp7ImEiOjAsImsiOjEwMH0sInNrIjp7ImEiOjAsImsiOlswXX0sInNhIjp7ImEiOjAsImsiOlsw"
-    @"XX0sIm5tIjoiVHJhbnNmb3JtIn1dfSx7InR5IjoiZ3IiLCJubSI6IlNwYXJrbGUgQiIsIml0IjpbeyJ0eSI6ImVsIiwiZCI6MSwicCI6eyJhIjowLCJrIjpb"
-    @"NjgsLTE4XX0sInMiOnsiYSI6MCwiayI6WzEyLDEyXX0sIm5tIjoiRWxsaXBzZSBQYXRoIDEifSx7InR5IjoiZmwiLCJjIjp7ImEiOjAsImsiOlswLjk5Miww"
-    @"Ljk3MywwLjk0OSwxXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwiciI6MSwiYm0iOjAsIm5tIjoiRmlsbCAxIn0seyJ0eSI6InRyIiwicCI6eyJhIjowLCJrIjpb"
-    @"MCwwXX0sImEiOnsiYSI6MCwiayI6WzAsMF19LCJzIjp7ImEiOjAsImsiOlsxMDAsMTAwXX0sInIiOnsiYSI6MCwiayI6WzBdfSwibyI6eyJhIjowLCJrIjox"
-    @"MDB9LCJzayI6eyJhIjowLCJrIjpbMF19LCJzYSI6eyJhIjowLCJrIjpbMF19LCJubSI6IlRyYW5zZm9ybSJ9XX0seyJ0eSI6ImdyIiwibm0iOiJTcGFya2xl"
-    @"IEMiLCJpdCI6W3sidHkiOiJlbCIsImQiOjEsInAiOnsiYSI6MCwiayI6WzQsNzJdfSwicyI6eyJhIjowLCJrIjpbMTYsMTZdfSwibm0iOiJFbGxpcHNlIFBh"
-    @"dGggMSJ9LHsidHkiOiJmbCIsImMiOnsiYSI6MCwiayI6WzAuOTc2LDAuNzMzLDAuNDc1LDFdfSwibyI6eyJhIjowLCJrIjoxMDB9LCJyIjoxLCJibSI6MCwi"
-    @"bm0iOiJGaWxsIDEifSx7InR5IjoidHIiLCJwIjp7ImEiOjAsImsiOlswLDBdfSwiYSI6eyJhIjowLCJrIjpbMCwwXX0sInMiOnsiYSI6MCwiayI6WzEwMCwx"
-    @"MDBdfSwiciI6eyJhIjowLCJrIjpbMF19LCJvIjp7ImEiOjAsImsiOjEwMH0sInNrIjp7ImEiOjAsImsiOlswXX0sInNhIjp7ImEiOjAsImsiOlswXX0sIm5t"
-    @"IjoiVHJhbnNmb3JtIn1dfV0sImlwIjowLCJvcCI6MTgwLCJzdCI6MCwiYm0iOjB9LHsiZGRkIjowLCJpbmQiOjQsInR5Ijo0LCJubSI6Ik1lZGljaW5lIElj"
-    @"b24iLCJzciI6MSwia3MiOnsibyI6eyJhIjowLCJrIjpbMTAwXX0sInIiOnsiYSI6MSwiayI6W3sidCI6MCwicyI6Wy04XSwiZSI6WzhdLCJpIjp7IngiOlsw"
-    @"LjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijo5MCwicyI6WzhdLCJlIjpbLThdLCJpIjp7IngiOlswLjY2N10sInkiOlsx"
-    @"XX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0IjoxODAsInMiOlstOF19XX0sInAiOnsiYSI6MSwiayI6W3sidCI6MCwicyI6WzEyOCwxMjgsMF0s"
-    @"ImUiOlsxMjgsMTIyLDBdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijo5MCwicyI6WzEyOCwxMjIs"
-    @"MF0sImUiOlsxMjgsMTI4LDBdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0IjoxODAsInMiOlsxMjgs"
-    @"MTI4LDBdfV19LCJhIjp7ImEiOjAsImsiOlswLDAsMF19LCJzIjp7ImEiOjEsImsiOlt7InQiOjAsInMiOls5Miw5MiwxMDBdLCJlIjpbMTAwLDEwMCwxMDBd"
-    @"LCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijo0NSwicyI6WzEwMCwxMDAsMTAwXSwiZSI6Wzk2LDk2"
-    @"LDEwMF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjkwLCJzIjpbOTYsOTYsMTAwXSwiZSI6WzEw"
-    @"MCwxMDAsMTAwXSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbOTIsOTIsMTAwXX1d"
-    @"fX0sImFvIjowLCJzaGFwZXMiOlt7InR5IjoiZ3IiLCJubSI6IkxlZnQgQ2Fwc3VsZSIsIml0IjpbeyJ0eSI6InJjIiwiZCI6MSwicCI6eyJhIjowLCJrIjpb"
-    @"LTE4LDBdfSwicyI6eyJhIjowLCJrIjpbOTAsNTBdfSwiciI6eyJhIjowLCJrIjpbMjVdfSwibm0iOiJSZWN0YW5nbGUgUGF0aCAxIn0seyJ0eSI6ImZsIiwi"
-    @"YyI6eyJhIjowLCJrIjpbMC45OTIsMC45NzMsMC45NDksMV19LCJvIjp7ImEiOjAsImsiOjEwMH0sInIiOjEsImJtIjowLCJubSI6IkZpbGwgMSJ9LHsidHki"
-    @"OiJ0ciIsInAiOnsiYSI6MCwiayI6WzAsMF19LCJhIjp7ImEiOjAsImsiOlswLDBdfSwicyI6eyJhIjowLCJrIjpbMTAwLDEwMF19LCJyIjp7ImEiOjAsImsi"
-    @"OlswXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwic2siOnsiYSI6MCwiayI6WzBdfSwic2EiOnsiYSI6MCwiayI6WzBdfSwibm0iOiJUcmFuc2Zvcm0ifV19LHsi"
-    @"dHkiOiJnciIsIm5tIjoiUmlnaHQgQ2Fwc3VsZSIsIml0IjpbeyJ0eSI6InJjIiwiZCI6MSwicCI6eyJhIjowLCJrIjpbMTgsMF19LCJzIjp7ImEiOjAsImsi"
-    @"Ols5MCw1MF19LCJyIjp7ImEiOjAsImsiOlsyNV19LCJubSI6IlJlY3RhbmdsZSBQYXRoIDEifSx7InR5IjoiZmwiLCJjIjp7ImEiOjAsImsiOlswLjk3Myww"
-    @"LjU5MiwwLjI4MiwxXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwiciI6MSwiYm0iOjAsIm5tIjoiRmlsbCAxIn0seyJ0eSI6InRyIiwicCI6eyJhIjowLCJrIjpb"
-    @"MCwwXX0sImEiOnsiYSI6MCwiayI6WzAsMF19LCJzIjp7ImEiOjAsImsiOlsxMDAsMTAwXX0sInIiOnsiYSI6MCwiayI6WzBdfSwibyI6eyJhIjowLCJrIjox"
-    @"MDB9LCJzayI6eyJhIjowLCJrIjpbMF19LCJzYSI6eyJhIjowLCJrIjpbMF19LCJubSI6IlRyYW5zZm9ybSJ9XX0seyJ0eSI6ImdyIiwibm0iOiJEaXZpZGVy"
-    @"IiwiaXQiOlt7InR5IjoicmMiLCJkIjoxLCJwIjp7ImEiOjAsImsiOlswLDBdfSwicyI6eyJhIjowLCJrIjpbMTIsNThdfSwiciI6eyJhIjowLCJrIjpbNl19"
-    @"LCJubSI6IlJlY3RhbmdsZSBQYXRoIDEifSx7InR5IjoiZmwiLCJjIjp7ImEiOjAsImsiOlsxLDEsMSwxXX0sIm8iOnsiYSI6MCwiayI6Mjh9LCJyIjoxLCJi"
-    @"bSI6MCwibm0iOiJGaWxsIDEifSx7InR5IjoidHIiLCJwIjp7ImEiOjAsImsiOlswLDBdfSwiYSI6eyJhIjowLCJrIjpbMCwwXX0sInMiOnsiYSI6MCwiayI6"
-    @"WzEwMCwxMDBdfSwiciI6eyJhIjowLCJrIjpbMF19LCJvIjp7ImEiOjAsImsiOjEwMH0sInNrIjp7ImEiOjAsImsiOlswXX0sInNhIjp7ImEiOjAsImsiOlsw"
-    @"XX0sIm5tIjoiVHJhbnNmb3JtIn1dfSx7InR5IjoiZ3IiLCJubSI6IkFjY2VudCBEb3QiLCJpdCI6W3sidHkiOiJlbCIsImQiOjEsInAiOnsiYSI6MCwiayI6"
-    @"Wy0yNiwtNF19LCJzIjp7ImEiOjAsImsiOlsyMiwyMl19LCJubSI6IkVsbGlwc2UgUGF0aCAxIn0seyJ0eSI6ImZsIiwiYyI6eyJhIjowLCJrIjpbMSwxLDEs"
-    @"MV19LCJvIjp7ImEiOjAsImsiOjIyfSwiciI6MSwiYm0iOjAsIm5tIjoiRmlsbCAxIn0seyJ0eSI6InRyIiwicCI6eyJhIjowLCJrIjpbMCwwXX0sImEiOnsi"
-    @"YSI6MCwiayI6WzAsMF19LCJzIjp7ImEiOjAsImsiOlsxMDAsMTAwXX0sInIiOnsiYSI6MCwiayI6WzBdfSwibyI6eyJhIjowLCJrIjoxMDB9LCJzayI6eyJh"
-    @"IjowLCJrIjpbMF19LCJzYSI6eyJhIjowLCJrIjpbMF19LCJubSI6IlRyYW5zZm9ybSJ9XX1dLCJpcCI6MCwib3AiOjE4MCwic3QiOjAsImJtIjowfV19";
-}
-
-static NSString *PPPetCarePremiumVetHeroAnimationBase64(void)
-{
-    return
-    @"eyJ2IjoiNS43LjQiLCJmciI6NjAsImlwIjowLCJvcCI6MTgwLCJ3IjoyNTYsImgiOjI1Niwibm0iOiJQZXRDYXJlIFZldCBIZXJvIiwiZGRkIjowLCJhc3Nl"
-    @"dHMiOltdLCJsYXllcnMiOlt7ImRkZCI6MCwiaW5kIjoxLCJ0eSI6NCwibm0iOiJIYWxvIiwic3IiOjEsImtzIjp7Im8iOnsiYSI6MSwiayI6W3sidCI6MCwi"
-    @"cyI6WzE4XSwiZSI6WzMwXSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6OTAsInMiOlszMF0sImUi"
-    @"OlsxOF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjE4MCwicyI6WzE4XX1dfSwiciI6eyJhIjow"
-    @"LCJrIjpbMF19LCJwIjp7ImEiOjEsImsiOlt7InQiOjAsInMiOlsxMjgsMTI2LDBdLCJlIjpbMTI4LDEzMiwwXSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19"
-    @"LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6OTAsInMiOlsxMjgsMTMyLDBdLCJlIjpbMTI4LDEyNiwwXSwiaSI6eyJ4IjpbMC42NjddLCJ5Ijpb"
-    @"MV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbMTI4LDEyNiwwXX1dfSwiYSI6eyJhIjowLCJrIjpbMCwwLDBdfSwicyI6eyJh"
-    @"IjoxLCJrIjpbeyJ0IjowLCJzIjpbODIsODIsMTAwXSwiZSI6WzEwNiwxMDYsMTAwXSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMz"
-    @"M10sInkiOlswXX19LHsidCI6OTAsInMiOlsxMDYsMTA2LDEwMF0sImUiOls4Miw4MiwxMDBdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6"
-    @"WzAuMzMzXSwieSI6WzBdfX0seyJ0IjoxODAsInMiOls4Miw4MiwxMDBdfV19fSwiYW8iOjAsInNoYXBlcyI6W3sidHkiOiJnciIsIm5tIjoiSGFsbyBHcm91"
-    @"cCIsIml0IjpbeyJ0eSI6ImVsIiwiZCI6MSwicCI6eyJhIjowLCJrIjpbMCwwXX0sInMiOnsiYSI6MCwiayI6WzE2OCwxNjhdfSwibm0iOiJFbGxpcHNlIFBh"
-    @"dGggMSJ9LHsidHkiOiJmbCIsImMiOnsiYSI6MCwiayI6WzAuOTg0LDAuNDk4LDAuNTg4LDFdfSwibyI6eyJhIjowLCJrIjoxMDB9LCJyIjoxLCJibSI6MCwi"
-    @"bm0iOiJGaWxsIDEifSx7InR5IjoidHIiLCJwIjp7ImEiOjAsImsiOlswLDBdfSwiYSI6eyJhIjowLCJrIjpbMCwwXX0sInMiOnsiYSI6MCwiayI6WzEwMCwx"
-    @"MDBdfSwiciI6eyJhIjowLCJrIjpbMF19LCJvIjp7ImEiOjAsImsiOjEwMH0sInNrIjp7ImEiOjAsImsiOlswXX0sInNhIjp7ImEiOjAsImsiOlswXX0sIm5t"
-    @"IjoiVHJhbnNmb3JtIn1dfV0sImlwIjowLCJvcCI6MTgwLCJzdCI6MCwiYm0iOjB9LHsiZGRkIjowLCJpbmQiOjIsInR5Ijo0LCJubSI6IlJpbmciLCJzciI6"
-    @"MSwia3MiOnsibyI6eyJhIjoxLCJrIjpbeyJ0IjowLCJzIjpbMzRdLCJlIjpbNTRdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMz"
-    @"XSwieSI6WzBdfX0seyJ0Ijo5MCwicyI6WzU0XSwiZSI6WzM0XSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19"
-    @"LHsidCI6MTgwLCJzIjpbMzRdfV19LCJyIjp7ImEiOjEsImsiOlt7InQiOjAsInMiOlswXSwiZSI6WzM2MF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwi"
-    @"byI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjE4MCwicyI6WzM2MF19XX0sInAiOnsiYSI6MCwiayI6WzEyOCwxMjgsMF19LCJhIjp7ImEiOjAsImsi"
-    @"OlswLDAsMF19LCJzIjp7ImEiOjEsImsiOlt7InQiOjAsInMiOls5NCw5NCwxMDBdLCJlIjpbMTAyLDEwMiwxMDBdLCJpIjp7IngiOlswLjY2N10sInkiOlsx"
-    @"XX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijo5MCwicyI6WzEwMiwxMDIsMTAwXSwiZSI6Wzk0LDk0LDEwMF0sImkiOnsieCI6WzAuNjY3XSwi"
-    @"eSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjE4MCwicyI6Wzk0LDk0LDEwMF19XX19LCJhbyI6MCwic2hhcGVzIjpbeyJ0eSI6Imdy"
-    @"Iiwibm0iOiJSaW5nIEdyb3VwIiwiaXQiOlt7InR5IjoiZWwiLCJkIjoxLCJwIjp7ImEiOjAsImsiOlswLDBdfSwicyI6eyJhIjowLCJrIjpbMTcwLDE3MF19"
-    @"LCJubSI6IkVsbGlwc2UgUGF0aCAxIn0seyJ0eSI6InN0IiwiYyI6eyJhIjowLCJrIjpbMSwwLjkwMiwwLjkyNSwxXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwi"
-    @"dyI6eyJhIjowLCJrIjpbNF19LCJsYyI6MiwibGoiOjIsIm1sIjo0LCJibSI6MCwibm0iOiJTdHJva2UgMSJ9LHsidHkiOiJ0ciIsInAiOnsiYSI6MCwiayI6"
-    @"WzAsMF19LCJhIjp7ImEiOjAsImsiOlswLDBdfSwicyI6eyJhIjowLCJrIjpbMTAwLDEwMF19LCJyIjp7ImEiOjAsImsiOlswXX0sIm8iOnsiYSI6MCwiayI6"
-    @"MTAwfSwic2siOnsiYSI6MCwiayI6WzBdfSwic2EiOnsiYSI6MCwiayI6WzBdfSwibm0iOiJUcmFuc2Zvcm0ifV19XSwiaXAiOjAsIm9wIjoxODAsInN0Ijow"
-    @"LCJibSI6MH0seyJkZGQiOjAsImluZCI6MywidHkiOjQsIm5tIjoiU3BhcmtsZXMiLCJzciI6MSwia3MiOnsibyI6eyJhIjoxLCJrIjpbeyJ0IjowLCJzIjpb"
-    @"NDZdLCJlIjpbNzJdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijo5MCwicyI6WzcyXSwiZSI6WzQ2"
-    @"XSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbNDZdfV19LCJyIjp7ImEiOjEsImsi"
-    @"Olt7InQiOjAsInMiOlswXSwiZSI6Wy0zNjBdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0IjoxODAs"
-    @"InMiOlstMzYwXX1dfSwicCI6eyJhIjoxLCJrIjpbeyJ0IjowLCJzIjpbMTI4LDEyNiwwXSwiZSI6WzEyOCwxMzAsMF0sImkiOnsieCI6WzAuNjY3XSwieSI6"
-    @"WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjkwLCJzIjpbMTI4LDEzMCwwXSwiZSI6WzEyOCwxMjYsMF0sImkiOnsieCI6WzAuNjY3XSwi"
-    @"eSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjE4MCwicyI6WzEyOCwxMjYsMF19XX0sImEiOnsiYSI6MCwiayI6WzAsMCwwXX0sInMi"
-    @"OnsiYSI6MSwiayI6W3sidCI6MCwicyI6Wzk2LDk2LDEwMF0sImUiOlsxMDQsMTA0LDEwMF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4Ijpb"
-    @"MC4zMzNdLCJ5IjpbMF19fSx7InQiOjkwLCJzIjpbMTA0LDEwNCwxMDBdLCJlIjpbOTYsOTYsMTAwXSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7"
-    @"IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbOTYsOTYsMTAwXX1dfX0sImFvIjowLCJzaGFwZXMiOlt7InR5IjoiZ3IiLCJubSI6IlNwYXJr"
-    @"bGUgQSIsIml0IjpbeyJ0eSI6ImVsIiwiZCI6MSwicCI6eyJhIjowLCJrIjpbLTY0LC00Ml19LCJzIjp7ImEiOjAsImsiOlsxOCwxOF19LCJubSI6IkVsbGlw"
-    @"c2UgUGF0aCAxIn0seyJ0eSI6ImZsIiwiYyI6eyJhIjowLCJrIjpbMSwwLjc4OCwwLjgzOSwxXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwiciI6MSwiYm0iOjAs"
-    @"Im5tIjoiRmlsbCAxIn0seyJ0eSI6InRyIiwicCI6eyJhIjowLCJrIjpbMCwwXX0sImEiOnsiYSI6MCwiayI6WzAsMF19LCJzIjp7ImEiOjAsImsiOlsxMDAs"
-    @"MTAwXX0sInIiOnsiYSI6MCwiayI6WzBdfSwibyI6eyJhIjowLCJrIjoxMDB9LCJzayI6eyJhIjowLCJrIjpbMF19LCJzYSI6eyJhIjowLCJrIjpbMF19LCJu"
-    @"bSI6IlRyYW5zZm9ybSJ9XX0seyJ0eSI6ImdyIiwibm0iOiJTcGFya2xlIEIiLCJpdCI6W3sidHkiOiJlbCIsImQiOjEsInAiOnsiYSI6MCwiayI6WzY4LC0x"
-    @"OF19LCJzIjp7ImEiOjAsImsiOlsxMiwxMl19LCJubSI6IkVsbGlwc2UgUGF0aCAxIn0seyJ0eSI6ImZsIiwiYyI6eyJhIjowLCJrIjpbMC45ODgsMC45ODgs"
-    @"MC45OTIsMV19LCJvIjp7ImEiOjAsImsiOjEwMH0sInIiOjEsImJtIjowLCJubSI6IkZpbGwgMSJ9LHsidHkiOiJ0ciIsInAiOnsiYSI6MCwiayI6WzAsMF19"
-    @"LCJhIjp7ImEiOjAsImsiOlswLDBdfSwicyI6eyJhIjowLCJrIjpbMTAwLDEwMF19LCJyIjp7ImEiOjAsImsiOlswXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwi"
-    @"c2siOnsiYSI6MCwiayI6WzBdfSwic2EiOnsiYSI6MCwiayI6WzBdfSwibm0iOiJUcmFuc2Zvcm0ifV19LHsidHkiOiJnciIsIm5tIjoiU3BhcmtsZSBDIiwi"
-    @"aXQiOlt7InR5IjoiZWwiLCJkIjoxLCJwIjp7ImEiOjAsImsiOls0LDcyXX0sInMiOnsiYSI6MCwiayI6WzE2LDE2XX0sIm5tIjoiRWxsaXBzZSBQYXRoIDEi"
-    @"fSx7InR5IjoiZmwiLCJjIjp7ImEiOjAsImsiOlswLjk3NiwwLjY1NSwwLjczNywxXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwiciI6MSwiYm0iOjAsIm5tIjoi"
-    @"RmlsbCAxIn0seyJ0eSI6InRyIiwicCI6eyJhIjowLCJrIjpbMCwwXX0sImEiOnsiYSI6MCwiayI6WzAsMF19LCJzIjp7ImEiOjAsImsiOlsxMDAsMTAwXX0s"
-    @"InIiOnsiYSI6MCwiayI6WzBdfSwibyI6eyJhIjowLCJrIjoxMDB9LCJzayI6eyJhIjowLCJrIjpbMF19LCJzYSI6eyJhIjowLCJrIjpbMF19LCJubSI6IlRy"
-    @"YW5zZm9ybSJ9XX1dLCJpcCI6MCwib3AiOjE4MCwic3QiOjAsImJtIjowfSx7ImRkZCI6MCwiaW5kIjo0LCJ0eSI6NCwibm0iOiJWZXQgSWNvbiIsInNyIjox"
-    @"LCJrcyI6eyJvIjp7ImEiOjAsImsiOlsxMDBdfSwiciI6eyJhIjoxLCJrIjpbeyJ0IjowLCJzIjpbLTRdLCJlIjpbNF0sImkiOnsieCI6WzAuNjY3XSwieSI6"
-    @"WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjkwLCJzIjpbNF0sImUiOlstNF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4"
-    @"IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjE4MCwicyI6Wy00XX1dfSwicCI6eyJhIjoxLCJrIjpbeyJ0IjowLCJzIjpbMTI4LDEyOCwwXSwiZSI6WzEyOCwx"
-    @"MjIsMF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjkwLCJzIjpbMTI4LDEyMiwwXSwiZSI6WzEy"
-    @"OCwxMjgsMF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjE4MCwicyI6WzEyOCwxMjgsMF19XX0s"
-    @"ImEiOnsiYSI6MCwiayI6WzAsMCwwXX0sInMiOnsiYSI6MSwiayI6W3sidCI6MCwicyI6WzkyLDkyLDEwMF0sImUiOlsxMDIsMTAyLDEwMF0sImkiOnsieCI6"
-    @"WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4IjpbMC4zMzNdLCJ5IjpbMF19fSx7InQiOjQ1LCJzIjpbMTAyLDEwMiwxMDBdLCJlIjpbOTYsOTYsMTAwXSwiaSI6"
-    @"eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6OTAsInMiOls5Niw5NiwxMDBdLCJlIjpbMTAyLDEwMiwxMDBd"
-    @"LCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0IjoxODAsInMiOls5Miw5MiwxMDBdfV19fSwiYW8iOjAs"
-    @"InNoYXBlcyI6W3sidHkiOiJnciIsIm5tIjoiVmVydGljYWwiLCJpdCI6W3sidHkiOiJyYyIsImQiOjEsInAiOnsiYSI6MCwiayI6WzAsMF19LCJzIjp7ImEi"
-    @"OjAsImsiOlszNCwxMTBdfSwiciI6eyJhIjowLCJrIjpbMTZdfSwibm0iOiJSZWN0YW5nbGUgUGF0aCAxIn0seyJ0eSI6ImZsIiwiYyI6eyJhIjowLCJrIjpb"
-    @"MC45ODgsMC45ODgsMC45OTIsMV19LCJvIjp7ImEiOjAsImsiOjEwMH0sInIiOjEsImJtIjowLCJubSI6IkZpbGwgMSJ9LHsidHkiOiJ0ciIsInAiOnsiYSI6"
-    @"MCwiayI6WzAsMF19LCJhIjp7ImEiOjAsImsiOlswLDBdfSwicyI6eyJhIjowLCJrIjpbMTAwLDEwMF19LCJyIjp7ImEiOjAsImsiOlswXX0sIm8iOnsiYSI6"
-    @"MCwiayI6MTAwfSwic2siOnsiYSI6MCwiayI6WzBdfSwic2EiOnsiYSI6MCwiayI6WzBdfSwibm0iOiJUcmFuc2Zvcm0ifV19LHsidHkiOiJnciIsIm5tIjoi"
-    @"SG9yaXpvbnRhbCIsIml0IjpbeyJ0eSI6InJjIiwiZCI6MSwicCI6eyJhIjowLCJrIjpbMCwwXX0sInMiOnsiYSI6MCwiayI6WzExMCwzNF19LCJyIjp7ImEi"
-    @"OjAsImsiOlsxNl19LCJubSI6IlJlY3RhbmdsZSBQYXRoIDEifSx7InR5IjoiZmwiLCJjIjp7ImEiOjAsImsiOlswLjk4OCwwLjk4OCwwLjk5MiwxXX0sIm8i"
-    @"OnsiYSI6MCwiayI6MTAwfSwiciI6MSwiYm0iOjAsIm5tIjoiRmlsbCAxIn0seyJ0eSI6InRyIiwicCI6eyJhIjowLCJrIjpbMCwwXX0sImEiOnsiYSI6MCwi"
-    @"ayI6WzAsMF19LCJzIjp7ImEiOjAsImsiOlsxMDAsMTAwXX0sInIiOnsiYSI6MCwiayI6WzBdfSwibyI6eyJhIjowLCJrIjoxMDB9LCJzayI6eyJhIjowLCJr"
-    @"IjpbMF19LCJzYSI6eyJhIjowLCJrIjpbMF19LCJubSI6IlRyYW5zZm9ybSJ9XX0seyJ0eSI6ImdyIiwibm0iOiJQdWxzZSBEb3QiLCJpdCI6W3sidHkiOiJl"
-    @"bCIsImQiOjEsInAiOnsiYSI6MCwiayI6WzQyLC00Ml19LCJzIjp7ImEiOjAsImsiOlsyNCwyNF19LCJubSI6IkVsbGlwc2UgUGF0aCAxIn0seyJ0eSI6ImZs"
-    @"IiwiYyI6eyJhIjowLCJrIjpbMSwwLjY5NCwwLjczNywxXX0sIm8iOnsiYSI6MCwiayI6MTAwfSwiciI6MSwiYm0iOjAsIm5tIjoiRmlsbCAxIn0seyJ0eSI6"
-    @"InRyIiwicCI6eyJhIjowLCJrIjpbMCwwXX0sImEiOnsiYSI6MCwiayI6WzAsMF19LCJzIjp7ImEiOjEsImsiOlt7InQiOjAsInMiOls3MCw3MF0sImUiOlsx"
-    @"MTYsMTE2XSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6NDUsInMiOlsxMTYsMTE2XSwiZSI6Wzg4"
-    @"LDg4XSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6OTAsInMiOls4OCw4OF0sImUiOlsxMTYsMTE2"
-    @"XSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlswXX19LHsidCI6MTgwLCJzIjpbNzAsNzBdfV19LCJyIjp7ImEiOjAs"
-    @"ImsiOlswXX0sIm8iOnsiYSI6MSwiayI6W3sidCI6MCwicyI6WzcyXSwiZSI6WzEwMF0sImkiOnsieCI6WzAuNjY3XSwieSI6WzFdfSwibyI6eyJ4IjpbMC4z"
-    @"MzNdLCJ5IjpbMF19fSx7InQiOjQ1LCJzIjpbMTAwXSwiZSI6Wzc4XSwiaSI6eyJ4IjpbMC42NjddLCJ5IjpbMV19LCJvIjp7IngiOlswLjMzM10sInkiOlsw"
-    @"XX19LHsidCI6OTAsInMiOls3OF0sImUiOlsxMDBdLCJpIjp7IngiOlswLjY2N10sInkiOlsxXX0sIm8iOnsieCI6WzAuMzMzXSwieSI6WzBdfX0seyJ0Ijox"
-    @"ODAsInMiOls3Ml19XX0sInNrIjp7ImEiOjAsImsiOlswXX0sInNhIjp7ImEiOjAsImsiOlswXX0sIm5tIjoiVHJhbnNmb3JtIn1dfV0sImlwIjowLCJvcCI6"
-    @"MTgwLCJzdCI6MCwiYm0iOjB9XX0=";
-}
-
-static LOTComposition *PPPetCarePremiumCompositionFromBase64(NSString *base64)
-{
-    if (base64.length == 0) {
-        return nil;
-    }
-
-    NSData *data = [[NSData alloc] initWithBase64EncodedString:base64 options:0];
-    if (data.length == 0) {
-        return nil;
-    }
-
-    NSError *jsonError = nil;
-    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&jsonError];
-    if (jsonError || ![json isKindOfClass:[NSDictionary class]]) {
-        return nil;
-    }
-
-    return [LOTComposition animationFromJSON:json];
-}
-
-static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection section)
-{
-    static LOTComposition *medicineComposition = nil;
-    static LOTComposition *vetComposition = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        medicineComposition = PPPetCarePremiumCompositionFromBase64(PPPetCarePremiumMedicineHeroAnimationBase64());
-        vetComposition = PPPetCarePremiumCompositionFromBase64(PPPetCarePremiumVetHeroAnimationBase64());
-    });
-
-    return section == PPPetCareInitialSectionVeterinarians ? vetComposition : medicineComposition;
-}
-
-
-
-
 @interface PPPetCareViewController () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UITextFieldDelegate, PPUniversalCellDelegate>
 @property (nonatomic, assign) PPPetCareInitialSection selectedSection;
 @property (nonatomic, assign) PPPetCareMedicineFilter medicineFilter;
@@ -298,66 +70,27 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 @property (nonatomic, copy) NSArray<VetMedicineModel *> *filteredMedicines;
 @property (nonatomic, copy) NSArray<VetModel *> *allVets;
 @property (nonatomic, copy) NSArray<VetModel *> *filteredVets;
-@property (nonatomic, strong) UIView *heroView;
-@property (nonatomic, strong) UIView *heroFill;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) UIView *backgroundGlowTopView;
-@property (nonatomic, strong) UIView *backgroundGlowMiddleView;
-@property (nonatomic, strong) UIView *backgroundGlowBottomView;
-@property (nonatomic, strong) UIView *largeOrbView;
-@property (nonatomic, strong) UIView *smallOrbView;
-@property (nonatomic, strong) UIView *iconPlateView;
-@property (nonatomic, strong) UIImageView *heroIconView;
-@property (nonatomic, strong) LOTAnimationView *heroAnimationView;
-@property (nonatomic, strong) UILabel *eyebrowLabel;
-@property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UILabel *subtitleLabel;
-@property (nonatomic, strong) UILabel *counterLabel;
-@property (nonatomic, strong) UISegmentedControl *sectionControl;
-@property (nonatomic, strong) UIView *sectionTitleContainer;
-@property (nonatomic, strong, nullable) UIButton *navCartButton;
-@property (nonatomic, strong) UIView *bottomSearchBarView;
-@property (nonatomic, strong) UIView *bottomSearchFadeView;
-@property (nonatomic, strong) CAGradientLayer *bottomSearchFadeLayer;
-@property (nonatomic, strong) UIView *searchPillView;
-@property (nonatomic, strong) UITextField *searchField;
-@property (nonatomic, strong) UIImageView *searchIconView;
-@property (nonatomic, strong) UIButton *filterButton;
-@property (nonatomic, strong) UIView *filterBadgeView;
+@property (nonatomic, strong) PPPetCareDiscoveryView *discoveryView;
 @property (nonatomic, strong) UICollectionView *collectionView;
-@property (nonatomic, strong) UIView *emptyView;
-@property (nonatomic, strong) UILabel *emptyTitleLabel;
-@property (nonatomic, strong) UILabel *emptySubtitleLabel;
+@property (nonatomic, strong) UITextField *searchField;
+@property (nonatomic, strong) UIButton *filterButton;
+@property (nonatomic, strong) UIButton *navCartButton;
 @property (nonatomic, copy) NSString *selectedMedicineID;
-@property (nonatomic, strong) NSLayoutConstraint *bottomSearchBarBottomConstraint;
+@property (nonatomic, copy) NSString *medicineQuery;
+@property (nonatomic, copy) NSString *vetQuery;
+@property (nonatomic, strong, nullable) NSError *medicineLoadError;
+@property (nonatomic, strong, nullable) NSError *vetLoadError;
 @property (nonatomic, assign) BOOL loadingMedicines;
 @property (nonatomic, assign) BOOL loadingVets;
-@property (nonatomic, assign) CGFloat keyboardOverlap;
 @property (nonatomic, assign) BOOL previousIQKeyboardManagerEnabled;
 @property (nonatomic, assign) BOOL previousIQKeyboardToolbarEnabled;
 @property (nonatomic, assign) BOOL isOverridingIQKeyboardManager;
-@property (nonatomic, copy) NSString *currentHeroAnimationName;
-@property (nonatomic, assign) NSInteger heroAnimationLoadToken;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
-@property (nonatomic, assign) BOOL didStartGlowAnimation;
-@property (nonatomic, assign) BOOL didFinishInitialDataLoad;
-@property (nonatomic, assign) BOOL didRevealLoadedDecor;
-- (void)pp_buildBackgroundAtmosphereInView:(UIView *)hostView;
-- (UIView *)pp_backgroundGlowViewWithRadius:(CGFloat)radius;
-- (void)pp_prepareEntranceState;
-- (void)pp_beginEntranceAnimationIfNeeded;
-- (void)pp_beginAmbientGlowAnimationIfNeeded;
-- (void)pp_stopAmbientGlowAnimation;
-- (void)pp_noteInitialDataLoadProgress;
-- (void)pp_revealLoadedDecorIfNeeded;
-- (void)pp_configureHeroAnimationIfNeeded;
-- (void)pp_revealResolvedHeroAnimation;
-- (void)pp_styleNavigationSectionControl;
-- (void)pp_installCartNavigationButton;
-- (void)pp_updateCartBadge;
-- (void)pp_applyFilterButtonAppearance;
-- (void)pp_applyKeyboardManagerOverridesIfNeeded;
-- (void)pp_restoreKeyboardManagerOverridesIfNeeded;
+@property (nonatomic, assign) CGFloat lastLayoutWidth;
+- (void)pp_applyFiltersAndReload;
+- (void)pp_updateDiscoveryAnimated:(BOOL)animated;
+- (void)pp_layoutDiscovery;
+- (void)pp_loadSection:(PPPetCareInitialSection)section;
 - (void)pp_presentMedicineDetails:(VetMedicineModel *)medicine;
 - (void)pp_presentVetDetails:(VetModel *)vet;
 - (void)pp_openPetCareViewer:(UIViewController *)viewer;
@@ -365,83 +98,76 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 - (void)pp_reloadMedicineCellForViewModel:(PPUniversalCellViewModel *)vm;
 - (void)pp_reloadVisibleMedicineCells;
 - (BOOL)pp_ensureSignedInForAction;
-- (PPUniversalCellViewModel *)pp_universalViewModelForMedicine:(VetMedicineModel *)medicine
-                                                   mainKindName:(NSString *)mainKindName
-                                                     indexPath:(NSIndexPath *)indexPath;
+- (PPUniversalCellViewModel *)pp_universalViewModelForMedicine:(VetMedicineModel *)medicine mainKindName:(NSString *)mainKindName indexPath:(NSIndexPath *)indexPath;
 @end
-
-
 
 @implementation PPPetCareViewController
 
-- (instancetype)initWithInitialSection:(PPPetCareInitialSection)section
-                              mainKind:(MainKindsModel *)mainKind
+- (instancetype)initWithInitialSection:(PPPetCareInitialSection)section mainKind:(MainKindsModel *)mainKind
 {
     self = [super initWithNibName:nil bundle:nil];
-    if (!self) {
-        return nil;
-    }
+    if (!self) return nil;
     _selectedSection = section;
     _selectedMainKind = mainKind;
-    _medicineFilter = PPPetCareMedicineFilterAll;
-    _vetFilter = PPPetCareVetFilterAll;
     _mainKinds = @[];
     _allMedicines = @[];
     _filteredMedicines = @[];
     _allVets = @[];
     _filteredVets = @[];
+    _medicineQuery = @"";
+    _vetQuery = @"";
     return self;
 }
 
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    [self pp_applyKeyboardManagerOverridesIfNeeded];
-    self.view.backgroundColor = AppBackgroundClr;
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
-                      button:nil
-                       title:nil//PPPetCareLocalized(@"pet_care_title", @"Pet Care")
-                    showBack:YES];
+    [self pp_setupNavigation];
     [self pp_setupViews];
-    [self pp_installCartNavigationButton];
+    [self pp_applyKeyboardManagerOverridesIfNeeded];
     [self pp_loadFilters];
-    [self pp_updateLocalizedText];
-    [self pp_applyTheme];
-    [self pp_prepareEntranceState];
     [self pp_loadData];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(pp_appWillEnterForeground)
-                                                 name:UIApplicationWillEnterForegroundNotification
-                                               object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(pp_keyboardWillChangeFrame:)
-                                                 name:UIKeyboardWillChangeFrameNotification
-                                               object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(pp_keyboardWillHide:)
-                                                 name:UIKeyboardWillHideNotification
-                                               object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(pp_handleCartUpdated:)
-                                                 name:kCartUpdatedNotification
-                                               object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(pp_reduceMotionStatusDidChange)
-                                                 name:UIAccessibilityReduceMotionStatusDidChangeNotification
-                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_appWillEnterForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_handleCartUpdated:) name:kCartUpdatedNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_reduceMotionStatusDidChange) name:UIAccessibilityReduceMotionStatusDidChangeNotification object:nil];
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
+    }
+    [[self.view viewWithTag:8726] removeFromSuperview];
+    [self pp_applyKeyboardManagerOverridesIfNeeded];
+    [self pp_setupNavigation];
+    [self pp_updateLocalizedText];
+    [self pp_updateCartBadge];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    [self pp_beginEntranceAnimationIfNeeded];
-    BOOL hadRevealedLoadedDecor = self.didRevealLoadedDecor;
-    [self pp_revealLoadedDecorIfNeeded];
-    if (hadRevealedLoadedDecor || !self.didFinishInitialDataLoad) {
-        [self pp_configureHeroAnimationIfNeeded];
-    }
-    if (self.didRevealLoadedDecor) {
-        [self pp_beginAmbientGlowAnimationIfNeeded];
+    if (self.didAnimateEntrance) return;
+    self.didAnimateEntrance = YES;
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+    self.discoveryView.alpha = 0;
+    self.discoveryView.transform = CGAffineTransformMakeTranslation(0, 6);
+    [UIView animateWithDuration:0.24 delay:0 options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState animations:^{
+        self.discoveryView.alpha = 1;
+        self.discoveryView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    [self.searchField resignFirstResponder];
+    [self pp_reduceMotionStatusDidChange];
+    [self pp_restoreKeyboardManagerOverridesIfNeeded];
+    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
+        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
     }
 }
 
@@ -451,890 +177,153 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)viewWillAppear:(BOOL)animated
-{
-    [super viewWillAppear:animated];
-    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
-        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
-    }
-
-    if (!PPIOS26()) {
-        UIView *dimView = [self.view viewWithTag:8726];
-        [UIView animateWithDuration:0.18
-                              delay:0.0
-                            options:UIViewAnimationOptionCurveEaseIn
-                         animations:^{
-            dimView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.0];
-        } completion:^(BOOL finished) {
-            [dimView removeFromSuperview];
-        }];
-    }
-
-    [self pp_applyKeyboardManagerOverridesIfNeeded];
-    [self pp_installNavigationTitleControl];
-    [self pp_installCartNavigationButton];
-    [self pp_updateLocalizedText];
-    [self pp_applyTheme];
-    [self pp_updateCartBadge];
-}
-
-- (void)viewWillDisappear:(BOOL)animated
-{
-    [super viewWillDisappear:animated];
-    [self.searchField resignFirstResponder];
-    [self.heroAnimationView stop];
-    [self pp_stopAmbientGlowAnimation];
-    [self pp_restoreKeyboardManagerOverridesIfNeeded];
-    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
-        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
-        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
-    }
-}
-
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
-    if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory]) {
+    if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory] ||
+        [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self pp_updateLocalizedText];
         [self.collectionView.collectionViewLayout invalidateLayout];
-    }
-    if (@available(iOS 13.0, *)) {
-        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_applyTheme];
-            [self.collectionView reloadData];
-        }
+        [self.collectionView reloadData];
     }
 }
 
 - (void)pp_appWillEnterForeground
 {
-    [self pp_applyTheme];
-    [self pp_updateBottomSearchPositionAnimated:NO notification:nil];
-    [self pp_updateCollectionBottomInsets];
-    [self.collectionView.visibleCells makeObjectsPerformSelector:@selector(setNeedsLayout)];
+    [self pp_loadFilters];
+    [self pp_updateLocalizedText];
+}
+
+- (void)pp_reduceMotionStatusDidChange
+{
+    [self.discoveryView.layer removeAllAnimations];
+    self.discoveryView.alpha = 1;
+    self.discoveryView.transform = CGAffineTransformIdentity;
+    for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+        [cell.layer removeAllAnimations];
+        cell.alpha = 1;
+        cell.transform = CGAffineTransformIdentity;
+    }
+}
+
+#pragma mark - Discovery surface
+
+- (void)pp_setupViews
+{
+    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+    layout.minimumLineSpacing = PPSpaceBase;
+    layout.minimumInteritemSpacing = PPSpaceMD;
+    layout.sectionInset = UIEdgeInsetsMake(PPSpaceSM, PPScreenMargin, PPSpaceXL, PPScreenMargin);
+    self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+    self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.collectionView.backgroundColor = UIColor.clearColor;
+    self.collectionView.delegate = self;
+    self.collectionView.dataSource = self;
+    self.collectionView.alwaysBounceVertical = YES;
+    self.collectionView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    self.collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    self.collectionView.accessibilityIdentifier = @"petCare.results";
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
+    [self.collectionView registerClass:PPPetCareVetCell.class forCellWithReuseIdentifier:PPPetCareVetCell.reuseIdentifier];
+    UIRefreshControl *refresh = [[UIRefreshControl alloc] init];
+    [refresh addTarget:self action:@selector(pp_refreshSelectedSection) forControlEvents:UIControlEventValueChanged];
+    self.collectionView.refreshControl = refresh;
+    [self.view addSubview:self.collectionView];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.collectionView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.collectionView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
+        [self.collectionView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
+        [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor]
+    ]];
+    // A persistent scroll header keeps text-field focus intact when result cells reload.
+    self.discoveryView = [[PPPetCareDiscoveryView alloc] initWithFrame:CGRectZero];
+    [self.collectionView addSubview:self.discoveryView];
+    self.searchField = self.discoveryView.searchField;
+    self.searchField.delegate = self;
+    self.filterButton = self.discoveryView.filterButton;
+    [self.searchField addTarget:self action:@selector(pp_searchTextChanged:) forControlEvents:UIControlEventEditingChanged];
+    [self.discoveryView.medicineButton addTarget:self action:@selector(pp_sectionTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [self.discoveryView.vetsButton addTarget:self action:@selector(pp_sectionTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [self.discoveryView.primaryButton addTarget:self action:@selector(pp_recoverDiscovery) forControlEvents:UIControlEventTouchUpInside];
+    [self.discoveryView.alternateButton addTarget:self action:@selector(pp_exploreOtherSection) forControlEvents:UIControlEventTouchUpInside];
+    [self.discoveryView.refreshButton addTarget:self action:@selector(pp_refreshSelectedSection) forControlEvents:UIControlEventTouchUpInside];
 }
 
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    if (self.heroGradientLayer && self.heroFill) {
-        self.heroGradientLayer.frame = self.heroFill.bounds;
-        self.heroGradientLayer.cornerRadius = self.heroFill.layer.cornerRadius;
-    }
-    if (self.heroView) {
-        self.heroView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroView.bounds cornerRadius:self.heroView.layer.cornerRadius].CGPath;
-    }
-    if (self.bottomSearchFadeLayer && self.bottomSearchFadeView) {
-        self.bottomSearchFadeLayer.frame = self.bottomSearchFadeView.bounds;
-    }
-    for (UIView *glowView in @[self.backgroundGlowTopView,
-                               self.backgroundGlowMiddleView,
-                               self.backgroundGlowBottomView]) {
-        if (CGRectIsEmpty(glowView.bounds)) {
-            continue;
-        }
-        glowView.layer.cornerRadius = CGRectGetWidth(glowView.bounds) * 0.5;
-        glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
-    }
-    [self pp_updateBottomSearchPositionAnimated:NO notification:nil];
-    [self pp_updateCollectionBottomInsets];
+    [self pp_layoutDiscovery];
 }
 
-#pragma mark - Setup
-
-- (void)pp_setupViews
+- (void)pp_layoutDiscovery
 {
-    UIView *contentView = [[UIView alloc] init];
-    contentView.translatesAutoresizingMaskIntoConstraints = NO;
-    contentView.backgroundColor = UIColor.clearColor;
-    [self.view addSubview:contentView];
-    [self pp_buildBackgroundAtmosphereInView:contentView];
-
-    _heroView = [[UIView alloc] init];
-    _heroView.translatesAutoresizingMaskIntoConstraints = NO;
-    _heroView.layer.cornerRadius = 26.0;
-    _heroView.layer.borderWidth = 0.0;
-    _heroView.clipsToBounds = NO;
-    if (@available(iOS 13.0, *)) {
-        _heroView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_heroView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    _heroView.layer.shadowRadius = 14.0;
-    _heroView.layer.shadowOffset = CGSizeMake(0.0, 7.0);
-    [contentView addSubview:_heroView];
-
-    _heroFill = [[UIView alloc] init];
-    _heroFill.translatesAutoresizingMaskIntoConstraints = NO;
-    _heroFill.layer.cornerRadius = 26.0;
-    _heroFill.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        _heroFill.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_heroView addSubview:_heroFill];
-
-    _heroGradientLayer = [CAGradientLayer layer];
-    _heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    _heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    [_heroFill.layer insertSublayer:_heroGradientLayer atIndex:0];
-
-    _largeOrbView = [[UIView alloc] init];
-    _largeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    _largeOrbView.layer.cornerRadius = 60.0;
-    _largeOrbView.hidden = YES;
-    [_heroFill addSubview:_largeOrbView];
-
-    _smallOrbView = [[UIView alloc] init];
-    _smallOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    _smallOrbView.layer.cornerRadius = 24.0;
-    _smallOrbView.hidden = YES;
-    [_heroFill addSubview:_smallOrbView];
-
-    _iconPlateView = [[UIView alloc] init];
-    _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconPlateView.layer.cornerRadius = 20.0;
-    _iconPlateView.layer.borderWidth = 0.0;
-    if (@available(iOS 13.0, *)) {
-        _iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_heroView addSubview:_iconPlateView];
-
-    _heroIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"cross.case.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-    _heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    _heroIconView.contentMode = UIViewContentModeScaleAspectFit;
-    [_iconPlateView addSubview:_heroIconView];
-
-    _heroAnimationView = [[LOTAnimationView alloc] init];
-    _heroAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
-    _heroAnimationView.contentMode = UIViewContentModeScaleAspectFit;
-    _heroAnimationView.loopAnimation = YES;
-    _heroAnimationView.animationSpeed = 0.84;
-    _heroAnimationView.userInteractionEnabled = NO;
-    _heroAnimationView.hidden = YES;
-    _heroAnimationView.alpha = 0.0;
-    [_iconPlateView addSubview:_heroAnimationView];
-
-    _eyebrowLabel = [[UILabel alloc] init];
-    _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    _eyebrowLabel.numberOfLines = 1;
-    [_heroView addSubview:_eyebrowLabel];
-
-    _titleLabel = [[UILabel alloc] init];
-    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:26.0] ?: [UIFont systemFontOfSize:26.0 weight:UIFontWeightBold];
-    _titleLabel.numberOfLines = 1;
-    _titleLabel.adjustsFontSizeToFitWidth = YES;
-    _titleLabel.minimumScaleFactor = 0.78;
-    [_heroView addSubview:_titleLabel];
-
-    _subtitleLabel = [[UILabel alloc] init];
-    _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
-    _subtitleLabel.numberOfLines = 2;
-    [_heroView addSubview:_subtitleLabel];
-
-    _counterLabel = [[UILabel alloc] init];
-    _counterLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _counterLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-    _counterLabel.textAlignment = NSTextAlignmentCenter;
-    _counterLabel.layer.cornerRadius = 12.0;
-    _counterLabel.layer.masksToBounds = YES;
-    _counterLabel.layer.borderWidth = 0.0;
-    if (@available(iOS 13.0, *)) {
-        _counterLabel.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_heroView addSubview:_counterLabel];
-
-    _sectionControl = [[UISegmentedControl alloc] initWithItems:@[@"", @""]];
-    _sectionControl.translatesAutoresizingMaskIntoConstraints = NO;
-    _sectionControl.selectedSegmentIndex = self.selectedSection == PPPetCareInitialSectionVeterinarians ? 1 : 0;
-    [_sectionControl addTarget:self action:@selector(pp_sectionChanged:) forControlEvents:UIControlEventValueChanged];
-    [self pp_installNavigationTitleControl];
-
-    _bottomSearchBarView = [[UIView alloc] init];
-    _bottomSearchBarView.translatesAutoresizingMaskIntoConstraints = NO;
-    _bottomSearchBarView.backgroundColor = UIColor.clearColor;
-    _bottomSearchBarView.layer.shadowRadius = 14.0;
-    _bottomSearchBarView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
-    _bottomSearchBarView.layer.shadowOpacity = 0.07;
-    [_bottomSearchBarView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    [contentView addSubview:_bottomSearchBarView];
-
-    _bottomSearchFadeView = [[UIView alloc] init];
-    _bottomSearchFadeView.translatesAutoresizingMaskIntoConstraints = NO;
-    _bottomSearchFadeView.backgroundColor = UIColor.clearColor;
-    _bottomSearchFadeView.userInteractionEnabled = NO;
-    [contentView addSubview:_bottomSearchFadeView];
-
-    _bottomSearchFadeLayer = [CAGradientLayer layer];
-    _bottomSearchFadeLayer.startPoint = CGPointMake(0.5, 0.0);
-    _bottomSearchFadeLayer.endPoint = CGPointMake(0.5, 1.0);
-    [_bottomSearchFadeView.layer addSublayer:_bottomSearchFadeLayer];
-
-    _searchPillView = [[UIView alloc] init];
-    _searchPillView.translatesAutoresizingMaskIntoConstraints = NO;
-    _searchPillView.layer.cornerRadius = 26.0;
-    _searchPillView.layer.borderWidth = 0.0;
-    _searchPillView.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        _searchPillView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_bottomSearchBarView addSubview:_searchPillView];
-
-    if (@available(iOS 13.0, *)) {
-        UIVisualEffectView *searchMaterial =
-            [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial]];
-        searchMaterial.translatesAutoresizingMaskIntoConstraints = NO;
-        searchMaterial.userInteractionEnabled = NO;
-        [_searchPillView addSubview:searchMaterial];
-        [NSLayoutConstraint activateConstraints:@[
-            [searchMaterial.topAnchor constraintEqualToAnchor:_searchPillView.topAnchor],
-            [searchMaterial.leadingAnchor constraintEqualToAnchor:_searchPillView.leadingAnchor],
-            [searchMaterial.trailingAnchor constraintEqualToAnchor:_searchPillView.trailingAnchor],
-            [searchMaterial.bottomAnchor constraintEqualToAnchor:_searchPillView.bottomAnchor]
-        ]];
-    }
-
-    _searchField = [[UITextField alloc] init];
-    _searchField.translatesAutoresizingMaskIntoConstraints = NO;
-    _searchField.delegate = self;
-    _searchField.clearButtonMode = UITextFieldViewModeWhileEditing;
-    _searchField.returnKeyType = UIReturnKeySearch;
-    _searchField.backgroundColor = UIColor.clearColor;
-    _searchField.leftViewMode = UITextFieldViewModeNever;
-    _searchField.inputAccessoryView = nil;
-    if (@available(iOS 9.0, *)) {
-        _searchField.inputAssistantItem.leadingBarButtonGroups = @[];
-        _searchField.inputAssistantItem.trailingBarButtonGroups = @[];
-    }
-    _searchField.font = [GM MidFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightRegular];
-    [_searchField addTarget:self action:@selector(pp_searchTextChanged:) forControlEvents:UIControlEventEditingChanged];
-    [_searchPillView addSubview:_searchField];
-
-    _searchIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"magnifyingglass"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-    _searchIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    _searchIconView.tintColor = PPPetCareSecondaryTextColor();
-    _searchIconView.contentMode = UIViewContentModeScaleAspectFit;
-    _searchIconView.isAccessibilityElement = NO;
-    [_searchPillView addSubview:_searchIconView];
-
-    _filterButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    _filterButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _filterButton.layer.cornerRadius = 26.0;
-    _filterButton.layer.borderWidth = 0.0;
-    _filterButton.clipsToBounds = NO;
-    if (@available(iOS 13.0, *)) {
-        _filterButton.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    _filterButton.accessibilityLabel = PPPetCareLocalized(@"pet_care_filter_by", @"Filter By");
-    if (@available(iOS 14.0, *)) {
-        _filterButton.showsMenuAsPrimaryAction = YES;
-    }
-    [self pp_applyFilterButtonAppearance];
-    [_bottomSearchBarView addSubview:_filterButton];
-
-    _filterBadgeView = [[UIView alloc] init];
-    _filterBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
-    _filterBadgeView.backgroundColor = [UIColor systemRedColor];
-    _filterBadgeView.layer.cornerRadius = 4.5;
-    _filterBadgeView.layer.masksToBounds = YES;
-    _filterBadgeView.layer.borderWidth = 1.5;
-    _filterBadgeView.layer.borderColor = UIColor.whiteColor.CGColor;
-    _filterBadgeView.hidden = YES;
-    _filterBadgeView.userInteractionEnabled = NO;
-    [_filterButton addSubview:_filterBadgeView];
-
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.minimumLineSpacing = 12.0;
-    layout.minimumInteritemSpacing = 12.0;
-    layout.sectionInset = UIEdgeInsetsMake(6.0, 18.0, 24.0, 18.0);
-
-    _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
-    _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
-    _collectionView.backgroundColor = AppClearClr;
-    _collectionView.dataSource = self;
-    _collectionView.delegate = self;
-    _collectionView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
-    [_collectionView registerClass:PPPetCareVetCell.class forCellWithReuseIdentifier:PPPetCareVetCell.reuseIdentifier];
-    [contentView addSubview:_collectionView];
-
-    _emptyView = [[UIView alloc] init];
-    _emptyView.translatesAutoresizingMaskIntoConstraints = NO;
-    _emptyView.userInteractionEnabled = NO;
-    _emptyView.hidden = YES;
-
-    UIImageView *emptyIcon = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"heart.text.square.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-    emptyIcon.translatesAutoresizingMaskIntoConstraints = NO;
-    emptyIcon.tintColor = [PPPetCareAccentColor() colorWithAlphaComponent:0.72];
-    [_emptyView addSubview:emptyIcon];
-
-    _emptyTitleLabel = [[UILabel alloc] init];
-    _emptyTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _emptyTitleLabel.font = [GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightSemibold];
-    _emptyTitleLabel.textColor = PPPetCareTextColor();
-    _emptyTitleLabel.textAlignment = NSTextAlignmentCenter;
-    _emptyTitleLabel.numberOfLines = 2;
-    [_emptyView addSubview:_emptyTitleLabel];
-
-    _emptySubtitleLabel = [[UILabel alloc] init];
-    _emptySubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _emptySubtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    _emptySubtitleLabel.textColor = PPPetCareSecondaryTextColor();
-    _emptySubtitleLabel.textAlignment = NSTextAlignmentCenter;
-    _emptySubtitleLabel.numberOfLines = 3;
-    [_emptyView addSubview:_emptySubtitleLabel];
-    [contentView addSubview:_emptyView];
-
-    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
-    self.bottomSearchBarBottomConstraint =
-        [_bottomSearchBarView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:0.0];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [contentView.topAnchor constraintEqualToAnchor:safe.topAnchor],
-        [contentView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [contentView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [contentView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-
-        [_heroFill.topAnchor constraintEqualToAnchor:_heroView.topAnchor],
-        [_heroFill.leadingAnchor constraintEqualToAnchor:_heroView.leadingAnchor],
-        [_heroFill.trailingAnchor constraintEqualToAnchor:_heroView.trailingAnchor],
-        [_heroFill.bottomAnchor constraintEqualToAnchor:_heroView.bottomAnchor],
-
-        [_heroView.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:12.0],
-        [_heroView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:18.0],
-        [_heroView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-18.0],
-        [_heroView.heightAnchor constraintEqualToConstant:160.0],
-
-        [_largeOrbView.widthAnchor constraintEqualToConstant:120.0],
-        [_largeOrbView.heightAnchor constraintEqualToConstant:120.0],
-        [_largeOrbView.trailingAnchor constraintEqualToAnchor:_heroFill.trailingAnchor constant:24.0],
-        [_largeOrbView.topAnchor constraintEqualToAnchor:_heroFill.topAnchor constant:-24.0],
-
-        [_smallOrbView.widthAnchor constraintEqualToConstant:48.0],
-        [_smallOrbView.heightAnchor constraintEqualToConstant:48.0],
-        [_smallOrbView.leadingAnchor constraintEqualToAnchor:_heroFill.leadingAnchor constant:30.0],
-        [_smallOrbView.bottomAnchor constraintEqualToAnchor:_heroFill.bottomAnchor constant:16.0],
-
-        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_heroView.trailingAnchor constant:-18.0],
-        [_iconPlateView.topAnchor constraintEqualToAnchor:_heroView.topAnchor constant:18.0],
-        [_iconPlateView.widthAnchor constraintEqualToConstant:44.0],
-        [_iconPlateView.heightAnchor constraintEqualToConstant:44.0],
-
-        [_heroIconView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
-        [_heroIconView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-        [_heroIconView.widthAnchor constraintEqualToConstant:22.0],
-        [_heroIconView.heightAnchor constraintEqualToConstant:22.0],
-
-        [_heroAnimationView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
-        [_heroAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-        [_heroAnimationView.widthAnchor constraintEqualToConstant:44.0],
-        [_heroAnimationView.heightAnchor constraintEqualToConstant:44.0],
-
-        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_heroView.leadingAnchor constant:20.0],
-        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_heroView.topAnchor constant:18.0],
-        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:8.0],
-
-        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_heroView.trailingAnchor constant:-20.0],
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
-
-        [_counterLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_counterLabel.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:9.0],
-        [_counterLabel.heightAnchor constraintEqualToConstant:24.0],
-        [_counterLabel.widthAnchor constraintGreaterThanOrEqualToConstant:76.0],
-
-        [_collectionView.topAnchor constraintEqualToAnchor:_heroView.bottomAnchor constant:10.0],
-        [_collectionView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
-        [_collectionView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
-        [_collectionView.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor],
-
-        [_bottomSearchBarView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0],
-        [_bottomSearchBarView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-16.0],
-        self.bottomSearchBarBottomConstraint,
-        [_bottomSearchBarView.heightAnchor constraintEqualToConstant:60.0],
-
-        [_bottomSearchFadeView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
-        [_bottomSearchFadeView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
-        [_bottomSearchFadeView.topAnchor constraintEqualToAnchor:_bottomSearchBarView.topAnchor constant:16.0],
-        [_bottomSearchFadeView.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor],
-
-        [_searchPillView.leadingAnchor constraintEqualToAnchor:_bottomSearchBarView.leadingAnchor],
-        [_searchPillView.centerYAnchor constraintEqualToAnchor:_bottomSearchBarView.centerYAnchor],
-        [_searchPillView.heightAnchor constraintEqualToConstant:52.0],
-
-        [_filterButton.leadingAnchor constraintEqualToAnchor:_searchPillView.trailingAnchor constant:10.0],
-        [_filterButton.trailingAnchor constraintEqualToAnchor:_bottomSearchBarView.trailingAnchor],
-        [_filterButton.centerYAnchor constraintEqualToAnchor:_bottomSearchBarView.centerYAnchor],
-        [_filterButton.heightAnchor constraintEqualToConstant:52.0],
-        [_filterButton.widthAnchor constraintEqualToConstant:52.0],
-
-        [_filterBadgeView.topAnchor constraintEqualToAnchor:_filterButton.topAnchor constant:14.0],
-        [_filterBadgeView.trailingAnchor constraintEqualToAnchor:_filterButton.trailingAnchor constant:-14.0],
-        [_filterBadgeView.widthAnchor constraintEqualToConstant:9.0],
-        [_filterBadgeView.heightAnchor constraintEqualToConstant:9.0],
-
-        [_searchField.topAnchor constraintEqualToAnchor:_searchPillView.topAnchor],
-        [_searchField.leadingAnchor constraintEqualToAnchor:_searchPillView.leadingAnchor constant:18.0],
-        [_searchField.trailingAnchor constraintEqualToAnchor:_searchIconView.leadingAnchor constant:-10.0],
-        [_searchField.bottomAnchor constraintEqualToAnchor:_searchPillView.bottomAnchor],
-
-        [_searchIconView.trailingAnchor constraintEqualToAnchor:_searchPillView.trailingAnchor constant:-18.0],
-        [_searchIconView.centerYAnchor constraintEqualToAnchor:_searchPillView.centerYAnchor],
-        [_searchIconView.widthAnchor constraintEqualToConstant:20.0],
-        [_searchIconView.heightAnchor constraintEqualToConstant:20.0],
-
-        [_emptyView.centerXAnchor constraintEqualToAnchor:_collectionView.centerXAnchor],
-        [_emptyView.centerYAnchor constraintEqualToAnchor:_collectionView.centerYAnchor constant:-20.0],
-        [_emptyView.leadingAnchor constraintGreaterThanOrEqualToAnchor:_collectionView.leadingAnchor constant:36.0],
-        [_emptyView.trailingAnchor constraintLessThanOrEqualToAnchor:_collectionView.trailingAnchor constant:-36.0],
-
-        [emptyIcon.topAnchor constraintEqualToAnchor:_emptyView.topAnchor],
-        [emptyIcon.centerXAnchor constraintEqualToAnchor:_emptyView.centerXAnchor],
-        [emptyIcon.widthAnchor constraintEqualToConstant:38.0],
-        [emptyIcon.heightAnchor constraintEqualToConstant:38.0],
-
-        [_emptyTitleLabel.topAnchor constraintEqualToAnchor:emptyIcon.bottomAnchor constant:12.0],
-        [_emptyTitleLabel.leadingAnchor constraintEqualToAnchor:_emptyView.leadingAnchor],
-        [_emptyTitleLabel.trailingAnchor constraintEqualToAnchor:_emptyView.trailingAnchor],
-
-        [_emptySubtitleLabel.topAnchor constraintEqualToAnchor:_emptyTitleLabel.bottomAnchor constant:7.0],
-        [_emptySubtitleLabel.leadingAnchor constraintEqualToAnchor:_emptyView.leadingAnchor],
-        [_emptySubtitleLabel.trailingAnchor constraintEqualToAnchor:_emptyView.trailingAnchor],
-        [_emptySubtitleLabel.bottomAnchor constraintEqualToAnchor:_emptyView.bottomAnchor],
-    ]];
-
-    [contentView bringSubviewToFront:_bottomSearchFadeView];
-    [contentView bringSubviewToFront:_bottomSearchBarView];
-    [self pp_updateBottomSearchPositionAnimated:NO notification:nil];
-    [self pp_updateCollectionBottomInsets];
-}
-
-- (void)pp_buildBackgroundAtmosphereInView:(UIView *)hostView
-{
-    self.backgroundGlowTopView = [self pp_backgroundGlowViewWithRadius:136.0];
-    self.backgroundGlowMiddleView = [self pp_backgroundGlowViewWithRadius:108.0];
-    self.backgroundGlowBottomView = [self pp_backgroundGlowViewWithRadius:172.0];
-
-    [hostView addSubview:self.backgroundGlowTopView];
-    [hostView addSubview:self.backgroundGlowMiddleView];
-    [hostView addSubview:self.backgroundGlowBottomView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [self.backgroundGlowTopView.widthAnchor constraintEqualToConstant:272.0],
-        [self.backgroundGlowTopView.heightAnchor constraintEqualToConstant:272.0],
-        [self.backgroundGlowTopView.topAnchor constraintEqualToAnchor:hostView.topAnchor constant:-82.0],
-        [self.backgroundGlowTopView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor constant:104.0],
-
-        [self.backgroundGlowMiddleView.widthAnchor constraintEqualToConstant:216.0],
-        [self.backgroundGlowMiddleView.heightAnchor constraintEqualToConstant:216.0],
-        [self.backgroundGlowMiddleView.topAnchor constraintEqualToAnchor:hostView.topAnchor constant:248.0],
-        [self.backgroundGlowMiddleView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:-96.0],
-
-        [self.backgroundGlowBottomView.widthAnchor constraintEqualToConstant:344.0],
-        [self.backgroundGlowBottomView.heightAnchor constraintEqualToConstant:344.0],
-        [self.backgroundGlowBottomView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:-136.0],
-        [self.backgroundGlowBottomView.bottomAnchor constraintEqualToAnchor:hostView.bottomAnchor constant:132.0]
-    ]];
-}
-
-- (UIView *)pp_backgroundGlowViewWithRadius:(CGFloat)radius
-{
-    UIView *view = [[UIView alloc] init];
-    view.translatesAutoresizingMaskIntoConstraints = NO;
-    view.userInteractionEnabled = NO;
-    view.clipsToBounds = NO;
-    view.alpha = 0.0;
-    view.hidden = YES;
-    view.layer.cornerRadius = radius;
-    view.layer.shadowRadius = 68.0;
-    view.layer.shadowOpacity = 0.28;
-    view.layer.shadowOffset = CGSizeZero;
-    return view;
-}
-
-#pragma mark - Motion
-
-- (void)pp_prepareEntranceState
-{
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_applyEntranceFinalState];
-        return;
-    }
-
-    NSArray<UIView *> *floatingViews = @[self.backgroundGlowTopView,
-                                         self.backgroundGlowMiddleView,
-                                         self.backgroundGlowBottomView];
-    for (UIView *view in floatingViews) {
-        view.alpha = 0.0;
-        view.hidden = YES;
-        view.transform = CGAffineTransformMakeScale(0.92, 0.92);
-    }
-
-    NSArray<UIView *> *headlineViews = @[self.iconPlateView,
-                                         self.eyebrowLabel,
-                                         self.titleLabel,
-                                         self.subtitleLabel,
-                                         self.counterLabel];
-    for (UIView *view in headlineViews) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
-    }
-
-    NSArray<UIView *> *chromeViews = @[
-                                       self.navCartButton ?: [UIView new]];
-    for (UIView *view in chromeViews) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, -10.0);
-    }
-
-    NSArray<UIView *> *contentViews = @[self.heroView,
-                                        self.bottomSearchBarView,
-                                        self.bottomSearchFadeView,
-                                        self.collectionView,
-                                        self.emptyView];
-    for (UIView *view in contentViews) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, 24.0);
-    }
-
-    self.searchPillView.alpha = 0.0;
-    self.searchPillView.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
-    self.filterButton.alpha = 0.0;
-    self.filterButton.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
-    self.heroIconView.alpha = 0.0;
-    self.heroIconView.transform = CGAffineTransformMakeScale(0.90, 0.90);
-    self.heroAnimationView.hidden = YES;
-    self.heroAnimationView.alpha = 0.0;
-    self.heroAnimationView.transform = CGAffineTransformMakeScale(0.88, 0.88);
-}
-
-- (void)pp_applyEntranceFinalState
-{
-    for (UIView *view in @[self.backgroundGlowTopView,
-                           self.backgroundGlowMiddleView,
-                           self.backgroundGlowBottomView]) {
-        [view.layer removeAllAnimations];
-        view.hidden = YES;
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformIdentity;
-    }
-
-    for (UIView *view in @[self.sectionTitleContainer ?: [UIView new],
-                           self.navCartButton ?: [UIView new],
-                           self.heroView,
-                           self.iconPlateView,
-                           self.heroIconView,
-                           self.eyebrowLabel,
-                           self.titleLabel,
-                           self.subtitleLabel,
-                           self.counterLabel,
-                           self.bottomSearchBarView,
-                           self.bottomSearchFadeView,
-                           self.searchPillView,
-                           self.filterButton,
-                           self.collectionView]) {
-        view.alpha = 1.0;
-        view.transform = CGAffineTransformIdentity;
-    }
-
-    self.emptyView.alpha = self.emptyView.hidden ? 0.0 : 1.0;
-    self.emptyView.transform = CGAffineTransformIdentity;
-    [self.heroAnimationView stop];
-    self.heroAnimationView.hidden = YES;
-    self.heroAnimationView.alpha = 0.0;
-    self.heroAnimationView.transform = CGAffineTransformIdentity;
-    self.heroIconView.hidden = NO;
-}
-
-- (void)pp_beginEntranceAnimationIfNeeded
-{
-    if (self.didAnimateEntrance) {
-        return;
-    }
-    self.didAnimateEntrance = YES;
-
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_applyEntranceFinalState];
-        return;
-    }
-
-    NSArray<UIView *> *topChromeViews = @[self.sectionTitleContainer ?: [UIView new],
-                                          self.navCartButton ?: [UIView new]];
-    [topChromeViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        [UIView animateWithDuration:0.44
-                              delay:0.02 * idx
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
-
-    [UIView animateWithDuration:0.58
-                          delay:0.08
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.14
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self.heroView.alpha = 1.0;
-        self.heroView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    NSArray<UIView *> *heroDetailViews = @[self.iconPlateView,
-                                           self.heroIconView,
-                                           self.eyebrowLabel,
-                                           self.titleLabel,
-                                           self.subtitleLabel,
-                                           self.counterLabel];
-    [heroDetailViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        [UIView animateWithDuration:0.46
-                              delay:0.16 + (0.04 * idx)
-             usingSpringWithDamping:0.90
-              initialSpringVelocity:0.18
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
-
-    [UIView animateWithDuration:0.50
-                          delay:0.28
-         usingSpringWithDamping:0.90
-          initialSpringVelocity:0.12
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self.bottomSearchBarView.alpha = 1.0;
-        self.bottomSearchBarView.transform = CGAffineTransformIdentity;
-        self.bottomSearchFadeView.alpha = 1.0;
-        self.bottomSearchFadeView.transform = CGAffineTransformIdentity;
-        self.searchPillView.alpha = 1.0;
-        self.searchPillView.transform = CGAffineTransformIdentity;
-        self.filterButton.alpha = 1.0;
-        self.filterButton.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    [UIView animateWithDuration:0.56
-                          delay:0.36
-         usingSpringWithDamping:0.92
-          initialSpringVelocity:0.10
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self.collectionView.alpha = 1.0;
-        self.collectionView.transform = CGAffineTransformIdentity;
-        self.emptyView.alpha = self.emptyView.hidden ? 0.0 : 1.0;
-        self.emptyView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-}
-
-- (void)pp_reduceMotionStatusDidChange
-{
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopAmbientGlowAnimation];
-        [self pp_applyEntranceFinalState];
-        [self pp_revealResolvedHeroAnimation];
-        return;
-    }
-
-    if (self.didRevealLoadedDecor) {
-        [self pp_configureHeroAnimationIfNeeded];
-        [self pp_beginAmbientGlowAnimationIfNeeded];
-    }
-}
-
-- (void)pp_beginAmbientGlowAnimationIfNeeded
-{
-    if (self.didStartGlowAnimation || !self.didRevealLoadedDecor || UIAccessibilityIsReduceMotionEnabled()) {
-        return;
-    }
-    self.didStartGlowAnimation = YES;
-
-    [UIView animateWithDuration:6.0
-                          delay:0.0
-                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut
-                     animations:^{
-        self.backgroundGlowTopView.transform = CGAffineTransformMakeTranslation(-16.0, 12.0);
-        self.backgroundGlowMiddleView.transform = CGAffineTransformMakeTranslation(12.0, -10.0);
-    } completion:nil];
-
-    [UIView animateWithDuration:7.4
-                          delay:0.0
-                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut
-                     animations:^{
-        self.backgroundGlowBottomView.transform = CGAffineTransformMakeTranslation(18.0, -14.0);
-    } completion:nil];
-}
-
-- (void)pp_stopAmbientGlowAnimation
-{
-    self.didStartGlowAnimation = NO;
-    for (UIView *view in @[self.backgroundGlowTopView,
-                           self.backgroundGlowMiddleView,
-                           self.backgroundGlowBottomView]) {
-        [view.layer removeAllAnimations];
-        if (!view.hidden) {
-            view.transform = CGAffineTransformIdentity;
+    CGFloat width = CGRectGetWidth(self.collectionView.bounds);
+    if (width <= 0) return;
+    CGFloat height = [self.discoveryView fittingHeightForWidth:width];
+    CGFloat oldHeight = self.collectionView.contentInset.top;
+    BOOL atTop = self.collectionView.contentOffset.y <= -oldHeight + 1;
+    if (fabs(height - oldHeight) > 0.5 || fabs(width - self.lastLayoutWidth) > 0.5) {
+        BOOL widthChanged = fabs(width - self.lastLayoutWidth) > 0.5;
+        self.lastLayoutWidth = width;
+        self.discoveryView.frame = CGRectMake(0, -height, width, height);
+        UIEdgeInsets insets = self.collectionView.contentInset;
+        insets.top = height;
+        insets.bottom = PPSpaceBase;
+        self.collectionView.contentInset = insets;
+        if (atTop) self.collectionView.contentOffset = CGPointMake(0, -height);
+        if (widthChanged) {
+            UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.collectionView.collectionViewLayout;
+            CGFloat margin = MAX(PPScreenMargin, (width - 920) / 2);
+            layout.sectionInset = UIEdgeInsetsMake(PPSpaceSM, margin, PPSpaceXL, margin);
+            [layout invalidateLayout];
         }
     }
 }
 
-- (void)pp_noteInitialDataLoadProgress
+- (void)pp_updateLocalizedText
 {
-    if (self.loadingMedicines || self.loadingVets) {
-        return;
-    }
-    if (!self.didFinishInitialDataLoad) {
-        self.didFinishInitialDataLoad = YES;
-    }
-    [self pp_revealLoadedDecorIfNeeded];
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.collectionView.semanticContentAttribute = self.view.semanticContentAttribute;
+    self.view.backgroundColor = AppBackgroundClr;
+    self.title = nil;
+    self.navigationItem.title = nil;
+    self.navigationItem.titleView = nil;
+    [self pp_navBarSetTitle:kLang(@"pet_care_title")];
+    self.navCartButton.accessibilityLabel = kLang(@"Cart");
+    [self pp_updateFilterMenu];
+    [self pp_updateDiscoveryAnimated:NO];
 }
 
-- (void)pp_revealLoadedDecorIfNeeded
+- (BOOL)pp_hasSearchCriteria
 {
-    if (!self.didFinishInitialDataLoad || self.didRevealLoadedDecor || !self.isViewLoaded || !self.view.window) {
-        return;
-    }
-    self.didRevealLoadedDecor = YES;
-
-    NSArray<UIView *> *glowViews = @[self.backgroundGlowTopView,
-                                     self.backgroundGlowMiddleView,
-                                     self.backgroundGlowBottomView];
-
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        for (UIView *view in glowViews) {
-            view.hidden = YES;
-            view.alpha = 0.0;
-            view.transform = CGAffineTransformIdentity;
-        }
-        [self pp_configureHeroAnimationIfNeeded];
-        return;
-    }
-
-    [glowViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        view.hidden = NO;
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformConcat(CGAffineTransformMakeScale(0.90, 0.90),
-                                                 CGAffineTransformMakeTranslation(idx == 1 ? -10.0 : 10.0, 14.0));
-        [UIView animateWithDuration:0.72
-                              delay:0.06 + (0.055 * idx)
-             usingSpringWithDamping:0.92
-              initialSpringVelocity:0.08
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
-
-    [self pp_configureHeroAnimationIfNeeded];
-    [self pp_beginAmbientGlowAnimationIfNeeded];
+    BOOL medicine = self.selectedSection == PPPetCareInitialSectionMedicines;
+    return self.selectedMainKind != nil || PPPetCareNormalizedText(self.searchField.text).length > 0 ||
+        (medicine ? self.medicineFilter != PPPetCareMedicineFilterAll : self.vetFilter != PPPetCareVetFilterAll);
 }
 
-- (void)pp_configureHeroAnimationIfNeeded
+- (void)pp_updateDiscoveryAnimated:(BOOL)animated
 {
-    NSString *animationName = PPPetCareHeroAnimationName(self.selectedSection);
-    if (animationName.length == 0 || !self.heroAnimationView) {
-        return;
-    }
-
-    if ([self.currentHeroAnimationName isEqualToString:animationName]) {
-        BOOL needsReveal = self.heroAnimationView.hidden
-            || self.heroAnimationView.alpha < 0.99
-            || !CGAffineTransformEqualToTransform(self.heroAnimationView.transform, CGAffineTransformIdentity);
-        if (needsReveal && self.heroAnimationView.sceneModel) {
-            [self pp_revealResolvedHeroAnimation];
-            return;
-        }
-        if (!self.heroAnimationView.hidden && !self.heroAnimationView.isAnimationPlaying) {
-            [self.heroAnimationView play];
-        }
-        return;
-    }
-
-    self.currentHeroAnimationName = animationName;
-    self.heroAnimationLoadToken += 1;
-    NSInteger token = self.heroAnimationLoadToken;
-
-    [self.heroAnimationView stop];
-    self.heroAnimationView.hidden = YES;
-    self.heroAnimationView.alpha = 0.0;
-    self.heroIconView.hidden = NO;
-
-    LOTComposition *premiumComposition = PPPetCarePremiumHeroComposition(self.selectedSection);
-    if (premiumComposition) {
-        self.heroAnimationView.animationSpeed = 0.84;
-        [self.heroAnimationView setSceneModel:premiumComposition];
-        [self pp_revealResolvedHeroAnimation];
-        return;
-    }
-
-    __weak typeof(self) weakSelf = self;
-    [AppClasses setAnimationNamed:animationName
-                            ToView:self.heroAnimationView
-                         withSpeed:0.84
-                        completion:^(BOOL success) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self || self.heroAnimationLoadToken != token) {
-                return;
-            }
-
-            if (!success) {
-                self.heroAnimationView.hidden = YES;
-                self.heroIconView.hidden = NO;
-                return;
-            }
-
-            [self pp_revealResolvedHeroAnimation];
-        });
-    }];
+    BOOL medicine = self.selectedSection == PPPetCareInitialSectionMedicines;
+    BOOL loading = medicine ? self.loadingMedicines : self.loadingVets;
+    NSError *error = medicine ? self.medicineLoadError : self.vetLoadError;
+    NSUInteger count = medicine ? self.filteredMedicines.count : self.filteredVets.count;
+    PPPetCareDiscoveryState state = PPPetCareDiscoveryStateResults;
+    if (count > 0 && error) state = PPPetCareDiscoveryStateRetainedError;
+    else if (count == 0 && loading) state = PPPetCareDiscoveryStateLoading;
+    else if (count == 0 && error) state = PPPetCareDiscoveryStateError;
+    else if (count == 0) state = [self pp_hasSearchCriteria] ? PPPetCareDiscoveryStateNoMatches : PPPetCareDiscoveryStateEmpty;
+    NSArray<NSString *> *filterKeys = medicine
+        ? @[@"pet_care_filter_all", @"pet_care_filter_available", @"pet_care_filter_in_stock", @"pet_care_filter_new"]
+        : @[@"pet_care_filter_all", @"pet_care_filter_with_phone", @"pet_care_filter_clinics", @"pet_care_filter_doctors"];
+    NSInteger filter = medicine ? (NSInteger)self.medicineFilter : (NSInteger)self.vetFilter;
+    NSString *filterName = filter > 0 && filter < filterKeys.count ? kLang(filterKeys[filter]) : nil;
+    NSString *kindName = self.selectedMainKind ? [self pp_mainKindNameForID:self.selectedMainKind.ID] : nil;
+    [self.discoveryView configureForVeterinarians:!medicine kindName:kindName filterName:filterName count:count state:state loading:loading animated:animated];
+    [self pp_layoutDiscovery];
 }
 
-- (void)pp_revealResolvedHeroAnimation
-{
-    if (!self.didFinishInitialDataLoad) {
-        self.heroAnimationView.hidden = YES;
-        self.heroAnimationView.alpha = 0.0;
-        self.heroIconView.hidden = NO;
-        return;
-    }
 
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self.heroAnimationView stop];
-        self.heroAnimationView.hidden = YES;
-        self.heroAnimationView.alpha = 0.0;
-        self.heroIconView.hidden = NO;
-        self.heroIconView.alpha = 1.0;
-        self.heroIconView.transform = CGAffineTransformIdentity;
-        return;
-    }
-
-    self.heroAnimationView.loopAnimation = YES;
-    self.heroAnimationView.hidden = NO;
-    self.heroIconView.hidden = YES;
-    [self.heroAnimationView setNeedsLayout];
-    [self.heroAnimationView layoutIfNeeded];
-    [self.heroAnimationView play];
-
-    [UIView animateWithDuration:0.46
-                          delay:self.didRevealLoadedDecor ? 0.20 : 0.34
-         usingSpringWithDamping:0.91
-          initialSpringVelocity:0.12
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.heroAnimationView.alpha = 1.0;
-        self.heroAnimationView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-}
-
-#pragma mark - Navigation And Bottom Search
+#pragma mark - Keyboard and navigation
 
 - (void)pp_applyKeyboardManagerOverridesIfNeeded
 {
@@ -1363,68 +352,14 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     self.isOverridingIQKeyboardManager = NO;
 }
 
-- (void)pp_installNavigationTitleControl
+- (void)pp_setupNavigation
 {
-    if (!self.sectionControl) {
-        return;
-    }
-
-    CGFloat segmentWidth = MAX(PPPetCareNavigationSegmentWidth(),
-                               120.0 * MAX((CGFloat)self.sectionControl.numberOfSegments, 1.0));
-    CGFloat segmentHeight = 34.0;
-    if (!self.sectionTitleContainer) {
-        self.sectionTitleContainer = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, segmentWidth, segmentHeight)];
-        [self.sectionTitleContainer addSubview:self.sectionControl];
-        [NSLayoutConstraint activateConstraints:@[
-            [self.sectionControl.topAnchor constraintEqualToAnchor:self.sectionTitleContainer.topAnchor],
-            [self.sectionControl.leadingAnchor constraintEqualToAnchor:self.sectionTitleContainer.leadingAnchor constant:-2],
-            [self.sectionControl.trailingAnchor constraintEqualToAnchor:self.sectionTitleContainer.trailingAnchor constant:2],
-            [self.sectionControl.bottomAnchor constraintEqualToAnchor:self.sectionTitleContainer.bottomAnchor]
-        ]];
-    }
-    self.sectionTitleContainer.frame = CGRectMake(0.0, 0.0, segmentWidth, segmentHeight);
-    self.sectionTitleContainer.bounds = CGRectMake(0.0, 0.0, segmentWidth, segmentHeight);
-
+    self.title = nil;
     self.navigationItem.title = nil;
-    self.navigationItem.hidesBackButton = NO;
-    if (self.navigationItem.titleView != self.sectionTitleContainer) {
-        self.navigationItem.titleView = self.sectionTitleContainer;
-    }
-    [self pp_styleNavigationSectionControl];
-}
-
-- (void)pp_styleNavigationSectionControl
-{
-    if (!self.sectionControl) {
-        return;
-    }
-
-    UIFont *normalFont = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    UIFont *selectedFont = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-    UIColor *normalColor = PPPetCareSecondaryTextColor();
-    UIColor *selectedColor = PPPetCareTextColor();
-
-    [self.sectionControl setTitleTextAttributes:@{
-        NSFontAttributeName: normalFont,
-        NSForegroundColorAttributeName: normalColor
-    } forState:UIControlStateNormal];
-    [self.sectionControl setTitleTextAttributes:@{
-        NSFontAttributeName: selectedFont,
-        NSForegroundColorAttributeName: selectedColor
-    } forState:UIControlStateSelected];
-
-    self.sectionControl.backgroundColor = PPPetCareSurfaceColor();
-    self.sectionControl.selectedSegmentTintColor = [PPPetCareAccentColor() colorWithAlphaComponent:0.18];
-    self.sectionControl.tintColor = PPPetCareAccentColor();
-    self.sectionControl.apportionsSegmentWidthsByContent = NO;
-    CGFloat availableWidth = CGRectGetWidth(self.sectionTitleContainer.bounds);
-    if (availableWidth <= 0.0) {
-        availableWidth = PPPetCareNavigationSegmentWidth();
-    }
-    CGFloat segmentWidth = floor(availableWidth / MAX((CGFloat)self.sectionControl.numberOfSegments, 1.0));
-    for (NSInteger segmentIndex = 0; segmentIndex < self.sectionControl.numberOfSegments; segmentIndex++) {
-        [self.sectionControl setWidth:segmentWidth forSegmentAtIndex:segmentIndex];
-    }
+    self.navigationItem.titleView = nil;
+    BOOL showBack = (self.navigationController.viewControllers.count > 1) || (self.presentingViewController != nil);
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"pet_care_title") showBack:showBack];
+    [self pp_installCartNavigationButton];
 }
 
 - (void)pp_installCartNavigationButton
@@ -1437,13 +372,14 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
     [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
     cartNavBtn.accessibilityLabel = PPPetCareLocalized(@"Cart", @"Cart");
+    cartNavBtn.accessibilityIdentifier = @"petCare.cart";
+    [cartNavBtn.widthAnchor constraintEqualToConstant:PPTouchTargetMin].active = YES;
+    [cartNavBtn.heightAnchor constraintEqualToConstant:PPTouchTargetMin].active = YES;
 
     if (!PPIOS26()) {
         cartNavBtn.backgroundColor = AppForgroundColr;
         cartNavBtn.layer.cornerRadius = 22.0;
         cartNavBtn.clipsToBounds = NO;
-        [cartNavBtn.widthAnchor constraintEqualToConstant:44.0].active = YES;
-        [cartNavBtn.heightAnchor constraintEqualToConstant:44.0].active = YES;
     }
 
     self.navCartButton = cartNavBtn;
@@ -1466,16 +402,21 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     [badgeHost removeBadge];
 
     NSInteger count = [self pp_currentCartItemCount];
+    NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:Language.isRTL ? @"ar" : @"en"];
+    formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    NSString *localizedCount = [formatter stringFromNumber:@(MAX(0, count))];
+    badgeHost.accessibilityValue = [NSString stringWithFormat:kLang(@"pet_care_cart_count_format"), localizedCount];
     if (count <= 0) {
         return;
     }
 
-    NSString *badgeText = (count > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count];
+    NSString *badgeText = (count > 99) ? kLang(@"pet_care_count_over_99") : localizedCount;
     UIColor *badgeColor = AppPrimaryClr ?: UIColor.systemPinkColor;
 
     void (^applyBadge)(void) = ^{
         UIButton *host = self.navCartButton;
-        if (!host) return;
+        if (!host || [self pp_currentCartItemCount] != count) return;
 
         [host layoutIfNeeded];
         if (CGRectIsEmpty(host.bounds)) return;
@@ -1525,108 +466,6 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
                                      animated:YES
                                    completion:nil];
 }
-
-- (void)pp_updateBottomSearchPositionAnimated:(BOOL)animated
-                                 notification:(NSNotification *)notification
-{
-    if (!self.bottomSearchBarBottomConstraint) {
-        return;
-    }
-
-    CGFloat safeBottom = self.view.safeAreaInsets.bottom;
-    CGFloat restingInset = PPIOS26() ? 12.0 : MAX(safeBottom - 8.0, 12.0);
-    CGFloat keyboardInset = self.keyboardOverlap + 12.0;
-    CGFloat bottomInset = self.keyboardOverlap > 0.0 ? keyboardInset : restingInset;
-    self.bottomSearchBarBottomConstraint.constant = -bottomInset;
-    [self pp_updateCollectionBottomInsets];
-
-    void (^changes)(void) = ^{
-        self.bottomSearchBarView.transform = CGAffineTransformIdentity;
-        [self.view layoutIfNeeded];
-    };
-
-    if (!animated) {
-        changes();
-        return;
-    }
-
-    NSTimeInterval duration = [notification.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
-    if (duration <= 0.0) {
-        duration = 0.28;
-    }
-    UIViewAnimationCurve curve = [notification.userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
-    UIViewAnimationOptions options = (curve << 16) | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction;
-
-    [UIView animateWithDuration:duration
-                          delay:0.0
-                        options:options
-                     animations:changes
-                     completion:nil];
-}
-
-- (void)pp_updateCollectionBottomInsets
-{
-    if (!self.collectionView) {
-        return;
-    }
-
-    CGFloat bottomInset = self.keyboardOverlap > 0.0 ? self.keyboardOverlap + 12.0 : self.view.safeAreaInsets.bottom;
-    CGFloat bottomChrome = 92.0 + bottomInset;
-    UIEdgeInsets contentInset = self.collectionView.contentInset;
-    contentInset.bottom = bottomChrome;
-    self.collectionView.contentInset = contentInset;
-
-    UIEdgeInsets indicatorInset = self.collectionView.scrollIndicatorInsets;
-    indicatorInset.bottom = bottomChrome;
-    self.collectionView.scrollIndicatorInsets = indicatorInset;
-}
-
-- (void)pp_applyFilterButtonAppearance
-{
-    if (!self.filterButton) {
-        return;
-    }
-
-    UIImage *filterIcon = [[UIImage systemImageNamed:@"slider.horizontal.3"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    if (PPIOS26()) {
-        UIButtonConfiguration *configuration = [UIButtonConfiguration glassButtonConfiguration];
-        configuration.image = filterIcon;
-        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        configuration.baseForegroundColor = PPPetCareTextColor();
-        configuration.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
-        self.filterButton.configuration = configuration;
-        self.filterButton.backgroundColor = UIColor.clearColor;
-        self.filterButton.tintColor = PPPetCareTextColor();
-        self.filterButton.layer.borderWidth = 0.0;
-        self.filterButton.clipsToBounds = NO;
-        return;
-    }
-
-    self.filterButton.configuration = nil;
-    [self.filterButton setImage:filterIcon forState:UIControlStateNormal];
-    self.filterButton.backgroundColor = PPPetCareSearchSurfaceColor();
-    self.filterButton.tintColor = PPPetCareTextColor();
-    self.filterButton.layer.borderWidth = 0.0;
-}
-
-- (void)pp_keyboardWillChangeFrame:(NSNotification *)notification
-{
-    self.navigationItem.hidesBackButton = NO;
-    CGRect keyboardEndFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
-    CGRect keyboardFrameInView = [self.view convertRect:keyboardEndFrame fromView:nil];
-    CGFloat overlap = CGRectGetMaxY(self.view.bounds) - CGRectGetMinY(keyboardFrameInView);
-    self.keyboardOverlap = MAX(0.0, overlap);
-    [self pp_updateBottomSearchPositionAnimated:YES notification:notification];
-}
-
-- (void)pp_keyboardWillHide:(NSNotification *)notification
-{
-    self.navigationItem.hidesBackButton = NO;
-    self.keyboardOverlap = 0.0;
-    [self pp_updateBottomSearchPositionAnimated:YES notification:notification];
-}
-
-#pragma mark - Data
 
 - (void)pp_loadFilters
 {
@@ -1700,53 +539,151 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
         UIMenu *mainMenu = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[kindMenu, modeMenu]];
         self.filterButton.menu = mainMenu;
+        self.discoveryView.kindButton.menu = kindMenu;
     }
 }
 
+#pragma mark - Data and recovery
+
 - (void)pp_loadData
 {
-    self.loadingMedicines = YES;
-    self.loadingVets = YES;
-    [self pp_updateEmptyState];
+    [self pp_loadSection:PPPetCareInitialSectionMedicines];
+    [self pp_loadSection:PPPetCareInitialSectionVeterinarians];
+}
 
+- (void)pp_loadSection:(PPPetCareInitialSection)section
+{
+    BOOL medicines = section == PPPetCareInitialSectionMedicines;
+    // Refresh and retry share one request per section; switching tabs never starts duplicates.
+    if (medicines ? self.loadingMedicines : self.loadingVets) return;
+    if (medicines) {
+        self.loadingMedicines = YES;
+        self.medicineLoadError = nil;
+    } else {
+        self.loadingVets = YES;
+        self.vetLoadError = nil;
+    }
+    [self pp_updateDiscoveryAnimated:NO];
     __weak typeof(self) weakSelf = self;
-    [[VetManager sharedManager] fetchAllPetMedicinesWithCompletion:^(NSArray<VetMedicineModel *> *medicinesArray, NSError * _Nullable error) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
-        self.loadingMedicines = NO;
-        NSArray<VetMedicineModel *> *medicines = medicinesArray ?: @[];
-        self.allMedicines = [medicines sortedArrayUsingComparator:^NSComparisonResult(VetMedicineModel *a, VetMedicineModel *b) {
-            return [PPPetCareSafeString(a.title) localizedCaseInsensitiveCompare:PPPetCareSafeString(b.title)];
+    if (medicines) {
+        [[VetManager sharedManager] fetchAllPetMedicinesWithCompletion:^(NSArray<VetMedicineModel *> *items, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                self.loadingMedicines = NO;
+                self.medicineLoadError = error;
+                // A refresh failure preserves the last successful result and explains its state.
+                if (!error) {
+                    self.allMedicines = [(items ?: @[]) sortedArrayUsingComparator:^NSComparisonResult(VetMedicineModel *a, VetMedicineModel *b) {
+                        return [PPPetCareSafeString(a.title) localizedCaseInsensitiveCompare:PPPetCareSafeString(b.title)];
+                    }];
+                }
+                [self pp_finishDataLoad];
+            });
         }];
-        [self pp_applyFiltersAndReload];
-        [self pp_noteInitialDataLoadProgress];
-    }];
+    } else {
+        [[VetManager sharedManager] fetchAllVetsWithCompletion:^(NSArray<VetModel *> *items, NSError *error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                self.loadingVets = NO;
+                self.vetLoadError = error;
+                if (!error) {
+                    self.allVets = [(items ?: @[]) sortedArrayUsingComparator:^NSComparisonResult(VetModel *a, VetModel *b) {
+                        return [PPPetCareSafeString(a.title) localizedCaseInsensitiveCompare:PPPetCareSafeString(b.title)];
+                    }];
+                }
+                [self pp_finishDataLoad];
+            });
+        }];
+    }
+}
 
-    [[VetManager sharedManager] fetchAllVetsWithCompletion:^(NSArray<VetModel *> *vetsArray, NSError * _Nullable error) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
-        self.loadingVets = NO;
-        NSArray *vets = vetsArray ?: @[];
-        self.allVets = [vets sortedArrayUsingComparator:^NSComparisonResult(VetModel *a, VetModel *b) {
-            return [PPPetCareSafeString(a.title) localizedCaseInsensitiveCompare:PPPetCareSafeString(b.title)];
-        }];
+- (void)pp_finishDataLoad
+{
+    BOOL loading = self.selectedSection == PPPetCareInitialSectionMedicines ? self.loadingMedicines : self.loadingVets;
+    if (!loading) [self.collectionView.refreshControl endRefreshing];
+    [self pp_applyFiltersAndReload];
+}
+
+- (void)pp_refreshSelectedSection
+{
+    [self pp_loadSection:self.selectedSection];
+}
+
+- (void)pp_recoverDiscovery
+{
+    NSError *error = self.selectedSection == PPPetCareInitialSectionMedicines ? self.medicineLoadError : self.vetLoadError;
+    if (!error && [self pp_hasSearchCriteria]) {
+        self.selectedMainKind = nil;
+        self.searchField.text = @"";
+        if (self.selectedSection == PPPetCareInitialSectionMedicines) {
+            self.medicineQuery = @"";
+            self.medicineFilter = PPPetCareMedicineFilterAll;
+        } else {
+            self.vetQuery = @"";
+            self.vetFilter = PPPetCareVetFilterAll;
+        }
+        [self pp_updateFilterMenu];
         [self pp_applyFiltersAndReload];
-        [self pp_noteInitialDataLoadProgress];
-    }];
+        [PPFunc triggerLightHaptic];
+        UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, self.discoveryView.kindButton);
+    } else {
+        [self pp_refreshSelectedSection];
+    }
+}
+
+- (void)pp_exploreOtherSection
+{
+    [self pp_selectSection:self.selectedSection == PPPetCareInitialSectionMedicines ? PPPetCareInitialSectionVeterinarians : PPPetCareInitialSectionMedicines];
+    UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, self.selectedSection == PPPetCareInitialSectionMedicines ? self.discoveryView.medicineButton : self.discoveryView.vetsButton);
+}
+
+- (void)pp_sectionTapped:(UIButton *)sender
+{
+    [self pp_selectSection:sender.tag == 1 ? PPPetCareInitialSectionVeterinarians : PPPetCareInitialSectionMedicines];
+}
+
+- (void)pp_selectSection:(PPPetCareInitialSection)section
+{
+    if (section == self.selectedSection) return;
+    [self.searchField resignFirstResponder];
+    self.selectedSection = section;
+    self.searchField.text = section == PPPetCareInitialSectionMedicines ? self.medicineQuery : self.vetQuery;
+    [self.collectionView.refreshControl endRefreshing];
+    // Update selection before reloading; the persistent header owns the only tab animation.
+    [self pp_updateDiscoveryAnimated:YES];
+    [self pp_updateFilterMenu];
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    [self.collectionView reloadData];
+    [self.collectionView setContentOffset:CGPointMake(0, -self.collectionView.contentInset.top) animated:NO];
+    [PPFunc triggerLightHaptic];
+}
+
+- (void)pp_searchTextChanged:(UITextField *)textField
+{
+    if (self.selectedSection == PPPetCareInitialSectionMedicines) self.medicineQuery = textField.text ?: @"";
+    else self.vetQuery = textField.text ?: @"";
+    [self pp_applyFiltersAndReload];
+}
+
+- (void)textFieldDidBeginEditing:(UITextField *)textField
+{
+    CGRect rect = [textField convertRect:textField.bounds toView:self.collectionView];
+    [self.collectionView scrollRectToVisible:CGRectInset(rect, 0, -PPSpaceBase) animated:!UIAccessibilityIsReduceMotionEnabled()];
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
+{
+    [textField resignFirstResponder];
+    return YES;
 }
 
 - (void)pp_applyFiltersAndReload
 {
-    NSString *query = PPPetCareNormalizedText(self.searchField.text);
+    NSString *medicineQuery = PPPetCareNormalizedText(self.medicineQuery);
+    NSString *vetQuery = PPPetCareNormalizedText(self.vetQuery);
     NSInteger kindID = self.selectedMainKind ? self.selectedMainKind.ID : 0;
-
-    BOOL hasActiveFilter = (kindID > 0);
-    if (self.selectedSection == PPPetCareInitialSectionMedicines) {
-        hasActiveFilter = hasActiveFilter || (self.medicineFilter != PPPetCareMedicineFilterAll);
-    } else {
-        hasActiveFilter = hasActiveFilter || (self.vetFilter != PPPetCareVetFilterAll);
-    }
-    self.filterBadgeView.hidden = !hasActiveFilter;
 
     NSMutableArray<VetMedicineModel *> *medicines = [NSMutableArray array];
     for (VetMedicineModel *item in self.allMedicines) {
@@ -1756,11 +693,11 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         if (![self pp_medicine:item matchesFilter:self.medicineFilter]) {
             continue;
         }
-        if (query.length > 0) {
+        if (medicineQuery.length > 0) {
             NSString *haystack = PPPetCareNormalizedText([@[PPPetCareSafeString(item.title),
                                                            PPPetCareSafeString(item.title_lowercase)]
                                                          componentsJoinedByString:@" "]);
-            if (![haystack containsString:query]) {
+            if (![haystack containsString:medicineQuery]) {
                 continue;
             }
         }
@@ -1776,11 +713,11 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         if (![self pp_vet:vet matchesFilter:self.vetFilter]) {
             continue;
         }
-        if (query.length > 0) {
+        if (vetQuery.length > 0) {
             NSString *haystack = PPPetCareNormalizedText([@[PPPetCareSafeString(vet.title),
                                                            PPPetCareSafeString(vet.name_lowercase)]
                                                          componentsJoinedByString:@" "]);
-            if (![haystack containsString:query]) {
+            if (![haystack containsString:vetQuery]) {
                 continue;
             }
         }
@@ -1789,8 +726,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     self.filteredVets = vets.copy;
 
     [self.collectionView reloadData];
-    [self pp_updateCounter];
-    [self pp_updateEmptyState];
+    [self pp_updateDiscoveryAnimated:NO];
 }
 
 - (BOOL)pp_medicine:(VetMedicineModel *)medicine matchesFilter:(PPPetCareMedicineFilter)filter
@@ -1893,175 +829,6 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     return vet.petMainKindID == mainKind.ID;
 }
 
-#pragma mark - Localization and Theme
-
-- (void)pp_updateLocalizedText
-{
-    [self pp_installNavigationTitleControl];
-    [self.sectionControl setTitle:PPPetCareLocalized(@"pet_care_medicines", @"Medicines") forSegmentAtIndex:0];
-    [self.sectionControl setTitle:PPPetCareLocalized(@"pet_care_veterinarians", @"Veterinarians") forSegmentAtIndex:1];
-    self.searchField.placeholder = self.selectedSection == PPPetCareInitialSectionMedicines
-        ? PPPetCareLocalized(@"pet_care_search_medicines", @"Search medicines")
-        : PPPetCareLocalized(@"pet_care_search_vets", @"Search veterinarians");
-    self.eyebrowLabel.text = PPPetCareLocalized(@"pet_care_eyebrow", @"Premium care");
-    self.titleLabel.text = self.selectedSection == PPPetCareInitialSectionMedicines
-        ? PPPetCareLocalized(@"pet_care_medicine_title", @"Pet medicines")
-        : PPPetCareLocalized(@"pet_care_vets_title", @"Veterinarians");
-    self.subtitleLabel.text = self.selectedSection == PPPetCareInitialSectionMedicines
-        ? PPPetCareLocalized(@"pet_care_medicine_subtitle", @"Curated treatment, wellness, and care supplies from the shared store catalog.")
-        : PPPetCareLocalized(@"pet_care_vets_subtitle", @"Find veterinarians matched to pet kind, contact readiness, and clinic type.");
-    self.sectionControl.selectedSegmentIndex = self.selectedSection == PPPetCareInitialSectionVeterinarians ? 1 : 0;
-    self.view.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
-    self.sectionTitleContainer.semanticContentAttribute = self.view.semanticContentAttribute;
-    self.bottomSearchBarView.semanticContentAttribute = self.view.semanticContentAttribute;
-    self.searchPillView.semanticContentAttribute = self.view.semanticContentAttribute;
-    self.searchField.semanticContentAttribute = self.view.semanticContentAttribute;
-    self.searchIconView.semanticContentAttribute = self.view.semanticContentAttribute;
-    self.searchField.textAlignment = [Language alignmentForCurrentLanguage];
-    self.eyebrowLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.subtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-
-    self.heroIconView.image = [[UIImage systemImageNamed:self.selectedSection == PPPetCareInitialSectionMedicines ? @"pills.fill" : @"cross.case.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    [self pp_configureHeroAnimationIfNeeded];
-
-    [self pp_updateFilterMenu];
-    [self pp_updateCounter];
-    [self pp_updateEmptyState];
-}
-
-- (void)pp_applyTheme
-{
-    BOOL dark = NO;
-    if (@available(iOS 13.0, *)) {
-        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    }
-
-    UIColor *accent = PPPetCareAccentColor();
-    self.view.backgroundColor = AppBackgroundClr;
-    self.heroView.backgroundColor = PPPetCareSurfaceColor();
-    self.heroView.layer.borderWidth = 0.0;
-    self.heroView.layer.shadowOpacity = dark ? 0.10 : 0.045;
-
-    self.heroGradientLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:dark ? 0.10 : 0.055].CGColor,
-        (id)[UIColor clearColor].CGColor
-    ];
-    self.backgroundGlowTopView.backgroundColor = UIColor.clearColor;
-    self.backgroundGlowTopView.layer.shadowOpacity = 0.0;
-    self.backgroundGlowMiddleView.backgroundColor = UIColor.clearColor;
-    self.backgroundGlowMiddleView.layer.shadowOpacity = 0.0;
-    self.backgroundGlowBottomView.backgroundColor = UIColor.clearColor;
-    self.backgroundGlowBottomView.layer.shadowOpacity = 0.0;
-    self.largeOrbView.backgroundColor = UIColor.clearColor;
-    self.smallOrbView.backgroundColor = UIColor.clearColor;
-
-    self.iconPlateView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.11];
-    self.iconPlateView.layer.borderWidth = 0.0;
-    self.heroIconView.tintColor = accent;
-
-    self.eyebrowLabel.textColor = [accent colorWithAlphaComponent:dark ? 0.92 : 0.82];
-    self.titleLabel.textColor = PPPetCareTextColor();
-    self.subtitleLabel.textColor = PPPetCareSecondaryTextColor();
-    self.counterLabel.textColor = PPPetCareTextColor();
-    self.counterLabel.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.15 : 0.09];
-    self.counterLabel.layer.borderWidth = 0.0;
-
-    self.bottomSearchBarView.layer.shadowOpacity = dark ? 0.14 : 0.07;
-    self.searchPillView.backgroundColor = PPPetCareSearchSurfaceColor();
-    self.searchPillView.layer.borderWidth = 0.0;
-    self.bottomSearchFadeLayer.colors = @[
-        (id)[UIColor clearColor].CGColor,
-        (id)[[AppBackgroundClr colorWithAlphaComponent:dark ? 0.05 : 0.035] CGColor],
-        (id)[[PPPetCareSurfaceColor() colorWithAlphaComponent:dark ? 0.96 : 0.92] CGColor]
-    ];
-    self.bottomSearchFadeLayer.locations = @[@0.0, @0.38, @1.0];
-    self.searchField.textColor = PPPetCareTextColor();
-    self.searchField.backgroundColor = UIColor.clearColor;
-    self.searchField.tintColor = PPPetCareAccentColor();
-    self.searchIconView.tintColor = PPPetCareTextColor();
-
-    [self pp_applyFilterButtonAppearance];
-
-    UIColor *badgeBorderColor = PPIOS26() ? [PPPetCareSurfaceColor() colorWithAlphaComponent:0.72] : self.filterButton.backgroundColor;
-    self.filterBadgeView.layer.borderColor = badgeBorderColor.CGColor;
-
-    [self pp_styleNavigationSectionControl];
-}
-
-- (void)pp_updateCounter
-{
-    NSInteger count = self.selectedSection == PPPetCareInitialSectionMedicines
-        ? self.filteredMedicines.count
-        : self.filteredVets.count;
-    NSString *format = self.selectedSection == PPPetCareInitialSectionMedicines
-        ? PPPetCareLocalized(@"pet_care_medicine_count_format", @"%ld medicines")
-        : PPPetCareLocalized(@"pet_care_vet_count_format", @"%ld vets");
-    self.counterLabel.text = [NSString stringWithFormat:format, (long)count];
-}
-
-- (void)pp_updateEmptyState
-{
-    BOOL isLoading = self.selectedSection == PPPetCareInitialSectionMedicines ? self.loadingMedicines : self.loadingVets;
-    NSInteger count = self.selectedSection == PPPetCareInitialSectionMedicines ? self.filteredMedicines.count : self.filteredVets.count;
-    self.emptyView.hidden = isLoading || count > 0;
-    if (isLoading) {
-        return;
-    }
-    if (self.selectedSection == PPPetCareInitialSectionMedicines) {
-        self.emptyTitleLabel.text = PPPetCareLocalized(@"pet_care_empty_medicines_title", @"No medicines found");
-        self.emptySubtitleLabel.text = PPPetCareLocalized(@"pet_care_empty_medicines_subtitle", @"Try another pet kind, remove filters, or search with a shorter word.");
-    } else {
-        self.emptyTitleLabel.text = PPPetCareLocalized(@"pet_care_empty_vets_title", @"No veterinarians found");
-        self.emptySubtitleLabel.text = PPPetCareLocalized(@"pet_care_empty_vets_subtitle", @"Try all pet kinds, contact-ready filters, or a different search term.");
-    }
-}
-
-#pragma mark - Actions
-
-- (void)pp_sectionChanged:(UISegmentedControl *)sender
-{
-    self.selectedSection = sender.selectedSegmentIndex == 1
-        ? PPPetCareInitialSectionVeterinarians
-        : PPPetCareInitialSectionMedicines;
-    [self pp_updateLocalizedText];
-    [self pp_applyFiltersAndReload];
-}
-
-- (void)pp_kindChipTapped:(UIButton *)sender
-{
-    if (sender.tag == 0) {
-        self.selectedMainKind = nil;
-    } else {
-        NSInteger index = sender.tag - 1;
-        self.selectedMainKind = (index >= 0 && index < self.mainKinds.count) ? self.mainKinds[index] : nil;
-    }
-    [self pp_applyFiltersAndReload];
-    [self pp_updateFilterMenu];
-}
-
-- (void)pp_filterChipTapped:(UIButton *)sender
-{
-    if (self.selectedSection == PPPetCareInitialSectionMedicines) {
-        self.medicineFilter = (PPPetCareMedicineFilter)sender.tag;
-    } else {
-        self.vetFilter = (PPPetCareVetFilter)sender.tag;
-    }
-    [self pp_applyFiltersAndReload];
-    [self pp_updateFilterMenu];
-}
-
-- (void)pp_searchTextChanged:(UITextField *)textField
-{
-    [self pp_applyFiltersAndReload];
-}
-
-- (BOOL)textFieldShouldReturn:(UITextField *)textField
-{
-    [textField resignFirstResponder];
-    return YES;
-}
-
 #pragma mark - Collection
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
@@ -2136,11 +903,16 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 {
     CGFloat width = CGRectGetWidth(collectionView.bounds);
     UIEdgeInsets inset = ((UICollectionViewFlowLayout *)collectionViewLayout).sectionInset;
-    CGFloat available = width - inset.left - inset.right;
+    CGFloat available = MAX(1, width - inset.left - inset.right);
     if (self.selectedSection == PPPetCareInitialSectionMedicines) {
-        BOOL twoColumns = available >= 360.0;
-        CGFloat itemWidth = twoColumns ? floor((available - 12.0) / 2.0) : available;
-        return CGSizeMake(itemWidth, MAX(324.0, itemWidth * 1.42));
+        BOOL accessibility = PPPetCareUsesAccessibilityLayout(self.traitCollection);
+        NSInteger columns = accessibility ? 1 : (available >= 680 ? 3 : (available >= 344 ? 2 : 1));
+        CGFloat itemWidth = floor((available - (columns - 1) * PPSpaceMD) / columns);
+        // Geometry depends only on width and text category, never on image arrival or scrolling.
+        CGFloat informationHeight = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+            scaledValueForValue:192 compatibleWithTraitCollection:self.traitCollection];
+        CGFloat imageHeight = MIN(220, MAX(128, itemWidth * 0.72));
+        return CGSizeMake(itemWidth, ceil(imageHeight + informationHeight));
     }
     if (PPPetCareUsesAccessibilityLayout(self.traitCollection)) {
         if (indexPath.item < self.filteredVets.count) {
@@ -2173,8 +945,8 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 - (void)collectionView:(UICollectionView *)collectionView didHighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     UICollectionViewCell *cell = [collectionView cellForItemAtIndexPath:indexPath];
-    [UIView animateWithDuration:0.12 animations:^{
-        cell.transform = CGAffineTransformMakeScale(0.985, 0.985);
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.12 animations:^{
+        cell.transform = UIAccessibilityIsReduceMotionEnabled() ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.985, 0.985);
         cell.alpha = 0.92;
     }];
 }
@@ -2182,11 +954,11 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 - (void)collectionView:(UICollectionView *)collectionView didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     UICollectionViewCell *cell = [collectionView cellForItemAtIndexPath:indexPath];
-    [UIView animateWithDuration:0.20
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0 : 0.20
                           delay:0.0
          usingSpringWithDamping:0.78
           initialSpringVelocity:0.4
-                        options:UIViewAnimationOptionCurveEaseOut
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         cell.transform = CGAffineTransformIdentity;
         cell.alpha = 1.0;

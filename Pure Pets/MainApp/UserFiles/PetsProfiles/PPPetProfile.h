@@ -30,6 +30,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) NSInteger ageInMonths;
 @property (nonatomic, copy, nullable) NSString *imageURL;
 @property (nonatomic, assign) BOOL isDefaultPet;
+@property (nonatomic, copy, nullable) NSString *source;
 @property (nonatomic, strong) NSArray<PPPetVaccinationRecord *> *vaccinations;
 @property (nonatomic, strong, nullable) NSDate *createdAt;
 @property (nonatomic, strong, nullable) NSDate *updatedAt;

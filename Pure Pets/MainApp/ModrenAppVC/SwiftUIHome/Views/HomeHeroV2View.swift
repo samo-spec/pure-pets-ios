@@ -117,6 +117,7 @@ struct HomeHeroV2View: View {
     let onSecondaryAction: () -> Void
     let onInteractionChanged: (Bool) -> Void
     var onSelectCategory: ((HomeCategoryModel?) -> Void)? = nil
+    var embeddedInCompanionSurface = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -137,12 +138,28 @@ struct HomeHeroV2View: View {
     @State private var availableWidth: CGFloat = 0
 
     private var usesStackedLayout: Bool {
-        dynamicTypeSize >= .xxLarge || (availableWidth > 0 && availableWidth < 300)
+        dynamicTypeSize.isAccessibilitySize || (availableWidth > 0 && availableWidth < 280)
     }
 
     private var artworkSide: CGFloat {
         let contentWidth = max(280, availableWidth) - PPSpace.base * 2
-        return min(horizontalSizeClass == .regular ? 196 : 142, max(112, contentWidth * 0.38))
+        return min(horizontalSizeClass == .regular ? 164 : 128, max(100, contentWidth * 0.34))
+    }
+
+    private var paletteTraits: UITraitCollection {
+        UITraitCollection(userInterfaceStyle: colorScheme == .dark ? .dark : .light)
+    }
+
+    private func sourceAccent(_ page: HomeHeroPage) -> UIColor {
+        // The hero owns its category identity independently of the optional
+        // whole-app accent preference. Campaigns retain their authored color.
+        let category = (page.kind == .marketplace || page.kind == .pet)
+            ? categories.first { HomeModelAdapter.mainKindID($0.raw) == selectedCategoryID }
+            : nil
+        return HomeHeroV2Palette.sourceAccent(
+            category?.accent ?? UIColor(Color(hex: page.accentHex)),
+            traits: paletteTraits
+        )
     }
 
     var body: some View {
@@ -150,7 +167,7 @@ struct HomeHeroV2View: View {
             if let page = selectedPage {
                 hero(page)
             } else {
-                HomeHeroV2Skeleton(height: 204)
+                HomeHeroV2Skeleton(height: 160)
                     .redacted(reason: .placeholder)
                     .accessibilityHidden(true)
             }
@@ -162,27 +179,31 @@ struct HomeHeroV2View: View {
                     .onChange(of: geometry.size.width) { width in availableWidth = width }
             }
         }
-        .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+        .padding(.horizontal, embeddedInCompanionSurface ? 0 : HomeVisualTokens.contentHorizontalMargin)
         .accessibilityElement(children: .contain)
         .onDisappear { onInteractionChanged(false) }
     }
 
-    /// One reading path: animal + headline, supporting context, then one action.
-    /// Category selection lives in Home's independent browsing row.
+    /// Copy and its action share one column beside the animal. No independent
+    /// footer or fixed card height can introduce an empty band below the copy.
     private func hero(_ page: HomeHeroPage) -> some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
             Group {
                 if usesStackedLayout {
-                    VStack(alignment: .leading, spacing: PPSpace.base) {
-                        artwork(page)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
+                    // Decorative artwork yields its space to readable content
+                    // at accessibility sizes; no text is clipped or scaled down.
+                    VStack(alignment: .leading, spacing: PPSpace.sm) {
                         heroCopy(page)
+                        heroActions(page)
                     }
                 } else {
                     HStack(alignment: .center, spacing: PPSpace.md) {
-                        heroCopy(page)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .layoutPriority(1)
+                        VStack(alignment: .leading, spacing: PPSpace.sm) {
+                            heroCopy(page)
+                            heroActions(page)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
                         artwork(page)
                     }
                 }
@@ -190,24 +211,30 @@ struct HomeHeroV2View: View {
             .id(page.id)
             .transition(.opacity)
 
-            heroActions(page)
-
             if allowsPaging {
                 PPHomePageControl(count: pages.count, selectedIndex: selectedIndex)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(PPSpace.base)
+        .padding(.horizontal, PPSpace.base)
+        .padding(.vertical, PPSpace.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.homeSurface, in: heroShape)
+        .background {
+            if !embeddedInCompanionSurface {
+                heroShape.fill(Color.homeSurface)
+            }
+        }
         .overlay {
-            heroShape.strokeBorder(
-                HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
-                lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
-            )
-            .allowsHitTesting(false)
+            if !embeddedInCompanionSurface {
+                heroShape.strokeBorder(
+                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+                )
+                .allowsHitTesting(false)
+            }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: page.id)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.22), value: selectedCategoryID)
         .modifier(HomeHeroV2PagingGestureModifier(
             isEnabled: allowsPaging,
             selectedIndex: selectedIndex,
@@ -231,26 +258,26 @@ struct HomeHeroV2View: View {
     private func artwork(_ page: HomeHeroPage) -> some View {
         HomeHeroV2Artwork(
             asset: heroArtworkAsset(for: page),
-            accent: .ppPrimary,
+            accent: Color(uiColor: sourceAccent(page)),
             side: artworkSide
         )
         .frame(width: artworkSide, height: artworkSide)
-        .background(HomeHeroV2LivingPlate())
+        .background(HomeHeroV2LivingPlate(accent: sourceAccent(page)))
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 
     private func heroCopy(_ page: HomeHeroPage) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
+        VStack(alignment: .leading, spacing: PPSpace.xs + PPSpace.xxs) {
             Text(page.title)
-                .font(HomeFont.bold(horizontalSizeClass == .regular ? 32 : 26))
+                .font(HomeFont.bold(horizontalSizeClass == .regular ? 30 : 24))
                 .foregroundStyle(Color.homeTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
 
             if !page.subtitle.isEmpty {
                 Text(page.subtitle)
-                    .font(HomeFont.subheadline())
+                    .font(HomeFont.regular(14))
                     .foregroundStyle(Color.homeTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -260,46 +287,47 @@ struct HomeHeroV2View: View {
     }
 
     private func heroActions(_ page: HomeHeroPage) -> some View {
-            HStack(alignment: .center, spacing: PPSpace.xs) {
-                Button(action: onPrimaryAction) {
-                    HStack(spacing: PPSpace.sm) {
-                        Text(page.primaryTitle)
-                            .font(HomeFont.medium(15))
-                            .fixedSize(horizontal: false, vertical: true)
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 11, weight: .semibold))
-                            .accessibilityHidden(true)
-                    }
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, PPSpace.base)
-                    .padding(.vertical, PPSpace.sm)
-                    .frame(minHeight: HomeVisualTokens.minimumTouchTarget)
-                    .background(Color.ppPrimary, in: RoundedRectangle(
-                        cornerRadius: HomeVisualTokens.primaryActionCorner,
-                        style: .continuous
-                    ))
-                }
-                .buttonStyle(HomeHeroV2PressStyle(reduceMotion: reduceMotion))
-                .accessibilityHint(HomeModelAdapter.localized(
-                    "home_pulse_opens_destination_a11y",
-                    fallback: "Opens this destination"
-                ))
+        HStack(alignment: .center, spacing: PPSpace.xs) {
+            Button(action: onPrimaryAction) {
+                HStack(spacing: PPSpace.xs) {
+                    Text(page.primaryTitle)
+                        .font(HomeFont.medium(14))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
-                // Preserve every secondary route without a competing CTA.
-                if let secondaryTitle = page.secondaryTitle,
-                   !secondaryTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    Menu {
-                        Button(secondaryTitle, action: onSecondaryAction)
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(Color.homeTextSecondary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel(secondaryTitle)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 11, weight: .semibold))
+                        .accessibilityHidden(true)
                 }
+                .foregroundStyle(Color(uiColor: HomeHeroV2Palette.actionForeground(on: sourceAccent(page))))
+                .padding(.horizontal, PPSpace.md)
+                .frame(minHeight: HomeVisualTokens.minimumTouchTarget)
+                .background(Color(uiColor: sourceAccent(page)), in: RoundedRectangle(
+                    cornerRadius: HomeVisualTokens.primaryActionCorner,
+                    style: .continuous
+                ))
             }
+            .buttonStyle(HomeHeroV2PressStyle(reduceMotion: reduceMotion))
+            .accessibilityHint(HomeModelAdapter.localized(
+                "home_pulse_opens_destination_a11y",
+                fallback: "Opens this destination"
+            ))
+
+            // Preserve every secondary route without a competing CTA.
+            if let secondaryTitle = page.secondaryTitle,
+               !secondaryTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Menu {
+                    Button(secondaryTitle, action: onSecondaryAction)
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(secondaryTitle)
+            }
+        }
     }
 
     // MARK: Artwork resolution (unchanged contract from V1)
@@ -389,6 +417,7 @@ struct HomeHeroV2View: View {
 /// every frame. The same existing membrane geometry supplies the static state.
 @available(iOS 15.0, *)
 private struct HomeHeroV2LivingPlate: View {
+    let accent: UIColor
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
@@ -396,6 +425,7 @@ private struct HomeHeroV2LivingPlate: View {
 
     var body: some View {
         HomeHeroV2PlateRenderer(
+            accent: accent,
             motionEnabled: mounted && !reduceMotion,
             usesStaticShape: reduceMotion,
             isDark: colorScheme == .dark,
@@ -410,6 +440,7 @@ private struct HomeHeroV2LivingPlate: View {
 
 @available(iOS 15.0, *)
 private struct HomeHeroV2PlateRenderer: UIViewRepresentable {
+    let accent: UIColor
     let motionEnabled: Bool
     let usesStaticShape: Bool
     let isDark: Bool
@@ -418,7 +449,7 @@ private struct HomeHeroV2PlateRenderer: UIViewRepresentable {
     func makeUIView(context: Context) -> PlateView { PlateView() }
 
     func updateUIView(_ view: PlateView, context: Context) {
-        view.configure(motionEnabled: motionEnabled, usesStaticShape: usesStaticShape,
+        view.configure(accent: accent, motionEnabled: motionEnabled, usesStaticShape: usesStaticShape,
                        isDark: isDark, isOpaque: isOpaque)
     }
 
@@ -468,20 +499,23 @@ private struct HomeHeroV2PlateRenderer: UIViewRepresentable {
 
         required init?(coder: NSCoder) { nil }
 
-        func configure(motionEnabled: Bool, usesStaticShape: Bool, isDark: Bool, isOpaque: Bool) {
+        func configure(accent: UIColor, motionEnabled: Bool, usesStaticShape: Bool, isDark: Bool, isOpaque: Bool) {
             self.motionEnabled = motionEnabled
             self.usesStaticShape = usesStaticShape
             let traits = UITraitCollection(userInterfaceStyle: isDark ? .dark : .light)
-            let base = UIColor(Color.ppSecondarySurface).resolvedColor(with: traits)
-            let rose = UIColor(Color.ppPrimary).resolvedColor(with: traits)
+            let base = UIColor(Color.homeSurface).resolvedColor(with: traits)
+            let tint = HomeHeroV2Palette.sourceAccent(accent, traits: traits)
+            // Composite opaque colors over the actual surface. Reduce
+            // Transparency keeps the same category identity without a wash.
+            let near = HomeHeroV2Palette.blend(tint, with: base, ratio: isDark ? 0.42 : 0.23)
+            let middle = HomeHeroV2Palette.blend(tint, with: base, ratio: isDark ? 0.28 : 0.14)
+            let far = HomeHeroV2Palette.blend(tint, with: base, ratio: isDark ? 0.18 : 0.08)
             CATransaction.begin()
             CATransaction.setDisableActions(true)
             wash.backgroundColor = base.cgColor
             wash.colors = isOpaque
-                ? [base.cgColor, base.cgColor, base.cgColor]
-                : [rose.withAlphaComponent(isDark ? 0.24 : 0.13).cgColor,
-                   rose.withAlphaComponent(isDark ? 0.10 : 0.035).cgColor,
-                   base.cgColor]
+                ? [middle.cgColor, middle.cgColor, middle.cgColor]
+                : [near.cgColor, middle.cgColor, far.cgColor]
             CATransaction.commit()
             updateMotion()
         }
@@ -961,39 +995,36 @@ private struct HomeHeroV2PagingGestureModifier: ViewModifier {
     let layoutDirection: LayoutDirection
     let onSelect: (Int) -> Void
     let onInteractionChanged: (Bool) -> Void
+    @GestureState private var hasHorizontalIntent = false
 
-    @ViewBuilder
     func body(content: Content) -> some View {
-        if isEnabled && pageCount > 1 {
-            content.simultaneousGesture(
-                DragGesture(minimumDistance: 16)
-                    .onChanged { value in
-                        let dx = abs(value.translation.width)
-                        let dy = abs(value.translation.height)
-                        if dx > 10 && dx > dy * 1.35 {
-                            onInteractionChanged(true)
+        Group {
+            if isEnabled && pageCount > 1 {
+                content.simultaneousGesture(
+                    DragGesture(minimumDistance: 24)
+                        .updating($hasHorizontalIntent) { value, active, _ in
+                            let dx = abs(value.translation.width)
+                            let dy = abs(value.translation.height)
+                            active = dx > 24 && dx > dy * 1.5
                         }
-                    }
-                    .onEnded { value in
-                        defer { onInteractionChanged(false) }
-                        let dx = abs(value.translation.width)
-                        let dy = abs(value.translation.height)
-                        guard dx > 44, dx > dy * 1.35 else { return }
-                        let physicalDirection =
-                            value.translation.width < 0 ? 1 : -1
-                        let logicalDirection =
-                            layoutDirection == .rightToLeft
-                            ? -physicalDirection
-                            : physicalDirection
-                        let next =
-                            (selectedIndex + logicalDirection + pageCount)
-                            % pageCount
-                        onSelect(next)
-                    }
-            )
-        } else {
-            content
+                        .onEnded { value in
+                            let dx = abs(value.translation.width)
+                            let dy = abs(value.translation.height)
+                            guard dx > 44, dx > dy * 1.5 else { return }
+                            let physicalDirection = value.translation.width < 0 ? 1 : -1
+                            let logicalDirection = layoutDirection == .rightToLeft ? -physicalDirection : physicalDirection
+                            onSelect((selectedIndex + logicalDirection + pageCount) % pageCount)
+                        }
+                )
+            } else {
+                content
+            }
         }
+        // GestureState resets on cancellation as well as completion. A vertical
+        // scroll can now cancel paging without leaving hero rotation paused.
+        .onChange(of: hasHorizontalIntent) { onInteractionChanged($0) }
+        .onChange(of: isEnabled) { if !$0 { onInteractionChanged(false) } }
+        .onDisappear { onInteractionChanged(false) }
     }
 }
 
@@ -1045,17 +1076,29 @@ private struct HomeHeroV2PagingAccessibilityModifier: ViewModifier {
 /// color: keep the authored identity color when it is legible, otherwise walk
 /// toward primary text and the brand until it is. Firebase owns the category
 /// palette, so the hero cannot assume a usable value.
-private enum HomeHeroV2Palette {
+enum HomeHeroV2Palette {
+    static func sourceAccent(_ candidate: UIColor, traits: UITraitCollection) -> UIColor {
+        opaque(candidate.resolvedColor(with: traits)) ?? UIColor.ppPrimary.resolvedColor(with: traits)
+    }
+
+    /// Black or white guarantees at least 4.5:1 against any opaque category
+    /// fill, including very light server-authored yellows and dark blues.
+    static func actionForeground(on background: UIColor) -> UIColor {
+        contrastRatio(.white, background) >= contrastRatio(.black, background) ? .white : .black
+    }
+
     static func identityAccent(
         _ candidate: UIColor,
-        traits: UITraitCollection
+        traits: UITraitCollection,
+        on background: UIColor? = nil,
+        increasedContrast: Bool = false
     ) -> UIColor {
-        let surface = UIColor.ppSurfaceRaised.resolvedColor(with: traits)
+        let surface = (background ?? UIColor.ppSurfaceRaised).resolvedColor(with: traits)
         let text = UIColor.ppTextPrimary.resolvedColor(with: traits)
         let brand = UIColor.ppPrimary.resolvedColor(with: traits)
-        // The accent carries body-weight copy and a white CTA label, so the
-        // text threshold applies rather than the graphic-object threshold.
-        let required: CGFloat = 4.5
+        // Use this ladder for colored text on a surface. Filled actions use
+        // their unmodified category color with a separately matched label.
+        let required: CGFloat = increasedContrast ? 7 : 4.5
 
         let base = opaque(candidate.resolvedColor(with: traits)) ?? brand
         let ladder: [UIColor] = [
@@ -1071,7 +1114,7 @@ private enum HomeHeroV2Palette {
         return text
     }
 
-    private static func blend(
+    static func blend(
         _ first: UIColor,
         with second: UIColor,
         ratio: CGFloat

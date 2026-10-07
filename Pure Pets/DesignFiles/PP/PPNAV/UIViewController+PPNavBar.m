@@ -868,6 +868,9 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         }
     }
     lbl.text = titleString ?: (self.title ?: @"");
+    if (titleString.length > 0) {
+        self.navigationItem.title = nil;
+    }
 }
 
 #pragma mark - Your original API (compat)
@@ -2660,6 +2663,9 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 	         }
 	     }
 	     lbl.text = titleString ?: (self.title ?: @"");
+	     if (titleString.length > 0) {
+	         self.navigationItem.title = nil;
+	     }
 	 }
 
  #pragma mark - Your original API (compat)

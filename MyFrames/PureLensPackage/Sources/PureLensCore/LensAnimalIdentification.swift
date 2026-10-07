@@ -294,20 +294,43 @@ public enum LensAnimalIdentificationRouting {
 }
 public enum LensLocalIdentitySpecificity {
     private static let broadLabels: Set<String> = [
-        "", "animal", "animals", "bird", "birds", "mammal", "mammals",
+        "", "animal", "animals", "pet", "pets", "creature", "creatures", "organism",
+        "bird", "birds", "mammal", "mammals",
         "reptile", "reptiles", "fish", "fishes", "small mammal", "small mammals",
         "cats", "dogs", "falcons"
     ]
 
+    private static let purelyGenericLabels: Set<String> = [
+        "", "animal", "animals", "pet", "pets", "mammal", "mammals", "creature", "organism", "living thing"
+    ]
+
     public static func isSufficientForSupport(species: String) -> Bool {
-        let normalized = species
+        let normalized = normalize(species)
+        return !broadLabels.contains(normalized)
+    }
+
+    public static func isSufficientForSupport(species: String, breed: String?) -> Bool {
+        if let breed = breed?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !breed.isEmpty,
+           !broadLabels.contains(normalize(breed)) {
+            return true
+        }
+        return isSufficientForSupport(species: species)
+    }
+
+    public static func isCategoryResolvable(species: String) -> Bool {
+        let normalized = normalize(species)
+        return !purelyGenericLabels.contains(normalized)
+    }
+
+    private static func normalize(_ text: String) -> String {
+        text
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
             .replacingOccurrences(of: "_", with: " ")
             .replacingOccurrences(of: "-", with: " ")
             .split(whereSeparator: { $0.isWhitespace })
             .joined(separator: " ")
-        return !broadLabels.contains(normalized)
     }
 }
 

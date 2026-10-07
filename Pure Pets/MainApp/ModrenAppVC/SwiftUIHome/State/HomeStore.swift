@@ -501,6 +501,11 @@ final class HomeStore: ObservableObject {
     }
 
     func selectPet(_ pet: HomePetModel) {
+        // A new pet intent supersedes a delayed category tap. Do not navigate
+        // to the previous category after the user has already changed context.
+        pendingCategoryNavigationWorkItem?.cancel()
+        pendingCategoryNavigationWorkItem = nil
+        guard state.pets.contains(where: { $0.id == pet.id }) else { return }
         // Reuse the same section set and fingerprint gate as a backend pet
         // change so a user-driven switch animates through one owner instead of
         // a second, competing reload path.
@@ -713,6 +718,16 @@ final class HomeStore: ObservableObject {
     func restorePetContext() {
         guard let pet = selectedPet else { return }
         selectPet(pet)
+    }
+
+    var heroPetContextDetail: String {
+        if personalizedPetName != nil {
+            return HomeModelAdapter.localized("home_context_category_matched", fallback: "Home follows your companion’s category")
+        }
+        if let category = selectedCategory {
+            return String(format: HomeModelAdapter.localized("home_context_browsing_format", fallback: "Browsing %@"), HomeModelAdapter.isolated(category.title))
+        }
+        return HomeModelAdapter.localized("home_context_browsing_all", fallback: "Exploring every companion’s world")
     }
 
     var petContextSubtitle: String {

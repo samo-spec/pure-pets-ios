@@ -240,6 +240,10 @@ enum HomeFont {
         )
     }
 
+    static func semibold(_ size: CGFloat) -> Font {
+        semiBold(size)
+    }
+
     static func medium(_ size: CGFloat) -> Font {
         .custom(
             "Beiruti-Medium",
@@ -519,71 +523,49 @@ struct HomeCommandBar: View {
         }
     }
 
-    /// The one Home search treatment: an accent magnifier seated on its own
-    /// soft key, the live rotating suggestion, and a semantic-trailing chevron
-    /// on the token surface. Search carries the capsule's visual weight, so the
-    /// glyph reads as the capsule's purpose before the first suggestion word.
+    /// Search and category browsing are separate native controls. A normal tap
+    /// always searches; destination access never depends on a long press.
     private var searchField: some View {
-        Menu {
+        HStack(spacing: 0) {
             Button(action: searchAction) {
-                Label(HomeModelAdapter.localized("home_universal_search_placeholder", fallback: "Search Pure Pets"), systemImage: "magnifyingglass")
-            }
-            if let searchDestinationAction {
-                ForEach(state.priorityActions.filter { $0.destination != .petProfile }) { destination in
-                    Button { searchDestinationAction(destination) } label: {
-                        Label(destination.title, systemImage: destination.destination == .food ? "carrot" : destination.systemImage)
-                    }
+                HStack(spacing: PPSpace.sm) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color.homeTextPrimary)
+                        .frame(width: 30, height: 30)
+                        .accessibilityHidden(true)
+                    HomeUniversalSearchPrompt()
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .padding(.horizontal, PPSpace.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: resolvedControlHeight)
+                .contentShape(Rectangle())
             }
-        } label: {
-            HStack(spacing: PPSpace.md) {
-                Image(systemName: "magnifyingglass")
-                    .font(
-                        .system(
-                            size: 15,
-                            weight: HomeVisualTokens.commandIconWeight
-                        )
-                    )
-                    .foregroundStyle(resolvedAccentText)
-                    .frame(width: 30, height: 30)
-                    .background(searchKeyTint, in: Circle())
-                    .accessibilityHidden(true)
+            .buttonStyle(commandButtonStyle)
+            .accessibilityLabel(HomeModelAdapter.localized("home_pulse_search_a11y", fallback: "Search Pure Pets"))
+            .accessibilityHint(HomeModelAdapter.localized("home_search_direct_hint", fallback: "Search products, pets and services"))
+            .accessibilityIdentifier("home.search.open")
 
-                HomeUniversalSearchPrompt()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .layoutPriority(1)
-
-                Image(systemName: "chevron.forward")
-                    .font(
-                        .system(
-                            size: 11,
-                            weight: HomeVisualTokens.commandIconWeight
-                        )
-                    )
-                    .foregroundStyle(Color.homeTextSecondary)
-                    .flipsForRightToLeftLayoutDirection(true)
-                    .accessibilityHidden(true)
+            if let searchDestinationAction {
+                Menu {
+                    ForEach(state.priorityActions.filter { $0.destination != .petProfile }) { destination in
+                        Button { searchDestinationAction(destination) } label: {
+                            Label(destination.title, systemImage: destination.destination == .food ? "carrot" : destination.systemImage)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(Color.homeTextSecondary)
+                        .frame(width: 44, height: max(44, resolvedControlHeight))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(commandButtonStyle)
+                .accessibilityLabel(HomeModelAdapter.localized("home_search_destinations", fallback: "Browse Pure Pets destinations"))
+                .accessibilityIdentifier("home.search.destinations")
             }
-            .padding(.horizontal, PPSpace.md + PPSpace.xxs)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: resolvedControlHeight)
-            .contentShape(HomeCommandBar.controlShape)
-        } primaryAction: {
-            searchAction()
         }
-        .buttonStyle(commandButtonStyle)
-        .accessibilityLabel(
-            HomeModelAdapter.localized(
-                "home_pulse_search_a11y",
-                fallback: "Search Pure Pets"
-            )
-        )
-        .accessibilityHint(
-            HomeModelAdapter.localized(
-                "home_universal_search_hint",
-                fallback: "Search products, pets and services. Touch and hold for care and category destinations."
-            )
-        )
     }
 
     /// Legacy default used only by the optional Nova glyph owner. The visible
@@ -928,6 +910,171 @@ struct HomeLocationContextButton: View {
 }
 
 @available(iOS 15.0, *)
+/// Profile and context switching are distinct native controls. The real pet
+/// portrait anchors the shared hero surface; category art remains discovery art.
+struct HomeHeroPetContext: View {
+    let pets: [HomePetModel]
+    let selectedPet: HomePetModel?
+    let detail: String
+    var accent: UIColor = .ppPrimary
+    let onSelect: (HomePetModel) -> Void
+    let onEdit: () -> Void
+    let onOpenProfiles: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    private var categoryColor: UIColor {
+        HomeHeroV2Palette.sourceAccent(accent, traits: UITraitCollection(
+            userInterfaceStyle: colorScheme == .dark ? .dark : .light
+        ))
+    }
+
+    private var accentText: Color {
+        Color(uiColor: HomeHeroV2Palette.identityAccent(categoryColor, traits: UITraitCollection(
+            userInterfaceStyle: colorScheme == .dark ? .dark : .light
+        ), on: switchSurfaceColor, increasedContrast: contrast == .increased))
+    }
+
+    private var switchSurfaceColor: UIColor {
+        let traits = UITraitCollection(userInterfaceStyle: colorScheme == .dark ? .dark : .light)
+        return HomeHeroV2Palette.blend(
+            categoryColor,
+            with: UIColor(Color.homeSurface).resolvedColor(with: traits),
+            ratio: colorScheme == .dark ? 0.16 : 0.07
+        )
+    }
+
+    private var switchSurface: Color {
+        Color(uiColor: switchSurfaceColor)
+    }
+
+    var body: some View {
+        Group {
+            if let pet = selectedPet {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: PPSpace.sm) {
+                        profileButton(pet)
+                        switchMenu(pet)
+                    }
+                } else {
+                    HStack(spacing: PPSpace.sm) {
+                        profileButton(pet)
+                        switchMenu(pet)
+                    }
+                }
+            } else {
+                Button(action: onOpenProfiles) {
+                    identityLabel(pet: nil)
+                }
+                .buttonStyle(HomeCardPressStyle())
+                .accessibilityLabel(HomeModelAdapter.localized("home_context_add_pet", fallback: "Add your companion"))
+                .accessibilityHint(HomeModelAdapter.localized("home_pet_context_browse", fallback: "Select a pet to browse its category"))
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home.hero.petContext")
+    }
+
+    private func profileButton(_ pet: HomePetModel) -> some View {
+        Button(action: onEdit) {
+            identityLabel(pet: pet)
+        }
+        .buttonStyle(HomeCardPressStyle())
+        .accessibilityLabel(String(format: HomeModelAdapter.localized("home_companion_open_profile_format", fallback: "Open %@’s profile"), displayName(pet)))
+        .accessibilityValue(detail)
+        .accessibilityIdentifier("home.hero.openPetProfile")
+    }
+
+    private func switchMenu(_ pet: HomePetModel) -> some View {
+        Menu {
+            ForEach(pets) { candidate in
+                Button { onSelect(candidate) } label: {
+                    Label(displayName(candidate), systemImage: candidate.id == pet.id ? "checkmark" : "pawprint")
+                }
+            }
+            Divider()
+            Button(action: onOpenProfiles) {
+                Label(HomeModelAdapter.localized("home_context_manage_pets", fallback: "Manage companions"), systemImage: "pawprint")
+            }
+        } label: {
+            HStack(spacing: PPSpace.xs) {
+                Text(HomeModelAdapter.localized("home_companion_switch", fallback: "Switch"))
+                    .font(HomeFont.medium(13))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .medium))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(accentText)
+            .padding(.horizontal, PPSpace.sm)
+            .frame(minWidth: 44, minHeight: 44)
+            .background(switchSurface, in: RoundedRectangle(cornerRadius: HomeVisualTokens.primaryActionCorner, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel(HomeModelAdapter.localized("home_companion_switch_a11y", fallback: "Change Home’s companion"))
+        .accessibilityValue(displayName(pet))
+        .accessibilityHint(detail)
+        .accessibilityIdentifier("home.hero.switchPet")
+    }
+
+    private func identityLabel(pet: HomePetModel?) -> some View {
+        HStack(spacing: PPSpace.sm) {
+            HomeRemoteImage(urlString: pet?.imageURL,
+                            placeholder: UIImage(named: "petpaw") ?? UIImage(systemName: "pawprint.fill"),
+                            contentMode: .scaleAspectFill,
+                            cacheKey: pet?.id,
+                            displaySize: CGSize(width: 44, height: 44))
+                .foregroundStyle(accentText)
+                .frame(width: 44, height: 44)
+                .background(switchSurface, in: RoundedRectangle(cornerRadius: HomeVisualTokens.primaryActionCorner, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: HomeVisualTokens.primaryActionCorner, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: HomeVisualTokens.primaryActionCorner, style: .continuous)
+                        .strokeBorder(Color(uiColor: categoryColor).opacity(0.35), lineWidth: 1)
+                        .allowsHitTesting(false)
+                }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
+                    Text(pet.map(displayName) ?? HomeModelAdapter.localized("home_context_add_pet", fallback: "Add your companion"))
+                        .font(HomeFont.bold(16))
+                    Image(systemName: pet == nil ? "plus" : "chevron.forward")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(accentText)
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(Color.homeTextPrimary)
+                Text(profileDetail(pet))
+                    .font(HomeFont.regular(12))
+                    .foregroundStyle(Color.homeTextSecondary)
+            }
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, minHeight: HomeVisualTokens.minimumTouchTarget, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+    }
+
+    private func profileDetail(_ pet: HomePetModel?) -> String {
+        guard let pet else {
+            return HomeModelAdapter.localized("home_companion_add_detail", fallback: "A place for their profile and everyday care")
+        }
+        let category = pet.breedOrCategory.trimmingCharacters(in: .whitespacesAndNewlines)
+        let action = HomeModelAdapter.localized("home_pet_profile_open_cta", fallback: "Open pet profile")
+        return category.isEmpty ? action : HomeModelAdapter.isolated(category)
+    }
+
+    private func displayName(_ pet: HomePetModel) -> String {
+        let name = pet.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return HomeModelAdapter.isolated(name.isEmpty ? HomeModelAdapter.localized("pet_name_placeholder", fallback: "Pet name") : name)
+    }
+}
+
 struct HomePetSwitcher: View {
     let pets: [HomePetModel]
     let selectedID: String?
@@ -6203,20 +6350,325 @@ struct HomePureLensSection: View {
     }
 }
 
-/// A quiet pearl-gray Home tool surface, with neutral ink and a raised camera
-/// seat. Follow Home's appearance rather than forcing a separate dark theme.
-/// Neither the card nor its pressed state inherits the brand accent.
+// MARK: - Home Pure Lens Environment Keys
+
+private struct HomePureLensPressedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+private extension EnvironmentValues {
+    var homePureLensIsPressed: Bool {
+        get { self[HomePureLensPressedKey.self] }
+        set { self[HomePureLensPressedKey.self] = newValue }
+    }
+}
+
+/// Pure Lens optical design palette — combining high-index glass tones,
+/// living sensor illumination, and high-contrast accessibility compliance.
 private enum HomePureLensColors {
     static let surface = Color(uiColor: .systemGray6)
     static let canvas = Color(uiColor: .secondarySystemGroupedBackground)
     static let primaryText = Color(uiColor: .label)
     static let secondaryText = Color(uiColor: .secondaryLabel)
-    static let signal = Color(uiColor: .label)
-    static let signalPressed = Color(uiColor: .secondaryLabel)
+
+    /// Dynamic living signal tone: radiant optical cyan in dark mode, crisp emerald teal in light mode.
+    static let signal = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 0.18, green: 0.82, blue: 0.76, alpha: 1.0)
+                : UIColor(red: 0.08, green: 0.60, blue: 0.56, alpha: 1.0)
+        }
+    )
+
+    /// Active pressed state for signal elements.
+    static let signalPressed = Color(
+        UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 0.12, green: 0.70, blue: 0.64, alpha: 1.0)
+                : UIColor(red: 0.05, green: 0.50, blue: 0.46, alpha: 1.0)
+        }
+    )
+
     static let onSignal = Color(uiColor: .systemBackground)
     static let divider = Color(uiColor: .separator)
     static let recognition = Color(uiColor: .systemGreen)
     static let discovery = Color(uiColor: .systemIndigo)
+}
+
+// MARK: - Living Optical Glass Surface
+
+/// A studio-crafted, category-defining living optical glass surface for Pure Lens.
+///
+/// Elevates the Pure Lens section from a flat static card into a breathing,
+/// tactile, luminous optical instrument:
+/// - Living Chromatic Aurora: Organic dual-pool light field (optical cyan sensor aura + deep sapphire neural horizon)
+///   that gently breathes in the background.
+/// - Optical Caustics: Diagonal specular gradient simulating ambient light grazing high-index camera glass.
+/// - Precision Watermark: Micro-etched concentric optical rings evoking lens calibration.
+/// - Living Bevel & Top Specular Hairline: 1pt light catch along the upper rim.
+/// - Interactive Focus: Tightens optical dispersion with tactile responsiveness when pressed.
+/// - Full Accessibility: Respects `accessibilityReduceMotion` (freezes to static golden-ratio aperture),
+///   `accessibilityReduceTransparency` (solid opaque gradient with WCAG AAA contrast),
+///   and `colorSchemeContrast` (high-contrast crisp border).
+struct HomePureLensLivingSurface: View {
+    var cornerRadius: CGFloat = HomeVisualTokens.cardCorner
+    var isPressed: Bool = false
+    var showsBorder: Bool = true
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    @State private var ambientBreathing = false
+
+    private var isDark: Bool {
+        colorScheme == .dark
+    }
+
+    private var isRTL: Bool {
+        layoutDirection == .rightToLeft
+    }
+
+    var body: some View {
+        ZStack {
+            // Layer 1: Solid tactile foundation
+            cardShape
+                .fill(foundationColor)
+
+            if !reduceTransparency {
+                // Layer 2: Living Chromatic Aurora (Breathing Optical Atmosphere)
+                auroraLayer
+
+                // Layer 3: Optical Specular Grazing Beam (Glass Sheen)
+                specularSheenLayer
+
+                // Layer 4: Micro Optical Reticle Watermark
+                watermarkLayer
+
+                // Layer 5: Inner Rim Light & Vignette
+                innerVignetteLayer
+            }
+
+            // Layer 6: Sculpted Living Border & Top Specular Hairline
+            if showsBorder {
+                borderLayer
+            }
+        }
+        .clipShape(cardShape)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(
+                .easeInOut(duration: 4.4)
+                    .repeatForever(autoreverses: true)
+            ) {
+                ambientBreathing = true
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+    }
+
+    // Foundation color
+    private var foundationColor: Color {
+        if isDark {
+            return Color(
+                UIColor { traits in
+                    traits.userInterfaceStyle == .dark
+                        ? UIColor(red: 0.08, green: 0.09, blue: 0.12, alpha: 1.0)
+                        : UIColor(red: 0.965, green: 0.975, blue: 0.985, alpha: 1.0)
+                }
+            )
+        } else {
+            return Color(
+                UIColor { traits in
+                    traits.userInterfaceStyle == .dark
+                        ? UIColor(red: 0.08, green: 0.09, blue: 0.12, alpha: 1.0)
+                        : UIColor(red: 0.975, green: 0.985, blue: 0.995, alpha: 1.0)
+                }
+            )
+        }
+    }
+
+    // MARK: - Living Aurora Layer
+    private var auroraLayer: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+
+            let breathScale: CGFloat = reduceMotion ? 1.0 : (ambientBreathing ? 1.15 : 0.92)
+            let pressScale: CGFloat = isPressed ? 0.90 : 1.0
+            let effectiveScale = breathScale * pressScale
+
+            let baseOpacity: Double = isDark ? 0.32 : 0.18
+            let breathingOpacity: Double = reduceMotion ? baseOpacity : (ambientBreathing ? (isDark ? 0.40 : 0.24) : (isDark ? 0.26 : 0.14))
+            let effectiveOpacity = isPressed ? breathingOpacity * 1.35 : breathingOpacity
+
+            // Primary sensor pool (leading side in LTR, trailing side in RTL)
+            let sensorX = isRTL ? width * 0.82 : width * 0.18
+            let sensorY = height * 0.48
+
+            // Secondary neural pool (opposite side)
+            let neuralX = isRTL ? width * 0.22 : width * 0.78
+            let neuralY = height * 0.52
+
+            ZStack {
+                // Secondary Neural Sapphire Horizon
+                RadialGradient(
+                    colors: [
+                        Color(red: 0.35, green: 0.45, blue: 0.95).opacity(effectiveOpacity * 0.75),
+                        Color(red: 0.20, green: 0.30, blue: 0.80).opacity(effectiveOpacity * 0.30),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: neuralX / width, y: neuralY / height),
+                    startRadius: 10,
+                    endRadius: max(width, height) * 0.65
+                )
+                .scaleEffect(effectiveScale, anchor: UnitPoint(x: neuralX / width, y: neuralY / height))
+
+                // Primary Optical Sensor Cyan Aura
+                RadialGradient(
+                    colors: [
+                        HomePureLensColors.signal.opacity(effectiveOpacity),
+                        Color(red: 0.16, green: 0.82, blue: 0.72).opacity(effectiveOpacity * 0.60),
+                        Color(red: 0.10, green: 0.65, blue: 0.85).opacity(effectiveOpacity * 0.25),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: sensorX / width, y: sensorY / height),
+                    startRadius: 8,
+                    endRadius: max(width, height) * 0.55
+                )
+                .scaleEffect(effectiveScale, anchor: UnitPoint(x: sensorX / width, y: sensorY / height))
+
+                // Delicate Warm Lens Tint (amber/champagne flare, coated optical glass)
+                RadialGradient(
+                    colors: [
+                        Color(red: 1.0, green: 0.70, blue: 0.30).opacity(isDark ? 0.07 : 0.05),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: isRTL ? 0.15 : 0.85, y: 0.82),
+                    startRadius: 5,
+                    endRadius: width * 0.40
+                )
+            }
+        }
+    }
+
+    // MARK: - Specular Sheen Layer
+    private var specularSheenLayer: some View {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(isDark ? 0.08 : 0.50),
+                Color.white.opacity(isDark ? 0.02 : 0.18),
+                Color.clear,
+                Color.white.opacity(isDark ? 0.04 : 0.28)
+            ],
+            startPoint: isRTL ? .topTrailing : .topLeading,
+            endPoint: isRTL ? .bottomLeading : .bottomTrailing
+        )
+    }
+
+    // MARK: - Micro Watermark Layer
+    private var watermarkLayer: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+            let anchorX = isRTL ? width * 0.85 : width * 0.15
+            let anchorY = height * 0.50
+
+            ZStack {
+                Circle()
+                    .stroke(
+                        HomePureLensColors.signal.opacity(isDark ? 0.09 : 0.06),
+                        style: StrokeStyle(lineWidth: 1, dash: [4, 6])
+                    )
+                    .frame(width: 130, height: 130)
+
+                Circle()
+                    .stroke(
+                        (isDark ? Color.white : Color.black).opacity(isDark ? 0.04 : 0.03),
+                        lineWidth: 0.75
+                    )
+                    .frame(width: 80, height: 80)
+
+                Circle()
+                    .stroke(
+                        HomePureLensColors.signal.opacity(isDark ? 0.12 : 0.08),
+                        lineWidth: 0.5
+                    )
+                    .frame(width: 44, height: 44)
+            }
+            .position(x: anchorX, y: anchorY)
+            .rotationEffect(.degrees(reduceMotion ? 0 : (ambientBreathing ? 16 : -16)))
+        }
+    }
+
+    // MARK: - Inner Vignette
+    private var innerVignetteLayer: some View {
+        cardShape
+            .stroke(
+                LinearGradient(
+                    colors: [
+                        (isDark ? Color.white : Color.black).opacity(isDark ? 0.09 : 0.03),
+                        Color.clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ),
+                lineWidth: 1
+            )
+    }
+
+    // MARK: - Border Layer
+    @ViewBuilder
+    private var borderLayer: some View {
+        ZStack {
+            if contrast == .increased {
+                cardShape
+                    .strokeBorder(HomePureLensColors.primaryText, lineWidth: 1.5)
+            } else {
+                cardShape
+                    .strokeBorder(borderGradient, lineWidth: isDark ? 0.85 : 0.75)
+
+                cardShape
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isDark ? 0.40 : 0.80),
+                                HomePureLensColors.signal.opacity(isDark ? 0.35 : 0.50),
+                                Color.white.opacity(isDark ? 0.10 : 0.35)
+                            ],
+                            startPoint: isRTL ? .trailing : .leading,
+                            endPoint: isRTL ? .leading : .trailing
+                        ),
+                        lineWidth: 0.85
+                    )
+                    .mask(
+                        VStack {
+                            Rectangle()
+                                .frame(height: 2)
+                            Spacer()
+                        }
+                    )
+            }
+        }
+    }
+
+    private var borderGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.white.opacity(isDark ? 0.24 : 0.60),
+                HomePureLensColors.signal.opacity(isDark ? 0.28 : 0.35),
+                (isDark ? Color.white : Color.black).opacity(isDark ? 0.06 : 0.09)
+            ],
+            startPoint: isRTL ? .topTrailing : .topLeading,
+            endPoint: isRTL ? .bottomLeading : .bottomTrailing
+        )
+    }
 }
 
 // MARK: - Preserved Pure Lens Card V1 (Neural Optical Chamber)
@@ -6249,6 +6701,8 @@ struct PureLensCardV2: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.homePureLensIsPressed) private var isPressed
 
     var body: some View {
         Button {
@@ -6270,12 +6724,22 @@ struct PureLensCardV2: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(PPSpace.lg)
-            .background(HomePureLensColors.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(HomePureLensColors.divider, lineWidth: contrast == .increased ? 1.5 : 0.75)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(
+                HomePureLensLivingSurface(
+                    cornerRadius: HomeVisualTokens.cardCorner,
+                    isPressed: isPressed,
+                    showsBorder: true
+                )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: HomeVisualTokens.cardCorner, style: .continuous))
+            .shadow(
+                color: contrast == .increased || colorScheme == .dark
+                    ? .clear
+                    : HomePureLensColors.signal.opacity(0.10),
+                radius: 14,
+                x: 0,
+                y: 6
+            )
         }
         .buttonStyle(HomeLensPressStyle())
         .task(id: motionReady) {
@@ -6284,35 +6748,98 @@ struct PureLensCardV2: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(HomeModelAdapter.localized("home_pure_lens_a11y", fallback: "Open Pure Lens camera"))
-        .accessibilityHint(HomeModelAdapter.localized("home_lens_purpose", fallback: "Point at an animal to explore its category and related discoveries."))
+        .accessibilityHint(HomeModelAdapter.localized("home_lens_camera_purpose", fallback: "Identify an animal, then explore its world."))
         .accessibilityIdentifier("home.pureLens.open")
     }
 
     private var cameraMark: some View {
-        Image(systemName: "camera.viewfinder")
-            .font(.system(size: 23, weight: .medium))
-            .foregroundStyle(HomePureLensColors.primaryText)
-            .frame(width: 52, height: 52)
-            .background(HomePureLensColors.canvas, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .accessibilityHidden(true)
+        ZStack {
+            // Optical Iris Chamber Pod
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    colorScheme == .dark
+                        ? Color.white.opacity(0.08)
+                        : Color.white.opacity(0.85)
+                )
+
+            // Dynamic Sensor Glow in center of lens
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            HomePureLensColors.signal.opacity(colorScheme == .dark ? 0.35 : 0.22),
+                            Color.clear
+                        ],
+                        center: .center,
+                        startRadius: 2,
+                        endRadius: 24
+                    )
+                )
+                .frame(width: 44, height: 44)
+
+            // Precision Iris Ring
+            Circle()
+                .stroke(
+                    HomePureLensColors.signal.opacity(colorScheme == .dark ? 0.28 : 0.18),
+                    lineWidth: 1
+                )
+                .frame(width: 36, height: 36)
+
+            // Viewfinder Icon
+            Image(systemName: "camera.viewfinder")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(HomePureLensColors.signal)
+                .shadow(
+                    color: HomePureLensColors.signal.opacity(colorScheme == .dark ? 0.45 : 0.25),
+                    radius: 4,
+                    x: 0,
+                    y: 1
+                )
+        }
+        .frame(width: 52, height: 52)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(colorScheme == .dark ? 0.25 : 0.65),
+                            HomePureLensColors.signal.opacity(0.30),
+                            Color.white.opacity(colorScheme == .dark ? 0.05 : 0.20)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.85
+                )
+        )
+        .accessibilityHidden(true)
     }
 
     private var copy: some View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(HomePureLensColors.signal)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: HomePureLensColors.signal.opacity(0.8), radius: 2)
+                Text(HomeModelAdapter.localized("home_lens_signature", fallback: "Discover through your camera"))
+                    .font(HomeFont.bold(11))
+                    .foregroundStyle(HomePureLensColors.signal)
+            }
             Text(HomeModelAdapter.localized("home_pure_lens_title", fallback: "Pure Lens"))
-                .font(HomeFont.bold(19))
+                .font(HomeFont.bold(20))
                 .foregroundStyle(HomePureLensColors.primaryText)
-            Text(HomeModelAdapter.localized("home_lens_purpose", fallback: "Point at an animal to explore its category and related discoveries."))
+            Text(HomeModelAdapter.localized("home_lens_camera_purpose", fallback: "Identify an animal, then explore its world."))
                 .font(HomeFont.regular(13))
                 .foregroundStyle(HomePureLensColors.secondaryText)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: PPSpace.xs) {
                 Text(HomeModelAdapter.localized("home_pure_lens_action", fallback: "Open camera"))
-                    .font(HomeFont.bold(13))
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(HomeFont.semiBold(13))
+                Image(systemName: Language.isRTL() ? "chevron.backward" : "chevron.forward")
+                    .font(.system(size: 10, weight: .bold))
             }
-            .foregroundStyle(HomePureLensColors.primaryText)
+            .foregroundStyle(HomePureLensColors.signal)
             .padding(.top, PPSpace.xs)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -6325,8 +6852,9 @@ private struct HomeLensPressStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .environment(\.homePureLensIsPressed, configuration.isPressed)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
-            .opacity(configuration.isPressed ? 0.86 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
             .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.9), value: configuration.isPressed)
     }
 }
@@ -6651,31 +7179,11 @@ struct HomePureLensSectionV2: View {
     }
 
     private var cardSurface: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: HomePureLensV2Metrics.cornerRadius, style: .continuous)
-                .fill(palette.surfaceBase)
-
-            if !reduceTransparency {
-                let isRTL = layoutDirection == .rightToLeft
-                // Chamber is on physical left in RTL, right in LTR
-                let chamberSide = isRTL ? UnitPoint.topLeading : UnitPoint.topTrailing
-                // Strings are on physical right in RTL, left in LTR
-                let stringsSide = isRTL ? UnitPoint.bottomTrailing : UnitPoint.bottomLeading
-
-                RoundedRectangle(cornerRadius: HomePureLensV2Metrics.cornerRadius, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                palette.signal.opacity(colorScheme == .dark ? 0.20 : 0.09),
-                                colorScheme == .dark ? Color.clear : Color.white.opacity(0.80),
-                                colorScheme == .dark ? Color.clear : Color.white
-                            ],
-                            startPoint: chamberSide,
-                            endPoint: stringsSide
-                        )
-                    )
-            }
-        }
+        HomePureLensLivingSurface(
+            cornerRadius: HomePureLensV2Metrics.cornerRadius,
+            isPressed: isPressed,
+            showsBorder: false
+        )
     }
 
     private var cardBorder: some View {
@@ -7657,53 +8165,16 @@ private struct HomePureLensButtonStyle: ButtonStyle {
     }
 }
 
-private struct HomePureLensPressedKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-private extension EnvironmentValues {
-    var homePureLensIsPressed: Bool {
-        get { self[HomePureLensPressedKey.self] }
-        set { self[HomePureLensPressedKey.self] = newValue }
-    }
-}
-
 private struct HomePureLensCardSurface: View {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.homePureLensIsPressed) private var isPressed
 
     var body: some View {
-        ZStack {
-            cardShape
-                .fill(palette.surfaceBase)
-
-            if !reduceTransparency {
-                cardShape
-                    .fill(
-                        LinearGradient(
-                            colors: [HomePureLensColors.surface, HomePureLensColors.canvas],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .opacity(palette.surfaceWashOpacity)
-            }
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var cardShape: RoundedRectangle {
-        RoundedRectangle(
+        HomePureLensLivingSurface(
             cornerRadius: HomeVisualTokens.cardCorner,
-            style: .continuous
+            isPressed: isPressed,
+            showsBorder: false
         )
-    }
-
-    private var palette: HomePureLensPalette {
-        HomePureLensPalette(
-            colorScheme: colorScheme,
-            reduceTransparency: reduceTransparency
-        )
+        .accessibilityHidden(true)
     }
 }
 

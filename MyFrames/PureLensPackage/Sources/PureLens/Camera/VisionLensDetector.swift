@@ -146,7 +146,7 @@ final class VisionLensDetector {
         }
 
         let detections = (animals + [classifiedAnimal].compactMap { $0 } + barcodes + customObjects)
-            .filter { $0.confidence >= 0.35 }
+            .filter { $0.confidence >= 0.28 }
             .sorted { $0.confidence > $1.confidence }
         return VisionLensAnalysis(detections: detections, health: health)
     }
@@ -174,9 +174,10 @@ final class VisionLensDetector {
             $0.identifier.lowercased() == "animal"
         })
 
+        let classifierThreshold = min(minimumAnimalConfidence, 0.20)
         var strongestBySpecies: [String: VNClassificationObservation] = [:]
         for observation in animalClassifications {
-            guard Double(observation.confidence) >= minimumAnimalConfidence,
+            guard Double(observation.confidence) >= classifierThreshold,
                   let species = LensAnimalClassificationTaxonomy.species(for: observation.identifier)
             else { continue }
             if let existing = strongestBySpecies[species],
@@ -194,19 +195,19 @@ final class VisionLensDetector {
         let candidateConfidence: Double
 
         if let strongest = ranked.first,
-           ranked.count == 1 || strongest.observation.confidence - ranked[1].observation.confidence >= 0.10 {
+           ranked.count == 1 || strongest.observation.confidence - ranked[1].observation.confidence >= 0.08 {
             candidateSpecies = strongest.species
-            candidateConfidence = Double(strongest.observation.confidence)
-        } else if let topAnimal = animalClassifications.first(where: { Double($0.confidence) >= minimumAnimalConfidence }) {
+            candidateConfidence = min(1.0, max(Double(strongest.observation.confidence) * 2.2, 0.45))
+        } else if let topAnimal = animalClassifications.first(where: { Double($0.confidence) >= classifierThreshold }) {
             if let specific = LensAnimalClassificationTaxonomy.species(for: topAnimal.identifier) {
                 candidateSpecies = specific
             } else {
                 candidateSpecies = "Animal"
             }
-            candidateConfidence = Double(topAnimal.confidence)
-        } else if let genericAnimal, Double(genericAnimal.confidence) >= minimumAnimalConfidence {
+            candidateConfidence = min(1.0, max(Double(topAnimal.confidence) * 2.0, 0.42))
+        } else if let genericAnimal, Double(genericAnimal.confidence) >= classifierThreshold {
             candidateSpecies = "Animal"
-            candidateConfidence = Double(genericAnimal.confidence)
+            candidateConfidence = min(1.0, max(Double(genericAnimal.confidence) * 2.0, 0.40))
         } else {
             return nil
         }

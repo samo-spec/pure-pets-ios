@@ -764,7 +764,16 @@ final class PureLensStore: ObservableObject {
         _ animal: DetectedAnimalContext,
         recognition: LensPetRecognition
     ) {
-        guard LensLocalIdentitySpecificity.isSufficientForSupport(species: animal.species) else {
+        let isLocalCandidate = LensLocalIdentitySpecificity.isSufficientForSupport(
+            species: animal.species,
+            breed: animal.breed
+        ) || LensLocalIdentitySpecificity.isSufficientForSupport(
+            species: recognition.species,
+            breed: recognition.breed
+        ) || (discoveryClient.resolveAnimalSupport != nil &&
+              LensLocalIdentitySpecificity.isCategoryResolvable(species: animal.species))
+
+        guard isLocalCandidate else {
             markUncertain(animal)
             return
         }
@@ -879,7 +888,17 @@ final class PureLensStore: ObservableObject {
                 guard let self, self.sessionGeneration == generation else { return }
                 self.supportValidationTask = nil
                 self.pendingLocalAnimal = nil
-                self.markAnimalIdentificationFailure(error, animal: animal)
+                self.analytics.track(
+                    "pure_lens_animal_identity_failed",
+                    ["errorType": String(reflecting: type(of: error))]
+                )
+                let canResolveLocally = self.discoveryClient.resolveAnimalSupport != nil
+                    || LensLocalIdentitySpecificity.isSufficientForSupport(species: animal.species, breed: animal.breed)
+                if canResolveLocally {
+                    self.validateLocalSupport(animal, recognition: recognition)
+                } else {
+                    self.markAnimalIdentificationFailure(error, animal: animal)
+                }
             }
         }
     }
@@ -1167,12 +1186,12 @@ final class PureLensStore: ObservableObject {
                let recognition = self.currentRecognition,
                self.animalContext == nil {
                 self.pendingLocalAnimal = nil
-                if self.discoveryClient.identifyAnimal != nil,
-                   self.configuration.frameUploadPolicy == .selectedFrame {
-                    self.markValidationFailed(
-                        LensFailure(kind: .noResult, message: "No representative frame was captured.")
+                let canResolveLocally = self.discoveryClient.resolveAnimalSupport != nil
+                    || LensLocalIdentitySpecificity.isSufficientForSupport(
+                        species: pendingLocalAnimal.species,
+                        breed: pendingLocalAnimal.breed
                     )
-                } else if LensLocalIdentitySpecificity.isSufficientForSupport(species: pendingLocalAnimal.species) {
+                if canResolveLocally {
                     self.validateLocalSupport(pendingLocalAnimal, recognition: recognition)
                 } else {
                     self.markUncertain(pendingLocalAnimal)

@@ -937,9 +937,11 @@ final class AddAdoptPetStore: ObservableObject {
             persistDraft(showSuccessFeedback: false)
         }
 
-        isSubmitting = true
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isSubmitting = true
+        }
         errorMessage = nil
-        submissionStepText = isEditing ? PPAdoptLang("adopt_form_save_changes") : PPAdoptLang("adopt_form_publish_action")
+        submissionStepText = isEditing ? PPAdoptLang("adopt_form_saving_changes") : PPAdoptLang("adopt_form_publishing_listing")
 
         let listingID = editingPet?.documentID.isEmpty == false ? editingPet!.documentID : creationListingID
         let petID = editingPet?.petID.isEmpty == false ? editingPet!.petID : listingID
@@ -951,7 +953,7 @@ final class AddAdoptPetStore: ObservableObject {
                 if let lockedSubmissionPayload = self.lockedSubmissionPayload {
                     payload = lockedSubmissionPayload
                 } else {
-                    self.submissionStepText = PPAdoptLang("adopt_form_media_studio_title")
+                    self.submissionStepText = PPAdoptLang("adopt_form_uploading_media")
                     var pendingMedia: [(index: Int, source: PPCommunityMediaSource)] = []
                     for index in self.mediaItems.indices {
                         let item = self.mediaItems[index]
@@ -1030,7 +1032,7 @@ final class AddAdoptPetStore: ObservableObject {
                     )
                 }
 
-                self.submissionStepText = self.isEditing ? PPAdoptLang("adopt_form_save_changes") : PPAdoptLang("adopt_form_publish_action")
+                self.submissionStepText = self.isEditing ? PPAdoptLang("adopt_form_saving_changes") : PPAdoptLang("adopt_form_publishing_listing")
                 if self.isEditing {
                     _ = try await PPCommunityService.shared.updateAdoptionListing(payload: payload)
                 } else {
@@ -1044,7 +1046,9 @@ final class AddAdoptPetStore: ObservableObject {
     }
 
     private func handlePersistenceResult(success: Bool, error: Error?, completion: @escaping (Bool) -> Void) {
-        self.isSubmitting = false
+        withAnimation(.easeInOut(duration: 0.25)) {
+            self.isSubmitting = false
+        }
         if success {
             self.clearDraft()
             AdoptHaptics.success()
@@ -1062,6 +1066,7 @@ final class AddAdoptPetStore: ObservableObject {
 
 struct AddAdoptPetScreen: View {
     @StateObject private var store: AddAdoptPetStore
+    @State private var isRTL: Bool = Language.isRTL()
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.layoutDirection) private var layoutDirection
@@ -1073,6 +1078,7 @@ struct AddAdoptPetScreen: View {
 
     init(pet: AdoptPetModel? = nil, onDismiss: @escaping () -> Void, onSuccess: @escaping () -> Void) {
         _store = StateObject(wrappedValue: AddAdoptPetStore(pet: pet))
+        _isRTL = State(initialValue: Language.isRTL())
         self.onDismiss = onDismiss
         self.onSuccess = onSuccess
     }
@@ -1096,6 +1102,8 @@ struct AddAdoptPetScreen: View {
             // Submitting State Veil
             if store.isSubmitting {
                 submittingVeil
+                    .transition(.opacity)
+                    .zIndex(200)
             }
 
             // Draft Restored Banner
@@ -1105,7 +1113,16 @@ struct AddAdoptPetScreen: View {
                     .zIndex(100)
             }
         }
+        .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+        .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("LanguageDidChangeNotification"))) { _ in
+            isRTL = Language.isRTL()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PPLanguageDidChangeNotification"))) { _ in
+            isRTL = Language.isRTL()
+        }
         .onAppear {
+            isRTL = Language.isRTL()
             store.checkCommunityConfiguration()
             store.handleAuthStateRefresh()
         }
@@ -1175,28 +1192,7 @@ struct AddAdoptPetScreen: View {
     // MARK: - Submitting State Veil
 
     private var submittingVeil: some View {
-        ZStack {
-            Color.black.opacity(0.45)
-                .ignoresSafeArea()
-
-            VStack(spacing: 20) {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.3)
-
-                Text(store.submissionStepText)
-                    .font(AdoptFont.bold(17))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(32)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(UIColor.secondarySystemGroupedBackground).opacity(0.92))
-                    .shadow(color: .black.opacity(0.2), radius: 25, y: 10)
-            )
-            .padding(40)
-        }
+        AdoptSubmittingHUD(title: store.submissionStepText)
     }
 
     // MARK: - Draft Restored Toast
@@ -1225,6 +1221,131 @@ struct AddAdoptPetScreen: View {
             .padding(.top, 56)
 
             Spacer()
+        }
+    }
+}
+
+// MARK: - Studio Submitting HUD
+
+private struct AdoptSubmittingHUD: View {
+    let title: String
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isSpinning: Bool = false
+    @State private var isPulsing: Bool = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.42)
+                .ignoresSafeArea()
+
+            VStack(spacing: 18) {
+                // Kinetic Brand Indicator
+                ZStack {
+                    // Soft ambient backdrop circle
+                    Circle()
+                        .fill(Color(hex: 0xC41E3A).opacity(0.08))
+                        .frame(width: 68, height: 68)
+
+                    // Ambient outer track
+                    Circle()
+                        .stroke(Color(hex: 0xC41E3A).opacity(0.16), lineWidth: 3.5)
+                        .frame(width: 60, height: 60)
+
+                    // Rotating gradient orbital arc
+                    if !reduceMotion {
+                        Circle()
+                            .trim(from: 0.12, to: 0.88)
+                            .stroke(
+                                AngularGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(hex: 0xC41E3A),
+                                        Color(hex: 0xFF6B6B),
+                                        Color(hex: 0xC41E3A).opacity(0.05)
+                                    ]),
+                                    center: .center
+                                ),
+                                style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
+                            )
+                            .frame(width: 60, height: 60)
+                            .rotationEffect(.degrees(isSpinning ? 360 : 0))
+                    } else {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: 0xC41E3A)))
+                            .scaleEffect(1.2)
+                    }
+
+                    // Center breathing pawprint badge
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(Color(hex: 0xC41E3A))
+                        .scaleEffect(isPulsing && !reduceMotion ? 1.08 : 0.92)
+                }
+                .frame(width: 72, height: 72)
+
+                VStack(spacing: 6) {
+                    Text(title.isEmpty ? (Language.isRTL() ? "جارٍ حفظ البيانات..." : "Saving listing...") : title)
+                        .font(AdoptFont.bold(17))
+                        .foregroundColor(Color(UIColor.label))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(Language.isRTL() ? "يرجى الانتظار بينما نقوم بحفظ البيانات بأمان" : "Please wait while we securely process your listing")
+                        .font(AdoptFont.regular(13))
+                        .foregroundColor(Color(UIColor.secondaryLabel))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Security trust badge
+                HStack(spacing: 5) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color(hex: 0x10B981))
+                    Text(Language.isRTL() ? "معالجة سحابية مشفرة ومحمية" : "Encrypted Cloud Processing")
+                        .font(AdoptFont.medium(11))
+                        .foregroundColor(Color(UIColor.secondaryLabel))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Color(UIColor.tertiarySystemFill).opacity(0.6))
+                )
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 26)
+            .frame(width: 270)
+            .background(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(Color(UIColor.secondarySystemGroupedBackground).opacity(0.96))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.4),
+                                Color(UIColor.separator).opacity(0.2)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: Color(hex: 0xC41E3A).opacity(0.08), radius: 24, x: 0, y: 12)
+            .shadow(color: Color.black.opacity(0.18), radius: 28, x: 0, y: 14)
+            .scaleEffect(1.0)
+            .transition(.scale(scale: 0.92).combined(with: .opacity))
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) {
+                isSpinning = true
+            }
+            withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) {
+                isPulsing = true
+            }
         }
     }
 }
@@ -1278,6 +1399,7 @@ private struct AdoptFormPickerRow: View {
                         .font(value != nil ? AdoptFont.bold(15) : AdoptFont.medium(15))
                         .foregroundColor(value != nil ? .primary : .secondary)
                         .lineLimit(1)
+                        .multilineTextAlignment(.leading)
 
                     Spacer()
 
@@ -1413,17 +1535,23 @@ private struct iPhoneAddAdoptPetDeck: View {
                 selectedKind: $store.selectedKind,
                 selectedBreed: $store.selectedBreed
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showBreedPicker) {
             AdoptBreedPickerSheet(
                 breeds: store.availableBreeds,
                 selectedBreed: $store.selectedBreed
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showGenderPicker) {
             AdoptGenderPickerSheet(
                 selectedGender: $store.selectedGender
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showCityPicker) {
             AdoptCityPickerSheet(
@@ -1431,6 +1559,8 @@ private struct iPhoneAddAdoptPetDeck: View {
                 selectedCity: $store.selectedCity,
                 selectedArea: $store.selectedArea
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showAreaPicker) {
             AdoptAreaPickerSheet(
@@ -1438,6 +1568,8 @@ private struct iPhoneAddAdoptPetDeck: View {
                 cityName: store.selectedCity?.localizedName ?? "",
                 selectedArea: $store.selectedArea
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showPhotoLibrary) {
             AdoptPhotoLibraryPicker { images in
@@ -1579,19 +1711,23 @@ private struct iPhoneAddAdoptPetDeck: View {
                     .font(AdoptFont.bold(12))
                     .foregroundColor(Color(hex: 0xC41E3A))
                     .textCase(.uppercase)
+                    .multilineTextAlignment(.leading)
 
                 Text(store.isEditing ? PPAdoptLang("adopt_form_edit_title") : PPAdoptLang("adopt_form_create_title"))
                     .font(AdoptFont.bold(18))
                     .foregroundColor(.primary)
+                    .multilineTextAlignment(.leading)
 
                 Text(store.isEditing ? PPAdoptLang("adopt_form_edit_subtitle") : PPAdoptLang("adopt_form_create_subtitle"))
                     .font(AdoptFont.regular(13))
                     .foregroundColor(.secondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
+            Spacer(minLength: 8)
 
             ZStack {
                 Circle()
@@ -1603,6 +1739,7 @@ private struct iPhoneAddAdoptPetDeck: View {
                     .foregroundColor(Color(hex: 0xC41E3A))
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(18)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -1713,6 +1850,7 @@ private struct iPhoneAddAdoptPetDeck: View {
                     TextField(PPAdoptLang("adopt_form_pet_name_placeholder"), text: $store.name)
                         .font(AdoptFont.bold(15))
                         .textInputAutocapitalization(.words)
+                        .multilineTextAlignment(.leading)
 
                     if !store.name.isEmpty {
                         Button(action: { store.name = "" }) {
@@ -1971,6 +2109,7 @@ private struct iPhoneAddAdoptPetDeck: View {
 
                 TextEditor(text: $store.details)
                     .font(AdoptFont.regular(15))
+                    .multilineTextAlignment(.leading)
                     .hideScrollContentBackgroundCompat()
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -2002,6 +2141,7 @@ private struct iPhoneAddAdoptPetDeck: View {
 
                     TextEditor(text: $store.adoptionReason)
                         .font(AdoptFont.regular(15))
+                        .multilineTextAlignment(.leading)
                         .hideScrollContentBackgroundCompat()
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -2285,17 +2425,23 @@ private struct iPadAddAdoptPetCockpit: View {
                 selectedKind: $store.selectedKind,
                 selectedBreed: $store.selectedBreed
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showBreedPicker) {
             AdoptBreedPickerSheet(
                 breeds: store.availableBreeds,
                 selectedBreed: $store.selectedBreed
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showGenderPicker) {
             AdoptGenderPickerSheet(
                 selectedGender: $store.selectedGender
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showCityPicker) {
             AdoptCityPickerSheet(
@@ -2303,6 +2449,8 @@ private struct iPadAddAdoptPetCockpit: View {
                 selectedCity: $store.selectedCity,
                 selectedArea: $store.selectedArea
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showAreaPicker) {
             AdoptAreaPickerSheet(
@@ -2310,6 +2458,8 @@ private struct iPadAddAdoptPetCockpit: View {
                 cityName: store.selectedCity?.localizedName ?? "",
                 selectedArea: $store.selectedArea
             )
+            .environment(\.layoutDirection, Language.isRTL() ? .rightToLeft : .leftToRight)
+            .environment(\.locale, Locale(identifier: Language.isRTL() ? "ar" : "en"))
         }
         .sheet(isPresented: $showPhotoLibrary) {
             AdoptPhotoLibraryPicker { images in
@@ -2559,6 +2709,7 @@ private struct iPadAddAdoptPetCockpit: View {
 
                 TextField(PPAdoptLang("adopt_form_pet_name_placeholder"), text: $store.name)
                     .font(AdoptFont.bold(15))
+                    .multilineTextAlignment(.leading)
                     .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -2790,6 +2941,7 @@ private struct iPadAddAdoptPetCockpit: View {
 
                 TextEditor(text: $store.details)
                     .font(AdoptFont.regular(15))
+                    .multilineTextAlignment(.leading)
                     .hideScrollContentBackgroundCompat()
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -2821,6 +2973,7 @@ private struct iPadAddAdoptPetCockpit: View {
 
                     TextEditor(text: $store.adoptionReason)
                         .font(AdoptFont.regular(15))
+                        .multilineTextAlignment(.leading)
                         .hideScrollContentBackgroundCompat()
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -2973,7 +3126,7 @@ private struct AdoptLiveListingPreviewCard: View {
                     Spacer()
 
                     if let kind = store.selectedKind {
-                        Text(kind.kindNameAr ?? "")
+                        Text(kind.localizedName)
                             .font(AdoptFont.bold(12))
                             .foregroundColor(Color(hex: 0xC41E3A))
                             .padding(.horizontal, 8)

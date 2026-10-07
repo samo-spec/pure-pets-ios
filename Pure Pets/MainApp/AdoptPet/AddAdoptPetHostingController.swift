@@ -12,7 +12,7 @@ import UIKit
 
 @objc(AddAdoptPetHostingController)
 public final class AddAdoptPetHostingController: UIViewController {
-    private var hostingController: UIHostingController<AddAdoptPetScreen>?
+    private var hostingController: UIHostingController<AnyView>?
     private let editingPet: AdoptPetModel?
     private var onDismissCallback: (() -> Void)?
     private var onSuccessCallback: (() -> Void)?
@@ -46,6 +46,10 @@ public final class AddAdoptPetHostingController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     public override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
@@ -54,6 +58,22 @@ public final class AddAdoptPetHostingController: UIViewController {
             nav.modalPresentationStyle = .fullScreen
         }
 
+        applyCurrentLanguageDirection()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLanguageDidChange),
+            name: NSNotification.Name("LanguageDidChangeNotification"),
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLanguageDidChange),
+            name: NSNotification.Name("PPLanguageDidChangeNotification"),
+            object: nil
+        )
+
+        let isRTL = Language.isRTL()
         let screen = AddAdoptPetScreen(
             pet: editingPet,
             onDismiss: { [weak self] in
@@ -64,12 +84,19 @@ public final class AddAdoptPetHostingController: UIViewController {
             }
         )
 
-        let hc = UIHostingController(rootView: screen)
+        let directionalRoot = AnyView(
+            screen
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
+        )
+
+        let hc = UIHostingController(rootView: directionalRoot)
         self.hostingController = hc
 
         addChild(hc)
         hc.view.translatesAutoresizingMaskIntoConstraints = false
         hc.view.backgroundColor = .clear
+        hc.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage()
         view.addSubview(hc.view)
 
         NSLayoutConstraint.activate([
@@ -85,8 +112,48 @@ public final class AddAdoptPetHostingController: UIViewController {
 
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        applyCurrentLanguageDirection()
         previousNavigationBarHidden = navigationController?.isNavigationBarHidden ?? false
         navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
+    private func applyCurrentLanguageDirection() {
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
+        navigationController?.view.semanticContentAttribute = attr
+        navigationController?.navigationBar.semanticContentAttribute = attr
+        hostingController?.view.semanticContentAttribute = attr
+    }
+
+    @objc private func handleLanguageDidChange() {
+        applyCurrentLanguageDirection()
+        if let editingPet {
+            rebuildHostingController(for: editingPet)
+        } else {
+            rebuildHostingController(for: nil)
+        }
+    }
+
+    private func rebuildHostingController(for pet: AdoptPetModel?) {
+        let isRTL = Language.isRTL()
+        let screen = AddAdoptPetScreen(
+            pet: pet,
+            onDismiss: { [weak self] in
+                self?.handleDismiss()
+            },
+            onSuccess: { [weak self] in
+                self?.handleSuccess()
+            }
+        )
+        let directionalRoot = AnyView(
+            screen
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
+        )
+        hostingController?.rootView = directionalRoot
+        hostingController?.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage()
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
     }
 
     public override func viewWillDisappear(_ animated: Bool) {

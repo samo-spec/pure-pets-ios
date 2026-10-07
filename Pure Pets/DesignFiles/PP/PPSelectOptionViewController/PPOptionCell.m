@@ -93,10 +93,10 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
         _cardView.layer.cornerCurve = kCACornerCurveContinuous;
         _cardView.layer.borderWidth = 0.8;
         _cardView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.07].CGColor;
-        _cardView.layer.shadowColor = UIColor.blackColor.CGColor;
-        _cardView.layer.shadowOpacity = 0.024;
-        _cardView.layer.shadowOffset = CGSizeMake(0.0, 3.0);
-        _cardView.layer.shadowRadius = 8.0;
+        _cardView.layer.shadowColor = UIColor.clearColor.CGColor;
+        _cardView.layer.shadowOpacity = 0.0;
+        _cardView.layer.shadowOffset = CGSizeZero;
+        _cardView.layer.shadowRadius = 0.0;
         [self.contentView addSubview:_cardView];
 
         _iconPlateView = [[UIView alloc] init];
@@ -571,7 +571,7 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
             self.cardView.backgroundColor = selected ? selectedSurface : surface;
             self.cardView.layer.borderColor = borderColor.CGColor;
             self.cardView.layer.borderWidth = selected ? 1.2 : 0.8;
-            self.cardView.layer.shadowOpacity = selected ? 0.04 : 0.024;
+            self.cardView.layer.shadowOpacity = 0.0;
             self.iconPlateView.backgroundColor = iconBackground;
         } else {
             self.cardView.backgroundColor = AppBackgroundClrLigter ?: UIColor.clearColor;
@@ -643,7 +643,7 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
                         options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
         self.cardView.transform = CGAffineTransformMakeScale(scale, scale);
-        self.cardView.layer.shadowOpacity = highlighted ? 0.015 : 0.035;
+        self.cardView.layer.shadowOpacity = 0.0;
         self.trailingActionPlate.transform = highlighted ? CGAffineTransformMakeScale(0.92, 0.92) : CGAffineTransformIdentity;
         if (self.isActionPortalMode) {
             self.iconPlateView.backgroundColor = highlighted
@@ -668,9 +668,10 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
     self.cardView.layer.cornerRadius = premium ? radius : 0.0;
     self.cardView.layer.borderWidth = premium ? 0.85 : 0.0;
     self.cardView.layer.borderColor = premium ? [[UIColor labelColor] colorWithAlphaComponent:0.07].CGColor : UIColor.clearColor.CGColor;
-    self.cardView.layer.shadowOpacity = premium ? 0.035 : 0.0;
-    self.cardView.layer.shadowOffset = premium ? CGSizeMake(0.0, 4.0) : CGSizeZero;
-    self.cardView.layer.shadowRadius = premium ? 10.0 : 0.0;
+    self.cardView.layer.shadowColor = UIColor.clearColor.CGColor;
+    self.cardView.layer.shadowOpacity = 0.0;
+    self.cardView.layer.shadowOffset = CGSizeZero;
+    self.cardView.layer.shadowRadius = 0.0;
     if (!self.isActionPortalMode) {
         self.iconPlateView.backgroundColor = premium ? [[self pp_accentColor] colorWithAlphaComponent:0.10] : UIColor.clearColor;
     }

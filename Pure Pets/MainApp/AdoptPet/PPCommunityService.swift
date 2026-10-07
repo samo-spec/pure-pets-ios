@@ -372,7 +372,7 @@ final class PPCommunityService {
         }
     }
 
-    func call(_ name: String, payload: [String: Any], timeout: TimeInterval = 30) async throws -> [String: Any] {
+    private func executeCallable(_ name: String, payload: [String: Any], timeout: TimeInterval) async throws -> [String: Any] {
         try await withCheckedThrowingContinuation { continuation in
             let callable = functions.httpsCallable(name)
             callable.timeoutInterval = timeout
@@ -388,6 +388,28 @@ final class PPCommunityService {
                 }
                 continuation.resume(returning: dictionary)
             }
+        }
+    }
+
+    func call(_ name: String, payload: [String: Any], timeout: TimeInterval = 30) async throws -> [String: Any] {
+        do {
+            return try await executeCallable(name, payload: payload, timeout: timeout)
+        } catch {
+            let nsError = error as NSError
+            let isUnauthenticated = (nsError.domain == FunctionsErrorDomain && FunctionsErrorCode(rawValue: nsError.code) == .unauthenticated) ||
+                nsError.localizedDescription.localizedCaseInsensitiveContains("unauthenticated") ||
+                nsError.localizedDescription.localizedCaseInsensitiveContains("unauthorized")
+
+            if isUnauthenticated, let currentUser = Auth.auth().currentUser, !currentUser.isAnonymous {
+                // If the session token expired during media processing or editing, force-refresh the ID token and retry once.
+                await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                    currentUser.getIDTokenResult(forcingRefresh: true) { _, _ in
+                        continuation.resume()
+                    }
+                }
+                return try await executeCallable(name, payload: payload, timeout: timeout)
+            }
+            throw error
         }
     }
 

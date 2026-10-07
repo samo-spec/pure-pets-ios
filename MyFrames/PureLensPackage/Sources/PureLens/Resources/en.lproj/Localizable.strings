@@ -90,8 +90,8 @@
 "lens.prompt.unsupported.detail" = "%@ is not in the current Pure Pets animal categories.";
 "lens.prompt.unsupported.detail_fallback" = "This detection is not in the current Pure Pets animal categories.";
 "lens.prompt.unsupported.badge" = "Category not in store";
-"lens.unsupported.ask_nova" = "Ask Nova about this animal & supplies";
-"lens.unsupported.ask_nova.hint" = "Opens Nova AI assistant to suggest compatible supplies and information";
+"lens.unsupported.ask_nova" = "Ask PURA about this animal & supplies";
+"lens.unsupported.ask_nova.hint" = "Opens PURA AI assistant to suggest compatible supplies and information";
 "lens.prompt.uncertain" = "We need a clearer look";
 "lens.prompt.uncertain.detail" = "We cannot confirm the exact animal. Choose a possibility only if it looks right, or scan again.";
 "lens.prompt.uncertain.no_candidates" = "We cannot confirm the exact animal. Scan again from another angle.";
@@ -134,12 +134,12 @@
 "lens.results.open_failed.detail" = "The existing details screen is unavailable right now. Please try again.";
 "lens.results.open.hint" = "Opens the existing item details";
 "lens.results.opening" = "Opening";
-"lens.results.nova.status" = "Nova is ready";
+"lens.results.nova.status" = "PURA is ready";
 "lens.results.nova.title" = "Need something more specific?";
 "lens.results.nova.detail" = "Ask about %@, then edit your question before sending it.";
-"lens.results.nova.action" = "Ask Nova";
-"lens.results.nova.privacy" = "Your question is not sent to Nova until you choose Send.";
-"lens.results.nova.hint" = "Closes Pure Lens and opens Nova with an editable question about the detected animal";
+"lens.results.nova.action" = "Ask PURA";
+"lens.results.nova.privacy" = "Your question is not sent to PURA until you choose Send.";
+"lens.results.nova.hint" = "Closes Pure Lens and opens PURA with an editable question about the detected animal";
 "lens.scan_again" = "Scan Again";
 "lens.scan_again.hint" = "Clears this discovery and resumes the existing camera session";
 "lens.species.diet_tip" = "Nutrition Guide";

@@ -332,6 +332,27 @@ extension LensAnimalIdentityTests {
         XCTAssertTrue(LensLocalIdentitySpecificity.isSufficientForSupport(species: "Peregrine falcon"))
     }
 
+    func testSpecificBreedEnablesSupportForBroaderCategory() {
+        XCTAssertTrue(LensLocalIdentitySpecificity.isSufficientForSupport(species: "Bird", breed: "Parrot"))
+        XCTAssertTrue(LensLocalIdentitySpecificity.isSufficientForSupport(species: "Small mammal", breed: "Hamster"))
+        XCTAssertTrue(LensLocalIdentitySpecificity.isSufficientForSupport(species: "Fish", breed: "Goldfish"))
+        XCTAssertTrue(LensLocalIdentitySpecificity.isSufficientForSupport(species: "Reptile", breed: "Turtle"))
+        XCTAssertFalse(LensLocalIdentitySpecificity.isSufficientForSupport(species: "Animal", breed: nil))
+        XCTAssertFalse(LensLocalIdentitySpecificity.isSufficientForSupport(species: "Animal", breed: "creature"))
+    }
+
+    func testCategoryResolvabilityFiltersOnlyPurelyGenericLabels() {
+        XCTAssertTrue(LensLocalIdentitySpecificity.isCategoryResolvable(species: "Bird"))
+        XCTAssertTrue(LensLocalIdentitySpecificity.isCategoryResolvable(species: "Dog"))
+        XCTAssertTrue(LensLocalIdentitySpecificity.isCategoryResolvable(species: "Cat"))
+        XCTAssertTrue(LensLocalIdentitySpecificity.isCategoryResolvable(species: "Fish"))
+        XCTAssertTrue(LensLocalIdentitySpecificity.isCategoryResolvable(species: "Reptile"))
+        XCTAssertTrue(LensLocalIdentitySpecificity.isCategoryResolvable(species: "Small mammal"))
+        XCTAssertFalse(LensLocalIdentitySpecificity.isCategoryResolvable(species: "Animal"))
+        XCTAssertFalse(LensLocalIdentitySpecificity.isCategoryResolvable(species: "Creature"))
+        XCTAssertFalse(LensLocalIdentitySpecificity.isCategoryResolvable(species: ""))
+    }
+
     func testUncertainIdentityRetainsBoundedAmbiguityReason() {
         let uncertain = LensAnimalIdentificationResult(
             status: .uncertain,

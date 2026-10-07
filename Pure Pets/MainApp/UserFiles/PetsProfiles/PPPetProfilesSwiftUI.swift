@@ -14,7 +14,7 @@ import UIKit
 // MARK: - Localized copy
 
 func PPPetLang(_ key: String, fallback: String? = nil) -> String {
-    let value = Bundle.main.localizedString(forKey: key, value: nil, table: nil)
+    let value = Language.get(key, alter: nil) ?? key
     if value == key, let fallback {
         return fallback
     }
@@ -681,8 +681,9 @@ private struct PPPetFolioSelector: View {
 
 private struct PPPetFolioState: View {
     let isLoading: Bool
-    let isError: Bool
     let onAction: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -696,7 +697,7 @@ private struct PPPetFolioState: View {
                 HStack(spacing: 20) {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(Color.ppSurfaceBorder)
-                        .frame(width: 112, height: 144)
+                        .frame(width: dynamicTypeSize.isAccessibilitySize ? 64 : 112, height: 144)
                     VStack(alignment: .leading, spacing: 16) {
                         RoundedRectangle(cornerRadius: 4).fill(Color.ppSurfaceBorder).frame(height: 24)
                         RoundedRectangle(cornerRadius: 4).fill(Color.ppSurfaceBorder).frame(height: 12)
@@ -705,25 +706,24 @@ private struct PPPetFolioState: View {
                 }
                 .accessibilityHidden(true)
             } else {
-                Image(systemName: isError ? "arrow.clockwise" : "pawprint.fill")
+                Image(systemName: "arrow.clockwise")
                     .font(.system(size: 34, weight: .medium))
                     .foregroundStyle(Color.ppPrimary)
                     .frame(width: 88, height: 88)
                     .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
                     .accessibilityHidden(true)
-                Text(PPPetLang(isError ? "pet_profiles_error_title" : "pet_folio_empty_title"))
+                Text(PPPetLang("pet_profiles_error_title"))
                     .font(PPPetProfileFont.largeTitle())
                     .foregroundStyle(Color.ppTextPrimary)
                     .accessibilityAddTraits(.isHeader)
-                Text(PPPetLang(isError ? "pet_profiles_error_subtitle" : "pet_folio_empty_detail"))
+                Text(PPPetLang("pet_profiles_error_subtitle"))
                     .font(PPPetProfileFont.body())
                     .foregroundStyle(Color.ppTextSecondary)
                 Button(action: onAction) {
-                    Label(PPPetLang(isError ? "Retry" : "pet_profiles_add_first"),
-                          systemImage: isError ? "arrow.clockwise" : "plus")
+                    Label(PPPetLang("Retry"), systemImage: "arrow.clockwise")
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .buttonStyle(PPPetProfilePrimaryButtonStyle())
+                .buttonStyle(PPPetFolioActionStyle())
                 .frame(maxWidth: 340)
             }
         }
@@ -731,6 +731,214 @@ private struct PPPetFolioState: View {
         .fixedSize(horizontal: false, vertical: true)
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .ppPetSurface(elevation: false)
+    }
+}
+
+// MARK: - The first page
+
+/// Opaque action treatment keeps the list legible with Reduce Transparency.
+/// Dark appearance uses the dark canvas as ink on the lighter action token.
+private struct PPPetFolioActionStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(PPPetProfileFont.headline())
+            .foregroundStyle(colorScheme == .dark ? Color.ppBackground : Color.white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(configuration.isPressed ? Color.ppPressedAction : Color.ppPrimary,
+                        in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .opacity(isEnabled ? 1 : 0.5)
+            .scaleEffect(reduceMotion || !configuration.isPressed || !isEnabled ? 1 : 0.985)
+            .animation(reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.86),
+                       value: configuration.isPressed)
+    }
+}
+
+/// An unfilled cover, never a fabricated pet or care record. All enrollment
+/// continues through the controller's existing Add callback.
+private struct PPPetFolioEmptyCover: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.ppSurface)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Color.ppSurfaceBorder, lineWidth: 1)
+                }
+                .padding(.leading, 12)
+                .padding(.top, 12)
+
+            VStack(spacing: 16) {
+                HStack(alignment: .center, spacing: 12) {
+                    Text(PPPetLang("pet_folio_cover_title"))
+                        .font(PPPetProfileFont.caption())
+                        .foregroundStyle(Color.ppTextPrimary)
+                    Spacer(minLength: 0)
+                    Image(systemName: "heart")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.ppTextSecondary)
+                }
+
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 54, weight: .regular))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .frame(width: 112, height: 112)
+                    .background(Color.ppSurface, in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(Color.ppSurfaceBorder, lineWidth: 1)
+                    }
+                    .frame(maxWidth: .infinity)
+
+                Text(PPPetLang("pet_folio_cover_note"))
+                    .font(PPPetProfileFont.medium())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.vertical, 20)
+            .padding(.leading, 36)
+            .padding(.trailing, 24)
+            .frame(maxWidth: .infinity)
+            .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(alignment: .leading) {
+                // The binding follows reading direction, including Arabic.
+                Rectangle()
+                    .fill(contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder)
+                    .frame(width: 1)
+                    .padding(.leading, 16)
+                    .padding(.vertical, 16)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder,
+                                  lineWidth: contrast == .increased ? 1.5 : 1)
+            }
+            .padding(.trailing, 8)
+            .padding(.bottom, 10)
+        }
+        .frame(maxWidth: 320)
+        .shadow(color: contrast == .increased ? .clear : Color.black.opacity(colorScheme == .dark ? 0.12 : 0.045),
+                radius: 12, x: 0, y: 8)
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+    }
+}
+
+private struct PPPetFolioWelcome: View {
+    let availableWidth: CGFloat
+    let onAdd: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    private var usesSpread: Bool {
+        availableWidth >= 720 && !dynamicTypeSize.isAccessibilitySize
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            if usesSpread {
+                HStack(alignment: .center, spacing: 48) {
+                    PPPetFolioEmptyCover()
+                        .frame(width: 320)
+                    invitation
+                        .frame(maxWidth: 440, alignment: .leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 24)
+            } else {
+                if !dynamicTypeSize.isAccessibilitySize {
+                    PPPetFolioEmptyCover()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                invitation
+            }
+
+            VStack(spacing: 20) {
+                Rectangle()
+                    .fill(contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder)
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
+
+                if dynamicTypeSize.isAccessibilitySize || availableWidth < 330 {
+                    VStack(alignment: .leading, spacing: 20) {
+                        feature("pet_folio_details_label", symbol: "pawprint")
+                        feature("pet_folio_vaccines_label", symbol: "cross.case")
+                        feature("pet_folio_reminders_label", symbol: "bell")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    HStack(alignment: .top, spacing: 16) {
+                        feature("pet_folio_details_label", symbol: "pawprint")
+                        feature("pet_folio_vaccines_label", symbol: "cross.case")
+                        feature("pet_folio_reminders_label", symbol: "bell")
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: 880, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.leading)
+    }
+
+    private var invitation: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(PPPetLang("pet_folio_empty_title"))
+                    .font(PPPetProfileFont.largeTitle())
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                Text(PPPetLang("pet_folio_empty_detail"))
+                    .font(PPPetProfileFont.body())
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button(action: onAdd) {
+                HStack(spacing: 12) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text(PPPetLang("pet_profiles_add_first"))
+                        .font(PPPetProfileFont.headline())
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .buttonStyle(PPPetFolioActionStyle())
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func feature(_ key: String, symbol: String) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize || availableWidth < 330 {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Image(systemName: symbol).accessibilityHidden(true)
+                    Text(PPPetLang(key))
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Image(systemName: symbol).accessibilityHidden(true)
+                    Text(PPPetLang(key))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .font(PPPetProfileFont.medium())
+        .foregroundStyle(Color.ppTextSecondary)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -760,6 +968,10 @@ struct PPPetProfilesListScreen: View {
 
     private var vaccinationCount: Int { store.pets.reduce(0) { $0 + $1.vaccinations.count } }
 
+    private var showsWelcome: Bool {
+        store.pets.isEmpty && !store.isLoading && !store.hasError
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let margin: CGFloat = geometry.size.width >= 600 ? 32 : 20
@@ -769,15 +981,16 @@ struct PPPetProfilesListScreen: View {
             VStack(spacing: 0) {
                 navigation
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 28) {
+                    VStack(alignment: .leading, spacing: 24) {
                         introduction
                         if store.isLoading && store.pets.isEmpty {
-                            PPPetFolioState(isLoading: true, isError: false, onAction: requestRefresh)
+                            PPPetFolioState(isLoading: true, onAction: requestRefresh)
                         } else if store.hasError && store.pets.isEmpty {
-                            PPPetFolioState(isLoading: false, isError: true, onAction: requestRefresh)
+                            PPPetFolioState(isLoading: false, onAction: requestRefresh)
                         } else if store.pets.isEmpty {
-                            PPPetFolioState(isLoading: false, isError: false, onAction: onAdd)
+                            PPPetFolioWelcome(availableWidth: contentWidth, onAdd: onAdd)
                         } else if let pet = selectedPet {
+                            if store.hasError { retainedError }
                             if sidebar {
                                 HStack(alignment: .top, spacing: 32) {
                                     VStack(alignment: .leading, spacing: 24) {
@@ -798,7 +1011,7 @@ struct PPPetProfilesListScreen: View {
                     .frame(maxWidth: contentWidth, alignment: .leading)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, margin)
-                    .padding(.top, 16)
+                    .padding(.top, 8)
                     .padding(.bottom, 32)
                 }
                 .refreshable { await onRefresh() }
@@ -813,11 +1026,12 @@ struct PPPetProfilesListScreen: View {
     }
 
     private var navigation: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Button(action: onBack) {
                 Image(systemName: "chevron.backward")
                     .font(.system(size: 20, weight: .medium))
                     .frame(width: 48, height: 48)
+                    .background(Color.ppSurface, in: Circle())
                     .contentShape(Circle())
             }
             .accessibilityLabel(PPPetLang("Back"))
@@ -828,6 +1042,7 @@ struct PPPetProfilesListScreen: View {
                 Button(action: requestRefresh) {
                     Label(PPPetLang("pet_profiles_refresh_accessibility"), systemImage: "arrow.clockwise")
                 }
+                .disabled(store.isLoading)
                 Button(action: onReminders) {
                     Label(PPPetLang("pet_reminders_tab"), systemImage: "bell")
                 }
@@ -835,38 +1050,79 @@ struct PPPetProfilesListScreen: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 19, weight: .semibold))
                     .frame(width: 48, height: 48)
+                    .background(Color.ppSurface, in: Circle())
                     .contentShape(Circle())
             }
             .accessibilityLabel(PPPetLang("pet_profiles_manage"))
 
-            Button(action: onAdd) {
-                Label(PPPetLang("pet_add_title"), systemImage: "plus")
-                    .font(PPPetProfileFont.medium())
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .frame(minHeight: 48)
+            if !showsWelcome {
+                Button(action: onAdd) {
+                    Group {
+                        if dynamicTypeSize.isAccessibilitySize {
+                            Image(systemName: "plus")
+                                .font(.system(size: 20, weight: .medium))
+                                .frame(width: 48, height: 48)
+                        } else {
+                            Label(PPPetLang("pet_add_title"), systemImage: "plus")
+                                .font(PPPetProfileFont.medium())
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .frame(minHeight: 48)
+                        }
+                    }
                     .background(Color.ppSecondarySurface, in: Capsule())
+                }
+                .accessibilityLabel(PPPetLang("pet_add_title"))
             }
         }
         .buttonStyle(PPPetProfilePressStyle())
         .foregroundStyle(Color.ppTextPrimary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
         .background(Color.ppBackground)
     }
 
     private var introduction: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(PPPetLang("pet_folio_title"))
-                .font(.custom("Beiruti-Bold", size: 38, relativeTo: .largeTitle))
+                .font(.custom("Beiruti-Bold", size: 34, relativeTo: .largeTitle))
                 .foregroundStyle(Color.ppTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Text(PPPetLang("pet_folio_subtitle"))
                 .font(PPPetProfileFont.body())
                 .foregroundStyle(Color.ppTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var retainedError: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label {
+                Text(PPPetLang("pet_folio_retained_error"))
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "exclamationmark.circle").accessibilityHidden(true)
+            }
+            .font(PPPetProfileFont.body())
+
+            Button(action: requestRefresh) {
+                Label(PPPetLang("Retry"), systemImage: "arrow.clockwise")
+                    .font(PPPetProfileFont.headline())
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: 44)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PPPetProfilePressStyle())
+            .disabled(store.isLoading)
+        }
+        .foregroundStyle(Color.ppTextPrimary)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func folio(for pet: PPPetProfile, width: CGFloat) -> some View {

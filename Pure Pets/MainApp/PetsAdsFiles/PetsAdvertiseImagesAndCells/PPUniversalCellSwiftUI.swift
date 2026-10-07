@@ -970,9 +970,9 @@ private struct PPUniversalLegacyCardSnapshot {
             self.showsFavorite = false
         } else {
             self.showsSaveForLater =
-                showsLeadingAction && resolvedContext == .market
+                showsLeadingAction && (resolvedContext == .market || resolvedContext.isCatalogCommerce)
             self.showsFavorite =
-                showsLeadingAction && resolvedContext != .market
+                showsLeadingAction && !resolvedContext.isCatalogCommerce
         }
         self.isSuggestionsAd = isSuggestionsAd
         self.isNearbyAdsSection =
@@ -1325,8 +1325,8 @@ private final class PPUniversalCardStore: ObservableObject {
             self.showsSaveForLater = false
             self.showsFavorite = false
         } else {
-            self.showsSaveForLater = showsLeadingAction && resolvedContext == .market
-            self.showsFavorite = showsLeadingAction && resolvedContext != .market
+            self.showsSaveForLater = showsLeadingAction && (resolvedContext == .market || resolvedContext.isCatalogCommerce)
+            self.showsFavorite = showsLeadingAction && !resolvedContext.isCatalogCommerce
         }
         self.showsOwnerMenu =
             viewModel.isOwner && forceShowsOwnerMenuButton
@@ -2180,8 +2180,23 @@ private struct PPUniversalCardRenderer: View {
         self.store = store
     }
 
+    private var mediaOuterInset: CGFloat {
+        if store.layout.isHorizontal && !dynamicTypeSize.isAccessibilitySize {
+            return 9
+        }
+        return store.model.prefersEdgeToEdgeMedia ? 0 : 4
+    }
+
     private var mediaTopRadius: CGFloat {
-        max(0, cardRadius - mediaContentInset)
+        max(0, cardRadius - mediaOuterInset)
+    }
+
+    private var imageTopRadius: CGFloat {
+        max(0, mediaTopRadius - mediaContentInset)
+    }
+
+    private var imageBottomRadius: CGFloat {
+        max(0, mediaBottomRadius - mediaContentInset)
     }
 
     var body: some View {
@@ -2385,10 +2400,13 @@ private struct PPUniversalCardRenderer: View {
                             )
                     } else {
                         bottomAnchoredInformation
-                            .layoutPriority(1)
-                            .padding(.horizontal, 9)
-                            .padding(.top, 8)
-                            .padding(.bottom, 8)
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: store.isContextFocused ? nil : .infinity,
+                                alignment: .bottomLeading
+                            )
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
                     }
                 }
                 .padding(
@@ -2408,7 +2426,7 @@ private struct PPUniversalCardRenderer: View {
 
     @ViewBuilder
     private var cardTapMedia: some View {
-        scopedCardNavigationTarget(media)
+        media
     }
 
     private var usesScopedCardTap: Bool {
@@ -2492,6 +2510,28 @@ private struct PPUniversalCardRenderer: View {
 
     private var media: some View {
         ZStack {
+            if store.isVideoPlaying {
+                mediaContent
+            } else {
+                scopedCardNavigationTarget(mediaContent)
+            }
+
+            mediaOverlay
+        }
+        .background(store.palette.groupedSurface)
+        .clipShape(imageShape)
+        .overlay(
+            imageShape.strokeBorder(
+                colorScheme == .dark ? store.palette.diffColor.opacity(0.12) : Color.clear,
+                lineWidth: 0.75
+            )
+        )
+        .clipped()
+        .accessibilityElement(children: .contain)
+    }
+
+    private var mediaContent: some View {
+        ZStack {
             if store.model.imageURL == nil && store.model.videoURL == nil {
                 emptyMedia
             } else {
@@ -2502,8 +2542,8 @@ private struct PPUniversalCardRenderer: View {
                     cacheKey: store.model.id,
                     placeholder: store.imagePlaceholder,
                     placeholderSystemImage: store.model.placeholderSystemImage,
-                    topCornerRadius: mediaTopRadius,
-                    bottomCornerRadius: mediaBottomRadius,
+                    topCornerRadius: imageTopRadius,
+                    bottomCornerRadius: imageBottomRadius,
                     isHomePresentation: store.isHomePresentation,
                     normalizesProductImage: store.isHomePresentation && store.context.isCatalogCommerce,
                     contained:
@@ -2533,19 +2573,7 @@ private struct PPUniversalCardRenderer: View {
                 endPoint: .bottom
             )
             .allowsHitTesting(false)
-
-            mediaOverlay
         }
-        .background(store.palette.groupedSurface)
-        .clipShape(imageShape)
-        .overlay(
-            imageShape.stroke(
-                colorScheme == .dark ? store.palette.diffColor.opacity(0.12) : Color.clear,
-                lineWidth: 0.75
-            )
-        )
-        .clipped()
-        .accessibilityElement(children: .contain)
     }
 
     private var mediaFocusesPetFace: Bool {
@@ -2701,8 +2729,8 @@ private struct PPUniversalCardRenderer: View {
             }
 
             if showsBottomCTA && !store.isContextFocused && !isAdsMode {
+                Spacer(minLength: 8)
                 bottomCTA
-                    .padding(.top, 8)
                     .padding(.bottom, 0)
             }
 
@@ -2712,7 +2740,7 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.bottom, 2)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .bottomLeading)
+        .frame(maxWidth: .infinity, maxHeight: store.isContextFocused ? nil : .infinity, alignment: .bottomLeading)
     }
 
     /// Focus is an editorial spotlight, not a stretched list row. Media owns
@@ -2782,6 +2810,7 @@ private struct PPUniversalCardRenderer: View {
             if !isAdsMode {
                 scopedCardNavigationTarget(homeMetadata)
                     .homeProductInformationRegion(.metadata, enabled: true)
+                Spacer(minLength: 8)
                 if showsBottomCTA && !store.isContextFocused {
                     primaryAction
                 }
@@ -2795,7 +2824,7 @@ private struct PPUniversalCardRenderer: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: store.isContextFocused ? nil : .infinity, alignment: .leading)
         .homeProductInformationMeasurement(enabled: !isAdsMode)
     }
 
@@ -4668,31 +4697,31 @@ private func ppUniversalMediaCornerPath(
     let maximumRadius = min(rect.width, rect.height) * 0.5
     let top = min(max(0, topRadius), maximumRadius)
     let bottom = min(max(0, bottomRadius), maximumRadius)
-    let path = UIBezierPath()
+    let path = CGMutablePath()
 
     path.move(to: CGPoint(x: rect.minX + top, y: rect.minY))
-    path.addLine(to: CGPoint(x: rect.maxX - top, y: rect.minY))
-    path.addQuadCurve(
-        to: CGPoint(x: rect.maxX, y: rect.minY + top),
-        controlPoint: CGPoint(x: rect.maxX, y: rect.minY)
+    path.addArc(
+        tangent1End: CGPoint(x: rect.maxX, y: rect.minY),
+        tangent2End: CGPoint(x: rect.maxX, y: rect.maxY),
+        radius: top
     )
-    path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - bottom))
-    path.addQuadCurve(
-        to: CGPoint(x: rect.maxX - bottom, y: rect.maxY),
-        controlPoint: CGPoint(x: rect.maxX, y: rect.maxY)
+    path.addArc(
+        tangent1End: CGPoint(x: rect.maxX, y: rect.maxY),
+        tangent2End: CGPoint(x: rect.minX, y: rect.maxY),
+        radius: bottom
     )
-    path.addLine(to: CGPoint(x: rect.minX + bottom, y: rect.maxY))
-    path.addQuadCurve(
-        to: CGPoint(x: rect.minX, y: rect.maxY - bottom),
-        controlPoint: CGPoint(x: rect.minX, y: rect.maxY)
+    path.addArc(
+        tangent1End: CGPoint(x: rect.minX, y: rect.maxY),
+        tangent2End: CGPoint(x: rect.minX, y: rect.minY),
+        radius: bottom
     )
-    path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + top))
-    path.addQuadCurve(
-        to: CGPoint(x: rect.minX + top, y: rect.minY),
-        controlPoint: CGPoint(x: rect.minX, y: rect.minY)
+    path.addArc(
+        tangent1End: CGPoint(x: rect.minX, y: rect.minY),
+        tangent2End: CGPoint(x: rect.maxX, y: rect.minY),
+        radius: top
     )
-    path.close()
-    return path.cgPath
+    path.closeSubpath()
+    return path
 }
 
 @available(iOS 16.0, *)
@@ -4832,6 +4861,8 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         }
         context.coordinator.signature = signature
         context.coordinator.task?.cancel()
+        context.coordinator.preparation?.cancel()
+        context.coordinator.preparation = nil
         context.coordinator.task = nil
         imageView.image =
             resolvedPlaceholder
@@ -4844,14 +4875,15 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         }
 
         if let imageURL, !imageURL.isEmpty {
-            context.coordinator.task = AppRemoteImagePipeline.load(
+            let coordinator = context.coordinator
+            coordinator.task = AppRemoteImagePipeline.load(
                 urlString: imageURL,
                 cacheKey: cacheKey,
                 displaySize: container.bounds.size
-            ) { image in
-                guard context.coordinator.signature == signature, let image else { return }
-                let applyImage: (UIImage) -> Void = { [weak imageView] prepared in
-                    guard context.coordinator.signature == signature, let imageView else { return }
+            ) { [weak coordinator, weak imageView] image in
+                guard let coordinator, coordinator.signature == signature, let image else { return }
+                let applyImage: (UIImage) -> Void = { [weak coordinator, weak imageView] prepared in
+                    guard coordinator?.signature == signature, let imageView else { return }
                     UIView.transition(
                         with: imageView,
                         duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.18,
@@ -4861,7 +4893,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
                     }
                 }
                 if normalizesProductImage {
-                    HomeProductImagePreparation.prepare(image, key: "home-product-v1|\(imageURL)|\(signature)", completion: applyImage)
+                    coordinator.preparation = HomeProductImagePreparation.prepare(image, key: "home-product-v2|\(imageURL)|\(signature)", completion: applyImage)
                 } else {
                     applyImage(image)
                 }
@@ -4875,12 +4907,14 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         coordinator: Coordinator
     ) {
         coordinator.task?.cancel()
+        coordinator.preparation?.cancel()
         coordinator.signature = nil
     }
 
     final class Coordinator {
         var signature: String?
         var task: AppRemoteImageTask?
+        var preparation: Operation?
         weak var imageView: PPUniversalMirroredImageView?
         weak var backgroundImageView: UIImageView?
         weak var washView: UIView?
@@ -5102,7 +5136,7 @@ private struct PPUniversalSkeletonCard: View {
             )
             .overlay(
                 shape
-                    .stroke(Color.primary.opacity(0.035), lineWidth: 0.5)
+                    .strokeBorder(Color.primary.opacity(0.035), lineWidth: 0.5)
             )
             .frame(maxHeight: .infinity)
     }
@@ -5734,45 +5768,54 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
     }
 }
 
-struct PPUniversalMediaRoundedShape: Shape {
+struct PPUniversalMediaRoundedShape: InsettableShape {
     let topRadius: CGFloat
     let bottomRadius: CGFloat
+    private var insetAmount: CGFloat
 
-    init(topRadius: CGFloat, bottomRadius: CGFloat) {
+    init(topRadius: CGFloat, bottomRadius: CGFloat, insetAmount: CGFloat = 0) {
         self.topRadius = topRadius
         self.bottomRadius = bottomRadius
+        self.insetAmount = insetAmount
+    }
+
+    func inset(by amount: CGFloat) -> PPUniversalMediaRoundedShape {
+        var copy = self
+        copy.insetAmount += amount
+        return copy
     }
 
     func path(in rect: CGRect) -> Path {
-        guard rect.width > 0, rect.height > 0 else {
-            return Path(CGRect.zero)
+        let insetRect = rect.insetBy(dx: insetAmount, dy: insetAmount)
+        guard insetRect.width > 0, insetRect.height > 0 else {
+            return Path()
         }
 
-        let maximumRadius = min(rect.width, rect.height) * 0.5
-        let top = min(max(0, topRadius), maximumRadius)
-        let bottom = min(max(0, bottomRadius), maximumRadius)
+        let maximumRadius = min(insetRect.width, insetRect.height) * 0.5
+        let top = min(max(0, topRadius - insetAmount), maximumRadius)
+        let bottom = min(max(0, bottomRadius - insetAmount), maximumRadius)
         var path = Path()
 
-        path.move(to: CGPoint(x: rect.minX + top, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX - top, y: rect.minY))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.maxX, y: rect.minY + top),
-            control: CGPoint(x: rect.maxX, y: rect.minY)
+        path.move(to: CGPoint(x: insetRect.minX + top, y: insetRect.minY))
+        path.addArc(
+            tangent1End: CGPoint(x: insetRect.maxX, y: insetRect.minY),
+            tangent2End: CGPoint(x: insetRect.maxX, y: insetRect.maxY),
+            radius: top
         )
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - bottom))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.maxX - bottom, y: rect.maxY),
-            control: CGPoint(x: rect.maxX, y: rect.maxY)
+        path.addArc(
+            tangent1End: CGPoint(x: insetRect.maxX, y: insetRect.maxY),
+            tangent2End: CGPoint(x: insetRect.minX, y: insetRect.maxY),
+            radius: bottom
         )
-        path.addLine(to: CGPoint(x: rect.minX + bottom, y: rect.maxY))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.minX, y: rect.maxY - bottom),
-            control: CGPoint(x: rect.minX, y: rect.maxY)
+        path.addArc(
+            tangent1End: CGPoint(x: insetRect.minX, y: insetRect.maxY),
+            tangent2End: CGPoint(x: insetRect.minX, y: insetRect.minY),
+            radius: bottom
         )
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + top))
-        path.addQuadCurve(
-            to: CGPoint(x: rect.minX + top, y: rect.minY),
-            control: CGPoint(x: rect.minX, y: rect.minY)
+        path.addArc(
+            tangent1End: CGPoint(x: insetRect.minX, y: insetRect.minY),
+            tangent2End: CGPoint(x: insetRect.maxX, y: insetRect.minY),
+            radius: top
         )
         path.closeSubpath()
         return path

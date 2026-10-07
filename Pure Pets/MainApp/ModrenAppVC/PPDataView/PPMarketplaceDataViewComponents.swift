@@ -1562,11 +1562,15 @@ struct PPMarketplaceUniversalCard: View {
                     showsSubtitle: true,
                     forceShowsOwnerMenuButton: true,
                     dataViewPresentation: true,
-                    isHomePresentation: false,
+                    isHomePresentation: isProductCommerce,
                     borderMode: .pordersForHomeView,
                     palette: marketplaceCardPalette,
-                    onTap: nil,
-                    onQuantityChange: nil
+                    onTap: {
+                        bridge.open(item: record.viewModel)
+                    },
+                    onQuantityChange: { newQuantity in
+                        bridge.changeQuantity(for: record.viewModel, quantity: newQuantity)
+                    }
                 )
             } else {
                 PPMarketplaceCompatibilityCard(
@@ -1581,11 +1585,35 @@ struct PPMarketplaceUniversalCard: View {
         .accessibilityIdentifier("pp.marketplace.item.\(record.id)")
     }
 
+    private var isProductCommerce: Bool {
+        section == .accessories ||
+        section == .food ||
+        record.section == .accessories ||
+        record.section == .food ||
+        record.viewModel.modelContext == .forMarket ||
+        record.viewModel.modelContext == .forFood ||
+        record.viewModel.modelContext == .forContextAccessory ||
+        PPUniversalCellSwiftUIBridge.usesQuantityControl(for: record.viewModel)
+    }
+
     private var universalLayoutMode: PPManagerCellLayoutMode {
+        if isProductCommerce {
+            switch layout {
+            case .compact:
+                return .cellLayoutModeHorizontalRow
+            case .focus:
+                return .cellLayoutModeDataViewFullDetails
+            case .showcase, .mosaic:
+                return .cellLayoutModeVertical
+            }
+        }
         return layout.universalLayoutMode
     }
 
     private var marketplaceCardPalette: PPUniversalCardPalette {
+        if isProductCommerce {
+            return .purePets
+        }
         let category = PPMarketplaceAccentPalette(accent: bridge.accentColor)
         var palette = PPUniversalCardPalette.purePets
         palette.primary = category.fill
@@ -1597,7 +1625,10 @@ struct PPMarketplaceUniversalCard: View {
     }
 
     private var cellContext: PPCellContext {
-        record.viewModel.modelContext
+        if isProductCommerce {
+            return .forMarket
+        }
+        return record.viewModel.modelContext
     }
 }
 

@@ -14,7 +14,7 @@ import UIKit
 
 @objc(AdoptPetsViewController)
 final class AdoptPetsViewController: UIViewController {
-    private var hostingController: UIHostingController<PPCommunityGatewayScreen>?
+    private var hostingController: UIHostingController<AnyView>?
 
     override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
@@ -32,6 +32,12 @@ final class AdoptPetsViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
 
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
+        navigationController?.view.semanticContentAttribute = attr
+        navigationController?.navigationBar.semanticContentAttribute = attr
+
+        let isRTL = Language.isRTL()
         let communityScreen = PPCommunityGatewayScreen(
             onSelectAdoption: { [weak self] pet in
                 self?.openDetails(for: pet)
@@ -44,7 +50,14 @@ final class AdoptPetsViewController: UIViewController {
             }
         )
 
-        let hc = UIHostingController(rootView: communityScreen)
+        let directionalRoot = AnyView(
+            communityScreen
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
+        )
+
+        let hc = UIHostingController(rootView: directionalRoot)
+        hc.view.semanticContentAttribute = attr
         self.hostingController = hc
 
         addChild(hc)
@@ -66,6 +79,11 @@ final class AdoptPetsViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
+        navigationController?.view.semanticContentAttribute = attr
+        navigationController?.navigationBar.semanticContentAttribute = attr
+        hostingController?.view.semanticContentAttribute = attr
         previousNavigationBarHidden = navigationController?.isNavigationBarHidden ?? false
         navigationController?.setNavigationBarHidden(true, animated: animated)
     }
@@ -113,7 +131,7 @@ final class AdoptPetsViewController: UIViewController {
 
 @objc(AdoptPetDetailsViewController)
 final class AdoptPetDetailsViewController: UIViewController {
-    private var hostingController: UIHostingController<AdoptPetDetailsScreen>?
+    private var hostingController: UIHostingController<AnyView>?
     private let petModel: AdoptPetModel?
     private let isOwner: Bool
     private var previousNavigationBarHidden = false
@@ -152,6 +170,11 @@ final class AdoptPetDetailsViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = .systemGroupedBackground
 
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
+        navigationController?.view.semanticContentAttribute = attr
+        navigationController?.navigationBar.semanticContentAttribute = attr
+
         guard let model = petModel else {
             showEmptyFallback()
             return
@@ -166,7 +189,15 @@ final class AdoptPetDetailsViewController: UIViewController {
             }
         )
 
-        let hc = UIHostingController(rootView: detailsScreen)
+        let isRTL = Language.isRTL()
+        let directionalRoot = AnyView(
+            detailsScreen
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
+        )
+
+        let hc = UIHostingController(rootView: directionalRoot)
+        hc.view.semanticContentAttribute = attr
         self.hostingController = hc
 
         addChild(hc)
@@ -186,6 +217,11 @@ final class AdoptPetDetailsViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        let attr = Language.semanticAttributeForCurrentLanguage()
+        view.semanticContentAttribute = attr
+        navigationController?.view.semanticContentAttribute = attr
+        navigationController?.navigationBar.semanticContentAttribute = attr
+        hostingController?.view.semanticContentAttribute = attr
         previousNavigationBarHidden = navigationController?.isNavigationBarHidden ?? false
         navigationController?.setNavigationBarHidden(true, animated: animated)
     }

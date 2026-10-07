@@ -201,6 +201,112 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 @end
 
+#pragma mark - Studio Redesign Components
+
+@interface PPDashedAddMediaButton : UIButton
+@property (nonatomic, strong) CAShapeLayer *dashLayer;
+@end
+
+@implementation PPDashedAddMediaButton
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        _dashLayer = [CAShapeLayer layer];
+        _dashLayer.strokeColor = [UIColor colorWithRed:0.39 green:0.40 blue:0.95 alpha:0.45].CGColor;
+        _dashLayer.fillColor = nil;
+        _dashLayer.lineDashPattern = @[@4, @4];
+        _dashLayer.lineWidth = 1.5;
+        [self.layer addSublayer:_dashLayer];
+    }
+    return self;
+}
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    _dashLayer.frame = self.bounds;
+    _dashLayer.path = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:16.0].CGPath;
+}
+@end
+
+@interface PPRadarProgressRingView : UIView
+@property (nonatomic, strong) CAShapeLayer *trackLayer;
+@property (nonatomic, strong) CAShapeLayer *progressLayer;
+@property (nonatomic, strong) UILabel *percentLabel;
+@property (nonatomic, assign) NSInteger currentPercentage;
+- (void)setProgress:(CGFloat)progress animated:(BOOL)animated;
+@end
+
+@implementation PPRadarProgressRingView
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        _trackLayer = [CAShapeLayer layer];
+        _trackLayer.fillColor = nil;
+        _trackLayer.lineWidth = 4.5;
+        _trackLayer.strokeColor = [UIColor colorWithRed:0.98 green:0.55 blue:0.25 alpha:0.18].CGColor;
+        [self.layer addSublayer:_trackLayer];
+
+        _progressLayer = [CAShapeLayer layer];
+        _progressLayer.fillColor = nil;
+        _progressLayer.lineWidth = 4.5;
+        _progressLayer.lineCap = kCALineCapRound;
+        _progressLayer.strokeColor = [UIColor colorWithRed:0.98 green:0.55 blue:0.25 alpha:1.0].CGColor;
+        _progressLayer.strokeEnd = 0.0;
+        [self.layer addSublayer:_progressLayer];
+
+        _percentLabel = [[UILabel alloc] init];
+        _percentLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        _percentLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+        _percentLabel.textColor = PPAdFormPrimaryTextColor();
+        _percentLabel.textAlignment = NSTextAlignmentCenter;
+        _percentLabel.text = @"0%";
+        [self addSubview:_percentLabel];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [_percentLabel.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
+            [_percentLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]
+        ]];
+    }
+    return self;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat side = MIN(self.bounds.size.width, self.bounds.size.height);
+    if (side <= 0.0) return;
+    CGFloat radius = (side - 4.5) / 2.0;
+    CGPoint center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
+    UIBezierPath *circlePath = [UIBezierPath bezierPathWithArcCenter:center
+                                                              radius:radius
+                                                          startAngle:-M_PI_2
+                                                            endAngle:3.0 * M_PI_2
+                                                           clockwise:YES];
+    _trackLayer.path = circlePath.CGPath;
+    _progressLayer.path = circlePath.CGPath;
+}
+
+- (void)setProgress:(CGFloat)progress animated:(BOOL)animated {
+    CGFloat clamped = MAX(0.0, MIN(1.0, progress));
+    NSInteger pct = (NSInteger)round(clamped * 100.0);
+    _currentPercentage = pct;
+    _percentLabel.text = [NSString stringWithFormat:@"%ld%%", (long)pct];
+
+    UIColor *tintColor = (pct >= 100)
+        ? [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0]
+        : [UIColor colorWithRed:0.98 green:0.48 blue:0.18 alpha:1.0];
+    _progressLayer.strokeColor = tintColor.CGColor;
+
+    if (animated) {
+        CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
+        anim.fromValue = @(_progressLayer.strokeEnd);
+        anim.toValue = @(clamped);
+        anim.duration = 0.4;
+        anim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [_progressLayer addAnimation:anim forKey:@"progressAnim"];
+    }
+    _progressLayer.strokeEnd = clamped;
+}
+@end
+
 #pragma mark - PPAdPairedFieldSlotView
 
 @interface PPAdPairedFieldSlotView : UIControl <UITextFieldDelegate>
@@ -855,6 +961,31 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @property (nonatomic, assign) CGFloat lastAppliedFormHeroHeaderWidth;
 @property (nonatomic, assign) CGFloat lastAppliedImageCollectionFooterWidth;
 @property (nonatomic, assign) BOOL selectorSheetFocusActive;
+
+// Studio Redesign Properties
+@property (nonatomic, strong) UIView *studioApexHeaderView;
+@property (nonatomic, strong) UIView *studioRadarCardView;
+@property (nonatomic, strong) PPRadarProgressRingView *studioRadarRingView;
+@property (nonatomic, strong) UILabel *studioRadarAdviceLabel;
+@property (nonatomic, strong) UIView *studioRadarCompleteBadge;
+@property (nonatomic, strong) UIView *studioMediaCardView;
+@property (nonatomic, strong) UILabel *studioMediaCountBadgeLabel;
+@property (nonatomic, strong) UIScrollView *studioMediaScrollView;
+@property (nonatomic, strong) UIStackView *studioMediaThumbnailsStack;
+@property (nonatomic, strong) UIView *studioCategoryCardView;
+@property (nonatomic, strong) UIStackView *studioSpeciesChipsStack;
+@property (nonatomic, strong) UIView *studioAppearanceCardView;
+@property (nonatomic, strong) UIButton *studioGenderMaleButton;
+@property (nonatomic, strong) UIButton *studioGenderFemaleButton;
+@property (nonatomic, strong) UIButton *studioGenderUndefinedButton;
+@property (nonatomic, strong) UIView *studioListingCardView;
+@property (nonatomic, strong) UIView *studioFloatingDockView;
+@property (nonatomic, strong) UIView *studioDockGuidancePill;
+@property (nonatomic, strong) UILabel *studioDockGuidanceLabel;
+@property (nonatomic, strong) UIButton *studioDockHeroButton;
+@property (nonatomic, strong) CAGradientLayer *studioDockHeroGradient;
+@property (nonatomic, strong) UIActivityIndicatorView *studioDockSpinner;
+
 - (void)initBase;
 - (NSArray<PPAdGenderOption *> *)pp_genderSelectorOptions;
 - (nullable PPAdGenderOption *)pp_genderOptionFromValue:(id _Nullable)value;
@@ -909,7 +1040,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (UIColor *)pp_adCanvasColor
 {
-    return AppBackgroundClr;
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithRed:0.09 green:0.09 blue:0.11 alpha:1.0]
+            : [UIColor colorWithRed:0.98 green:0.97 blue:0.95 alpha:1.0];
+    }];
 }
 
 - (UIColor *)pp_adSurfaceColor
@@ -1001,12 +1136,14 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
                                                name:PPAddNewAdLanguageDidChangeNotification
                                                object:nil];
     [self pp_refreshMediaLocalizedText];
-    [self pp_refreshFormHeroContent];
     if (![self restoreDraftIfNeeded]) {
         [self configureForEditingIfNeeded];
     }
     self.isHydratingFormData = NO;
-    [self pp_refreshFormHeroContent];
+    [self pp_syncSpeciesChipsState];
+    [self pp_syncGenderButtonsState];
+    [self pp_refreshStudioMediaThumbnails];
+    [self pp_updateStudioReadinessRadarAnimated:NO];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
     tap.cancelsTouchesInView = NO;
@@ -1052,6 +1189,15 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
             self.ppOriginalRightItem.enabled = enabled;
         }
         self.navigationItem.rightBarButtonItem.enabled = enabled;
+        if (self.studioDockHeroButton) {
+            self.studioDockHeroButton.enabled = enabled;
+            self.studioDockHeroButton.alpha = enabled ? 1.0 : 0.45;
+            if (!enabled && self.isSubmittingAd) {
+                [self.studioDockSpinner startAnimating];
+            } else {
+                [self.studioDockSpinner stopAnimating];
+            }
+        }
     });
 }
 
@@ -1207,61 +1353,33 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (void)setupModernBackdrop
 {
-    if (self.backgroundGlowViewTop || self.backgroundGlowViewBottom) {
+    if (self.backgroundGlowViewTop) {
         return;
     }
 
     UIView *topGlow = [[UIView alloc] init];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
-            ? [PPAdFormAccentColor() colorWithAlphaComponent:0.10]
-            : [[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12];
-    }];
-    [topGlow pp_setShadowColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
-            ? [PPAdFormAccentColor() colorWithAlphaComponent:0.24]
-            : [UIColor colorWithRed:0.97 green:0.80 blue:0.64 alpha:1.0];
-    }]];
-    topGlow.layer.shadowOpacity = 0.10;
-    topGlow.layer.shadowRadius = 62.0;
-    topGlow.layer.shadowOffset = CGSizeZero;
 
-    UIView *bottomGlow = [[UIView alloc] init];
-    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
-            ? [PPAdFormAccentColor() colorWithAlphaComponent:0.06]
-            : [[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06];
-    }];
-    [bottomGlow pp_setShadowColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
-            ? [PPAdFormAccentColor() colorWithAlphaComponent:0.16]
-            : [UIColor colorWithRed:0.73 green:0.31 blue:0.32 alpha:1.0];
-    }]];
-    bottomGlow.layer.shadowOpacity = 0.08;
-    bottomGlow.layer.shadowRadius = 72.0;
-    bottomGlow.layer.shadowOffset = CGSizeZero;
+    CAGradientLayer *glowGrad = [CAGradientLayer layer];
+    glowGrad.colors = @[
+        (id)[[UIColor colorWithRed:0.98 green:0.55 blue:0.25 alpha:1.0] colorWithAlphaComponent:0.12].CGColor,
+        (id)[[UIColor colorWithRed:0.98 green:0.55 blue:0.25 alpha:1.0] colorWithAlphaComponent:0.0].CGColor
+    ];
+    glowGrad.startPoint = CGPointMake(0.5, 0.0);
+    glowGrad.endPoint = CGPointMake(0.5, 1.0);
+    [topGlow.layer addSublayer:glowGrad];
 
     [self.view insertSubview:topGlow belowSubview:self.scrollView];
-    [self.view insertSubview:bottomGlow belowSubview:self.scrollView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:0.0],
-        [topGlow.heightAnchor constraintEqualToConstant:0.0],
-        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-64.0],
-        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:80.0],
-
-        [bottomGlow.widthAnchor constraintEqualToConstant:0.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:0.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:44.0],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-68.0]
+        [topGlow.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [topGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [topGlow.heightAnchor constraintEqualToConstant:240.0]
     ]];
 
     self.backgroundGlowViewTop = topGlow;
-    self.backgroundGlowViewBottom = bottomGlow;
 }
 
 - (void)setupFormHeroHeader
@@ -2106,6 +2224,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     [super viewWillDisappear:animated];
     BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
     if (exiting) {
+        [self.navigationController setNavigationBarHidden:NO animated:animated];
         [self pp_setPremiumTabDockHidden:NO animated:animated];
     }
     NSLog(@"[PPImages] viewWillDisappear - preserving media state");
@@ -2495,6 +2614,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     } else {
         self.adModel.isFemale = NO;
     }
+    [self pp_syncGenderButtonsState];
+    [self pp_updateStudioReadinessRadarAnimated:YES];
 }
 
 - (nullable PPAdFormField *)fieldForTag:(NSString *)tag
@@ -2746,25 +2867,16 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.imageCollection.backgroundColor = UIColor.clearColor;
     [self pp_refreshMediaLocalizedText];
 
-    UIView *footerContainer = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), 236.0)];
-    footerContainer.backgroundColor = UIColor.clearColor;
-    footerContainer.semanticContentAttribute = PPAdCurrentSemanticAttribute();
-    self.imageCollectionFooterContainerView = footerContainer;
-
-    [footerContainer addSubview:self.imageCollection];
     self.imageCollection.translatesAutoresizingMaskIntoConstraints = NO;
-
-    CGFloat height = 212.0;
+    self.imageCollection.hidden = YES;
+    [self.view addSubview:self.imageCollection];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.imageCollection.topAnchor constraintEqualToAnchor:footerContainer.topAnchor constant:8.0],
-        [self.imageCollection.leadingAnchor constraintEqualToAnchor:footerContainer.leadingAnchor constant:0.0],
-        [self.imageCollection.trailingAnchor constraintEqualToAnchor:footerContainer.trailingAnchor constant:-0.0],
-        [self.imageCollection.bottomAnchor constraintEqualToAnchor:footerContainer.bottomAnchor constant:-16.0],
-        [self.imageCollection.heightAnchor constraintEqualToConstant:height]
+        [self.imageCollection.widthAnchor constraintEqualToConstant:1.0],
+        [self.imageCollection.heightAnchor constraintEqualToConstant:1.0],
+        [self.imageCollection.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.imageCollection.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor]
     ]];
-
-    [self pp_updateImageCollectionFooterLayoutIfNeeded];
 }
 
 - (void)pp_presentAdLocationPicker
@@ -2795,6 +2907,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         if (!self.isHydratingFormData) {
             self.hasUserModifiedForm = YES;
         }
+        [self pp_updateStudioReadinessRadarAnimated:YES];
     };
     picker.onLocationConfirmed = ^(GMSAddress *gmsAddress) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -3162,8 +3275,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     scroll.showsVerticalScrollIndicator = NO;
     scroll.showsHorizontalScrollIndicator = NO;
     scroll.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    scroll.contentInset = UIEdgeInsetsMake(6, 0, 24, 0);
-    scroll.scrollIndicatorInsets = UIEdgeInsetsMake(6, 0, 24, 0);
+    scroll.contentInset = UIEdgeInsetsMake(6, 0, 140, 0);
+    scroll.scrollIndicatorInsets = UIEdgeInsetsMake(6, 0, 140, 0);
     [self.view addSubview:scroll];
     self.scrollView = scroll;
 
@@ -3172,9 +3285,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     stack.axis = UILayoutConstraintAxisVertical;
     stack.alignment = UIStackViewAlignmentFill;
     stack.distribution = UIStackViewDistributionFill;
-    stack.spacing = 14.0;
+    stack.spacing = 18.0;
     stack.layoutMarginsRelativeArrangement = YES;
-    stack.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0, 20.0, 0.0, 20.0);
+    stack.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(8.0, 18.0, 24.0, 18.0);
     [scroll addSubview:stack];
     self.contentStack = stack;
 
@@ -3191,6 +3304,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         [stack.widthAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.widthAnchor]
     ]];
 
+    [self pp_setupFloatingActionDock];
     [self pp_rebuildFormFields];
 }
 
@@ -3198,32 +3312,1202 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     PPFormStyle *style = [PPFormStyle defaultStyle];
     style.groupedMode = YES;
     style.hideAccentStrip = YES;
-    style.cardBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+    style.cardBackgroundColor = UIColor.clearColor;
+    style.cardBorderColor = UIColor.clearColor;
+    style.cardBorderWidth = 0.0;
+    style.cardCornerRadius = 0.0;
+    style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.06]
+            : [UIColor colorWithRed:0.96 green:0.95 blue:0.93 alpha:1.0];
+    }];
+    style.fieldBorderWidth = 0.8;
+    style.fieldBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.1]
+            : [UIColor colorWithWhite:0.0 alpha:0.06];
+    }];
+    style.accentColor = PPAdFormAccentColor();
+    style.primaryTextColor = PPAdFormPrimaryTextColor();
+    style.secondaryTextColor = UIColor.secondaryLabelColor;
+    style.titleFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    style.inputFont = [GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightMedium];
+    style.placeholderFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    style.fieldCornerRadius = 13.0;
+    style.stackSpacing = 8.0;
+    style.shadowOpacity = 0.0;
+    return style;
+}
+
+#pragma mark - Studio Helpers & Cards
+
+- (UIView *)pp_createStudioCardContainer {
+    UIView *card = [[UIView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return tc.userInterfaceStyle == UIUserInterfaceStyleDark
             ? [UIColor colorWithRed:0.16 green:0.16 blue:0.18 alpha:1.0]
             : UIColor.whiteColor;
     }];
-    style.cardBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+    card.layer.cornerRadius = 22.0;
+    card.layer.cornerCurve = kCACornerCurveContinuous;
+    card.layer.borderWidth = 0.8;
+    card.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return tc.userInterfaceStyle == UIUserInterfaceStyleDark
             ? [UIColor colorWithWhite:1.0 alpha:0.08]
-            : [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.065];
+            : [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.06];
+    }].CGColor;
+    card.layer.shadowColor = UIColor.blackColor.CGColor;
+    card.layer.shadowOpacity = 0.035;
+    card.layer.shadowRadius = 12.0;
+    card.layer.shadowOffset = CGSizeMake(0.0, 3.0);
+    return card;
+}
+
+- (UIView *)pp_createStudioCardHeaderWithIcon:(NSString *)symbolName
+                                    iconColor:(UIColor *)iconColor
+                                  iconBgColor:(UIColor *)iconBgColor
+                                        title:(NSString *)title
+                                     subtitle:(NSString *)subtitle
+                                 trailingView:(nullable UIView *)trailingView
+{
+    UIView *header = [[UIView alloc] init];
+    header.translatesAutoresizingMaskIntoConstraints = NO;
+
+    UIImageView *iconView = [[UIImageView alloc] init];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
+    iconView.image = [[UIImage systemImageNamed:symbolName withConfiguration:config] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    iconView.tintColor = iconColor;
+    iconView.contentMode = UIViewContentModeCenter;
+    iconView.backgroundColor = iconBgColor;
+    iconView.layer.cornerRadius = 10.0;
+    iconView.layer.masksToBounds = YES;
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightBold];
+    titleLabel.textColor = PPAdFormPrimaryTextColor();
+    titleLabel.text = title;
+
+    UILabel *subLabel = [[UILabel alloc] init];
+    subLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subLabel.font = [GM fontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightRegular];
+    subLabel.textColor = UIColor.secondaryLabelColor;
+    subLabel.numberOfLines = 2;
+    subLabel.text = subtitle;
+
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[titleLabel, subLabel]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 2.0;
+
+    UIStackView *leadingStack = [[UIStackView alloc] initWithArrangedSubviews:@[iconView, textStack]];
+    leadingStack.translatesAutoresizingMaskIntoConstraints = NO;
+    leadingStack.axis = UILayoutConstraintAxisHorizontal;
+    leadingStack.spacing = 10.0;
+    leadingStack.alignment = UIStackViewAlignmentCenter;
+
+    [header addSubview:leadingStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [iconView.widthAnchor constraintEqualToConstant:36.0],
+        [iconView.heightAnchor constraintEqualToConstant:36.0],
+        [leadingStack.topAnchor constraintEqualToAnchor:header.topAnchor],
+        [leadingStack.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
+        [leadingStack.bottomAnchor constraintEqualToAnchor:header.bottomAnchor]
+    ]];
+
+    if (trailingView) {
+        trailingView.translatesAutoresizingMaskIntoConstraints = NO;
+        [header addSubview:trailingView];
+        [NSLayoutConstraint activateConstraints:@[
+            [trailingView.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
+            [trailingView.centerYAnchor constraintEqualToAnchor:header.centerYAnchor],
+            [leadingStack.trailingAnchor constraintLessThanOrEqualToAnchor:trailingView.leadingAnchor constant:-8.0]
+        ]];
+    } else {
+        [leadingStack.trailingAnchor constraintLessThanOrEqualToAnchor:header.trailingAnchor];
+    }
+
+    return header;
+}
+
+- (UIView *)pp_buildApexHeaderView {
+    UIView *apex = [[UIView alloc] init];
+    apex.translatesAutoresizingMaskIntoConstraints = NO;
+    self.studioApexHeaderView = apex;
+
+    // Badge capsule pill
+    UIView *badge = [[UIView alloc] init];
+    badge.translatesAutoresizingMaskIntoConstraints = NO;
+    badge.backgroundColor = [UIColor colorWithRed:1.0 green:0.95 blue:0.88 alpha:1.0];
+    badge.layer.cornerRadius = 12.0;
+
+    UIImageView *badgeIcon = [[UIImageView alloc] init];
+    badgeIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *badgeSym = [UIImageSymbolConfiguration configurationWithPointSize:11 weight:UIImageSymbolWeightBold];
+    badgeIcon.image = [UIImage systemImageNamed:@"pawprint.fill" withConfiguration:badgeSym];
+    badgeIcon.tintColor = [UIColor colorWithRed:0.92 green:0.35 blue:0.05 alpha:1.0];
+
+    UILabel *badgeLabel = [[UILabel alloc] init];
+    badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+    badgeLabel.textColor = [UIColor colorWithRed:0.92 green:0.35 blue:0.05 alpha:1.0];
+    badgeLabel.text = (self.mode == AdEditorModeEdit) ? (kLang(@"EditAdTitle") ?: @"تعديل الإعلان") : @"إعلان حيوان أليف";
+
+    UIStackView *badgeStack = [[UIStackView alloc] initWithArrangedSubviews:@[badgeIcon, badgeLabel]];
+    badgeStack.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeStack.axis = UILayoutConstraintAxisHorizontal;
+    badgeStack.spacing = 6.0;
+    badgeStack.alignment = UIStackViewAlignmentCenter;
+    [badge addSubview:badgeStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [badge.heightAnchor constraintEqualToConstant:24.0],
+        [badgeStack.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:9.0],
+        [badgeStack.trailingAnchor constraintEqualToAnchor:badge.trailingAnchor constant:-9.0],
+        [badgeStack.centerYAnchor constraintEqualToAnchor:badge.centerYAnchor]
+    ]];
+
+    // Title label
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
+    titleLabel.textColor = PPAdFormPrimaryTextColor();
+    titleLabel.text = (self.mode == AdEditorModeEdit) ? (kLang(@"EditAdTitle") ?: @"تعديل الإعلان") : (kLang(@"addNewAd") ?: @"إضافة إعلان جديد");
+
+    UIStackView *leadingStack = [[UIStackView alloc] initWithArrangedSubviews:@[badge, titleLabel]];
+    leadingStack.translatesAutoresizingMaskIntoConstraints = NO;
+    leadingStack.axis = UILayoutConstraintAxisVertical;
+    leadingStack.spacing = 4.0;
+    leadingStack.alignment = UIStackViewAlignmentLeading;
+    [apex addSubview:leadingStack];
+
+    // Cancel capsule button
+    UIButton *cancelBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    cancelBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    cancelBtn.layer.cornerRadius = 17.0;
+    cancelBtn.layer.cornerCurve = kCACornerCurveContinuous;
+    cancelBtn.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.12]
+            : UIColor.whiteColor;
     }];
-    style.cardBorderWidth = 0.75;
-    style.fieldBackgroundColor = UIColor.clearColor;
-    style.fieldBorderWidth = 0.0;
-    style.accentColor = PPAdFormAccentColor();
-    style.primaryTextColor = PPAdFormPrimaryTextColor();
-    style.secondaryTextColor = UIColor.secondaryLabelColor;
-    style.titleFont = [GM boldFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightBold];
-    style.inputFont = [GM MidFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightMedium];
-    style.placeholderFont = [GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightMedium];
-    style.cardCornerRadius = 22.0;
-    style.fieldCornerRadius = 12.0;
-    style.stackSpacing = 0.0;
-    style.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.01 : 0.035;
-    style.shadowRadius = 14.0;
-    style.shadowOffset = CGSizeMake(0.0, 4.0);
-    return style;
+    cancelBtn.layer.borderWidth = 0.8;
+    cancelBtn.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.1]
+            : [UIColor colorWithWhite:0.0 alpha:0.08];
+    }].CGColor;
+    cancelBtn.layer.shadowColor = UIColor.blackColor.CGColor;
+    cancelBtn.layer.shadowOpacity = 0.04;
+    cancelBtn.layer.shadowRadius = 4.0;
+    cancelBtn.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+
+    [cancelBtn setTitle:(kLang(@"Cancel") ?: @"إلغاء") forState:UIControlStateNormal];
+    [cancelBtn setTitleColor:UIColor.secondaryLabelColor forState:UIControlStateNormal];
+    cancelBtn.titleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+
+    UIImageSymbolConfiguration *xSym = [UIImageSymbolConfiguration configurationWithPointSize:11 weight:UIImageSymbolWeightBold];
+    [cancelBtn setImage:[UIImage systemImageNamed:@"xmark" withConfiguration:xSym] forState:UIControlStateNormal];
+    cancelBtn.tintColor = UIColor.secondaryLabelColor;
+    cancelBtn.contentEdgeInsets = UIEdgeInsetsMake(7, 14, 7, 14);
+    cancelBtn.imageEdgeInsets = UIEdgeInsetsMake(0, Language.isRTL ? 5 : -5, 0, Language.isRTL ? -5 : 5);
+
+    [cancelBtn addTarget:self action:@selector(pp_handleBackNavigation) forControlEvents:UIControlEventTouchUpInside];
+    [apex addSubview:cancelBtn];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [leadingStack.topAnchor constraintEqualToAnchor:apex.topAnchor],
+        [leadingStack.leadingAnchor constraintEqualToAnchor:apex.leadingAnchor],
+        [leadingStack.bottomAnchor constraintEqualToAnchor:apex.bottomAnchor],
+
+        [cancelBtn.trailingAnchor constraintEqualToAnchor:apex.trailingAnchor],
+        [cancelBtn.centerYAnchor constraintEqualToAnchor:apex.centerYAnchor],
+        [cancelBtn.heightAnchor constraintEqualToConstant:34.0],
+        [leadingStack.trailingAnchor constraintLessThanOrEqualToAnchor:cancelBtn.leadingAnchor constant:-12.0]
+    ]];
+
+    return apex;
+}
+
+- (UIView *)pp_buildRadarCardView {
+    UIView *card = [self pp_createStudioCardContainer];
+    self.studioRadarCardView = card;
+
+    // Left circular ring view
+    self.studioRadarRingView = [[PPRadarProgressRingView alloc] init];
+    self.studioRadarRingView.translatesAutoresizingMaskIntoConstraints = NO;
+
+    // Right title & advice
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightBold];
+    titleLabel.textColor = PPAdFormPrimaryTextColor();
+    titleLabel.text = @"رادار اكتمال الإعلان";
+
+    // Seal complete badge
+    UIView *sealBadge = [[UIView alloc] init];
+    sealBadge.translatesAutoresizingMaskIntoConstraints = NO;
+    sealBadge.backgroundColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:0.12];
+    sealBadge.layer.cornerRadius = 10.0;
+    sealBadge.hidden = YES;
+    self.studioRadarCompleteBadge = sealBadge;
+
+    UIImageView *sealIcon = [[UIImageView alloc] init];
+    sealIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *sealConfig = [UIImageSymbolConfiguration configurationWithPointSize:10 weight:UIImageSymbolWeightBold];
+    sealIcon.image = [UIImage systemImageNamed:@"checkmark.seal.fill" withConfiguration:sealConfig];
+    sealIcon.tintColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
+
+    UILabel *sealLabel = [[UILabel alloc] init];
+    sealLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    sealLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    sealLabel.textColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
+    sealLabel.text = @"مكتمل";
+
+    UIStackView *sealStack = [[UIStackView alloc] initWithArrangedSubviews:@[sealIcon, sealLabel]];
+    sealStack.translatesAutoresizingMaskIntoConstraints = NO;
+    sealStack.axis = UILayoutConstraintAxisHorizontal;
+    sealStack.spacing = 3.0;
+    sealStack.alignment = UIStackViewAlignmentCenter;
+    [sealBadge addSubview:sealStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [sealBadge.heightAnchor constraintEqualToConstant:20.0],
+        [sealStack.leadingAnchor constraintEqualToAnchor:sealBadge.leadingAnchor constant:6.0],
+        [sealStack.trailingAnchor constraintEqualToAnchor:sealBadge.trailingAnchor constant:-6.0],
+        [sealStack.centerYAnchor constraintEqualToAnchor:sealBadge.centerYAnchor]
+    ]];
+
+    UIStackView *titleRow = [[UIStackView alloc] initWithArrangedSubviews:@[titleLabel, sealBadge]];
+    titleRow.translatesAutoresizingMaskIntoConstraints = NO;
+    titleRow.axis = UILayoutConstraintAxisHorizontal;
+    titleRow.spacing = 6.0;
+    titleRow.alignment = UIStackViewAlignmentCenter;
+
+    UILabel *adviceLabel = [[UILabel alloc] init];
+    adviceLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    adviceLabel.font = [GM fontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular];
+    adviceLabel.textColor = UIColor.secondaryLabelColor;
+    adviceLabel.numberOfLines = 2;
+    adviceLabel.text = @"أضف صورة للحيوان لرفع دقة وجودة الإعلان";
+    self.studioRadarAdviceLabel = adviceLabel;
+
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[titleRow, adviceLabel]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 3.0;
+
+    UIStackView *mainStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.studioRadarRingView, textStack]];
+    mainStack.translatesAutoresizingMaskIntoConstraints = NO;
+    mainStack.axis = UILayoutConstraintAxisHorizontal;
+    mainStack.spacing = 12.0;
+    mainStack.alignment = UIStackViewAlignmentCenter;
+    [card addSubview:mainStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.studioRadarRingView.widthAnchor constraintEqualToConstant:46.0],
+        [self.studioRadarRingView.heightAnchor constraintEqualToConstant:46.0],
+        [mainStack.topAnchor constraintEqualToAnchor:card.topAnchor constant:14.0],
+        [mainStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:14.0],
+        [mainStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-14.0],
+        [mainStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-14.0]
+    ]];
+
+    return card;
+}
+
+- (UIView *)pp_buildMediaStudioCardView {
+    UIView *card = [self pp_createStudioCardContainer];
+    self.studioMediaCardView = card;
+
+    // Trailing badge
+    UILabel *countBadge = [[UILabel alloc] init];
+    countBadge.translatesAutoresizingMaskIntoConstraints = NO;
+    countBadge.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+    countBadge.textColor = UIColor.secondaryLabelColor;
+    countBadge.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.08]
+            : [UIColor colorWithRed:0.95 green:0.94 blue:0.92 alpha:1.0];
+    }];
+    countBadge.layer.cornerRadius = 12.0;
+    countBadge.layer.masksToBounds = YES;
+    countBadge.textAlignment = NSTextAlignmentCenter;
+    countBadge.text = [NSString stringWithFormat:kLang(@"community_media_count"), (int)[self safeMediaOutputCount], 8];
+    self.studioMediaCountBadgeLabel = countBadge;
+
+    UIView *header = [self pp_createStudioCardHeaderWithIcon:@"photo.stack.fill"
+                                                   iconColor:[UIColor colorWithRed:0.39 green:0.40 blue:0.95 alpha:1.0]
+                                                 iconBgColor:[UIColor colorWithRed:0.93 green:0.95 blue:1.0 alpha:1.0]
+                                                       title:kLang(@"community_media_title") ?: @"وسائط موثقة"
+                                                    subtitle:kLang(@"community_media_privacy") ?: @"تخضع الصور ومقاطع الفيديو للفحص والمراجعة قبل العرض العام."
+                                                trailingView:countBadge];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [countBadge.heightAnchor constraintEqualToConstant:24.0],
+        [countBadge.widthAnchor constraintGreaterThanOrEqualToConstant:90.0]
+    ]];
+
+    // Horizontal media scroll view
+    UIScrollView *mediaScroll = [[UIScrollView alloc] init];
+    mediaScroll.translatesAutoresizingMaskIntoConstraints = NO;
+    mediaScroll.showsHorizontalScrollIndicator = NO;
+    mediaScroll.alwaysBounceHorizontal = YES;
+    self.studioMediaScrollView = mediaScroll;
+
+    UIStackView *mediaStack = [[UIStackView alloc] init];
+    mediaStack.translatesAutoresizingMaskIntoConstraints = NO;
+    mediaStack.axis = UILayoutConstraintAxisHorizontal;
+    mediaStack.spacing = 12.0;
+    mediaStack.alignment = UIStackViewAlignmentCenter;
+    self.studioMediaThumbnailsStack = mediaStack;
+    [mediaScroll addSubview:mediaStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [mediaScroll.heightAnchor constraintEqualToConstant:124.0],
+        [mediaStack.topAnchor constraintEqualToAnchor:mediaScroll.contentLayoutGuide.topAnchor constant:4.0],
+        [mediaStack.bottomAnchor constraintEqualToAnchor:mediaScroll.contentLayoutGuide.bottomAnchor constant:-4.0],
+        [mediaStack.leadingAnchor constraintEqualToAnchor:mediaScroll.contentLayoutGuide.leadingAnchor],
+        [mediaStack.trailingAnchor constraintEqualToAnchor:mediaScroll.contentLayoutGuide.trailingAnchor],
+        [mediaStack.heightAnchor constraintEqualToAnchor:mediaScroll.frameLayoutGuide.heightAnchor constant:-8.0]
+    ]];
+
+    // Footnote
+    UIImageView *shieldIcon = [[UIImageView alloc] init];
+    shieldIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *shieldConfig = [UIImageSymbolConfiguration configurationWithPointSize:11 weight:UIImageSymbolWeightSemibold];
+    shieldIcon.image = [UIImage systemImageNamed:@"lock.shield.fill" withConfiguration:shieldConfig];
+    shieldIcon.tintColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
+
+    UILabel *footnoteLabel = [[UILabel alloc] init];
+    footnoteLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    footnoteLabel.font = [GM fontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightRegular];
+    footnoteLabel.textColor = UIColor.secondaryLabelColor;
+    footnoteLabel.text = kLang(@"community_media_safe_inspection") ?: @"تخضع الوسائط للفحص الأمني لضمان دقة الإعلانات وسلامة المجتمع";
+    footnoteLabel.numberOfLines = 2;
+
+    UIStackView *footnoteStack = [[UIStackView alloc] initWithArrangedSubviews:@[shieldIcon, footnoteLabel]];
+    footnoteStack.translatesAutoresizingMaskIntoConstraints = NO;
+    footnoteStack.axis = UILayoutConstraintAxisHorizontal;
+    footnoteStack.spacing = 6.0;
+    footnoteStack.alignment = UIStackViewAlignmentCenter;
+
+    UIStackView *cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[header, mediaScroll, footnoteStack]];
+    cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+    cardStack.axis = UILayoutConstraintAxisVertical;
+    cardStack.spacing = 14.0;
+    [card addSubview:cardStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor constant:16.0],
+        [cardStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:16.0],
+        [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-16.0],
+        [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-16.0]
+    ]];
+
+    [self pp_refreshStudioMediaThumbnails];
+    return card;
+}
+
+- (void)pp_refreshStudioMediaThumbnails {
+    if (!self.studioMediaThumbnailsStack) return;
+
+    for (UIView *v in self.studioMediaThumbnailsStack.arrangedSubviews) {
+        [v removeFromSuperview];
+    }
+
+    NSArray<UIImage *> *images = [self safeMediaOutputArray];
+    NSInteger count = images.count;
+
+    if (self.studioMediaCountBadgeLabel) {
+        self.studioMediaCountBadgeLabel.text = [NSString stringWithFormat:kLang(@"community_media_count"), (int)count, 8];
+        if (count > 0) {
+            self.studioMediaCountBadgeLabel.textColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
+            self.studioMediaCountBadgeLabel.backgroundColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:0.12];
+        } else {
+            self.studioMediaCountBadgeLabel.textColor = UIColor.secondaryLabelColor;
+            self.studioMediaCountBadgeLabel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+                return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                    ? [UIColor colorWithWhite:1.0 alpha:0.08]
+                    : [UIColor colorWithRed:0.95 green:0.94 blue:0.92 alpha:1.0];
+            }];
+        }
+    }
+
+    // Dashed add button (if count < 8)
+    if (count < 8) {
+        PPDashedAddMediaButton *addBtn = [[PPDashedAddMediaButton alloc] initWithFrame:CGRectMake(0, 0, 104, 116)];
+        addBtn.translatesAutoresizingMaskIntoConstraints = NO;
+        addBtn.layer.cornerRadius = 16.0;
+        addBtn.layer.cornerCurve = kCACornerCurveContinuous;
+        addBtn.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithWhite:1.0 alpha:0.05]
+                : [UIColor colorWithRed:0.96 green:0.96 blue:0.98 alpha:1.0];
+        }];
+
+        UIView *cameraCircle = [[UIView alloc] init];
+        cameraCircle.translatesAutoresizingMaskIntoConstraints = NO;
+        cameraCircle.userInteractionEnabled = NO;
+        cameraCircle.backgroundColor = [UIColor colorWithRed:0.39 green:0.40 blue:0.95 alpha:0.12];
+        cameraCircle.layer.cornerRadius = 22.0;
+
+        UIImageView *cameraIcon = [[UIImageView alloc] init];
+        cameraIcon.translatesAutoresizingMaskIntoConstraints = NO;
+        UIImageSymbolConfiguration *camSym = [UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightSemibold];
+        cameraIcon.image = [UIImage systemImageNamed:@"camera.fill" withConfiguration:camSym];
+        cameraIcon.tintColor = [UIColor colorWithRed:0.39 green:0.40 blue:0.95 alpha:1.0];
+        [cameraCircle addSubview:cameraIcon];
+
+        UILabel *addLabel = [[UILabel alloc] init];
+        addLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        addLabel.userInteractionEnabled = NO;
+        addLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+        addLabel.textColor = [UIColor colorWithRed:0.39 green:0.40 blue:0.95 alpha:1.0];
+        addLabel.textAlignment = NSTextAlignmentCenter;
+        addLabel.numberOfLines = 2;
+        addLabel.text = kLang(@"community_add_media") ?: @"إضافة صور أو فيديو";
+
+        UIStackView *btnContent = [[UIStackView alloc] initWithArrangedSubviews:@[cameraCircle, addLabel]];
+        btnContent.translatesAutoresizingMaskIntoConstraints = NO;
+        btnContent.userInteractionEnabled = NO;
+        btnContent.axis = UILayoutConstraintAxisVertical;
+        btnContent.spacing = 8.0;
+        btnContent.alignment = UIStackViewAlignmentCenter;
+        [addBtn addSubview:btnContent];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [addBtn.widthAnchor constraintEqualToConstant:104.0],
+            [addBtn.heightAnchor constraintEqualToConstant:116.0],
+
+            [cameraCircle.widthAnchor constraintEqualToConstant:44.0],
+            [cameraCircle.heightAnchor constraintEqualToConstant:44.0],
+            [cameraIcon.centerXAnchor constraintEqualToAnchor:cameraCircle.centerXAnchor],
+            [cameraIcon.centerYAnchor constraintEqualToAnchor:cameraCircle.centerYAnchor],
+
+            [btnContent.centerXAnchor constraintEqualToAnchor:addBtn.centerXAnchor],
+            [btnContent.centerYAnchor constraintEqualToAnchor:addBtn.centerYAnchor],
+            [btnContent.leadingAnchor constraintGreaterThanOrEqualToAnchor:addBtn.leadingAnchor constant:6.0],
+            [btnContent.trailingAnchor constraintLessThanOrEqualToAnchor:addBtn.trailingAnchor constant:-6.0]
+        ]];
+
+        [addBtn addTarget:self action:@selector(pp_handleAddMediaTapped) forControlEvents:UIControlEventTouchUpInside];
+        [self.studioMediaThumbnailsStack addArrangedSubview:addBtn];
+    }
+
+    // Thumbnails
+    for (NSInteger i = 0; i < count; i++) {
+        UIImage *img = images[i];
+        UIView *thumbContainer = [[UIView alloc] init];
+        thumbContainer.translatesAutoresizingMaskIntoConstraints = NO;
+        thumbContainer.layer.cornerRadius = 16.0;
+        thumbContainer.layer.cornerCurve = kCACornerCurveContinuous;
+        thumbContainer.layer.masksToBounds = YES;
+        thumbContainer.layer.borderWidth = 0.8;
+        thumbContainer.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithWhite:1.0 alpha:0.1]
+                : [UIColor colorWithWhite:0.0 alpha:0.08];
+        }].CGColor;
+
+        UIImageView *imgView = [[UIImageView alloc] initWithImage:img];
+        imgView.translatesAutoresizingMaskIntoConstraints = NO;
+        imgView.contentMode = UIViewContentModeScaleAspectFill;
+        imgView.clipsToBounds = YES;
+        [thumbContainer addSubview:imgView];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [thumbContainer.widthAnchor constraintEqualToConstant:104.0],
+            [thumbContainer.heightAnchor constraintEqualToConstant:116.0],
+            [imgView.topAnchor constraintEqualToAnchor:thumbContainer.topAnchor],
+            [imgView.leadingAnchor constraintEqualToAnchor:thumbContainer.leadingAnchor],
+            [imgView.trailingAnchor constraintEqualToAnchor:thumbContainer.trailingAnchor],
+            [imgView.bottomAnchor constraintEqualToAnchor:thumbContainer.bottomAnchor]
+        ]];
+
+        if (i == 0) {
+            UIView *coverPill = [[UIView alloc] init];
+            coverPill.translatesAutoresizingMaskIntoConstraints = NO;
+            coverPill.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.65];
+            coverPill.layer.cornerRadius = 8.0;
+
+            UILabel *coverLabel = [[UILabel alloc] init];
+            coverLabel.translatesAutoresizingMaskIntoConstraints = NO;
+            coverLabel.font = [GM boldFontWithSize:9.0] ?: [UIFont systemFontOfSize:9.0 weight:UIFontWeightBold];
+            coverLabel.textColor = UIColor.whiteColor;
+            coverLabel.text = kLang(@"community_media_cover_badge") ?: @"الصورة الرئيسية";
+            [coverPill addSubview:coverLabel];
+
+            [thumbContainer addSubview:coverPill];
+
+            [NSLayoutConstraint activateConstraints:@[
+                [coverPill.leadingAnchor constraintEqualToAnchor:thumbContainer.leadingAnchor constant:6.0],
+                [coverPill.bottomAnchor constraintEqualToAnchor:thumbContainer.bottomAnchor constant:-6.0],
+                [coverPill.heightAnchor constraintEqualToConstant:18.0],
+                [coverLabel.leadingAnchor constraintEqualToAnchor:coverPill.leadingAnchor constant:6.0],
+                [coverLabel.trailingAnchor constraintEqualToAnchor:coverPill.trailingAnchor constant:-6.0],
+                [coverLabel.centerYAnchor constraintEqualToAnchor:coverPill.centerYAnchor]
+            ]];
+        }
+
+        UIButton *delBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        delBtn.translatesAutoresizingMaskIntoConstraints = NO;
+        delBtn.tag = i;
+        UIImageSymbolConfiguration *delSym = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightBold];
+        UIImage *delImg = [UIImage systemImageNamed:@"xmark.circle.fill" withConfiguration:delSym];
+        [delBtn setImage:delImg forState:UIControlStateNormal];
+        delBtn.tintColor = [UIColor colorWithRed:0.94 green:0.27 blue:0.24 alpha:1.0];
+        [delBtn addTarget:self action:@selector(pp_handleDeleteThumbnailTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [thumbContainer addSubview:delBtn];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [delBtn.trailingAnchor constraintEqualToAnchor:thumbContainer.trailingAnchor constant:-4.0],
+            [delBtn.topAnchor constraintEqualToAnchor:thumbContainer.topAnchor constant:4.0],
+            [delBtn.widthAnchor constraintEqualToConstant:24.0],
+            [delBtn.heightAnchor constraintEqualToConstant:24.0]
+        ]];
+
+        UITapGestureRecognizer *previewTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleThumbnailPreviewTapped:)];
+        thumbContainer.tag = i;
+        [thumbContainer addGestureRecognizer:previewTap];
+
+        [self.studioMediaThumbnailsStack addArrangedSubview:thumbContainer];
+    }
+}
+
+- (void)pp_handleAddMediaTapped {
+    UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [haptic impactOccurred];
+    [self.imageCollection presentPickerFromViewController:self];
+}
+
+- (void)pp_handleDeleteThumbnailTapped:(UIButton *)sender {
+    NSInteger index = sender.tag;
+    if (index >= 0 && index < [self.imageCollection imageCount]) {
+        UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+        [haptic impactOccurred];
+        [self.imageCollection removeImageAtIndex:index];
+    }
+}
+
+- (void)pp_handleThumbnailPreviewTapped:(UITapGestureRecognizer *)tap {
+    NSInteger index = tap.view.tag;
+    if (index >= 0 && index < [self safeMediaOutputCount]) {
+        [self openImagePreviewAtIndex:index];
+    }
+}
+
+- (UIView *)pp_buildCategoryCardView {
+    UIView *card = [self pp_createStudioCardContainer];
+    self.studioCategoryCardView = card;
+
+    UIView *header = [self pp_createStudioCardHeaderWithIcon:@"pawprint.fill"
+                                                   iconColor:[UIColor colorWithRed:0.92 green:0.35 blue:0.05 alpha:1.0]
+                                                 iconBgColor:[UIColor colorWithRed:1.0 green:0.93 blue:0.84 alpha:1.0]
+                                                       title:kLang(@"ad_pet_type") ?: @"تصنيف الحيوان"
+                                                    subtitle:@"حدد فئة وسلالة الحيوان لتسهيل الوصول إليه."
+                                                trailingView:nil];
+
+    UIScrollView *chipsScroll = [[UIScrollView alloc] init];
+    chipsScroll.translatesAutoresizingMaskIntoConstraints = NO;
+    chipsScroll.showsHorizontalScrollIndicator = NO;
+    chipsScroll.alwaysBounceHorizontal = YES;
+
+    UIStackView *chipsStack = [[UIStackView alloc] init];
+    chipsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    chipsStack.axis = UILayoutConstraintAxisHorizontal;
+    chipsStack.spacing = 8.0;
+    chipsStack.alignment = UIStackViewAlignmentCenter;
+    self.studioSpeciesChipsStack = chipsStack;
+    [chipsScroll addSubview:chipsStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [chipsStack.topAnchor constraintEqualToAnchor:chipsScroll.contentLayoutGuide.topAnchor],
+        [chipsStack.bottomAnchor constraintEqualToAnchor:chipsScroll.contentLayoutGuide.bottomAnchor],
+        [chipsStack.leadingAnchor constraintEqualToAnchor:chipsScroll.contentLayoutGuide.leadingAnchor],
+        [chipsStack.trailingAnchor constraintEqualToAnchor:chipsScroll.contentLayoutGuide.trailingAnchor],
+        [chipsStack.heightAnchor constraintEqualToAnchor:chipsScroll.frameLayoutGuide.heightAnchor]
+    ]];
+
+    NSArray<NSDictionary *> *chipData = @[
+        @{@"key": @"cat", @"title": (kLang(@"community_species_cat") ?: @"قطط"), @"symbol": @"cat.fill"},
+        @{@"key": @"dog", @"title": (kLang(@"community_species_dog") ?: @"كلاب"), @"symbol": @"dog.fill"},
+        @{@"key": @"bird", @"title": (kLang(@"community_species_bird") ?: @"طيور"), @"symbol": @"bird.fill"},
+        @{@"key": @"rabbit", @"title": (kLang(@"community_species_rabbit") ?: @"أرانب"), @"symbol": @"hare.fill"},
+        @{@"key": @"other", @"title": (kLang(@"community_species_other") ?: @"أخرى"), @"symbol": @"sparkles"}
+    ];
+
+    for (NSInteger i = 0; i < chipData.count; i++) {
+        NSDictionary *dict = chipData[i];
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+        btn.translatesAutoresizingMaskIntoConstraints = NO;
+        btn.layer.cornerRadius = 18.0;
+        btn.layer.cornerCurve = kCACornerCurveContinuous;
+        btn.layer.borderWidth = 0.8;
+        btn.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithWhite:1.0 alpha:0.1]
+                : [UIColor colorWithWhite:0.0 alpha:0.08];
+        }].CGColor;
+        btn.tag = i;
+
+        [btn setTitle:dict[@"title"] forState:UIControlStateNormal];
+        [btn setTitleColor:PPAdFormPrimaryTextColor() forState:UIControlStateNormal];
+        btn.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+
+        UIImageSymbolConfiguration *symConfig = [UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightSemibold];
+        UIImage *symImg = [UIImage systemImageNamed:dict[@"symbol"] withConfiguration:symConfig] ?: [UIImage systemImageNamed:@"pawprint.fill" withConfiguration:symConfig];
+        [btn setImage:[symImg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+        btn.tintColor = PPAdFormPrimaryTextColor();
+        btn.contentEdgeInsets = UIEdgeInsetsMake(8, 14, 8, 14);
+        btn.imageEdgeInsets = UIEdgeInsetsMake(0, Language.isRTL ? 6 : -6, 0, Language.isRTL ? -6 : 6);
+
+        [btn addTarget:self action:@selector(pp_handleQuickSpeciesChipTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [chipsStack addArrangedSubview:btn];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [btn.heightAnchor constraintEqualToConstant:36.0]
+        ]];
+    }
+
+    UIStackView *cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[header, chipsScroll, self.basicFormView]];
+    cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+    cardStack.axis = UILayoutConstraintAxisVertical;
+    cardStack.spacing = 14.0;
+    [card addSubview:cardStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [chipsScroll.heightAnchor constraintEqualToConstant:38.0],
+        [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor constant:16.0],
+        [cardStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:16.0],
+        [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-16.0],
+        [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-16.0]
+    ]];
+
+    [self pp_syncSpeciesChipsState];
+    return card;
+}
+
+- (void)pp_syncSpeciesChipsState {
+    if (!self.studioSpeciesChipsStack) return;
+
+    NSArray<NSDictionary *> *chipData = @[
+        @{@"key": @"cat", @"title": @"قطط"},
+        @{@"key": @"dog", @"title": @"كلاب"},
+        @{@"key": @"bird", @"title": @"طيور"},
+        @{@"key": @"rabbit", @"title": @"أرانب"},
+        @{@"key": @"other", @"title": @"أخرى"}
+    ];
+
+    NSString *currentName = self.selectedKind.KindName ?: @"";
+
+    for (UIView *subview in self.studioSpeciesChipsStack.arrangedSubviews) {
+        if (![subview isKindOfClass:UIButton.class]) continue;
+        UIButton *btn = (UIButton *)subview;
+        NSInteger idx = btn.tag;
+        if (idx < 0 || idx >= chipData.count) continue;
+        NSDictionary *dict = chipData[idx];
+
+        BOOL isSelected = NO;
+        if ([dict[@"key"] isEqualToString:@"other"]) {
+            if (self.selectedKind) {
+                BOOL matched = NO;
+                for (NSInteger j = 0; j < 4; j++) {
+                    if ([currentName containsString:chipData[j][@"title"]]) {
+                        matched = YES;
+                        break;
+                    }
+                }
+                isSelected = !matched;
+            }
+        } else {
+            isSelected = [currentName containsString:dict[@"title"]];
+        }
+
+        if (isSelected) {
+            btn.backgroundColor = [UIColor colorWithRed:0.98 green:0.48 blue:0.18 alpha:1.0];
+            [btn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+            btn.tintColor = UIColor.whiteColor;
+            btn.layer.borderColor = UIColor.clearColor.CGColor;
+        } else {
+            btn.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+                return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                    ? [UIColor colorWithWhite:1.0 alpha:0.06]
+                    : [UIColor colorWithRed:0.96 green:0.95 blue:0.93 alpha:1.0];
+            }];
+            [btn setTitleColor:PPAdFormPrimaryTextColor() forState:UIControlStateNormal];
+            btn.tintColor = PPAdFormPrimaryTextColor();
+            btn.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+                return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                    ? [UIColor colorWithWhite:1.0 alpha:0.1]
+                    : [UIColor colorWithWhite:0.0 alpha:0.08];
+            }].CGColor;
+        }
+    }
+}
+
+- (void)pp_handleQuickSpeciesChipTapped:(UIButton *)sender {
+    UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [haptic impactOccurred];
+
+    NSArray<NSDictionary *> *chipData = @[
+        @{@"key": @"cat", @"keyword": @"قط"},
+        @{@"key": @"dog", @"keyword": @"كلب"},
+        @{@"key": @"bird", @"keyword": @"طير"},
+        @{@"key": @"rabbit", @"keyword": @"أرنب"},
+        @{@"key": @"other", @"keyword": @""}
+    ];
+
+    NSInteger idx = sender.tag;
+    if (idx < 0 || idx >= chipData.count) return;
+    NSDictionary *dict = chipData[idx];
+
+    if ([dict[@"key"] isEqualToString:@"other"]) {
+        PPFormFieldConfig *catConfig = [self.basicFormView configForIdentifier:kcategory];
+        [self pp_presentMainCategoryPickerForConfig:catConfig];
+        return;
+    }
+   
+    NSString *keyword = dict[@"keyword"];
+    MainKindsModel *matchedKind = nil;
+    for (MainKindsModel *kind in MKM.MainKindsArray) {
+        if ([kind.KindName containsString:keyword] || [kind.KindName containsString:dict[@"key"]]) {
+            matchedKind = kind;
+            break;
+        }
+    }
+
+    if (matchedKind) {
+        self.selectedKind = matchedKind;
+        self.adModel.category = matchedKind.ID;
+        self.adModel.subcategory = 0;
+        [self.basicFormView setValue:matchedKind.KindName forIdentifier:kcategory];
+        [self.basicFormView setValue:@"" forIdentifier:ksubcategory];
+
+        [self.basicFormView setFieldEnabled:YES identifier:ksubcategory];
+
+        self.hasUserModifiedForm = YES;
+        [self pp_syncSpeciesChipsState];
+        [self pp_updateStudioReadinessRadarAnimated:YES];
+    } else {
+        PPFormFieldConfig *catConfig = [self.basicFormView configForIdentifier:kcategory];
+        [self pp_presentMainCategoryPickerForConfig:catConfig];
+    }
+}
+
+- (UIView *)pp_buildAppearanceCardView {
+    UIView *card = [self pp_createStudioCardContainer];
+    self.studioAppearanceCardView = card;
+
+    UIView *header = [self pp_createStudioCardHeaderWithIcon:@"sparkles"
+                                                   iconColor:[UIColor colorWithRed:0.58 green:0.20 blue:0.92 alpha:1.0]
+                                                 iconBgColor:[UIColor colorWithRed:0.95 green:0.91 blue:1.0 alpha:1.0]
+                                                       title:kLang(@"community_appearance_title") ?: @"الصفات الظاهرية"
+                                                    subtitle:kLang(@"community_appearance_message") ?: @"أضف علامات تساعد على تمييز الحيوان."
+                                                trailingView:nil];
+
+    UILabel *genderTitleLabel = [[UILabel alloc] init];
+    genderTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    genderTitleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    genderTitleLabel.textColor = PPAdFormPrimaryTextColor();
+    genderTitleLabel.text = kLang(@"Gender") ?: @"الجنس";
+
+    UIStackView *genderPillsStack = [[UIStackView alloc] init];
+    genderPillsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    genderPillsStack.axis = UILayoutConstraintAxisHorizontal;
+    genderPillsStack.distribution = UIStackViewDistributionFillEqually;
+    genderPillsStack.spacing = 8.0;
+
+    self.studioGenderMaleButton = [self pp_createGenderButtonWithTitle:(kLang(@"Male") ?: @"ذكر")
+                                                                symbol:@"figure.stand"
+                                                                   tag:1];
+    self.studioGenderFemaleButton = [self pp_createGenderButtonWithTitle:(kLang(@"Female") ?: @"أنثى")
+                                                                  symbol:@"figure.stand.dress"
+                                                                     tag:2];
+    self.studioGenderUndefinedButton = [self pp_createGenderButtonWithTitle:(kLang(@"no_value") ?: @"غير محدد")
+                                                                     symbol:@"questionmark"
+                                                                        tag:3];
+
+    [genderPillsStack addArrangedSubview:self.studioGenderMaleButton];
+    [genderPillsStack addArrangedSubview:self.studioGenderFemaleButton];
+    [genderPillsStack addArrangedSubview:self.studioGenderUndefinedButton];
+
+    UIStackView *cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        header,
+        genderTitleLabel,
+        genderPillsStack,
+        self.petFormView
+    ]];
+    cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+    cardStack.axis = UILayoutConstraintAxisVertical;
+    cardStack.spacing = 12.0;
+    [card addSubview:cardStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [genderPillsStack.heightAnchor constraintEqualToConstant:42.0],
+        [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor constant:16.0],
+        [cardStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:16.0],
+        [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-16.0],
+        [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-16.0]
+    ]];
+
+    [self pp_syncGenderButtonsState];
+    return card;
+}
+
+- (UIButton *)pp_createGenderButtonWithTitle:(NSString *)title symbol:(NSString *)symbol tag:(NSInteger)tag {
+    UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+    btn.translatesAutoresizingMaskIntoConstraints = NO;
+    btn.tag = tag;
+    btn.layer.cornerRadius = 12.0;
+    btn.layer.cornerCurve = kCACornerCurveContinuous;
+    btn.layer.borderWidth = 0.8;
+
+    [btn setTitle:title forState:UIControlStateNormal];
+    btn.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+
+    UIImageSymbolConfiguration *symConfig = [UIImageSymbolConfiguration configurationWithPointSize:13 weight:UIImageSymbolWeightBold];
+    UIImage *img = [UIImage systemImageNamed:symbol withConfiguration:symConfig];
+    [btn setImage:[img imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    btn.imageEdgeInsets = UIEdgeInsetsMake(0, Language.isRTL ? 6 : -6, 0, Language.isRTL ? -6 : 6);
+
+    [btn addTarget:self action:@selector(pp_handleGenderButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    return btn;
+}
+
+- (void)pp_syncGenderButtonsState {
+    NSString *gender = self.adModel.gender;
+    BOOL isMale = [gender isEqualToString:PPAdGenderValueMale];
+    BOOL isFemale = [gender isEqualToString:PPAdGenderValueFemale];
+    BOOL isUndefined = [gender isEqualToString:PPAdGenderValueUndefined] || (!isMale && !isFemale);
+
+    UIColor *neutralBg = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.06]
+            : [UIColor colorWithRed:0.96 green:0.95 blue:0.93 alpha:1.0];
+    }];
+    UIColor *neutralBorder = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.1]
+            : [UIColor colorWithWhite:0.0 alpha:0.08];
+    }];
+
+    // Male button (tag 1)
+    if (isMale) {
+        self.studioGenderMaleButton.backgroundColor = [UIColor colorWithRed:0.23 green:0.51 blue:0.96 alpha:1.0];
+        [self.studioGenderMaleButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        self.studioGenderMaleButton.tintColor = UIColor.whiteColor;
+        self.studioGenderMaleButton.layer.borderColor = UIColor.clearColor.CGColor;
+    } else {
+        self.studioGenderMaleButton.backgroundColor = neutralBg;
+        [self.studioGenderMaleButton setTitleColor:PPAdFormPrimaryTextColor() forState:UIControlStateNormal];
+        self.studioGenderMaleButton.tintColor = PPAdFormPrimaryTextColor();
+        self.studioGenderMaleButton.layer.borderColor = neutralBorder.CGColor;
+    }
+
+    // Female button (tag 2)
+    if (isFemale) {
+        self.studioGenderFemaleButton.backgroundColor = [UIColor colorWithRed:0.93 green:0.28 blue:0.60 alpha:1.0];
+        [self.studioGenderFemaleButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        self.studioGenderFemaleButton.tintColor = UIColor.whiteColor;
+        self.studioGenderFemaleButton.layer.borderColor = UIColor.clearColor.CGColor;
+    } else {
+        self.studioGenderFemaleButton.backgroundColor = neutralBg;
+        [self.studioGenderFemaleButton setTitleColor:PPAdFormPrimaryTextColor() forState:UIControlStateNormal];
+        self.studioGenderFemaleButton.tintColor = PPAdFormPrimaryTextColor();
+        self.studioGenderFemaleButton.layer.borderColor = neutralBorder.CGColor;
+    }
+
+    // Undefined button (tag 3)
+    if (isUndefined) {
+        self.studioGenderUndefinedButton.backgroundColor = [UIColor colorWithRed:0.42 green:0.45 blue:0.50 alpha:1.0];
+        [self.studioGenderUndefinedButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        self.studioGenderUndefinedButton.tintColor = UIColor.whiteColor;
+        self.studioGenderUndefinedButton.layer.borderColor = UIColor.clearColor.CGColor;
+    } else {
+        self.studioGenderUndefinedButton.backgroundColor = neutralBg;
+        [self.studioGenderUndefinedButton setTitleColor:PPAdFormPrimaryTextColor() forState:UIControlStateNormal];
+        self.studioGenderUndefinedButton.tintColor = PPAdFormPrimaryTextColor();
+        self.studioGenderUndefinedButton.layer.borderColor = neutralBorder.CGColor;
+    }
+}
+
+- (void)pp_handleGenderButtonTapped:(UIButton *)sender {
+    UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [haptic impactOccurred];
+
+    if (sender == self.studioGenderMaleButton) {
+        [self pp_applyGenderSelectionToAdModel:PPAdGenderValueMale];
+    } else if (sender == self.studioGenderFemaleButton) {
+        [self pp_applyGenderSelectionToAdModel:PPAdGenderValueFemale];
+    } else {
+        [self pp_applyGenderSelectionToAdModel:PPAdGenderValueUndefined];
+    }
+
+    self.hasUserModifiedForm = YES;
+    [self pp_syncGenderButtonsState];
+    [self pp_updateStudioReadinessRadarAnimated:YES];
+}
+
+- (UIView *)pp_buildListingCardView {
+    UIView *card = [self pp_createStudioCardContainer];
+    self.studioListingCardView = card;
+
+    UIView *header = [self pp_createStudioCardHeaderWithIcon:@"tag.fill"
+                                                   iconColor:[UIColor colorWithRed:0.01 green:0.52 blue:0.78 alpha:1.0]
+                                                 iconBgColor:[UIColor colorWithRed:0.88 green:0.95 blue:1.0 alpha:1.0]
+                                                       title:@"تفاصيل العرض والموقع"
+                                                    subtitle:@"حدد عنوان الإعلان والسعر وموقع المعاينة."
+                                                trailingView:nil];
+
+    UIStackView *cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[header, self.listingFormView]];
+    cardStack.translatesAutoresizingMaskIntoConstraints = NO;
+    cardStack.axis = UILayoutConstraintAxisVertical;
+    cardStack.spacing = 14.0;
+    [card addSubview:cardStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [cardStack.topAnchor constraintEqualToAnchor:card.topAnchor constant:16.0],
+        [cardStack.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:16.0],
+        [cardStack.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-16.0],
+        [cardStack.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-16.0]
+    ]];
+
+    return card;
+}
+
+- (void)pp_setupFloatingActionDock {
+    if (self.studioFloatingDockView) return;
+
+    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial]];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:blurView];
+    self.studioFloatingDockView = blurView;
+
+    UIView *topLine = [[UIView alloc] init];
+    topLine.translatesAutoresizingMaskIntoConstraints = NO;
+    topLine.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark ? [UIColor colorWithWhite:1.0 alpha:0.1] : [UIColor colorWithWhite:0.0 alpha:0.06];
+    }];
+    [blurView.contentView addSubview:topLine];
+
+    UIView *guidancePill = [[UIView alloc] init];
+    guidancePill.translatesAutoresizingMaskIntoConstraints = NO;
+    guidancePill.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark ? [UIColor colorWithWhite:0.2 alpha:0.85] : UIColor.whiteColor;
+    }];
+    guidancePill.layer.cornerRadius = 14.0;
+    guidancePill.layer.shadowColor = UIColor.blackColor.CGColor;
+    guidancePill.layer.shadowOpacity = 0.05;
+    guidancePill.layer.shadowRadius = 4.0;
+    guidancePill.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+    self.studioDockGuidancePill = guidancePill;
+
+    UIImageView *guidanceIcon = [[UIImageView alloc] init];
+    guidanceIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *infoConfig = [UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightMedium];
+    guidanceIcon.image = [UIImage systemImageNamed:@"exclamationmark.circle" withConfiguration:infoConfig];
+    guidanceIcon.tintColor = UIColor.secondaryLabelColor;
+
+    UILabel *guidanceLabel = [[UILabel alloc] init];
+    guidanceLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    guidanceLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    guidanceLabel.textColor = UIColor.secondaryLabelColor;
+    self.studioDockGuidanceLabel = guidanceLabel;
+
+    UIStackView *guidanceStack = [[UIStackView alloc] initWithArrangedSubviews:@[guidanceIcon, guidanceLabel]];
+    guidanceStack.translatesAutoresizingMaskIntoConstraints = NO;
+    guidanceStack.axis = UILayoutConstraintAxisHorizontal;
+    guidanceStack.spacing = 6.0;
+    guidanceStack.alignment = UIStackViewAlignmentCenter;
+    [guidancePill addSubview:guidanceStack];
+
+    UIButton *heroBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    heroBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    heroBtn.layer.cornerRadius = 18.0;
+    heroBtn.layer.masksToBounds = YES;
+    heroBtn.layer.shadowColor = [UIColor colorWithRed:0.98 green:0.45 blue:0.25 alpha:0.35].CGColor;
+    heroBtn.layer.shadowOpacity = 0.35;
+    heroBtn.layer.shadowRadius = 12.0;
+    heroBtn.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+
+    CAGradientLayer *btnGrad = [CAGradientLayer layer];
+    btnGrad.colors = @[
+        (id)[UIColor colorWithRed:1.0 green:0.48 blue:0.27 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.96 green:0.33 blue:0.22 alpha:1.0].CGColor
+    ];
+    btnGrad.startPoint = CGPointMake(0.0, 0.5);
+    btnGrad.endPoint = CGPointMake(1.0, 0.5);
+    [heroBtn.layer insertSublayer:btnGrad atIndex:0];
+    self.studioDockHeroGradient = btnGrad;
+
+    NSString *heroTitle = (self.mode == AdEditorModeEdit) ? (kLang(@"Save") ?: @"حفظ التعديلات") : @"نشر الإعلان والمطابقة الفورية";
+    [heroBtn setTitle:heroTitle forState:UIControlStateNormal];
+    [heroBtn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    heroBtn.titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightBold];
+
+    UIImageSymbolConfiguration *planeConfig = [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightBold];
+    NSString *symbolName = (self.mode == AdEditorModeEdit) ? @"checkmark" : @"paperplane.fill";
+    [heroBtn setImage:[UIImage systemImageNamed:symbolName withConfiguration:planeConfig] forState:UIControlStateNormal];
+    heroBtn.tintColor = UIColor.whiteColor;
+    heroBtn.imageEdgeInsets = UIEdgeInsetsMake(0, Language.isRTL ? 8 : -8, 0, Language.isRTL ? -8 : 8);
+
+    [heroBtn addTarget:self action:@selector(saveFormData:) forControlEvents:UIControlEventTouchUpInside];
+    self.studioDockHeroButton = heroBtn;
+
+    UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    spinner.translatesAutoresizingMaskIntoConstraints = NO;
+    spinner.color = UIColor.whiteColor;
+    spinner.hidesWhenStopped = YES;
+    [heroBtn addSubview:spinner];
+    self.studioDockSpinner = spinner;
+
+    UIStackView *dockStack = [[UIStackView alloc] initWithArrangedSubviews:@[guidancePill, heroBtn]];
+    dockStack.translatesAutoresizingMaskIntoConstraints = NO;
+    dockStack.axis = UILayoutConstraintAxisVertical;
+    dockStack.alignment = UIStackViewAlignmentCenter;
+    dockStack.spacing = 8.0;
+    [blurView.contentView addSubview:dockStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [blurView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [topLine.topAnchor constraintEqualToAnchor:blurView.contentView.topAnchor],
+        [topLine.leadingAnchor constraintEqualToAnchor:blurView.contentView.leadingAnchor],
+        [topLine.trailingAnchor constraintEqualToAnchor:blurView.contentView.trailingAnchor],
+        [topLine.heightAnchor constraintEqualToConstant:0.8],
+
+        [dockStack.topAnchor constraintEqualToAnchor:blurView.contentView.topAnchor constant:12.0],
+        [dockStack.leadingAnchor constraintEqualToAnchor:blurView.contentView.leadingAnchor constant:20.0],
+        [dockStack.trailingAnchor constraintEqualToAnchor:blurView.contentView.trailingAnchor constant:-20.0],
+        [dockStack.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12.0],
+
+        [guidancePill.heightAnchor constraintEqualToConstant:28.0],
+        [guidanceStack.leadingAnchor constraintEqualToAnchor:guidancePill.leadingAnchor constant:12.0],
+        [guidanceStack.trailingAnchor constraintEqualToAnchor:guidancePill.trailingAnchor constant:-12.0],
+        [guidanceStack.centerYAnchor constraintEqualToAnchor:guidancePill.centerYAnchor],
+
+        [heroBtn.widthAnchor constraintEqualToAnchor:dockStack.widthAnchor],
+        [heroBtn.heightAnchor constraintEqualToConstant:54.0],
+
+        [spinner.centerYAnchor constraintEqualToAnchor:heroBtn.centerYAnchor],
+        [spinner.trailingAnchor constraintEqualToAnchor:heroBtn.trailingAnchor constant:-20.0]
+    ]];
+}
+
+- (NSInteger)pp_calculateReadinessPercentage {
+    NSInteger score = 0;
+
+    // Photos: 30%
+    if ([self safeMediaOutputCount] > 0) {
+        score += 30;
+    }
+
+    // Title: 15%
+    if (self.adModel.adTitle.length > 0) {
+        score += 15;
+    }
+
+    // Category / Species: 15%
+    if (self.selectedKind != nil || self.adModel.category > 0) {
+        score += 15;
+    }
+
+    // Breed / Subcategory: 10%
+    if (self.adModel.subcategory > 0) {
+        score += 10;
+    }
+
+    // Gender: 10%
+    if (self.adModel.gender.length > 0 && ![self.adModel.gender isEqualToString:PPAdGenderValueUndefined]) {
+        score += 10;
+    }
+
+    // Age: 5%
+    if (self.adModel.petAgeMonths != nil && self.adModel.petAgeMonths.integerValue > 0) {
+        score += 5;
+    }
+
+    // Price: 5%
+    if (self.adModel.price != nil) {
+        score += 5;
+    }
+
+    // Location: 5%
+    if (self.hasSelectedAdCoordinate || self.selectedAdLocationName.length > 0) {
+        score += 5;
+    }
+
+    // Description: 5%
+    if (self.adModel.adDescription.length > 0) {
+        score += 5;
+    }
+
+    return MIN(100, MAX(0, score));
+}
+
+- (NSString *)pp_currentReadinessAdvice {
+    if ([self safeMediaOutputCount] == 0) {
+        return @"أضف صورة للحيوان لرفع دقة وجودة الإعلان";
+    }
+    if (self.adModel.adTitle.length == 0) {
+        return @"أدخل عنواناً واضحاً للإعلان لجذب المشترين";
+    }
+    if (!self.selectedKind && self.adModel.category == 0) {
+        return @"حدد فئة ونوع الحيوان";
+    }
+    if (self.adModel.subcategory == 0) {
+        return @"اختر سلالة الحيوان لتسهيل البحث";
+    }
+    if (self.adModel.gender.length == 0 || [self.adModel.gender isEqualToString:PPAdGenderValueUndefined]) {
+        return @"حدد جنس الحيوان (ذكر أو أنثى)";
+    }
+    if (self.adModel.price == nil) {
+        return @"حدد سعر الحيوان أو ضعه 0 للتبني";
+    }
+    if (!self.hasSelectedAdCoordinate && self.selectedAdLocationName.length == 0) {
+        return @"حدد موقع الإعلان على الخريطة";
+    }
+    if (self.adModel.petAgeMonths == nil) {
+        return @"أدخل عمر الحيوان بالأشهر";
+    }
+    if (self.adModel.adDescription.length == 0) {
+        return @"أضف وصفاً مختصراً يوضح حالة ومميزات الحيوان";
+    }
+    return @"الإعلان مكتمل وجاهز للمطابقة الفورية بنسبة 100% ✨";
+}
+
+- (void)pp_updateStudioReadinessRadarAnimated:(BOOL)animated {
+    if (!self.studioRadarRingView) return;
+
+    NSInteger pct = [self pp_calculateReadinessPercentage];
+    [self.studioRadarRingView setProgress:((CGFloat)pct / 100.0) animated:animated];
+
+    if (pct >= 100) {
+        self.studioRadarCompleteBadge.hidden = NO;
+        self.studioRadarAdviceLabel.text = @"الإعلان مكتمل وجاهز للمطابقة الفورية بنسبة 100% ✨";
+        self.studioRadarAdviceLabel.textColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
+
+        if (self.studioDockGuidanceLabel) {
+            self.studioDockGuidanceLabel.text = @"✨ الإعلان مكتمل وجاهز للمطابقة الفورية";
+            self.studioDockGuidanceLabel.textColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
+        }
+    } else {
+        self.studioRadarCompleteBadge.hidden = YES;
+        NSString *advice = [self pp_currentReadinessAdvice];
+        self.studioRadarAdviceLabel.text = advice;
+        self.studioRadarAdviceLabel.textColor = UIColor.secondaryLabelColor;
+
+        if (self.studioDockGuidanceLabel) {
+            self.studioDockGuidanceLabel.text = advice;
+            self.studioDockGuidanceLabel.textColor = UIColor.secondaryLabelColor;
+        }
+    }
 }
 
 - (void)pp_rebuildFormFields {
@@ -3233,33 +4517,18 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         [v removeFromSuperview];
     }
 
-    if (self.formHeroContainerView) {
-        [self.contentStack addArrangedSubview:self.formHeroContainerView];
-    }
-
     __weak typeof(self) weakSelf = self;
     PPFormStyle *style = [self pp_adFormStyle];
 
-    // Section 0: Ad basics
-    NSArray<NSString *> *content0 = [self pp_sectionHeaderContentForSection:0];
-    [self.contentStack addArrangedSubview:[self pp_sectionHeaderViewForTitle:content0.firstObject subtitle:content0.lastObject]];
-
+    // Build Form Views
     self.basicFormView = [[PPFormEngineView alloc] initWithStyle:style];
-    [self.contentStack addArrangedSubview:self.basicFormView];
+    self.petFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    self.listingFormView = [[PPFormEngineView alloc] initWithStyle:style];
 
-    PPFormFieldConfig *titleField = [PPFormFieldConfig fieldWithIdentifier:@"adTitle"
-                                                                    title:kLang(@"adTitle")
-                                                              placeholder:kLang(@"enter_title")
-                                                                inputType:PPFormInputTypeText];
-    titleField.required = YES;
-    titleField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
-        weakSelf.adModel.adTitle = value;
-        if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
-    };
-
+    // 1. Basic fields (category & subcategory)
     PPFormFieldConfig *catField = [PPFormFieldConfig fieldWithIdentifier:kcategory
-                                                                  title:kLang(@"Species")
-                                                            placeholder:kLang(@"Species")
+                                                                  title:kLang(@"Species") ?: @"نوع الحيوان"
+                                                            placeholder:kLang(@"Species") ?: @"اختر نوع الحيوان"
                                                               inputType:PPFormInputTypePicker];
     catField.required = YES;
     catField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
@@ -3267,8 +4536,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     };
 
     PPFormFieldConfig *subField = [PPFormFieldConfig fieldWithIdentifier:ksubcategory
-                                                                  title:kLang(@"Breed")
-                                                            placeholder:kLang(@"Breed")
+                                                                  title:kLang(@"Breed") ?: @"السلالة"
+                                                            placeholder:kLang(@"Breed") ?: @"اختر السلالة"
                                                               inputType:PPFormInputTypePicker];
     subField.required = YES;
     subField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
@@ -3300,97 +4569,98 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         }
     }
 
-    [self.basicFormView setFields:@[titleField, catField, subField]];
+    [self.basicFormView setFields:@[catField, subField]];
 
-    // Section 1: Pet details
-    NSArray<NSString *> *content1 = [self pp_sectionHeaderContentForSection:1];
-    [self.contentStack addArrangedSubview:[self pp_sectionHeaderViewForTitle:content1.firstObject subtitle:content1.lastObject]];
-
-    self.petFormView = [[PPFormEngineView alloc] initWithStyle:style];
-    [self.contentStack addArrangedSubview:self.petFormView];
-
+    // 2. Pet detail fields (age)
     PPFormFieldConfig *ageField = [PPFormFieldConfig fieldWithIdentifier:kpetAge
-                                                                   title:kLang(@"age_months")
-                                                             placeholder:kLang(@"enter_pet_age_in_months")
+                                                                   title:kLang(@"age_months") ?: @"العمر بالأشهر"
+                                                             placeholder:kLang(@"enter_pet_age_in_months") ?: @"أدخل العمر بالأشهر"
                                                                inputType:PPFormInputTypeNumber];
     ageField.required = YES;
     ageField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
         weakSelf.adModel.petAgeMonths = value.length > 0 ? @(value.integerValue) : nil;
         if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
+        [weakSelf pp_updateStudioReadinessRadarAnimated:YES];
     };
-
-    PPFormFieldConfig *genderField = [PPFormFieldConfig fieldWithIdentifier:@"isFemale"
-                                                                     title:kLang(@"Gender")
-                                                               placeholder:kLang(@"selectGender")
-                                                                 inputType:PPFormInputTypePicker];
-    genderField.required = YES;
-    genderField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
-        [weakSelf pp_presentGenderPickerForConfig:config];
-    };
-
     if (self.adModel.petAgeMonths) {
         ageField.value = [NSString stringWithFormat:@"%@", self.adModel.petAgeMonths];
     }
+    [self.petFormView setFields:@[ageField]];
 
-    PPAdGenderOption *genderOpt = [self pp_genderOptionForAdModel];
-    if (genderOpt) {
-        genderField.value = genderOpt.formDisplayText;
+    // 3. Listing detail fields (title, price, location, desc)
+    PPFormFieldConfig *titleField = [PPFormFieldConfig fieldWithIdentifier:@"adTitle"
+                                                                    title:kLang(@"adTitle") ?: @"عنوان الإعلان"
+                                                              placeholder:kLang(@"enter_title") ?: @"أدخل عنواناً جذاباً ومختصراً"
+                                                                inputType:PPFormInputTypeText];
+    titleField.required = YES;
+    titleField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        weakSelf.adModel.adTitle = value;
+        if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
+        [weakSelf pp_updateStudioReadinessRadarAnimated:YES];
+    };
+    if (self.adModel.adTitle.length > 0) {
+        titleField.value = self.adModel.adTitle;
     }
 
-    [self.petFormView setFields:@[ageField, genderField]];
-
-    // Section 2: Listing details
-    NSArray<NSString *> *content2 = [self pp_sectionHeaderContentForSection:2];
-    [self.contentStack addArrangedSubview:[self pp_sectionHeaderViewForTitle:content2.firstObject subtitle:content2.lastObject]];
-
-    self.listingFormView = [[PPFormEngineView alloc] initWithStyle:style];
-    [self.contentStack addArrangedSubview:self.listingFormView];
-
     PPFormFieldConfig *priceField = [PPFormFieldConfig fieldWithIdentifier:kprice
-                                                                    title:kLang(@"price")
-                                                              placeholder:kLang(@"enter_price")
+                                                                    title:kLang(@"price") ?: @"السعر (ر.ق)"
+                                                              placeholder:kLang(@"enter_price") ?: @"0"
                                                                 inputType:PPFormInputTypeNumber];
     priceField.keyboardType = UIKeyboardTypeDecimalPad;
     priceField.required = YES;
     priceField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
         weakSelf.adModel.price = [GM moneyNumberFromInput:value];
         if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
+        [weakSelf pp_updateStudioReadinessRadarAnimated:YES];
     };
+    if (self.adModel.price) {
+        priceField.value = [NSString stringWithFormat:@"%@", self.adModel.price];
+    }
 
     PPFormFieldConfig *locationField = [PPFormFieldConfig fieldWithIdentifier:kadLocation
-                                                                       title:kLang(@"adLocation")
-                                                                 placeholder:kLang(@"select_location")
-                                                                   inputType:PPFormInputTypePicker];
+                                                                        title:kLang(@"adLocation") ?: @"موقع الإعلان"
+                                                                  placeholder:kLang(@"select_location") ?: @"حدد الموقع على الخريطة"
+                                                                    inputType:PPFormInputTypePicker];
     locationField.required = YES;
     locationField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
         [weakSelf pp_presentAdLocationPicker];
     };
+    if (self.selectedAdLocationName.length > 0) {
+        locationField.value = self.selectedAdLocationName;
+    }
 
     PPFormFieldConfig *descField = [PPFormFieldConfig fieldWithIdentifier:kdesc
-                                                                   title:kLang(@"enter_description")
-                                                             placeholder:kLang(@"enter_description")
+                                                                   title:kLang(@"enter_description") ?: @"تفاصيل ووصف الإعلان"
+                                                             placeholder:kLang(@"enter_description") ?: @"اكتب تفاصيل واضحة عن الحيوان، حالته الصحية، والتطعيمات..."
                                                                inputType:PPFormInputTypeTextView];
     descField.required = YES;
     descField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
         weakSelf.adModel.adDescription = value;
         if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
+        [weakSelf pp_updateStudioReadinessRadarAnimated:YES];
     };
-
-    if (self.adModel.price) {
-        priceField.value = [NSString stringWithFormat:@"%@", self.adModel.price];
-    }
-    if (self.selectedAdLocationName.length > 0) {
-        locationField.value = self.selectedAdLocationName;
-    }
     if (self.adModel.adDescription.length > 0) {
         descField.value = self.adModel.adDescription;
     }
 
-    [self.listingFormView setFields:@[priceField, locationField, descField]];
-    
-    if (self.imageCollectionFooterContainerView) {
-        [self.contentStack addArrangedSubview:self.imageCollectionFooterContainerView];
-    }
+    [self.listingFormView setFields:@[titleField, priceField, locationField, descField]];
+
+    // Assemble Studio Cards into Content Stack
+    [self.contentStack addArrangedSubview:[self pp_buildApexHeaderView]];
+    [self.contentStack addArrangedSubview:[self pp_buildRadarCardView]];
+    [self.contentStack addArrangedSubview:[self pp_buildMediaStudioCardView]];
+    [self.contentStack addArrangedSubview:[self pp_buildCategoryCardView]];
+    [self.contentStack addArrangedSubview:[self pp_buildAppearanceCardView]];
+    [self.contentStack addArrangedSubview:[self pp_buildListingCardView]];
+
+    UIView *bottomSpacer = [[UIView alloc] init];
+    bottomSpacer.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.contentStack addArrangedSubview:bottomSpacer];
+    [NSLayoutConstraint activateConstraints:@[
+        [bottomSpacer.heightAnchor constraintEqualToConstant:10.0]
+    ]];
+
+    [self pp_updateStudioReadinessRadarAnimated:NO];
 }
 
 #pragma mark - Prefill when Editing
@@ -3423,6 +4693,10 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.hasSelectedAdCoordinate = PPIsValidAdCoordinate(self.selectedAdCoordinate);
 
     [self pp_rebuildFormFields];
+    [self pp_syncSpeciesChipsState];
+    [self pp_syncGenderButtonsState];
+    [self pp_refreshStudioMediaThumbnails];
+    [self pp_updateStudioReadinessRadarAnimated:NO];
 
     self.didMutateMediaAfterPrefill = NO;
     [self pp_setSubmitEnabled:NO];
@@ -3493,25 +4767,18 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     self.scrollView.alpha = 1;
 
-    self.imageCollection.layer.cornerRadius = 0.0;
-    self.imageCollection.layer.borderWidth = 0.0;
-    self.imageCollection.layer.shadowOpacity = 0.0;
-    self.imageCollection.layer.shadowRadius = 0.0;
-    self.imageCollection.layer.shadowOffset = CGSizeZero;
-    self.imageCollection.layer.shadowPath = nil;
-    self.imageCollection.layer.masksToBounds = NO;
-    self.imageCollection.backgroundColor = UIColor.clearColor;
-
-    if (self.formHeroCardView) {
-        self.formHeroCardView.layer.shadowPath =
-            [UIBezierPath bezierPathWithRoundedRect:self.formHeroCardView.bounds
-                                       cornerRadius:self.formHeroCardView.layer.cornerRadius].CGPath;
+    if (self.backgroundGlowViewTop.layer.sublayers.firstObject) {
+        self.backgroundGlowViewTop.layer.sublayers.firstObject.frame = self.backgroundGlowViewTop.bounds;
     }
-    [self.view bringSubviewToFront:self.scrollView];
-    if (self.imageCollection.superview == self.view) {
-        [self.view bringSubviewToFront:self.imageCollection];
+    if (self.studioDockHeroGradient && self.studioDockHeroButton) {
+        self.studioDockHeroGradient.frame = self.studioDockHeroButton.bounds;
     }
-    
+    if (self.studioFloatingDockView) {
+        [self.view bringSubviewToFront:self.studioFloatingDockView];
+    }
+    if (self.uploadProgressOverlay) {
+        [self.view bringSubviewToFront:self.uploadProgressOverlay];
+    }
 }
 
 - (void)pp_updateFormHeroHeaderLayoutIfNeeded
@@ -4111,32 +5378,22 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
     [self pp_setPremiumTabDockHidden:YES animated:animated];
-    //[PPBarMgr hide];
     self.view.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.scrollView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
-    self.imageCollectionFooterContainerView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     [self pp_refreshMediaLocalizedText];
-    [self pp_updateImageCollectionFooterLayoutIfNeeded];
     
     if(!self.presented)
     {
          self.presented=YES;
     }
-    
-   
-    NSString *title = (self.mode == AdEditorModeEdit)? kLang(@"EditAdTitle")   : kLang(@"PostAdTitle");       // add to Localizable
-    NSString *subKindName = nil;
-    if (self.selectedMainKind) {  subKindName = [NSString stringWithFormat:@"%@",self.selectedMainKind.KindName]; }
- 
-    
-     [self ios26Bar];
+
+    [self pp_refreshStudioMediaThumbnails];
+    [self pp_syncSpeciesChipsState];
+    [self pp_syncGenderButtonsState];
+    [self pp_updateStudioReadinessRadarAnimated:NO];
     [self pp_setSubmitEnabled:!self.isSubmittingAd && !self.isPrefillInProgress];
-    
-    UIView *topView = [self pp_modernBlurTitleViewWithTitle:title
-                                                   subtitle:subKindName ?: nil];
-    [self pp_navBarSetTitleViewCenteredSmallWidth:topView];
-  
 }
 
 - (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
@@ -4395,6 +5652,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         return;
     }
 
+    [self pp_refreshStudioMediaThumbnails];
+    [self pp_updateStudioReadinessRadarAnimated:YES];
     [self pp_refreshFormHeroContent];
 }
 

@@ -4,7 +4,13 @@ import UIKit
 /// Home-only image preparation. Source assets and the shared network cache are
 /// untouched. Work is bounded, serialized off-main, and reused across shelves.
 enum HomeProductImagePreparation {
-    private static let queue = DispatchQueue(label: "com.purepets.home.product-images", qos: .utility)
+    private static let queue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.name = "com.purepets.home.product-images"
+        queue.qualityOfService = .utility
+        queue.maxConcurrentOperationCount = 1
+        return queue
+    }()
     private static let cache: NSCache<NSString, UIImage> = {
         let cache = NSCache<NSString, UIImage>()
         cache.countLimit = 48
@@ -12,19 +18,28 @@ enum HomeProductImagePreparation {
         return cache
     }()
 
-    static func prepare(_ image: UIImage, key: String, completion: @escaping (UIImage) -> Void) {
+    @discardableResult
+    static func prepare(_ image: UIImage, key: String, completion: @escaping (UIImage) -> Void) -> Operation? {
         if let prepared = cache.object(forKey: key as NSString) {
             completion(prepared)
-            return
+            return nil
         }
-        queue.async {
+        let operation = BlockOperation()
+        operation.addExecutionBlock { [weak operation] in
+            guard let operation, !operation.isCancelled else { return }
             let prepared = autoreleasepool {
                 cache.object(forKey: key as NSString) ?? normalize(image)
             }
+            guard !operation.isCancelled else { return }
             cache.setObject(prepared, forKey: key as NSString,
                             cost: Int(prepared.size.width * prepared.size.height * 4))
-            DispatchQueue.main.async { completion(prepared) }
+            DispatchQueue.main.async {
+                guard !operation.isCancelled else { return }
+                completion(prepared)
+            }
         }
+        queue.addOperation(operation)
+        return operation
     }
 
     private static func normalize(_ source: UIImage) -> UIImage {
@@ -63,41 +78,33 @@ enum HomeProductImagePreparation {
             var boundary: [Int] = []
             for x in 0..<width { boundary += [x, (height - 1) * width + x] }
             for y in 0..<height { boundary += [y * width, y * width + width - 1] }
-            // Only remove a genuinely flat, edge-connected backdrop. Photos,
-            // packaging artwork and multi-colour backgrounds stay contained.
-            if boundary.allSatisfy(matches) {
-                var pending = boundary
-                var visited = [Bool](repeating: false, count: width * height)
-                var head = 0
-                while head < pending.count {
-                    let pixel = pending[head]
-                    head += 1
-                    guard !visited[pixel] else { continue }
-                    visited[pixel] = true
-                    guard matches(pixel) else { continue }
-                    for channel in 0..<4 { bytes[pixel * 4 + channel] = 0 }
-                    let x = pixel % width, y = pixel / width
-                    if x > 0 { pending.append(pixel - 1) }
-                    if x + 1 < width { pending.append(pixel + 1) }
-                    if y > 0 { pending.append(pixel - width) }
-                    if y + 1 < height { pending.append(pixel + width) }
-                }
-            }
-            var minX = width, minY = height, maxX = -1, maxY = -1, opaqueCount = 0
+            // Never flood-fill packaging: the product itself may be white,
+            // black, or the same colour as the photographed background. Only
+            // trim verified outer margins; all interior source pixels survive.
+            let hasFlatBackground = boundary.allSatisfy(matches)
+            var minX = width, minY = height, maxX = -1, maxY = -1, contentCount = 0
             for y in 0..<height {
-                for x in 0..<width where bytes[(y * width + x) * 4 + 3] > 20 {
+                for x in 0..<width {
+                    let pixel = y * width + x
+                    guard bytes[pixel * 4 + 3] > 20,
+                          !hasFlatBackground || !matches(pixel) else { continue }
                     minX = min(minX, x); maxX = max(maxX, x)
                     minY = min(minY, y); maxY = max(maxY, y)
-                    opaqueCount += 1
+                    contentCount += 1
                 }
             }
-            // Reject uncertain cutouts instead of showing a damaged/empty item.
-            guard opaqueCount > width * height / 40,
-                  maxX - minX > width / 12, maxY - minY > height / 12,
-                  let result = context.makeImage() else { return original }
-            let crop = CGRect(x: max(0, minX - 3), y: max(0, minY - 3),
-                              width: min(width, maxX + 4) - max(0, minX - 3),
-                              height: min(height, maxY + 4) - max(0, minY - 3))
+            guard contentCount > width * height / 40,
+                  maxX - minX > width / 12, maxY - minY > height / 12 else { return original }
+            // Transparent margins are explicit. An opaque photograph is more
+            // ambiguous, so never trim more than 12% from any source edge.
+            let maxTrimX = hasFlatBackground ? Int(Double(width) * 0.12) : width
+            let maxTrimY = hasFlatBackground ? Int(Double(height) * 0.12) : height
+            let left = min(maxTrimX, max(0, minX - 6))
+            let top = min(maxTrimY, max(0, minY - 6))
+            let right = max(width - maxTrimX, min(width, maxX + 7))
+            let bottom = max(height - maxTrimY, min(height, maxY + 7))
+            let crop = CGRect(x: left, y: top, width: right - left, height: bottom - top)
+            let result = original
             return result.cropping(to: crop) ?? original
         }
         guard let prepared else { return scaled }
@@ -131,6 +138,7 @@ struct HomePreparedProductImage: UIViewRepresentable {
         context.coordinator.loaded = true
         context.coordinator.url = url
         context.coordinator.task?.cancel()
+        context.coordinator.preparation?.cancel()
         view.image = placeholder ?? UIImage(systemName: "shippingbox")
         view.tintColor = .secondaryLabel
         guard let url, !url.isEmpty else { return }
@@ -139,7 +147,7 @@ struct HomePreparedProductImage: UIViewRepresentable {
             urlString: url, cacheKey: url, displaySize: CGSize(width: 240, height: 144)
         ) { [weak view, weak coordinator] image in
             guard let image, coordinator?.url == url else { return }
-            HomeProductImagePreparation.prepare(image, key: "home-product-v1|\(url)") { [weak view, weak coordinator] prepared in
+            coordinator?.preparation = HomeProductImagePreparation.prepare(image, key: "home-product-v2|\(url)") { [weak view, weak coordinator] prepared in
                 guard coordinator?.url == url else { return }
                 view?.image = prepared
             }
@@ -149,12 +157,14 @@ struct HomePreparedProductImage: UIViewRepresentable {
     static func dismantleUIView(_ view: UIImageView, coordinator: Coordinator) {
         coordinator.url = nil
         coordinator.task?.cancel()
+        coordinator.preparation?.cancel()
     }
 
     final class Coordinator {
         var loaded = false
         var url: String?
         var task: AppRemoteImageTask?
+        var preparation: Operation?
     }
 }
 
@@ -204,7 +214,6 @@ extension View {
     func homeProductInformationMeasurement(enabled: Bool) -> some View {
         if enabled {
             self
-                .fixedSize(horizontal: false, vertical: true)
                 .background {
                     GeometryReader { geometry in
                         Color.clear.preference(
@@ -412,7 +421,7 @@ private struct HomeUniversalCompatibilityCard: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: mediaHeight)
                 .background(Color.ppSecondarySurface)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(PPUniversalMediaRoundedShape(topRadius: max(0, HomeVisualTokens.universalCardCorner - 4), bottomRadius: 12))
 
                 if !viewModel.badgeText.isEmpty {
                     Text(viewModel.badgeText)
@@ -473,6 +482,7 @@ private struct HomeUniversalCompatibilityCard: View {
                 if !isAdvertisement {
                     availability
                         .homeProductInformationRegion(.metadata, enabled: true)
+                    Spacer(minLength: 8)
                     action
                 } else {
                     HStack(alignment: .bottom, spacing: 8) {

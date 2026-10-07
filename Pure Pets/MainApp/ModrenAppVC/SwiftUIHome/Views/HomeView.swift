@@ -111,9 +111,8 @@ private struct HomeLivingGatewayStage: View {
 /// mirrors `PPHomeMarketingStage` so the marketing row can be pointed at either
 /// composition without touching its call sites.
 ///
-/// V2 owns its compact 16pt outer inset internally so the card and its shadow
-/// stay optically consistent across Home presentation plans. The row therefore
-/// must not add the standard section margin a second time.
+/// The marketing row owns the companion surface and outer margin. The stage
+/// supplies only its hero content so profile and discovery form one object.
 @available(iOS 15.0, *)
 private struct HomeHeroV2Stage: View {
     let pages: [HomeHeroPage]
@@ -170,7 +169,8 @@ private struct HomeHeroV2Stage: View {
             onPrimaryAction: performPrimaryAction,
             onSecondaryAction: performSecondaryAction,
             onInteractionChanged: onInteractionChanged,
-            onSelectCategory: onSelectCategory
+            onSelectCategory: onSelectCategory,
+            embeddedInCompanionSurface: true
         )
     }
 
@@ -444,8 +444,29 @@ struct HomeView: View {
             EmptyView()
 
         case let .marketingStage(source):
-            VStack(spacing: PPSpace.base) {
-                marketingStage(source)
+            VStack(spacing: PPSpace.sm) {
+                if PPHomeHeroFlags.UseHeroV2 {
+                    VStack(spacing: 0) {
+                        companionHeader
+                            .padding(.horizontal, PPSpace.base)
+                            .padding(.vertical, PPSpace.sm)
+                        Rectangle()
+                            .fill(Color(uiColor: .separator).opacity(0.3))
+                            .frame(height: 0.5)
+                            .padding(.horizontal, PPSpace.base)
+                            .accessibilityHidden(true)
+                        marketingStage(source)
+                    }
+                    .background(Color.homeSurface, in: RoundedRectangle(
+                        cornerRadius: HomeVisualTokens.cardCorner,
+                        style: .continuous
+                    ))
+                    .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                } else {
+                    companionHeader
+                        .padding(.horizontal, HomeVisualTokens.contentHorizontalMargin)
+                    marketingStage(source)
+                }
                 if presentsCategoryBrowsing(after: module, in: resolvedPlan) {
                     HomeCategoryRail(
                         categories: store.state.categories,
@@ -576,6 +597,26 @@ struct HomeView: View {
     }
 
     // MARK: Zone 2
+
+    private var companionHeader: some View {
+        HomeHeroPetContext(
+            pets: store.state.pets,
+            selectedPet: store.selectedPriorityPet,
+            detail: store.heroPetContextDetail,
+            accent: companionCategoryAccent,
+            onSelect: store.selectPet,
+            onEdit: store.editSelectedPet,
+            onOpenProfiles: store.openPetProfiles
+        )
+    }
+
+    private var companionCategoryAccent: UIColor {
+        guard let categoryID = store.selectedPriorityPet?.categoryID,
+              let category = store.state.categories.first(where: {
+                  HomeModelAdapter.mainKindID($0.raw) == categoryID
+              }) else { return .ppPrimary }
+        return category.accent
+    }
 
     @ViewBuilder
     private func marketingStage(_ source: PPHomeMarketingSource) -> some View {

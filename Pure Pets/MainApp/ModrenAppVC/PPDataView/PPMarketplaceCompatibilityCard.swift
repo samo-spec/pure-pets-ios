@@ -35,6 +35,14 @@ struct PPMarketplaceCompatibilityCard: View {
         PPUniversalCellSwiftUIBridge.prefersContainedImage(for: viewModel)
     }
 
+    private var metadataText: String? {
+        PPUniversalCellSwiftUIBridge.metadataText(for: viewModel)
+    }
+
+    private var metadataSystemImage: String? {
+        PPUniversalCellSwiftUIBridge.metadataSystemImage(for: viewModel)
+    }
+
     private var showsSaveForLater: Bool {
         context.rawValue == 1 || context.rawValue == 2
     }
@@ -121,14 +129,16 @@ struct PPMarketplaceCompatibilityCard: View {
         return AnyView(
             VStack(alignment: .leading, spacing: 0) {
                 media.frame(height: mediaHeight)
-                information.padding(PPSpace.md)
+                information
+                    .padding(PPSpace.md)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         )
     }
 
     private var media: some View {
         ZStack {
-            Color(uiColor: .secondarySystemBackground)
+            (usesQuantity ? Color.ppSecondarySurface : Color(uiColor: .secondarySystemBackground))
 
             if let image = viewModel.image ?? viewModel.placeholder,
                viewModel.imageURL?.isEmpty != false {
@@ -297,7 +307,7 @@ struct PPMarketplaceCompatibilityCard: View {
 
             HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
                 Text(viewModel.priceText)
-                    .font(HomeFont.bold(layout == .focus ? 22 : 18))
+                    .font(HomeFont.bold(layout == .focus ? 22 : 20))
                     .foregroundStyle(Color.ppMarketplaceTextPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -314,19 +324,40 @@ struct PPMarketplaceCompatibilityCard: View {
                 if let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
                     Text(variantInfo)
                         .font(HomeFont.bold(11))
-                        .foregroundStyle(Color(uiColor: bridge.accentColor))
+                        .foregroundStyle(usesQuantity ? Color.ppPrimary : Color(uiColor: bridge.accentColor))
                         .padding(.horizontal, PPSpace.sm)
                         .padding(.vertical, PPSpace.xs)
                         .background(
-                            Color(uiColor: bridge.accentColor).opacity(0.12),
+                            (usesQuantity ? Color.ppPrimary : Color(uiColor: bridge.accentColor)).opacity(0.12),
                             in: Capsule(style: .continuous)
                         )
                 }
             }
 
+            if !viewModel.availabilityText.isEmpty || (metadataText?.isEmpty == false) {
+                HStack(spacing: 6) {
+                    if !viewModel.availabilityText.isEmpty {
+                        Text(viewModel.availabilityText)
+                            .foregroundStyle(Color(red: 0x10 / 255.0, green: 0xB9 / 255.0, blue: 0x81 / 255.0))
+                    }
+                    if let meta = metadataText, !meta.isEmpty {
+                        if let icon = metadataSystemImage, !icon.isEmpty {
+                            Label(meta, systemImage: icon)
+                                .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                        } else {
+                            Text(meta)
+                                .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                        }
+                    }
+                }
+                .font(HomeFont.caption1())
+            }
+
+            Spacer(minLength: PPSpace.sm)
+
             action
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -363,6 +394,20 @@ struct PPMarketplaceCompatibilityCard: View {
         }
     }
 
+    private var actionHeight: CGFloat {
+        PPProductCardActionMetrics.height(for: dynamicTypeSize)
+    }
+
+    private func actionLabel(title: String, symbol: String, loading: Bool = false) -> some View {
+        PPProductCardActionLabel(
+            title: title,
+            symbol: symbol,
+            height: actionHeight,
+            tint: usesQuantity ? .ppPrimary : Color(uiColor: bridge.accentColor),
+            isProcessing: loading
+        )
+    }
+
     private var notifyAction: some View {
         Button {
             guard !notificationLoading else { return }
@@ -376,26 +421,14 @@ struct PPMarketplaceCompatibilityCard: View {
                 }
             }
         } label: {
-            Label(
-                PPMarketplaceText.localized(
+            actionLabel(
+                title: PPMarketplaceText.localized(
                     notificationRegistered
                         ? "home_pulse_notify_registered"
                         : "home_pulse_notify_available"
                 ),
-                systemImage: notificationRegistered
-                    ? "checkmark.circle.fill"
-                    : "bell.fill"
-            )
-            .font(HomeFont.bold(14))
-            .frame(maxWidth: .infinity, minHeight: 46)
-            .foregroundStyle(
-                notificationRegistered
-                    ? Color.green
-                    : Color.ppMarketplaceTextPrimary
-            )
-            .background(
-                Color(uiColor: .tertiarySystemBackground),
-                in: Capsule(style: .continuous)
+                symbol: notificationRegistered ? "checkmark" : "bell",
+                loading: notificationLoading
             )
         }
         .buttonStyle(.plain)
@@ -406,19 +439,13 @@ struct PPMarketplaceCompatibilityCard: View {
         Button {
             mutateQuantity(1)
         } label: {
-            Label(
-                PPMarketplaceText.localized("home_pulse_add_to_cart"),
-                systemImage: "cart.badge.plus"
-            )
-            .font(HomeFont.bold(14))
-            .frame(maxWidth: .infinity, minHeight: 46)
-            .foregroundStyle(accentPalette.onAccent)
-            .background(
-                accentPalette.fill,
-                in: Capsule(style: .continuous)
+            actionLabel(
+                title: PPMarketplaceText.localized("home_pulse_add_to_cart"),
+                symbol: "cart.badge.plus"
             )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(PPMarketplaceText.localized("home_pulse_add_to_cart"))
     }
 
     private var quantityStepper: some View {
@@ -430,8 +457,8 @@ struct PPMarketplaceCompatibilityCard: View {
                 mutateQuantity(quantity - 1)
             }
 
-            Text("\(quantity)")
-                .font(HomeFont.bold(17))
+            Text(quantity.formatted(.number.locale(Locale(identifier: Language.isRTL() ? "ar" : "en"))))
+                .font(HomeFont.bold(16))
                 .frame(maxWidth: .infinity)
                 .accessibilityLabel(
                     PPMarketplaceText.formatted(
@@ -444,15 +471,15 @@ struct PPMarketplaceCompatibilityCard: View {
                 symbol: "plus",
                 accessibilityKey: "home_pulse_increase_quantity_a11y"
             ) {
-                mutateQuantity(quantity + 1)
+                mutateQuantity(min(stockLimit, quantity + 1))
             }
             .disabled(quantity >= stockLimit)
         }
-        .frame(height: 46)
+        .frame(height: actionHeight)
         .padding(.horizontal, PPSpace.xs)
         .background(
-            Color(uiColor: .tertiarySystemBackground),
-            in: Capsule(style: .continuous)
+            Color.ppSecondarySurface,
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
         )
     }
 
@@ -569,6 +596,9 @@ struct PPMarketplaceCompatibilityCard: View {
     }
 
     private var mediaHeight: CGFloat {
+        if usesQuantity && (layout == .mosaic || layout == .showcase) {
+            return HomeUniversalCardSizing.productMediaHeight
+        }
         switch layout {
         case .focus: return dynamicTypeSize.isAccessibilitySize ? 320 : 292
         case .mosaic: return dynamicTypeSize.isAccessibilitySize ? 250 : 188
