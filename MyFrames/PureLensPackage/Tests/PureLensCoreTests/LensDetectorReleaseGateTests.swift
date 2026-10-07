@@ -714,15 +714,27 @@ final class LensBreedModelLabelContractTests: XCTestCase {
 }
 
 extension LensBreedModelLabelContractTests {
-    func testUnsupportedNativeAnimalIdentifierIsRejected() {
+    func testUnsupportedNativeNonAnimalIdentifierIsRejected() {
         let unsupported = LensLocalDetection(
+            kind: .animal,
+            label: "hotdog",
+            confidence: 0.99,
+            boundingBox: box
+        )
+
+        XCTAssertNil(LensPetRecognition.parse(unsupported))
+    }
+
+    func testWildAnimalIdentifierIsRecognizedForUnsupportedRouting() throws {
+        let wildAnimal = LensLocalDetection(
             kind: .animal,
             label: "tiger",
             confidence: 0.99,
             boundingBox: box
         )
 
-        XCTAssertNil(LensPetRecognition.parse(unsupported))
+        let recognition = try XCTUnwrap(LensPetRecognition.parse(wildAnimal))
+        XCTAssertEqual(recognition.species, "Tiger")
     }
 }
 

@@ -299,7 +299,7 @@ struct HomeHeroV2View: View {
                         .font(.system(size: 11, weight: .semibold))
                         .accessibilityHidden(true)
                 }
-                .foregroundStyle(Color(uiColor: HomeHeroV2Palette.actionForeground(on: sourceAccent(page))))
+                .foregroundStyle(Color.white)
                 .padding(.horizontal, PPSpace.md)
                 .frame(minHeight: HomeVisualTokens.minimumTouchTarget)
                 .background(Color(uiColor: sourceAccent(page)), in: RoundedRectangle(
@@ -1081,10 +1081,8 @@ enum HomeHeroV2Palette {
         opaque(candidate.resolvedColor(with: traits)) ?? UIColor.ppPrimary.resolvedColor(with: traits)
     }
 
-    /// Black or white guarantees at least 4.5:1 against any opaque category
-    /// fill, including very light server-authored yellows and dark blues.
     static func actionForeground(on background: UIColor) -> UIColor {
-        contrastRatio(.white, background) >= contrastRatio(.black, background) ? .white : .black
+        .white
     }
 
     static func identityAccent(

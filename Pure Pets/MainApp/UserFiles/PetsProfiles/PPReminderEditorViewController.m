@@ -11,14 +11,24 @@
 #import "PPPetProfile.h"
 #import "PPPetProfileEditorViewController.h"
 #import "PPReminderNotificationManager.h"
+#import "PPPetProfileManager.h"
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
 #import <Pure_Pets-Swift.h>
 @import UserNotifications;
 
+static NSString * _Nullable PPRemEdCurrentUID(void) {
+    NSString *uid = [UserManager sharedManager].currentUser.ID;
+    if (uid.length > 0) return uid;
+    // resolvedUID includes [FIRAuth auth].currentUser.uid fallback,
+    // covering cold-start / background-restore where currentUser is not yet loaded.
+    return [PPPetProfileManager sharedManager].resolvedUID;
+}
+
 static BOOL PPRemEdMatchesOwner(NSString *ownerUID) {
-    return ownerUID.length > 0 && [ownerUID isEqualToString:[UserManager sharedManager].currentAuthUser.uid];
+    NSString *currentUID = PPRemEdCurrentUID();
+    return ownerUID.length > 0 && currentUID.length > 0 && [ownerUID isEqualToString:currentUID];
 }
 
 // Stored values are a compatibility contract with the existing scheduler.
@@ -278,7 +288,7 @@ static UIView *PPRemEdDivider(void) {
     self = [super initWithNibName:nil bundle:nil];
     if (!self) return nil;
     _originalReminder = reminder;
-    _ownerUID = [[UserManager sharedManager].currentAuthUser.uid copy];
+    _ownerUID = [PPRemEdCurrentUID() copy];
     _isNewReminder = reminder == nil;
     _reminder = reminder ? [[PPPetReminder alloc] initWithDictionary:reminder.toDictionary] : [PPPetReminder new];
     _reminder.fireDate = reminder.fireDate;

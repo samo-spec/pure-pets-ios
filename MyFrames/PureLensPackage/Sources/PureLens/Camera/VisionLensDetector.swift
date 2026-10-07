@@ -19,7 +19,6 @@ final class VisionLensDetector {
     private let sequenceHandler = VNSequenceRequestHandler()
     private let animalRequest = VNRecognizeAnimalsRequest()
     private let classificationRequest = VNClassifyImageRequest()
-    private let saliencyRequest = VNGenerateObjectnessBasedSaliencyImageRequest()
     private let barcodeRequest: VNDetectBarcodesRequest?
     private var capturesBarcodePayloads: Bool
     private let coreMLDetector: PureLensCoreMLDetector?
@@ -35,7 +34,6 @@ final class VisionLensDetector {
         self.minimumAnimalConfidence = min(max(minimumAnimalConfidence, 0), 1)
         if #available(iOS 17.0, *) {
             classificationRequest.revision = VNClassifyImageRequestRevision2
-            saliencyRequest.revision = VNGenerateObjectnessBasedSaliencyImageRequestRevision2
         }
         switch barcodeHandling {
         case .disabled:
@@ -152,7 +150,7 @@ final class VisionLensDetector {
     }
 
     private func makeNativeRequests() -> [VNRequest] {
-        var requests: [VNRequest] = [animalRequest, classificationRequest, saliencyRequest]
+        var requests: [VNRequest] = [animalRequest, classificationRequest]
         if let barcodeRequest {
             requests.append(barcodeRequest)
         }
@@ -193,12 +191,15 @@ final class VisionLensDetector {
 
         let candidateSpecies: String
         let candidateConfidence: Double
+        let topIdentifier: String?
 
         if let strongest = ranked.first,
            ranked.count == 1 || strongest.observation.confidence - ranked[1].observation.confidence >= 0.08 {
             candidateSpecies = strongest.species
             candidateConfidence = min(1.0, max(Double(strongest.observation.confidence) * 2.2, 0.45))
+            topIdentifier = strongest.observation.identifier
         } else if let topAnimal = animalClassifications.first(where: { Double($0.confidence) >= classifierThreshold }) {
+            topIdentifier = topAnimal.identifier
             if let specific = LensAnimalClassificationTaxonomy.species(for: topAnimal.identifier) {
                 candidateSpecies = specific
             } else {
@@ -206,28 +207,27 @@ final class VisionLensDetector {
             }
             candidateConfidence = min(1.0, max(Double(topAnimal.confidence) * 2.0, 0.42))
         } else if let genericAnimal, Double(genericAnimal.confidence) >= classifierThreshold {
+            topIdentifier = genericAnimal.identifier
             candidateSpecies = "Animal"
             candidateConfidence = min(1.0, max(Double(genericAnimal.confidence) * 2.0, 0.40))
         } else {
             return nil
         }
 
-        let salientBox = saliencyRequest.results?
-            .first?
-            .salientObjects?
-            .filter({
-                let area = $0.boundingBox.width * $0.boundingBox.height
-                return $0.confidence >= 0.15 && area >= 0.02 && area <= 0.95
-            })
-            .max(by: { $0.confidence < $1.confidence })?
-            .boundingBox.lensNormalized
+        let labelToEmit: String
+        if let topIdentifier, let specificAnimal = LensAnimalClassificationTaxonomy.specificAnimal(for: topIdentifier) {
+            labelToEmit = specificAnimal
+        } else {
+            labelToEmit = candidateSpecies
+        }
 
-        let box = salientBox ?? LensNormalizedRect(x: 0.10, y: 0.10, width: 0.80, height: 0.80)
+        let animalObservationBox = (animalRequest.results ?? []).first?.boundingBox.lensNormalized
+        let box = animalObservationBox ?? LensNormalizedRect(x: 0.15, y: 0.15, width: 0.70, height: 0.70)
 
         return LensLocalDetection(
             id: "classified-animal-\(UUID().uuidString)",
             kind: .animal,
-            label: candidateSpecies,
+            label: labelToEmit,
             confidence: candidateConfidence,
             boundingBox: box
         )

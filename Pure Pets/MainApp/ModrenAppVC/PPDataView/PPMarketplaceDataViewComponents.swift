@@ -820,19 +820,19 @@ enum PPMarketplaceHeroControlLayoutPolicy {
 
 @available(iOS 15.0, *)
 enum PPMarketplaceContentGeometry {
+    static let mosaicCellSpacing: CGFloat = 10
+    static let mosaicLineSpacing: CGFloat = 10
+
     static func mosaicColumnCount(
         availableWidth: CGFloat,
         horizontalSizeClass: UserInterfaceSizeClass?,
         isAccessibilitySize: Bool
     ) -> Int {
-        let perSideInset = horizontalSizeClass == .regular
-            ? PPSpace.xxl
-            : PPSpace.screenMargin
-        let usableWidth = max(0, availableWidth - (perSideInset * 2))
+        let usableWidth = max(0, availableWidth - (mosaicCellSpacing * 2))
         let minimumCardWidth = isAccessibilitySize ? usableWidth : 168
         let proposedCount = Int(
-            (usableWidth + PPSpace.base) /
-                (max(1, minimumCardWidth) + PPSpace.base)
+            (usableWidth + mosaicCellSpacing) /
+                (max(1, minimumCardWidth) + mosaicCellSpacing)
         )
         let maximumCount = horizontalSizeClass == .regular ? 4 : 2
         return max(1, min(maximumCount, proposedCount))
@@ -1726,7 +1726,7 @@ struct PPMarketplaceLoadingState: View {
             } else if layout == .mosaic {
                 LazyVGrid(
                     columns: skeletonColumns,
-                    spacing: PPSpace.base
+                    spacing: PPMarketplaceContentGeometry.mosaicLineSpacing
                 ) {
                     ForEach(PPMarketplaceSkeletonSlot.allCases) { _ in
                         PPMarketplaceSkeletonCard(
@@ -1753,7 +1753,7 @@ struct PPMarketplaceLoadingState: View {
             isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
         )
         return Array(
-            repeating: GridItem(.flexible(), spacing: PPSpace.base),
+            repeating: GridItem(.flexible(), spacing: PPMarketplaceContentGeometry.mosaicCellSpacing),
             count: count
         )
     }
@@ -1762,8 +1762,10 @@ struct PPMarketplaceLoadingState: View {
         switch layout {
         case .compact:
             return dynamicTypeSize.isAccessibilitySize ? 540 : 184
-        case .showcase, .mosaic:
+        case .showcase:
             return dynamicTypeSize.isAccessibilitySize ? 520 : 340
+        case .mosaic:
+            return dynamicTypeSize.isAccessibilitySize ? 500 : 280
         case .focus:
             return PPMarketplaceContentGeometry.focusHeight(
                 isAccessibilitySize: dynamicTypeSize.isAccessibilitySize

@@ -5425,6 +5425,13 @@
 "universal_variant_cart_quantity_format" = "%@ in cart for this option";
 "universal_variant_options_hint" = "Choose an option, then set its cart quantity.";
 
+/* Universal product variant sheet */
+"variant_sheet_title" = "Choose your option";
+"variant_sheet_total" = "Total for your selection";
+"variant_sheet_cart_total" = "This option in your cart";
+"variant_sheet_unit_price_format" = "%@ each";
+"variant_sheet_remove" = "Remove";
+
 /* Cart product cell: identity, per-item price and line total. */
 "cart_cell_line_total" = "Item total";
 "cart_cell_unit_price_format" = "%@ each";
@@ -5621,6 +5628,41 @@
 "reminder_editor_notifications_hint" = "You can save the reminder. Enable notifications to receive its alerts.";
 "reminder_editor_save_hint" = "Add a title and choose a pet to save the reminder.";
 "reminder_editor_future_date" = "Choose a future time for an active reminder, or turn it off to save without an alert.";
-"reminder_editor_save_error" = "Couldn’t save. Your edits are still here. Please try again.";
 "reminder_editor_notifications_setup" = "Enable reminder notifications";
 "reminder_editor_notifications_enable" = "Allow notifications";
+
+/* Pet Ad Composer (AddNewAd) */
+"addNewAd" = "Add New Ad";
+"ad_pet_type" = "Pet Classification";
+"ad_category_subtitle" = "Select category and breed to help buyers find your pet.";
+"ad_select_category" = "Select Category";
+"ad_select_breed" = "Select Breed";
+"ad_badge_pet_listing" = "Pet Listing";
+"ad_radar_title" = "Listing Readiness Radar";
+"ad_radar_completed" = "Complete";
+"ad_radar_advice_add_photo" = "Add a pet photo to improve listing quality and reach";
+"ad_offer_details_title" = "Offer & Location Details";
+"ad_offer_details_subtitle" = "Specify ad title, price, and preview location.";
+"ad_publish_instant_match" = "Publish Ad & Instant Match";
+"ad_ready_for_publish" = "✨ Ad is complete and ready for instant match";
+"ad_description_title" = "Ad Details & Description";
+"ad_description_placeholder" = "Write clear details about the pet, health status, vaccinations...";
+"ad_save_changes" = "Save Changes";
+
+/* Ad Readiness Radar Advice */
+"ad_advice_add_photo" = "Add a pet photo to improve listing quality and reach";
+"ad_advice_enter_title" = "Enter a clear listing title to attract buyers";
+"ad_advice_select_category" = "Select the animal category and type";
+"ad_advice_select_breed" = "Select the pet breed for easier discovery";
+"ad_advice_select_gender" = "Select the pet gender (male or female)";
+"ad_advice_enter_price" = "Set the pet price or 0 for adoption";
+"ad_advice_select_location" = "Pin the ad location on the map";
+"ad_advice_enter_age" = "Enter the pet age in months";
+"ad_advice_enter_description" = "Add a brief description of the pet's traits and health";
+"ad_advice_complete" = "Listing is 100% complete and ready for instant match ✨";
+
+/* Ad Submit & Upload Feedback */
+"ad_save_failed_retry" = "Could not save ad. Please try again.";
+"ad_upload_failed_retry" = "Failed to upload ad media. Please check your connection and try again.";
+"ad_submit_session_required" = "Sign in is required to publish the ad";
+"compose_listing_kind_suffix" = " listing details and standout visuals come next.";

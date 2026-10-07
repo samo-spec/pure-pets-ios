@@ -658,7 +658,14 @@ private enum LensPetLabelParser {
         "hedgehog": "Small Mammal", "gerbil": "Small Mammal", "chinchilla": "Small Mammal",
         "small mammal": "Small Mammal", "horse": "Horse", "equine": "Horse",
         "camel": "Camel", "camels": "Camel", "sheep": "Sheep", "lamb": "Sheep",
-        "goat": "Goat", "goats": "Goat", "cow": "Cow", "cows": "Cow", "cattle": "Cow"
+        "goat": "Goat", "goats": "Goat", "cow": "Cow", "cows": "Cow", "cattle": "Cow",
+        "lion": "Lion", "tiger": "Tiger", "cheetah": "Cheetah", "leopard": "Leopard",
+        "bear": "Bear", "panda": "Panda", "polar bear": "Polar Bear", "polar_bear": "Polar Bear",
+        "elephant": "Elephant", "giraffe": "Giraffe", "zebra": "Zebra", "monkey": "Monkey",
+        "chimpanzee": "Chimpanzee", "gorilla": "Gorilla", "deer": "Deer", "fox": "Fox", "wolf": "Wolf",
+        "hyena": "Hyena", "kangaroo": "Kangaroo", "koala": "Koala", "seal": "Seal",
+        "dolphin": "Dolphin", "whale": "Whale", "penguin": "Penguin", "crocodile": "Reptile",
+        "alligator": "Reptile", "frog": "Reptile", "toad": "Reptile", "shark": "Fish"
     ]
 
     private static let allowedStructuredCategories: Set<String> = [
@@ -709,7 +716,7 @@ private enum LensPetLabelParser {
 
         if knownDogBreeds.contains(key) {
             return LensPetRecognition(
-                breed: cleaned,
+                breed: cleaned.lowercased() == "dog" ? nil : cleaned,
                 species: "Dog",
                 confidence: detection.confidence,
                 boundingBox: detection.boundingBox,
@@ -719,7 +726,7 @@ private enum LensPetLabelParser {
 
         if knownCatBreeds.contains(key) {
             return LensPetRecognition(
-                breed: cleaned,
+                breed: cleaned.lowercased() == "cat" ? nil : cleaned,
                 species: "Cat",
                 confidence: detection.confidence,
                 boundingBox: detection.boundingBox,
@@ -727,11 +734,13 @@ private enum LensPetLabelParser {
             )
         }
 
-        if let mappedSpecies = LensAnimalClassificationTaxonomy.species(for: raw),
-           let canonical = speciesAliases[mappedSpecies.lowercased()] {
+        if let mappedSpecies = LensAnimalClassificationTaxonomy.species(for: raw) {
+            let canonical = speciesAliases[mappedSpecies.lowercased()]
+                ?? (mappedSpecies.prefix(1).uppercased() + mappedSpecies.dropFirst())
             let specific = LensAnimalClassificationTaxonomy.specificAnimal(for: raw)
+            let breedCandidate = (specific != nil && specific?.lowercased() != canonical.lowercased()) ? specific : nil
             return LensPetRecognition(
-                breed: (specific != nil && specific?.lowercased() != canonical.lowercased()) ? specific : nil,
+                breed: breedCandidate,
                 species: canonical,
                 confidence: detection.confidence,
                 boundingBox: detection.boundingBox,
@@ -739,10 +748,17 @@ private enum LensPetLabelParser {
             )
         }
 
-        // Unknown native identifiers are rejected rather than automatically
-        // promoted to the Pet category. Supported species must be explicit in
-        // the alias table, and custom object labels must follow the structured
-        // pet contract above.
+        if LensAnimalClassificationTaxonomy.isAnimal(identifier: raw) {
+            let display = LensAnimalClassificationTaxonomy.displayName(for: raw) ?? cleaned
+            return LensPetRecognition(
+                breed: nil,
+                species: display,
+                confidence: detection.confidence,
+                boundingBox: detection.boundingBox,
+                sourceLabel: raw
+            )
+        }
+
         return nil
     }
 
@@ -755,10 +771,12 @@ private enum LensPetLabelParser {
         if pipeParts.count >= 3,
            allowedStructuredCategories.contains(pipeParts[0].lowercased()),
            let species = canonicalPetSpecies(pipeParts[1]) {
+            let breedRaw = pipeParts[2].isEmpty ? nil : pipeParts[2]
+            let breed = (breedRaw?.lowercased() == species.lowercased()) ? nil : breedRaw
             return (
                 category: "Pet",
                 species: species,
-                breed: pipeParts[2].isEmpty ? nil : pipeParts[2]
+                breed: breed
             )
         }
 
@@ -767,10 +785,12 @@ private enum LensPetLabelParser {
             .map { displayText(String($0)) }
         if colonParts.count == 2,
            let species = canonicalPetSpecies(colonParts[0]) {
+            let breedRaw = colonParts[1].isEmpty ? nil : colonParts[1]
+            let breed = (breedRaw?.lowercased() == species.lowercased()) ? nil : breedRaw
             return (
                 category: "Pet",
                 species: species,
-                breed: colonParts[1].isEmpty ? nil : colonParts[1]
+                breed: breed
             )
         }
         return nil

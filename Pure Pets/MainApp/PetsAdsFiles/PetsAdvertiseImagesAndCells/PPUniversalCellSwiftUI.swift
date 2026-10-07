@@ -702,10 +702,10 @@ public struct PPUniversalCardView: View {
             return homeCardSizing.height(isAdvertisement: isAdsMode)
         }
         if store.model.isSkeleton && store.context.isCatalogCommerce {
-            return 280
+            return 340
         }
-        let baseHeight: CGFloat = dynamicTypeSize.isAccessibilitySize ? 508 : 328
-        return isAdsMode ? (baseHeight - 62) : baseHeight
+        let baseHeight: CGFloat = dynamicTypeSize.isAccessibilitySize ? 508 : 340
+        return isAdsMode ? (baseHeight - 40) : baseHeight
     }
 
     private var legacySourceSignature: String {
@@ -2392,7 +2392,8 @@ private struct PPUniversalCardRenderer: View {
                                 alignment: .top
                             )
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 12)
+                            .padding(.top, 8)
+                            .padding(.bottom, 10)
                             .modifier(
                                 PPUniversalHomeShelfInformationDock(
                                     state: homeShelfEntrance
@@ -2729,9 +2730,12 @@ private struct PPUniversalCardRenderer: View {
             }
 
             if showsBottomCTA && !store.isContextFocused && !isAdsMode {
-                Spacer(minLength: 8)
+                if !store.model.usesQuantityControl {
+                    Spacer(minLength: 8)
+                }
                 bottomCTA
-                    .padding(.bottom, 0)
+                    .padding(.top, store.model.usesQuantityControl ? 4 : 0)
+                    .padding(.bottom, 8)
             }
 
             if hasBottomBadges {
@@ -2785,12 +2789,30 @@ private struct PPUniversalCardRenderer: View {
         )
     }
 
+    private var hasHomeMetadata: Bool {
+        if let availability = store.model.availability {
+            if !availability.text.isEmpty || (availability.metaText?.isEmpty == false) {
+                return true
+            }
+        }
+        if let variant = store.model.variantInfoText, !variant.isEmpty {
+            return true
+        }
+        if store.model.gender != nil {
+            return true
+        }
+        if let badge = store.model.badgeText, !badge.isEmpty {
+            return true
+        }
+        return false
+    }
+
     /// Keep product information compact above one full-width action. Add,
     /// progress and quantity states use the same control footprint.
     private var homeVerticalInformation: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             scopedCardNavigationTarget(
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     titleContent
                         .frame(minHeight: isAdsMode ? homeTitleMinimumHeight : nil, alignment: .topLeading)
                     subtitleContent
@@ -2808,18 +2830,22 @@ private struct PPUniversalCardRenderer: View {
             }
 
             if !isAdsMode {
-                scopedCardNavigationTarget(homeMetadata)
-                    .homeProductInformationRegion(.metadata, enabled: true)
-                Spacer(minLength: 8)
+                if hasHomeMetadata {
+                    scopedCardNavigationTarget(homeMetadata)
+                        .homeProductInformationRegion(.metadata, enabled: true)
+                }
                 if showsBottomCTA && !store.isContextFocused {
+                    Spacer(minLength: 4)
                     primaryAction
+                        .padding(.bottom, 8)
                 }
             } else {
-                HStack(alignment: .bottom, spacing: 8) {
+                HStack(alignment: .bottom, spacing: 6) {
                     scopedCardNavigationTarget(homeMetadata)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if showsBottomCTA && !store.isContextFocused {
                         homeCompactAction
+                            .padding(.bottom, 8)
                     }
                 }
             }
@@ -2862,38 +2888,56 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var homeMetadata: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let availability = store.model.availability {
-                if !availability.text.isEmpty {
+        VStack(alignment: .leading, spacing: 2) {
+            // Availability and Options (Variants) in one unified row
+            HStack(alignment: .center, spacing: 5) {
+                if let availability = store.model.availability, !availability.text.isEmpty {
                     Text(availability.text)
                         .foregroundStyle(availabilityForeground(availability.tone))
+                        .lineLimit(1)
                 }
-                if let metadata = availability.metaText, !metadata.isEmpty {
+
+                if let availability = store.model.availability, !availability.text.isEmpty,
+                   let variant = store.model.variantInfoText, !variant.isEmpty {
+                    Text("•")
+                        .foregroundStyle(store.palette.secondaryInk.opacity(0.45))
+                }
+
+                if let variant = store.model.variantInfoText, !variant.isEmpty {
+                    Text(variant)
+                        .foregroundStyle(store.palette.secondaryInk)
+                        .lineLimit(1)
+                }
+
+                if let availability = store.model.availability,
+                   let metadata = availability.metaText, !metadata.isEmpty {
                     if let symbol = availability.metaSystemImage, !symbol.isEmpty {
                         Label(metadata, systemImage: symbol)
                             .foregroundStyle(store.palette.secondaryInk)
+                            .lineLimit(1)
                     } else {
                         Text(metadata)
                             .foregroundStyle(store.palette.secondaryInk)
+                            .lineLimit(1)
                     }
                 }
             }
-            if let variant = store.model.variantInfoText, !variant.isEmpty {
-                Text(variant)
-                    .foregroundStyle(store.palette.secondaryInk)
-            }
+            .lineLimit(1)
+
             if let gender = store.model.gender {
                 Text(genderTitle(gender))
                     .foregroundStyle(store.palette.secondaryInk)
+                    .lineLimit(1)
             }
             if let badge = store.model.badgeText, !badge.isEmpty {
                 Text(badge)
                     .foregroundStyle(store.palette.secondaryInk)
+                    .lineLimit(1)
             }
         }
         .font(.custom("Beiruti-Medium", size: 12, relativeTo: .caption))
         .multilineTextAlignment(.leading)
-        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
         .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .combine)
     }
@@ -2953,12 +2997,14 @@ private struct PPUniversalCardRenderer: View {
             )
             .foregroundStyle(store.palette.ink)
             .lineLimit(
-                dynamicTypeSize.isAccessibilitySize
-                    ? (store.layout == .focus ? 4 : 3)
-                    : (store.layout == .focus || store.isHomePresentation ? 2 : 1)
+                store.isHomePresentation
+                    ? 1
+                    : (dynamicTypeSize.isAccessibilitySize
+                        ? (store.layout == .focus ? 4 : 3)
+                        : (store.layout == .focus ? 2 : 1))
             )
             .multilineTextAlignment(.leading)
-            .minimumScaleFactor(store.isHomePresentation ? 1 : 0.86)
+            .minimumScaleFactor(0.86)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(store.model.title)
             .accessibilityAddTraits(.isHeader)
@@ -2986,11 +3032,13 @@ private struct PPUniversalCardRenderer: View {
                         )
                         .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : store.palette.secondaryInk)
                         .lineLimit(
-                            dynamicTypeSize.isAccessibilitySize
-                                ? 3
-                                : (store.layout == .focus
-                                    ? 2
-                                    : (store.layout.isHorizontal ? 2 : 1))
+                            store.isHomePresentation
+                                ? 1
+                                : (dynamicTypeSize.isAccessibilitySize
+                                    ? 3
+                                    : (store.layout == .focus
+                                        ? 2
+                                        : (store.layout.isHorizontal ? 2 : 1)))
                         )
                         .multilineTextAlignment(.leading)
                 }
@@ -3007,11 +3055,13 @@ private struct PPUniversalCardRenderer: View {
                     )
                     .foregroundStyle(store.palette.secondaryInk)
                     .lineLimit(
-                        dynamicTypeSize.isAccessibilitySize
-                            ? 3
-                            : (store.layout == .focus
-                                ? 2
-                                : (store.layout.isHorizontal ? 2 : 1))
+                        store.isHomePresentation
+                            ? 1
+                            : (dynamicTypeSize.isAccessibilitySize
+                                ? 3
+                                : (store.layout == .focus
+                                    ? 2
+                                    : (store.layout.isHorizontal ? 2 : 1)))
                     )
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)

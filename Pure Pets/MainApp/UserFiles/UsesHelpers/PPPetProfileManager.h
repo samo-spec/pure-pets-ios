@@ -27,6 +27,10 @@ FOUNDATION_EXPORT NSNotificationName const PPPetProfileManagerDidChangeNotificat
 /// UserManager keeps this in sync whenever `currentUser` changes.
 @property (nonatomic, copy, nullable) NSString *currentUserUID;
 
+/// Resolved UID with FIRAuth fallback. Prefer this over `currentUserUID` when
+/// a nil result would block user-facing operations (e.g. owner-match checks).
+@property (nonatomic, readonly, nullable) NSString *resolvedUID;
+
 #pragma mark - Pet Profiles
 
 /// Fetch all pet profiles for the current user, ordered by createdAt ascending.

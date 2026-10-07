@@ -222,41 +222,38 @@ struct LensBottomPrompt: View {
     private var terminalIdentitySummary: some View {
         if store.scanPhase == .unsupported {
             let identity = store.animalIdentification
-            let fallback = store.unsupportedAnimalContext?.species
-                ?? store.localized("lens.results.animal")
-            let commonName = store.localizedIdentityName(fallback: fallback)
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text(commonName)
-                    .font(store.theme.typography.headline)
-                    .foregroundStyle(store.theme.textOnCamera)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let scientific = identity?.scientificName, !scientific.isEmpty {
-                    Text(store.localizedFormat("lens.identity.scientific_name", isolatedScientificName(scientific)))
-                        .font(store.theme.typography.caption)
-                        .fixedSize(horizontal: false, vertical: true)
+            let hasScientific = !(identity?.scientificName?.isEmpty ?? true)
+            let hasGroup = !(identity?.animalGroup?.isEmpty ?? true)
+            let hasConfidence = identity?.speciesConfidence != nil
+            if hasScientific || hasGroup || hasConfidence {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let scientific = identity?.scientificName, !scientific.isEmpty {
+                        Text(store.localizedFormat("lens.identity.scientific_name", isolatedScientificName(scientific)))
+                            .font(store.theme.typography.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let group = identity?.animalGroup, !group.isEmpty {
+                        Text(store.localizedFormat("lens.identity.group", store.localizedAnimalGroup(group)))
+                            .font(store.theme.typography.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let breed = identity?.breed, !breed.isEmpty,
+                       breed.lowercased() != identity?.canonicalSpecies.lowercased() {
+                        Text(store.localizedFormat("lens.identity.breed", breed))
+                            .font(store.theme.typography.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let confidence = identity?.speciesConfidence {
+                        Text(store.localizedFormat("lens.identity.confidence", Int((confidence * 100).rounded())))
+                            .font(store.theme.typography.caption2Medium.monospacedDigit())
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                if let group = identity?.animalGroup, !group.isEmpty {
-                    Text(store.localizedFormat("lens.identity.group", store.localizedAnimalGroup(group)))
-                        .font(store.theme.typography.caption)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let breed = identity?.breed, !breed.isEmpty {
-                    Text(store.localizedFormat("lens.identity.breed", breed))
-                        .font(store.theme.typography.caption)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let confidence = identity?.speciesConfidence {
-                    Text(store.localizedFormat("lens.identity.confidence", Int((confidence * 100).rounded())))
-                        .font(store.theme.typography.caption2Medium.monospacedDigit())
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.94 : 0.80))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+                .accessibilitySortPriority(2.5)
             }
-            .foregroundStyle(store.theme.textOnCamera.opacity(increasedContrast ? 0.94 : 0.80))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            .accessibilitySortPriority(2.5)
         }
     }
 
@@ -343,6 +340,8 @@ struct LensBottomPrompt: View {
             return store.localized("lens.stage.recognition")
         case .confirmed, .discovering, .results:
             return store.localized("lens.stage.discovery")
+        case .unsupported:
+            return store.localized("lens.prompt.unsupported.badge")
         default:
             return store.localized("lens.stage.recognition")
         }
@@ -400,7 +399,8 @@ struct LensBottomPrompt: View {
         case .results:
             return store.localized("lens.prompt.results")
         case .unsupported:
-            return store.localized("lens.prompt.unsupported")
+            let name = store.localizedAnimalName
+            return name.isEmpty ? store.localized("lens.prompt.unsupported") : name
         case .uncertain:
             return store.localized(
                 store.hasDismissedIdentityCandidates

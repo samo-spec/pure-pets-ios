@@ -192,4 +192,46 @@ final class LensContractTests: XCTestCase {
             "purelens-3.0-google-gemini-no-retention-v1"
         )
     }
+
+    func testUniversalAnimalTaxonomyRecognitionAndTokenDecomposition() {
+        XCTAssertEqual(LensAnimalClassificationTaxonomy.species(for: "african_elephant"), "elephant")
+        XCTAssertEqual(LensAnimalClassificationTaxonomy.species(for: "bald_eagle"), "bird")
+        XCTAssertEqual(LensAnimalClassificationTaxonomy.species(for: "red_fox"), "fox")
+        XCTAssertEqual(LensAnimalClassificationTaxonomy.species(for: "lion"), "lion")
+        XCTAssertEqual(LensAnimalClassificationTaxonomy.species(for: "giraffe"), "giraffe")
+        XCTAssertEqual(LensAnimalClassificationTaxonomy.species(for: "bengal_tiger"), "tiger")
+        XCTAssertTrue(LensAnimalClassificationTaxonomy.isAnimal(identifier: "lion"))
+        XCTAssertTrue(LensAnimalClassificationTaxonomy.isAnimal(identifier: "african_elephant"))
+        XCTAssertTrue(LensAnimalClassificationTaxonomy.isAnimal(identifier: "polar_bear"))
+    }
+
+    func testNonAnimalIdentifiersAreExcluded() {
+        XCTAssertFalse(LensAnimalClassificationTaxonomy.isAnimal(identifier: "hotdog"))
+        XCTAssertFalse(LensAnimalClassificationTaxonomy.isAnimal(identifier: "dog_food"))
+        XCTAssertFalse(LensAnimalClassificationTaxonomy.isAnimal(identifier: "cat_toy"))
+        XCTAssertFalse(LensAnimalClassificationTaxonomy.isAnimal(identifier: "bird_feeder"))
+        XCTAssertNil(LensAnimalClassificationTaxonomy.species(for: "hotdog"))
+    }
+
+    func testPetRecognitionDeduplicatesIdenticalBreedAndSpecies() throws {
+        let duplicatePipe = LensLocalDetection(
+            kind: .object,
+            label: "pet|cat|cat",
+            confidence: 0.95,
+            boundingBox: LensNormalizedRect(x: 0.1, y: 0.1, width: 0.8, height: 0.8)
+        )
+        let recognition = try XCTUnwrap(LensPetRecognition.parse(duplicatePipe))
+        XCTAssertEqual(recognition.species, "Cat")
+        XCTAssertNil(recognition.breed)
+
+        let duplicateColon = LensLocalDetection(
+            kind: .object,
+            label: "dog:dog",
+            confidence: 0.95,
+            boundingBox: LensNormalizedRect(x: 0.1, y: 0.1, width: 0.8, height: 0.8)
+        )
+        let recognitionColon = try XCTUnwrap(LensPetRecognition.parse(duplicateColon))
+        XCTAssertEqual(recognitionColon.species, "Dog")
+        XCTAssertNil(recognitionColon.breed)
+    }
 }

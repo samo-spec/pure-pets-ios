@@ -163,15 +163,37 @@ public enum LensObservationConfidence {
 public enum LensAnimalClassificationTaxonomy {
     public static func species(for identifier: String) -> String? {
         let normalized = normalize(identifier)
-        return speciesByIdentifier[normalized] ?? fallbackAnimalSpecies(for: normalized)
+        if isExcludedNonAnimal(normalized) { return nil }
+        if let direct = speciesByIdentifier[normalized] {
+            return direct
+        }
+        let tokens = normalized.split(separator: "_").map(String.init)
+        if tokens.count > 1 {
+            for token in tokens.reversed() {
+                if isExcludedNonAnimal(token) { return nil }
+                if let mapped = speciesByIdentifier[token] {
+                    return mapped
+                }
+            }
+        }
+        return fallbackAnimalSpecies(for: normalized)
     }
 
     public static func specificAnimal(for identifier: String) -> String? {
         let normalized = normalize(identifier)
+        if isExcludedNonAnimal(normalized) { return nil }
         if let specific = specificAnimalByIdentifier[normalized] {
             return specific
         }
-        if let mapped = speciesByIdentifier[normalized] {
+        let tokens = normalized.split(separator: "_").map(String.init)
+        if tokens.count > 1 {
+            for token in tokens.reversed() {
+                if let specific = specificAnimalByIdentifier[token] {
+                    return specific
+                }
+            }
+        }
+        if let mapped = species(for: identifier) {
             return mapped.prefix(1).uppercased() + mapped.dropFirst()
         }
         return isAnimal(identifier: identifier) ? displayName(for: identifier) : nil
@@ -179,13 +201,14 @@ public enum LensAnimalClassificationTaxonomy {
 
     public static func isAnimal(identifier: String) -> Bool {
         let normalized = normalize(identifier)
-        if nonAnimalIdentifiers.contains(normalized) {
+        if isExcludedNonAnimal(normalized) {
             return false
         }
         return speciesByIdentifier[normalized] != nil
             || specificAnimalByIdentifier[normalized] != nil
             || animalGroupsByIdentifier[normalized] != nil
             || biologicalAnimalClasses.contains(normalized)
+            || species(for: identifier) != nil
     }
 
     public static func displayName(for identifier: String) -> String? {
@@ -202,7 +225,18 @@ public enum LensAnimalClassificationTaxonomy {
 
     public static func animalGroup(for identifier: String) -> String? {
         let normalized = normalize(identifier)
-        return animalGroupsByIdentifier[normalized]
+        if let direct = animalGroupsByIdentifier[normalized] {
+            return direct
+        }
+        let tokens = normalized.split(separator: "_").map(String.init)
+        if tokens.count > 1 {
+            for token in tokens.reversed() {
+                if let group = animalGroupsByIdentifier[token] {
+                    return group
+                }
+            }
+        }
+        return nil
     }
 
     private static func normalize(_ identifier: String) -> String {
@@ -214,18 +248,30 @@ public enum LensAnimalClassificationTaxonomy {
     }
 
     private static func fallbackAnimalSpecies(for normalized: String) -> String? {
-        if nonAnimalIdentifiers.contains(normalized) { return nil }
+        if isExcludedNonAnimal(normalized) { return nil }
         if let group = animalGroupsByIdentifier[normalized] {
             return group
         }
         return nil
     }
 
+    private static func isExcludedNonAnimal(_ normalized: String) -> Bool {
+        if nonAnimalIdentifiers.contains(normalized) { return true }
+        let tokens = normalized.split(separator: "_").map(String.init)
+        for token in tokens {
+            if nonAnimalIdentifiers.contains(token) {
+                return true
+            }
+        }
+        return false
+    }
+
     private static let nonAnimalIdentifiers: Set<String> = [
         "hotdog", "hot_dog", "birdhouse", "bird_house", "fishbowl", "fish_bowl",
         "computer_mouse", "mouse_pad", "fried_chicken", "chicken_nugget", "chicken_wing",
         "cat_litter", "dog_food", "cat_food", "bird_feeder", "dog_bone", "cat_toy",
-        "leash", "collar", "aquarium_tank", "cage", "kennel", "carrier", "bed"
+        "leash", "collar", "aquarium_tank", "cage", "kennel", "carrier", "bed",
+        "food", "toy", "bowl", "snack", "treat", "harness"
     ]
 
     private static let speciesByIdentifier: [String: String] = [
@@ -433,8 +479,32 @@ public enum LensAnimalClassificationTaxonomy {
         "stag": "deer",
         "seal": "seal",
         "sea_lion": "seal",
+        "walrus": "seal",
         "dolphin": "dolphin",
-        "whale": "whale"
+        "whale": "whale",
+        "killer_whale": "whale",
+        "orca": "whale",
+        "rhino": "rhino",
+        "rhinoceros": "rhino",
+        "hippopotamus": "hippo",
+        "hippo": "hippo",
+        "antelope": "deer",
+        "gazelle": "deer",
+        "elk": "deer",
+        "moose": "deer",
+        "coyote": "wolf",
+        "dingo": "dog",
+        "orangutan": "monkey",
+        "baboon": "monkey",
+        "lemur": "monkey",
+        "caiman": "reptile",
+        "komodo_dragon": "reptile",
+        "cobra": "reptile",
+        "viper": "reptile",
+        "anaconda": "reptile",
+        "shark": "fish",
+        "stingray": "fish",
+        "ray": "fish"
     ]
 
     private static let specificAnimalByIdentifier: [String: String] = [
@@ -533,7 +603,20 @@ public enum LensAnimalClassificationTaxonomy {
         "kangaroo": "Kangaroo",
         "koala": "Koala",
         "penguin": "Penguin",
-        "dolphin": "Dolphin"
+        "dolphin": "Dolphin",
+        "whale": "Whale",
+        "gorilla": "Gorilla",
+        "orangutan": "Orangutan",
+        "baboon": "Baboon",
+        "rhino": "Rhinoceros",
+        "hippo": "Hippopotamus",
+        "antelope": "Antelope",
+        "gazelle": "Gazelle",
+        "elk": "Elk",
+        "moose": "Moose",
+        "crocodile": "Crocodile",
+        "alligator": "Alligator",
+        "shark": "Shark"
     ]
 
     private static let animalGroupsByIdentifier: [String: String] = [

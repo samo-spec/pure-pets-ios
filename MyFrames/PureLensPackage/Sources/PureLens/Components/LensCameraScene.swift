@@ -77,14 +77,6 @@ struct LensCameraScene: View {
                 theme: store.theme,
                 reduceTransparency: reduceTransparency
             )
-        } else if let animal = store.unsupportedAnimalContext, store.scanPhase == .unsupported {
-            LensAnimalIdentityBadge(
-                animal: animal,
-                species: store.localizedIdentityName(fallback: animal.species),
-                confirmedText: store.localized("lens.prompt.unsupported.badge"),
-                theme: store.theme,
-                reduceTransparency: reduceTransparency
-            )
         } else if store.scanPhase == .searching {
             Label(store.localized("lens.camera.guide"), systemImage: "viewfinder")
                 .font(store.theme.typography.subheadlineEmphasized)
@@ -362,7 +354,11 @@ private struct LensAnimalIdentityBadge: View {
     }
 
     private var displayName: String {
-        guard let breed = animal.breed, !breed.isEmpty else { return species }
+        guard let breed = animal.breed?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !breed.isEmpty,
+              breed.lowercased() != species.lowercased(),
+              breed.lowercased() != animal.species.lowercased()
+        else { return species }
         return "\(species) · \(breed)"
     }
 }

@@ -288,14 +288,15 @@ struct PPMarketplaceCompatibilityCard: View {
                 .font(HomeFont.headline())
                 .foregroundStyle(Color.ppMarketplaceTextPrimary)
                 .multilineTextAlignment(.leading)
-                .lineLimit(layout == .focus ? 3 : 2)
+                .lineLimit(layout == .focus ? 3 : 1)
+                .minimumScaleFactor(0.86)
                 .fixedSize(horizontal: false, vertical: true)
 
             if !viewModel.subtitle.isEmpty {
                 Text(viewModel.subtitle)
                     .font(HomeFont.subheadline())
                     .foregroundStyle(Color.ppMarketplaceTextSecondary)
-                    .lineLimit(layout == .focus ? 3 : 2)
+                    .lineLimit(layout == .focus ? 3 : 1)
             }
 
             if !viewModel.location.isEmpty {
@@ -320,42 +321,51 @@ struct PPMarketplaceCompatibilityCard: View {
                 }
 
                 Spacer(minLength: 0)
-
-                if let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
-                    Text(variantInfo)
-                        .font(HomeFont.bold(11))
-                        .foregroundStyle(usesQuantity ? Color.ppPrimary : Color(uiColor: bridge.accentColor))
-                        .padding(.horizontal, PPSpace.sm)
-                        .padding(.vertical, PPSpace.xs)
-                        .background(
-                            (usesQuantity ? Color.ppPrimary : Color(uiColor: bridge.accentColor)).opacity(0.12),
-                            in: Capsule(style: .continuous)
-                        )
-                }
             }
 
-            if !viewModel.availabilityText.isEmpty || (metadataText?.isEmpty == false) {
-                HStack(spacing: 6) {
+            if !viewModel.availabilityText.isEmpty || (viewModel.variantInfoText?.isEmpty == false) || (metadataText?.isEmpty == false) {
+                HStack(alignment: .center, spacing: 6) {
                     if !viewModel.availabilityText.isEmpty {
                         Text(viewModel.availabilityText)
                             .foregroundStyle(Color(red: 0x10 / 255.0, green: 0xB9 / 255.0, blue: 0x81 / 255.0))
+                            .lineLimit(1)
                     }
+
+                    if !viewModel.availabilityText.isEmpty, let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
+                        Text("•")
+                            .foregroundStyle(Color.ppMarketplaceTextSecondary.opacity(0.45))
+                    }
+
+                    if let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
+                        Text(variantInfo)
+                            .font(HomeFont.bold(11))
+                            .foregroundStyle(usesQuantity ? Color.ppPrimary : Color(uiColor: bridge.accentColor))
+                            .lineLimit(1)
+                    }
+
                     if let meta = metadataText, !meta.isEmpty {
                         if let icon = metadataSystemImage, !icon.isEmpty {
                             Label(meta, systemImage: icon)
                                 .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                                .lineLimit(1)
                         } else {
                             Text(meta)
                                 .foregroundStyle(Color.ppMarketplaceTextSecondary)
+                                .lineLimit(1)
                         }
                     }
                 }
                 .font(HomeFont.caption1())
+                .lineLimit(1)
             }
 
-            Spacer(minLength: PPSpace.sm)
+            if !usesQuantity {
+                Spacer(minLength: PPSpace.sm)
+            }
 
             action
+                .padding(.top, usesQuantity ? 2 : 0)
+                .padding(.bottom, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }

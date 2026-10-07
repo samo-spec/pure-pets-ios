@@ -5409,6 +5409,13 @@
 "universal_variant_cart_quantity_format" = "%@ في السلة لهذا الخيار";
 "universal_variant_options_hint" = "اختر الخيار المناسب، ثم حدّد كميته في السلة.";
 
+/* Universal product variant sheet */
+"variant_sheet_title" = "اختر ما يناسب رفيقك";
+"variant_sheet_total" = "إجمالي اختيارك";
+"variant_sheet_cart_total" = "هذا الخيار في سلتك";
+"variant_sheet_unit_price_format" = "%@ للقطعة";
+"variant_sheet_remove" = "إزالة";
+
 /* Cart product cell: identity, per-item price and line total. */
 "cart_cell_line_total" = "إجمالي المنتج";
 "cart_cell_unit_price_format" = "%@ للقطعة";
@@ -5608,3 +5615,39 @@
 "reminder_editor_save_error" = "تعذّر الحفظ. احتفظنا بتعديلاتك؛ حاول مجددًا.";
 "reminder_editor_notifications_setup" = "فعّل إشعارات التذكير";
 "reminder_editor_notifications_enable" = "السماح بالإشعارات";
+
+/* Pet Ad Composer (AddNewAd) */
+"addNewAd" = "إضافة إعلان جديد";
+"ad_pet_type" = "تصنيف الحيوان";
+"ad_category_subtitle" = "حدد فئة وسلالة الحيوان لتسهيل الوصول إليه.";
+"ad_select_category" = "اختر الفئة";
+"ad_select_breed" = "اختر السلالة";
+"ad_badge_pet_listing" = "إعلان حيوان أليف";
+"ad_radar_title" = "رادار اكتمال الإعلان";
+"ad_radar_completed" = "مكتمل";
+"ad_radar_advice_add_photo" = "أضف صورة للحيوان لرفع دقة وجودة الإعلان";
+"ad_offer_details_title" = "تفاصيل العرض والموقع";
+"ad_offer_details_subtitle" = "حدد عنوان الإعلان والسعر وموقع المعاينة.";
+"ad_publish_instant_match" = "نشر الإعلان والمطابقة الفورية";
+"ad_ready_for_publish" = "✨ الإعلان مكتمل وجاهز للمطابقة الفورية";
+"ad_description_title" = "تفاصيل ووصف الإعلان";
+"ad_description_placeholder" = "اكتب تفاصيل واضحة عن الحيوان، حالته الصحية، والتطعيمات...";
+"ad_save_changes" = "حفظ التعديلات";
+
+/* Ad Readiness Radar Advice */
+"ad_advice_add_photo" = "أضف صورة للحيوان لرفع دقة وجودة الإعلان";
+"ad_advice_enter_title" = "أدخل عنواناً واضحاً للإعلان لجذب المشترين";
+"ad_advice_select_category" = "حدد فئة ونوع الحيوان";
+"ad_advice_select_breed" = "اختر سلالة الحيوان لتسهيل البحث";
+"ad_advice_select_gender" = "حدد جنس الحيوان (ذكر أو أنثى)";
+"ad_advice_enter_price" = "حدد سعر الحيوان أو ضعه 0 للتبني";
+"ad_advice_select_location" = "حدد موقع الإعلان على الخريطة";
+"ad_advice_enter_age" = "أدخل عمر الحيوان بالأشهر";
+"ad_advice_enter_description" = "أضف وصفاً مختصراً يوضح حالة ومميزات الحيوان";
+"ad_advice_complete" = "الإعلان مكتمل وجاهز للمطابقة الفورية بنسبة 100% ✨";
+
+/* Ad Submit & Upload Feedback */
+"ad_save_failed_retry" = "تعذر حفظ الإعلان. يرجى المحاولة مرة أخرى.";
+"ad_upload_failed_retry" = "تعذر رفع صور الإعلان. يرجى التحقق من الاتصال والمحاولة مرة أخرى.";
+"ad_submit_session_required" = "يجب تسجيل الدخول لنشر الإعلان";
+"compose_listing_kind_suffix" = " - تفاصيل الإعلان والصور المميزة بالخطوة التالية.";

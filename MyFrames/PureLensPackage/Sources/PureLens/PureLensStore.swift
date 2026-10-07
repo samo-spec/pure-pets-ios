@@ -236,10 +236,17 @@ final class PureLensStore: ObservableObject {
             return localized("lens.results.animal")
         }
         let species = localizedIdentityName(fallback: animal.species)
-        guard let breed = animal.breed, !breed.isEmpty else {
+        guard let breed = animal.breed?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !breed.isEmpty,
+              breed.lowercased() != animal.species.lowercased()
+        else {
             return species
         }
-        return "\(species) · \(breed)"
+        let localizedBreed = localizedSpecies(breed)
+        if localizedBreed.lowercased() == species.lowercased() {
+            return species
+        }
+        return "\(species) · \(localizedBreed)"
     }
 
     var remoteProcessingDisclosure: String {
@@ -303,7 +310,9 @@ final class PureLensStore: ObservableObject {
     func start() async {
         guard !Task.isCancelled else { return }
         guard !hasStarted else {
-            if let task = requestCameraAuthorizationRefresh() {
+            if cameraAuthorization == .authorized {
+                resumeCameraIfNeeded()
+            } else if let task = requestCameraAuthorizationRefresh() {
                 _ = await task.value
             } else {
                 resumeCameraIfNeeded()
@@ -321,7 +330,9 @@ final class PureLensStore: ObservableObject {
             return
         }
 
-        if let task = requestCameraAuthorizationRefresh() {
+        if cameraAuthorization == .authorized {
+            resumeCameraIfNeeded()
+        } else if let task = requestCameraAuthorizationRefresh() {
             _ = await task.value
         }
     }
@@ -748,13 +759,17 @@ final class PureLensStore: ObservableObject {
         camera.setAnalysisEnabled(false)
         scanPhase = .validating
 
-        guard discoveryClient.identifyAnimal != nil,
-              configuration.frameUploadPolicy == .selectedFrame
-        else {
+        let isConcreteSpecies = animal.species.lowercased() != "animal"
+        let canResolveDirectly = isConcreteSpecies
+            || discoveryClient.identifyAnimal == nil
+            || configuration.frameUploadPolicy != .selectedFrame
+
+        if canResolveDirectly {
             pendingLocalAnimal = nil
             validateLocalSupport(animal, recognition: recognition)
             return
         }
+
         camera.setAnalysisEnabled(true)
         camera.requestFrameCapture(for: recognition)
         startRepresentativeFrameTimeout()

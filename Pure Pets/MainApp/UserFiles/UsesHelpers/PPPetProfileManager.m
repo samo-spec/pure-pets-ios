@@ -56,6 +56,11 @@ NSNotificationName const PPPetProfileManagerDidChangeNotification =
     return uid.length > 0 ? uid : nil;
 }
 
+/// Public accessor — delegates to the private helper.
+- (nullable NSString *)resolvedUID {
+    return [self pp_resolvedUID];
+}
+
 // MARK: - Pet Profiles
 
 - (void)fetchPetProfilesForCurrentUserWithCompletion:(void (^)(NSArray<PPPetProfile *> * _Nullable pets,

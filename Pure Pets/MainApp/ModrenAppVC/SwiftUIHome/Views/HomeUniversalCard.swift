@@ -259,14 +259,14 @@ private struct HomeProductInformationRegionModifier: ViewModifier {
 /// Loaded product rails share the tallest intrinsic information stack. Media
 /// stays stable; long titles, larger text and quantity controls grow the rail.
 struct HomeUniversalCardSizing: DynamicProperty {
-    static let productMediaHeight: CGFloat = 144
-    static let advertisementMediaHeight: CGFloat = 124
-    // Renderer inset (4), card inset (8), information padding (24).
-    private static let productInformationInsets: CGFloat = 36
+    static let productMediaHeight: CGFloat = 184
+    static let advertisementMediaHeight: CGFloat = 160
+    // Renderer inset (4), card inset (8), information padding (16).
+    private static let productInformationInsets: CGFloat = 28
 
     @Environment(\.homeProductInformationHeight) private var measuredInformationHeight
-    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 186
-    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 136
+    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 156
+    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 140
 
     func height(isAdvertisement: Bool, measuredProductInformationHeight: CGFloat? = nil) -> CGFloat {
         if isAdvertisement {
@@ -437,20 +437,21 @@ private struct HomeUniversalCompatibilityCard: View {
             .onTapGesture(perform: onTap)
             .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 8) {
-                VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(viewModel.title)
                         .font(HomeFont.headline())
                         .foregroundStyle(Color.ppTextPrimary)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.86)
                         .frame(maxWidth: .infinity, minHeight: isAdvertisement ? titleMinimumHeight : nil, alignment: .topLeading)
 
                     if !viewModel.subtitle.isEmpty {
                         Text(viewModel.subtitle)
                             .font(HomeFont.caption1())
                             .foregroundStyle(Color.ppTextSecondary)
-                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                            .lineLimit(1)
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
@@ -482,18 +483,19 @@ private struct HomeUniversalCompatibilityCard: View {
                 if !isAdvertisement {
                     availability
                         .homeProductInformationRegion(.metadata, enabled: true)
-                    Spacer(minLength: 8)
                     action
+                        .padding(.bottom, 8)
                 } else {
-                    HStack(alignment: .bottom, spacing: 8) {
+                    HStack(alignment: .bottom, spacing: 6) {
                         availability
                             .frame(maxWidth: .infinity, alignment: .leading)
                         action
+                            .padding(.bottom, 8)
                     }
                 }
             }
             .homeProductInformationMeasurement(enabled: !isAdvertisement)
-            .padding(12)
+            .padding(10)
         }
         .padding(4)
         .background {
@@ -516,17 +518,23 @@ private struct HomeUniversalCompatibilityCard: View {
     }
 
     private var availability: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: 5) {
             if !viewModel.availabilityText.isEmpty {
                 Text(viewModel.availabilityText)
+                    .lineLimit(1)
+            }
+            if !viewModel.availabilityText.isEmpty, let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
+                Text("•")
+                    .foregroundStyle(Color.ppTextSecondary.opacity(0.45))
             }
             if let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
                 Text(variantInfo)
+                    .lineLimit(1)
             }
         }
         .font(HomeFont.caption1())
         .foregroundStyle(Color.ppTextSecondary)
-        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+        .lineLimit(1)
         .fixedSize(horizontal: false, vertical: true)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)

@@ -316,7 +316,7 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     self.errorLabel.hidden = YES;
     [self.cardView addSubview:self.errorLabel];
 
-    CGFloat minimumFieldHeight = self.inputType == PPFormInputTypeTextView ? self.style.minimumTextViewFieldHeight : (self.style.groupedMode ? 38.0 : self.style.minimumSingleLineFieldHeight);
+    CGFloat minimumFieldHeight = self.inputType == PPFormInputTypeTextView ? self.style.minimumTextViewFieldHeight : self.style.minimumSingleLineFieldHeight;
 
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
         [self.cardView.topAnchor constraintEqualToAnchor:self.topAnchor],
@@ -342,10 +342,10 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
             [self.fieldSurface.heightAnchor constraintGreaterThanOrEqualToConstant:minimumFieldHeight],
         ]];
     } else {
-        CGFloat leadPad = self.style.groupedMode ? 18.0 : self.style.fieldLeading;
-        CGFloat trailPad = self.style.groupedMode ? 18.0 : self.style.fieldTrailing;
-        CGFloat topPad = self.style.groupedMode ? 10.0 : self.style.accentTop;
-        CGFloat fieldSpacing = self.style.groupedMode ? 3.0 : self.style.titleToFieldSpacing;
+        CGFloat leadPad = self.style.fieldLeading;
+        CGFloat trailPad = self.style.fieldTrailing;
+        CGFloat topPad = self.style.groupedMode ? 4.0 : self.style.accentTop;
+        CGFloat fieldSpacing = self.style.groupedMode ? 6.0 : self.style.titleToFieldSpacing;
 
         [constraints addObjectsFromArray:@[
             [self.titleLabel.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:topPad],
@@ -359,14 +359,18 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
         ]];
     }
 
-    CGFloat inTop = self.style.groupedMode ? 0.0 : self.style.fieldTopInset;
-    CGFloat inBottom = self.style.groupedMode ? 0.0 : self.style.fieldBottomInset;
-    CGFloat inHoriz = self.style.groupedMode ? 0.0 : self.style.fieldHorizontalInset;
+    CGFloat inTop = self.style.fieldTopInset;
+    CGFloat inBottom = self.style.fieldBottomInset;
+    CGFloat inHoriz = self.style.fieldHorizontalInset;
+    CGFloat trailingInset = inHoriz;
+    if (self.inputType == PPFormInputTypePicker) {
+        trailingInset = inHoriz + 24.0;
+    }
 
     [constraints addObjectsFromArray:@[
         [inputView.topAnchor constraintEqualToAnchor:self.fieldSurface.topAnchor constant:inTop],
         [inputView.leadingAnchor constraintEqualToAnchor:self.fieldSurface.leadingAnchor constant:inHoriz],
-        [inputView.trailingAnchor constraintEqualToAnchor:self.fieldSurface.trailingAnchor constant:-inHoriz],
+        [inputView.trailingAnchor constraintEqualToAnchor:self.fieldSurface.trailingAnchor constant:-trailingInset],
         [inputView.bottomAnchor constraintEqualToAnchor:self.fieldSurface.bottomAnchor constant:-inBottom],
 
         [self.errorLabel.topAnchor constraintEqualToAnchor:self.fieldSurface.bottomAnchor constant:self.style.errorTopSpacing],
@@ -375,7 +379,9 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     ]];
 
     if (self.style.groupedMode && self.inputType != PPFormInputTypeAttachment) {
-        [constraints addObject:[self.fieldSurface.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-10.0]];
+        [constraints addObject:[self.fieldSurface.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-self.style.rowBottomInset]];
+    } else if (self.inputType != PPFormInputTypeAttachment) {
+        [constraints addObject:[self.errorLabel.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-self.style.rowBottomInset]];
     }
 
     if (self.inputType == PPFormInputTypeAttachment) {
@@ -398,8 +404,6 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
             [self.attachmentZone.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-14.0],
             [self.attachmentZone.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-self.style.attachmentZoneBottomInset],
         ]];
-    } else {
-        [constraints addObject:[self.errorLabel.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-self.style.rowBottomInset]];
     }
 
     [NSLayoutConstraint activateConstraints:constraints];
@@ -415,6 +419,8 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
         self.textView.font = self.style.inputFont;
         self.textView.semanticContentAttribute = PPFormEngineSemanticAttribute();
         self.textView.textAlignment = PPFormEngineTextAlignment();
+        self.textView.textContainerInset = UIEdgeInsetsMake(10, 8, 10, 8);
+        self.textView.textContainer.lineFragmentPadding = 0;
         self.textView.delegate = self;
 
         self.textViewPlaceholderLabel = [[UILabel alloc] init];
@@ -426,9 +432,9 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
         self.textViewPlaceholderLabel.numberOfLines = 0;
         [self.textView addSubview:self.textViewPlaceholderLabel];
         [NSLayoutConstraint activateConstraints:@[
-            [self.textViewPlaceholderLabel.topAnchor constraintEqualToAnchor:self.textView.topAnchor],
-            [self.textViewPlaceholderLabel.leadingAnchor constraintEqualToAnchor:self.textView.leadingAnchor],
-            [self.textViewPlaceholderLabel.trailingAnchor constraintEqualToAnchor:self.textView.trailingAnchor]
+            [self.textViewPlaceholderLabel.topAnchor constraintEqualToAnchor:self.textView.topAnchor constant:10.0],
+            [self.textViewPlaceholderLabel.leadingAnchor constraintEqualToAnchor:self.textView.leadingAnchor constant:8.0],
+            [self.textViewPlaceholderLabel.trailingAnchor constraintEqualToAnchor:self.textView.trailingAnchor constant:-8.0]
         ]];
         return self.textView;
     }
@@ -462,7 +468,7 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
         self.pickerIconView.tintColor = [self.style.secondaryTextColor colorWithAlphaComponent:0.86];
         [self.fieldSurface addSubview:self.pickerIconView];
 
-        CGFloat chevronPad = self.style.groupedMode ? 0.0 : 12.0;
+        CGFloat chevronPad = (self.style.fieldHorizontalInset > 0) ? self.style.fieldHorizontalInset : 14.0;
         [NSLayoutConstraint activateConstraints:@[
             [self.pickerButton.topAnchor constraintEqualToAnchor:self.fieldSurface.topAnchor],
             [self.pickerButton.leadingAnchor constraintEqualToAnchor:self.fieldSurface.leadingAnchor],

@@ -42,7 +42,12 @@ struct PPMarketplaceDataViewScreen: View {
                                     availableWidth: proxy.size.width,
                                     availableHeight: proxy.size.height
                                 )
-                                .padding(.horizontal, horizontalContentInset)
+                                .padding(
+                                    .horizontal,
+                                    store.layout == .mosaic
+                                        ? PPMarketplaceContentGeometry.mosaicCellSpacing
+                                        : horizontalContentInset
+                                )
                                 .padding(.top, PPSpace.md)
                                 .opacity(store.isReplacingContext ? 0.46 : 1)
                                 .animation(
@@ -849,8 +854,11 @@ private struct PPMarketplaceContent: View {
             }
 
         case .mosaic:
-            VStack(alignment: .leading, spacing: PPSpace.base) {
-                LazyVGrid(columns: mosaicColumns, spacing: PPSpace.base) {
+            VStack(alignment: .leading, spacing: PPMarketplaceContentGeometry.mosaicLineSpacing) {
+                LazyVGrid(
+                    columns: mosaicColumns,
+                    spacing: PPMarketplaceContentGeometry.mosaicLineSpacing
+                ) {
                     ForEach(store.records) { record in
                         PPMarketplaceUniversalCard(
                             record: record,
@@ -883,7 +891,7 @@ private struct PPMarketplaceContent: View {
             isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
         )
         return Array(
-            repeating: GridItem(.flexible(), spacing: PPSpace.base),
+            repeating: GridItem(.flexible(), spacing: PPMarketplaceContentGeometry.mosaicCellSpacing),
             count: count
         )
     }

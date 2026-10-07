@@ -2543,13 +2543,13 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 {
     return @[
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueMale
-                                  localizedTitle:kLang(@"Male")
+                                  localizedTitle:[self pp_localizedStringForKey:@"Male" fallback:@"ذكر"]
                                  systemImageName:@"male"],
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueFemale
-                                  localizedTitle:kLang(@"Female")
+                                  localizedTitle:[self pp_localizedStringForKey:@"Female" fallback:@"أنثى"]
                                  systemImageName:@"female"],
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueUndefined
-                                  localizedTitle:kLang(@"no_value")
+                                  localizedTitle:[self pp_localizedStringForKey:@"no_value" fallback:@"غير محدد"]
                                  systemImageName:@"questionmark.circle"]
     ];
 }
@@ -2903,7 +2903,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         self.adModel.longitude = coordinate.longitude;
         self.adModel.locationName = self.selectedAdLocationName;
 
-        [self.listingFormView setValue:(self.selectedAdLocationName.length ? self.selectedAdLocationName : kLang(@"select_location")) forIdentifier:kadLocation];
+        [self.listingFormView setValue:(self.selectedAdLocationName.length ? self.selectedAdLocationName : [self pp_localizedStringForKey:@"select_location" fallback:@"حدد الموقع على الخريطة"]) forIdentifier:kadLocation];
         if (!self.isHydratingFormData) {
             self.hasUserModifiedForm = YES;
         }
@@ -2916,7 +2916,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         CLLocationCoordinate2D coordinate = gmsAddress.coordinate;
         if (!PPIsValidAdCoordinate(coordinate)) {
             [PPAlertHelper showErrorIn:self
-                                 title:kLang(@"Location")
+                                 title:[self pp_localizedStringForKey:@"Location" fallback:@"الموقع"]
                               subtitle:[self pp_localizedStringForKey:@"location_invalid"
                                                               fallback:@"Please choose a valid location from the map."]];
             return;
@@ -3316,6 +3316,14 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     style.cardBorderColor = UIColor.clearColor;
     style.cardBorderWidth = 0.0;
     style.cardCornerRadius = 0.0;
+    style.fieldLeading = 0.0;
+    style.fieldTrailing = 0.0;
+    style.fieldHorizontalInset = 14.0;
+    style.fieldTopInset = 4.0;
+    style.fieldBottomInset = 4.0;
+    style.rowBottomInset = 8.0;
+    style.minimumSingleLineFieldHeight = 48.0;
+    style.minimumTextViewFieldHeight = 110.0;
     style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return tc.userInterfaceStyle == UIUserInterfaceStyleDark
             ? [UIColor colorWithWhite:1.0 alpha:0.06]
@@ -3334,7 +3342,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     style.inputFont = [GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightMedium];
     style.placeholderFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
     style.fieldCornerRadius = 13.0;
-    style.stackSpacing = 8.0;
+    style.stackSpacing = 10.0;
     style.shadowOpacity = 0.0;
     return style;
 }
@@ -3454,7 +3462,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     badgeLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
     badgeLabel.textColor = [UIColor colorWithRed:0.92 green:0.35 blue:0.05 alpha:1.0];
-    badgeLabel.text = (self.mode == AdEditorModeEdit) ? (kLang(@"EditAdTitle") ?: @"تعديل الإعلان") : @"إعلان حيوان أليف";
+    badgeLabel.text = (self.mode == AdEditorModeEdit)
+        ? ([self pp_localizedStringForKey:@"EditAdTitle" fallback:@"تعديل الإعلان"])
+        : [self pp_localizedStringForKey:@"ad_badge_pet_listing" fallback:@"إعلان حيوان أليف"];
 
     UIStackView *badgeStack = [[UIStackView alloc] initWithArrangedSubviews:@[badgeIcon, badgeLabel]];
     badgeStack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -3475,7 +3485,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
     titleLabel.textColor = PPAdFormPrimaryTextColor();
-    titleLabel.text = (self.mode == AdEditorModeEdit) ? (kLang(@"EditAdTitle") ?: @"تعديل الإعلان") : (kLang(@"addNewAd") ?: @"إضافة إعلان جديد");
+    titleLabel.text = (self.mode == AdEditorModeEdit)
+        ? ([self pp_localizedStringForKey:@"EditAdTitle" fallback:@"تعديل الإعلان"])
+        : ([self pp_localizedStringForKey:@"addNewAd" fallback:@"إضافة إعلان جديد"]);
 
     UIStackView *leadingStack = [[UIStackView alloc] initWithArrangedSubviews:@[badge, titleLabel]];
     leadingStack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -3505,7 +3517,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     cancelBtn.layer.shadowRadius = 4.0;
     cancelBtn.layer.shadowOffset = CGSizeMake(0.0, 2.0);
 
-    [cancelBtn setTitle:(kLang(@"Cancel") ?: @"إلغاء") forState:UIControlStateNormal];
+    [cancelBtn setTitle:([self pp_localizedStringForKey:@"Cancel" fallback:@"إلغاء"]) forState:UIControlStateNormal];
     [cancelBtn setTitleColor:UIColor.secondaryLabelColor forState:UIControlStateNormal];
     cancelBtn.titleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
 
@@ -3545,7 +3557,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightBold];
     titleLabel.textColor = PPAdFormPrimaryTextColor();
-    titleLabel.text = @"رادار اكتمال الإعلان";
+    titleLabel.text = [self pp_localizedStringForKey:@"ad_radar_title" fallback:@"رادار اكتمال الإعلان"];
 
     // Seal complete badge
     UIView *sealBadge = [[UIView alloc] init];
@@ -3565,7 +3577,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     sealLabel.translatesAutoresizingMaskIntoConstraints = NO;
     sealLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
     sealLabel.textColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
-    sealLabel.text = @"مكتمل";
+    sealLabel.text = [self pp_localizedStringForKey:@"ad_radar_completed" fallback:@"مكتمل"];
 
     UIStackView *sealStack = [[UIStackView alloc] initWithArrangedSubviews:@[sealIcon, sealLabel]];
     sealStack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -3592,7 +3604,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     adviceLabel.font = [GM fontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular];
     adviceLabel.textColor = UIColor.secondaryLabelColor;
     adviceLabel.numberOfLines = 2;
-    adviceLabel.text = @"أضف صورة للحيوان لرفع دقة وجودة الإعلان";
+    adviceLabel.text = [self pp_currentReadinessAdvice];
     self.studioRadarAdviceLabel = adviceLabel;
 
     UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[titleRow, adviceLabel]];
@@ -3636,14 +3648,14 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     countBadge.layer.cornerRadius = 12.0;
     countBadge.layer.masksToBounds = YES;
     countBadge.textAlignment = NSTextAlignmentCenter;
-    countBadge.text = [NSString stringWithFormat:kLang(@"community_media_count"), (int)[self safeMediaOutputCount], 8];
+    countBadge.text = [NSString stringWithFormat:[self pp_localizedStringForKey:@"community_media_count" fallback:@"%d من %d"], (int)[self safeMediaOutputCount], 8];
     self.studioMediaCountBadgeLabel = countBadge;
 
     UIView *header = [self pp_createStudioCardHeaderWithIcon:@"photo.stack.fill"
                                                    iconColor:[UIColor colorWithRed:0.39 green:0.40 blue:0.95 alpha:1.0]
                                                  iconBgColor:[UIColor colorWithRed:0.93 green:0.95 blue:1.0 alpha:1.0]
-                                                       title:kLang(@"community_media_title") ?: @"وسائط موثقة"
-                                                    subtitle:kLang(@"community_media_privacy") ?: @"تخضع الصور ومقاطع الفيديو للفحص والمراجعة قبل العرض العام."
+                                                       title:[self pp_localizedStringForKey:@"community_media_title" fallback:@"وسائط موثقة"]
+                                                    subtitle:[self pp_localizedStringForKey:@"community_media_privacy" fallback:@"تخضع الصور ومقاطع الفيديو للفحص والمراجعة قبل العرض العام."]
                                                 trailingView:countBadge];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -3686,7 +3698,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     footnoteLabel.translatesAutoresizingMaskIntoConstraints = NO;
     footnoteLabel.font = [GM fontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightRegular];
     footnoteLabel.textColor = UIColor.secondaryLabelColor;
-    footnoteLabel.text = kLang(@"community_media_safe_inspection") ?: @"تخضع الوسائط للفحص الأمني لضمان دقة الإعلانات وسلامة المجتمع";
+    footnoteLabel.text = [self pp_localizedStringForKey:@"community_media_safe_inspection" fallback:@"تخضع الوسائط للفحص الأمني لضمان دقة الإعلانات وسلامة المجتمع"];
     footnoteLabel.numberOfLines = 2;
 
     UIStackView *footnoteStack = [[UIStackView alloc] initWithArrangedSubviews:@[shieldIcon, footnoteLabel]];
@@ -3723,7 +3735,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     NSInteger count = images.count;
 
     if (self.studioMediaCountBadgeLabel) {
-        self.studioMediaCountBadgeLabel.text = [NSString stringWithFormat:kLang(@"community_media_count"), (int)count, 8];
+        self.studioMediaCountBadgeLabel.text = [NSString stringWithFormat:[self pp_localizedStringForKey:@"community_media_count" fallback:@"%d من %d"], (int)count, 8];
         if (count > 0) {
             self.studioMediaCountBadgeLabel.textColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
             self.studioMediaCountBadgeLabel.backgroundColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:0.12];
@@ -3769,7 +3781,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         addLabel.textColor = [UIColor colorWithRed:0.39 green:0.40 blue:0.95 alpha:1.0];
         addLabel.textAlignment = NSTextAlignmentCenter;
         addLabel.numberOfLines = 2;
-        addLabel.text = kLang(@"community_add_media") ?: @"إضافة صور أو فيديو";
+        addLabel.text = [self pp_localizedStringForKey:@"community_add_media" fallback:@"إضافة صور أو فيديو"];
 
         UIStackView *btnContent = [[UIStackView alloc] initWithArrangedSubviews:@[cameraCircle, addLabel]];
         btnContent.translatesAutoresizingMaskIntoConstraints = NO;
@@ -3838,7 +3850,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
             coverLabel.translatesAutoresizingMaskIntoConstraints = NO;
             coverLabel.font = [GM boldFontWithSize:9.0] ?: [UIFont systemFontOfSize:9.0 weight:UIFontWeightBold];
             coverLabel.textColor = UIColor.whiteColor;
-            coverLabel.text = kLang(@"community_media_cover_badge") ?: @"الصورة الرئيسية";
+            coverLabel.text = [self pp_localizedStringForKey:@"community_media_cover_badge" fallback:@"الصورة الرئيسية"];
             [coverPill addSubview:coverLabel];
 
             [thumbContainer addSubview:coverPill];
@@ -3907,20 +3919,22 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     UIView *header = [self pp_createStudioCardHeaderWithIcon:@"pawprint.fill"
                                                    iconColor:[UIColor colorWithRed:0.92 green:0.35 blue:0.05 alpha:1.0]
                                                  iconBgColor:[UIColor colorWithRed:1.0 green:0.93 blue:0.84 alpha:1.0]
-                                                       title:kLang(@"ad_pet_type") ?: @"تصنيف الحيوان"
-                                                    subtitle:@"حدد فئة وسلالة الحيوان لتسهيل الوصول إليه."
+                                                       title:[self pp_localizedStringForKey:@"ad_pet_type" fallback:@"تصنيف الحيوان"]
+                                                    subtitle:[self pp_localizedStringForKey:@"ad_category_subtitle" fallback:@"حدد فئة وسلالة الحيوان لتسهيل الوصول إليه."]
                                                 trailingView:nil];
 
     UIScrollView *chipsScroll = [[UIScrollView alloc] init];
     chipsScroll.translatesAutoresizingMaskIntoConstraints = NO;
     chipsScroll.showsHorizontalScrollIndicator = NO;
     chipsScroll.alwaysBounceHorizontal = YES;
+    chipsScroll.semanticContentAttribute = PPAdCurrentSemanticAttribute();
 
     UIStackView *chipsStack = [[UIStackView alloc] init];
     chipsStack.translatesAutoresizingMaskIntoConstraints = NO;
     chipsStack.axis = UILayoutConstraintAxisHorizontal;
     chipsStack.spacing = 8.0;
     chipsStack.alignment = UIStackViewAlignmentCenter;
+    chipsStack.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.studioSpeciesChipsStack = chipsStack;
     [chipsScroll addSubview:chipsStack];
 
@@ -3933,11 +3947,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     ]];
 
     NSArray<NSDictionary *> *chipData = @[
-        @{@"key": @"cat", @"title": (kLang(@"community_species_cat") ?: @"قطط"), @"symbol": @"cat.fill"},
-        @{@"key": @"dog", @"title": (kLang(@"community_species_dog") ?: @"كلاب"), @"symbol": @"dog.fill"},
-        @{@"key": @"bird", @"title": (kLang(@"community_species_bird") ?: @"طيور"), @"symbol": @"bird.fill"},
-        @{@"key": @"rabbit", @"title": (kLang(@"community_species_rabbit") ?: @"أرانب"), @"symbol": @"hare.fill"},
-        @{@"key": @"other", @"title": (kLang(@"community_species_other") ?: @"أخرى"), @"symbol": @"sparkles"}
+        @{@"key": @"cat", @"title": [self pp_localizedStringForKey:@"community_species_cat" fallback:@"قطط"], @"symbol": @"cat.fill"},
+        @{@"key": @"dog", @"title": [self pp_localizedStringForKey:@"community_species_dog" fallback:@"كلاب"], @"symbol": @"dog.fill"},
+        @{@"key": @"bird", @"title": [self pp_localizedStringForKey:@"community_species_bird" fallback:@"طيور"], @"symbol": @"bird.fill"},
+        @{@"key": @"rabbit", @"title": [self pp_localizedStringForKey:@"community_species_rabbit" fallback:@"أرانب"], @"symbol": @"hare.fill"},
+        @{@"key": @"other", @"title": [self pp_localizedStringForKey:@"community_species_other" fallback:@"أخرى"], @"symbol": @"sparkles"}
     ];
 
     for (NSInteger i = 0; i < chipData.count; i++) {
@@ -4105,29 +4119,30 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     UIView *header = [self pp_createStudioCardHeaderWithIcon:@"sparkles"
                                                    iconColor:[UIColor colorWithRed:0.58 green:0.20 blue:0.92 alpha:1.0]
                                                  iconBgColor:[UIColor colorWithRed:0.95 green:0.91 blue:1.0 alpha:1.0]
-                                                       title:kLang(@"community_appearance_title") ?: @"الصفات الظاهرية"
-                                                    subtitle:kLang(@"community_appearance_message") ?: @"أضف علامات تساعد على تمييز الحيوان."
+                                                       title:[self pp_localizedStringForKey:@"community_appearance_title" fallback:@"الصفات الظاهرية"]
+                                                    subtitle:[self pp_localizedStringForKey:@"community_appearance_message" fallback:@"أضف علامات تساعد على تمييز الحيوان."]
                                                 trailingView:nil];
 
     UILabel *genderTitleLabel = [[UILabel alloc] init];
     genderTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     genderTitleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
     genderTitleLabel.textColor = PPAdFormPrimaryTextColor();
-    genderTitleLabel.text = kLang(@"Gender") ?: @"الجنس";
+    genderTitleLabel.text = [self pp_localizedStringForKey:@"Gender" fallback:@"الجنس"];
 
     UIStackView *genderPillsStack = [[UIStackView alloc] init];
     genderPillsStack.translatesAutoresizingMaskIntoConstraints = NO;
     genderPillsStack.axis = UILayoutConstraintAxisHorizontal;
     genderPillsStack.distribution = UIStackViewDistributionFillEqually;
     genderPillsStack.spacing = 8.0;
+    genderPillsStack.semanticContentAttribute = PPAdCurrentSemanticAttribute();
 
-    self.studioGenderMaleButton = [self pp_createGenderButtonWithTitle:(kLang(@"Male") ?: @"ذكر")
+    self.studioGenderMaleButton = [self pp_createGenderButtonWithTitle:[self pp_localizedStringForKey:@"Male" fallback:@"ذكر"]
                                                                 symbol:@"figure.stand"
                                                                    tag:1];
-    self.studioGenderFemaleButton = [self pp_createGenderButtonWithTitle:(kLang(@"Female") ?: @"أنثى")
+    self.studioGenderFemaleButton = [self pp_createGenderButtonWithTitle:[self pp_localizedStringForKey:@"Female" fallback:@"أنثى"]
                                                                   symbol:@"figure.stand.dress"
                                                                      tag:2];
-    self.studioGenderUndefinedButton = [self pp_createGenderButtonWithTitle:(kLang(@"no_value") ?: @"غير محدد")
+    self.studioGenderUndefinedButton = [self pp_createGenderButtonWithTitle:[self pp_localizedStringForKey:@"no_value" fallback:@"غير محدد"]
                                                                      symbol:@"questionmark"
                                                                         tag:3];
 
@@ -4259,8 +4274,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     UIView *header = [self pp_createStudioCardHeaderWithIcon:@"tag.fill"
                                                    iconColor:[UIColor colorWithRed:0.01 green:0.52 blue:0.78 alpha:1.0]
                                                  iconBgColor:[UIColor colorWithRed:0.88 green:0.95 blue:1.0 alpha:1.0]
-                                                       title:@"تفاصيل العرض والموقع"
-                                                    subtitle:@"حدد عنوان الإعلان والسعر وموقع المعاينة."
+                                                       title:[self pp_localizedStringForKey:@"ad_offer_details_title" fallback:@"تفاصيل العرض والموقع"]
+                                                    subtitle:[self pp_localizedStringForKey:@"ad_offer_details_subtitle" fallback:@"حدد عنوان الإعلان والسعر وموقع المعاينة."]
                                                 trailingView:nil];
 
     UIStackView *cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[header, self.listingFormView]];
@@ -4344,7 +4359,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     [heroBtn.layer insertSublayer:btnGrad atIndex:0];
     self.studioDockHeroGradient = btnGrad;
 
-    NSString *heroTitle = (self.mode == AdEditorModeEdit) ? (kLang(@"Save") ?: @"حفظ التعديلات") : @"نشر الإعلان والمطابقة الفورية";
+    NSString *heroTitle = (self.mode == AdEditorModeEdit)
+        ? ([self pp_localizedStringForKey:@"Save" fallback:@"حفظ التعديلات"])
+        : [self pp_localizedStringForKey:@"ad_publish_instant_match" fallback:@"نشر الإعلان والمطابقة الفورية"];
     [heroBtn setTitle:heroTitle forState:UIControlStateNormal];
     [heroBtn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     heroBtn.titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightBold];
@@ -4453,33 +4470,43 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (NSString *)pp_currentReadinessAdvice {
     if ([self safeMediaOutputCount] == 0) {
-        return @"أضف صورة للحيوان لرفع دقة وجودة الإعلان";
+        return [self pp_localizedStringForKey:@"ad_advice_add_photo"
+                                      fallback:@"أضف صورة للحيوان لرفع دقة وجودة الإعلان"];
     }
     if (self.adModel.adTitle.length == 0) {
-        return @"أدخل عنواناً واضحاً للإعلان لجذب المشترين";
+        return [self pp_localizedStringForKey:@"ad_advice_enter_title"
+                                      fallback:@"أدخل عنواناً واضحاً للإعلان لجذب المشترين"];
     }
     if (!self.selectedKind && self.adModel.category == 0) {
-        return @"حدد فئة ونوع الحيوان";
+        return [self pp_localizedStringForKey:@"ad_advice_select_category"
+                                      fallback:@"حدد فئة ونوع الحيوان"];
     }
     if (self.adModel.subcategory == 0) {
-        return @"اختر سلالة الحيوان لتسهيل البحث";
+        return [self pp_localizedStringForKey:@"ad_advice_select_breed"
+                                      fallback:@"اختر سلالة الحيوان لتسهيل البحث"];
     }
     if (self.adModel.gender.length == 0 || [self.adModel.gender isEqualToString:PPAdGenderValueUndefined]) {
-        return @"حدد جنس الحيوان (ذكر أو أنثى)";
+        return [self pp_localizedStringForKey:@"ad_advice_select_gender"
+                                      fallback:@"حدد جنس الحيوان (ذكر أو أنثى)"];
     }
     if (self.adModel.price == nil) {
-        return @"حدد سعر الحيوان أو ضعه 0 للتبني";
+        return [self pp_localizedStringForKey:@"ad_advice_enter_price"
+                                      fallback:@"حدد سعر الحيوان أو ضعه 0 للتبني"];
     }
     if (!self.hasSelectedAdCoordinate && self.selectedAdLocationName.length == 0) {
-        return @"حدد موقع الإعلان على الخريطة";
+        return [self pp_localizedStringForKey:@"ad_advice_select_location"
+                                      fallback:@"حدد موقع الإعلان على الخريطة"];
     }
     if (self.adModel.petAgeMonths == nil) {
-        return @"أدخل عمر الحيوان بالأشهر";
+        return [self pp_localizedStringForKey:@"ad_advice_enter_age"
+                                      fallback:@"أدخل عمر الحيوان بالأشهر"];
     }
     if (self.adModel.adDescription.length == 0) {
-        return @"أضف وصفاً مختصراً يوضح حالة ومميزات الحيوان";
+        return [self pp_localizedStringForKey:@"ad_advice_enter_description"
+                                      fallback:@"أضف وصفاً مختصراً يوضح حالة ومميزات الحيوان"];
     }
-    return @"الإعلان مكتمل وجاهز للمطابقة الفورية بنسبة 100% ✨";
+    return [self pp_localizedStringForKey:@"ad_advice_complete"
+                                 fallback:@"الإعلان مكتمل وجاهز للمطابقة الفورية بنسبة 100% ✨"];
 }
 
 - (void)pp_updateStudioReadinessRadarAnimated:(BOOL)animated {
@@ -4490,11 +4517,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     if (pct >= 100) {
         self.studioRadarCompleteBadge.hidden = NO;
-        self.studioRadarAdviceLabel.text = @"الإعلان مكتمل وجاهز للمطابقة الفورية بنسبة 100% ✨";
+        self.studioRadarAdviceLabel.text = [self pp_localizedStringForKey:@"ad_advice_complete" fallback:@"الإعلان مكتمل وجاهز للمطابقة الفورية بنسبة 100% ✨"];
         self.studioRadarAdviceLabel.textColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
 
         if (self.studioDockGuidanceLabel) {
-            self.studioDockGuidanceLabel.text = @"✨ الإعلان مكتمل وجاهز للمطابقة الفورية";
+            self.studioDockGuidanceLabel.text = [self pp_localizedStringForKey:@"ad_ready_for_publish" fallback:@"✨ الإعلان مكتمل وجاهز للمطابقة الفورية"];
             self.studioDockGuidanceLabel.textColor = [UIColor colorWithRed:0.06 green:0.73 blue:0.51 alpha:1.0];
         }
     } else {
@@ -4527,8 +4554,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     // 1. Basic fields (category & subcategory)
     PPFormFieldConfig *catField = [PPFormFieldConfig fieldWithIdentifier:kcategory
-                                                                  title:kLang(@"Species") ?: @"نوع الحيوان"
-                                                            placeholder:kLang(@"Species") ?: @"اختر نوع الحيوان"
+                                                                  title:[self pp_localizedStringForKey:@"Species" fallback:@"الفئة"]
+                                                            placeholder:[self pp_localizedStringForKey:@"ad_select_category" fallback:@"اختر الفئة"]
                                                               inputType:PPFormInputTypePicker];
     catField.required = YES;
     catField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
@@ -4536,8 +4563,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     };
 
     PPFormFieldConfig *subField = [PPFormFieldConfig fieldWithIdentifier:ksubcategory
-                                                                  title:kLang(@"Breed") ?: @"السلالة"
-                                                            placeholder:kLang(@"Breed") ?: @"اختر السلالة"
+                                                                  title:[self pp_localizedStringForKey:@"Breed" fallback:@"السلالة"]
+                                                            placeholder:[self pp_localizedStringForKey:@"ad_select_breed" fallback:@"اختر السلالة"]
                                                               inputType:PPFormInputTypePicker];
     subField.required = YES;
     subField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
@@ -4573,8 +4600,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     // 2. Pet detail fields (age)
     PPFormFieldConfig *ageField = [PPFormFieldConfig fieldWithIdentifier:kpetAge
-                                                                   title:kLang(@"age_months") ?: @"العمر بالأشهر"
-                                                             placeholder:kLang(@"enter_pet_age_in_months") ?: @"أدخل العمر بالأشهر"
+                                                                   title:[self pp_localizedStringForKey:@"age_months" fallback:@"العمر (بالأشهر)"]
+                                                             placeholder:[self pp_localizedStringForKey:@"enter_pet_age_in_months" fallback:@"أدخل عمر الحيوان بالأشهر"]
                                                                inputType:PPFormInputTypeNumber];
     ageField.required = YES;
     ageField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
@@ -4589,8 +4616,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     // 3. Listing detail fields (title, price, location, desc)
     PPFormFieldConfig *titleField = [PPFormFieldConfig fieldWithIdentifier:@"adTitle"
-                                                                    title:kLang(@"adTitle") ?: @"عنوان الإعلان"
-                                                              placeholder:kLang(@"enter_title") ?: @"أدخل عنواناً جذاباً ومختصراً"
+                                                                    title:[self pp_localizedStringForKey:@"adTitle" fallback:@"عنوان او اسم الإعلان"]
+                                                              placeholder:[self pp_localizedStringForKey:@"enter_title" fallback:@"أدخل عنواناً جذاباً ومختصراً"]
                                                                 inputType:PPFormInputTypeText];
     titleField.required = YES;
     titleField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
@@ -4603,8 +4630,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     }
 
     PPFormFieldConfig *priceField = [PPFormFieldConfig fieldWithIdentifier:kprice
-                                                                    title:kLang(@"price") ?: @"السعر (ر.ق)"
-                                                              placeholder:kLang(@"enter_price") ?: @"0"
+                                                                    title:[self pp_localizedStringForKey:@"price" fallback:@"السعر (ر.ق)"]
+                                                              placeholder:[self pp_localizedStringForKey:@"enter_price" fallback:@"0"]
                                                                 inputType:PPFormInputTypeNumber];
     priceField.keyboardType = UIKeyboardTypeDecimalPad;
     priceField.required = YES;
@@ -4618,8 +4645,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     }
 
     PPFormFieldConfig *locationField = [PPFormFieldConfig fieldWithIdentifier:kadLocation
-                                                                        title:kLang(@"adLocation") ?: @"موقع الإعلان"
-                                                                  placeholder:kLang(@"select_location") ?: @"حدد الموقع على الخريطة"
+                                                                        title:[self pp_localizedStringForKey:@"adLocation" fallback:@"موقع الإعلان"]
+                                                                  placeholder:[self pp_localizedStringForKey:@"select_location" fallback:@"حدد الموقع على الخريطة"]
                                                                     inputType:PPFormInputTypePicker];
     locationField.required = YES;
     locationField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
@@ -4630,8 +4657,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     }
 
     PPFormFieldConfig *descField = [PPFormFieldConfig fieldWithIdentifier:kdesc
-                                                                   title:kLang(@"enter_description") ?: @"تفاصيل ووصف الإعلان"
-                                                             placeholder:kLang(@"enter_description") ?: @"اكتب تفاصيل واضحة عن الحيوان، حالته الصحية، والتطعيمات..."
+                                                                   title:[self pp_localizedStringForKey:@"ad_description_title" fallback:@"تفاصيل ووصف الإعلان"]
+                                                             placeholder:[self pp_localizedStringForKey:@"ad_description_placeholder" fallback:@"اكتب تفاصيل واضحة عن الحيوان، حالته الصحية، والتطعيمات..."]
                                                                inputType:PPFormInputTypeTextView];
     descField.required = YES;
     descField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
@@ -4971,7 +4998,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 - (BOOL)pp_validateAdLocationBeforeSubmit
 {
     if (!self.hasSelectedAdCoordinate || !PPIsValidAdCoordinate(self.selectedAdCoordinate)) {
-        NSString *title = kLang(@"Location");
+        NSString *title = [self pp_localizedStringForKey:@"Location" fallback:@"الموقع"];
         NSString *subtitle = [self pp_localizedStringForKey:@"location_invalid"
                                                     fallback:@"Please choose a valid location from the map."];
         [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
@@ -5566,7 +5593,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 -(void)ios26Bar
 {
-    NSString *buttonTitle = (self.mode == AdEditorModeEdit) ? kLang(@"saveChanges") : kLang(@"postAd");
+    NSString *buttonTitle = (self.mode == AdEditorModeEdit)
+        ? [self pp_localizedStringForKey:@"saveChanges" fallback:@"حفظ التعديلات"]
+        : [self pp_localizedStringForKey:@"postAd" fallback:@"نشر الإعلان"];
 
     // Executive Pill Publish Button
     UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];

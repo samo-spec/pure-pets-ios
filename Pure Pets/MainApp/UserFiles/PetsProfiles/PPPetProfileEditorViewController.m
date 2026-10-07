@@ -14,16 +14,25 @@
 #import "PPSelectOptionViewController.h"
 #import "PPModernAvatarRenderer.h"
 #import "PPVaccinationEditorSheet.h"
+#import "PPPetProfileManager.h"
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
 #import "PPImageLoaderManager.h"
 #import <Pure_Pets-Swift.h>
- 
 @import PhotosUI;
 
+static NSString * _Nullable PPEditorCurrentUID(void) {
+    NSString *uid = [UserManager sharedManager].currentUser.ID;
+    if (uid.length > 0) return uid;
+    // resolvedUID includes [FIRAuth auth].currentUser.uid fallback,
+    // covering cold-start / background-restore where currentUser is not yet loaded.
+    return [PPPetProfileManager sharedManager].resolvedUID;
+}
+
 static BOOL PPEditorMatchesOwner(NSString *ownerUID) {
-    return ownerUID.length > 0 && [ownerUID isEqualToString:[UserManager sharedManager].currentAuthUser.uid];
+    NSString *currentUID = PPEditorCurrentUID();
+    return ownerUID.length > 0 && currentUID.length > 0 && [ownerUID isEqualToString:currentUID];
 }
 
 // ─── Shared Image Loader ──────────────────────────────────
@@ -276,7 +285,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         // A cancelled editor must not leak category/vaccination edits into the
         // Home or profiles-list model before the server accepts a save.
         _originalPet = pet;
-        _ownerUID = [[UserManager sharedManager].currentAuthUser.uid copy];
+        _ownerUID = [PPEditorCurrentUID() copy];
         _pet = pet ? [[PPPetProfile alloc] initWithDictionary:pet.toDictionary] : [PPPetProfile new];
         _pet.createdAt = pet.createdAt;
         _pet.updatedAt = pet.updatedAt;
