@@ -3006,7 +3006,7 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         if (readyPresenter.presentedViewController) return;
 
         if ([weakSelf pp_shouldUseTemporaryHXPicker]) {
-            [weakSelf pp_presentHXPhotoPickerFromViewController:readyPresenter];
+            [weakSelf pp_presentHXPHPickerFromViewController:readyPresenter];
             return;
         }
 
@@ -3040,14 +3040,11 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
 - (BOOL)pp_shouldUseTemporaryHXPicker
 {
-    // HXPhotoPicker rollout is disabled here because this presentation path is
-    // currently the crash source in the customer app. Keep the bridge in place
-    // for later validation, but route production gallery selection through the
-    // proven QB picker until the HX flow is stabilized.
+    // HXPHPicker rollout is enabled here for modern photo selection.
     return YES;
 }
 
-- (void)pp_presentHXPhotoPickerFromViewController:(UIViewController *)viewController
+- (void)pp_presentHXPHPickerFromViewController:(UIViewController *)viewController
 {
     UIViewController *presentingVC = [self pp_bestPresentingViewController:viewController];
     if (!presentingVC) {
@@ -3086,6 +3083,11 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
     self.isPresentingMediaPicker = YES;
     [self.photoPickerBridge presentPickerFromViewController:presentingVC];
+}
+
+- (void)pp_presentHXPhotoPickerFromViewController:(UIViewController *)viewController
+{
+    [self pp_presentHXPHPickerFromViewController:viewController];
 }
 
 - (void)openCameraFromViewController:(UIViewController *)viewController
@@ -3446,7 +3448,7 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
     self.selectedForEdit = -1;
 }
 
-#pragma mark - HXPhotoPicker Notifications
+#pragma mark - HXPHPicker Notifications
 
 - (void)photoPickerDidFinish:(NSNotification *)notification
 {
@@ -3596,7 +3598,7 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
                 didFinalize = YES;
                 [weakSelf pp_cancelLoadingTimeoutIfNeeded];
                 if (!didChange) {
-                    NSLog(@"[PPImageCollection] HXPhotoPicker returned no delta, syncing existing manager images");
+                    NSLog(@"[PPImageCollection] HXPHPicker returned no delta, syncing existing manager images");
                 }
                 [weakSelf pp_syncImagesFromManager];
                 [weakSelf reloadCollectionView];

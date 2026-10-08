@@ -2,13 +2,17 @@
 //  PPEditorBridge.swift
 //  PurePets
 //
-//  Swift bridge for HXPhotoPicker image editor.
+//  Swift bridge for HXPHPicker image editor.
 //  Posts notifications so Objective-C callers receive edited images.
 //
 
 import Foundation
 import UIKit
+#if canImport(HXPHPicker)
+import HXPHPicker
+#elseif canImport(HXPhotoPicker)
 import HXPhotoPicker
+#endif
 
 // MARK: - Notifications
 
@@ -191,7 +195,7 @@ public extension Notification.Name {
         }
     }
 
-    /// Present the HXPhotoPicker editor for a given image.
+    /// Present the HXPHPicker editor for a given image.
     @objc(presentEditorFromViewController:withImage:useArabic:)
     public func presentEditor(
         from viewController: UIViewController,

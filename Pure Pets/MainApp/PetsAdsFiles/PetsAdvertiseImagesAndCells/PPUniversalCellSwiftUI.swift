@@ -1137,6 +1137,7 @@ private final class PPUniversalCardStore: ObservableObject {
     private var collapseTask: Task<Void, Never>?
     private var notifyItemID: String?
     private var legacySourceSyncGeneration: UInt = 0
+    private var lastCardTapTimestamp: TimeInterval = 0
 
     init(
         model: PPUniversalCardModel,
@@ -1404,6 +1405,7 @@ private final class PPUniversalCardStore: ObservableObject {
     func resetForReuse() {
         collapseTask?.cancel()
         collapseTask = nil
+        lastCardTapTimestamp = 0
         stopMediaPlayback()
         delegate = nil
         viewModel = nil
@@ -1483,9 +1485,16 @@ private final class PPUniversalCardStore: ObservableObject {
         guard !model.isSkeleton else {
             return
         }
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastCardTapTimestamp > 0.35 else {
+            return
+        }
+        lastCardTapTimestamp = now
+
         pp_performTapHaloBurst()
-        cardTap?()
-        if let viewModel {
+        if let cardTap {
+            cardTap()
+        } else if let viewModel {
             delegate?.ppUniversalCell_tapCard?(viewModel)
         } else {
             actions.onTap?(currentModel)

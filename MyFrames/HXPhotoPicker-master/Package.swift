@@ -4,16 +4,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "HXPhotoPicker",
-    platforms: [.iOS(.v10)],
+    name: "HXPHPicker",
+    platforms: [.iOS(.v12)],
     products: [
         .library(
+            name: "HXPHPicker",
+            targets: ["HXPHPicker"]),
+        .library(
             name: "HXPhotoPicker",
-            targets: ["HXPhotoPicker"]),
+            targets: ["HXPHPicker"]),
     ],
     targets: [
         .target(
-            name: "HXPhotoPicker",
+            name: "HXPHPicker",
+            path: "Sources/HXPhotoPicker",
             resources: [
                 .process("Resources/HXPhotoPicker.bundle"),
                 .copy("Resources/PrivacyInfo.xcprivacy")

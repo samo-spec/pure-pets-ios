@@ -2,13 +2,17 @@
 //  PPCoreBridge.swift
 //  PurePets
 //
-//  Core utilities bridging HXPhotoPicker (Swift) to Objective-C.
+//  Core utilities bridging HXPHPicker (Swift) to Objective-C.
 //
 
 import Foundation
 import UIKit
 import Photos
+#if canImport(HXPHPicker)
+import HXPHPicker
+#elseif canImport(HXPhotoPicker)
 import HXPhotoPicker
+#endif
 
 @objc public class PPCoreBridge: NSObject {
 
@@ -18,7 +22,7 @@ import HXPhotoPicker
         super.init()
     }
 
-    /// Prepare HXPhotoPicker language bundle for Arabic or English.
+    /// Prepare HXPHPicker language bundle for Arabic or English.
     @objc public func preparePickerLanguageBundle() {
         let lang: LanguageType = useArabic ? .arabic : .english
         PhotoManager.shared.createLanguageBundle(languageType: lang)

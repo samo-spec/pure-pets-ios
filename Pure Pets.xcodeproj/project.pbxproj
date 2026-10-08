@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -30,14 +30,12 @@
 		6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */; };
 		7E88BDC6B4FDC438D09D8AC7 /* NovaVoiceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12AC9DB60A8A6C4966591D47 /* NovaVoiceService.swift */; };
 		8285DB81AC0E45CAAD4045C8 /* PPAgentClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 54CF9E88F5084302B07E92AD /* PPAgentClient.m */; };
-		8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */; };
 		8A0A552A9BF600F0C770F8FD /* PurePets-DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94376A6F0A77F44A1BD9FA1C /* PurePets-DesignSystem.swift */; };
 		997CC0FBDBA146DCBC65C0AB /* PPInAppChatNotificationPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 6027D32F8BFF42DE85792BE5 /* PPInAppChatNotificationPresenter.m */; };
 		9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */; };
 		A11CE0022FEA000000000002 /* Profile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = A11CE0012FEA000000000001 /* Profile.lottie */; };
 		A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */; };
 		A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */; };
-		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A3B174093025000000000002 /* PPUniversalVariantPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B174093025000000000001 /* PPUniversalVariantPicker.swift */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E100012FF1000100A5E001 /* PPHeroApex.swift */; };
@@ -341,6 +339,7 @@
 		F260D3302C7B37B70098C8F0 /* UIScrollView+EmptyDataSet.m in Sources */ = {isa = PBXBuildFile; fileRef = F260D32F2C7B37B70098C8F0 /* UIScrollView+EmptyDataSet.m */; };
 		F260D3392C7C6F6C0098C8F0 /* selectChildViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F260D3372C7C6F6B0098C8F0 /* selectChildViewController.m */; };
 		F260D33C2C7C72F80098C8F0 /* selectChildCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F260D33B2C7C72F80098C8F0 /* selectChildCell.m */; };
+		F260E78D3077C99B006F79A8 /* HXPHPicker in Frameworks */ = {isa = PBXBuildFile; productRef = F260E78C3077C99B006F79A8 /* HXPHPicker */; };
 		F263ABCB2D64E3BA00213743 /* Watermark.m in Sources */ = {isa = PBXBuildFile; fileRef = F263ABCA2D64E3BA00213743 /* Watermark.m */; };
 		F26634542C51D0F600D4B304 /* uploadedCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F26634532C51D0F500D4B304 /* uploadedCollectionViewCell.m */; };
 		F26AAB1E2D5264D50012405D /* ProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F26AAB1D2D5264D50012405D /* ProfileVC.m */; };
@@ -399,7 +398,6 @@
 		F2736E972E8265D800902E1C /* Styling.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E962E8265D800902E1C /* Styling.m */; };
 		F2736E9A2E827C0A00902E1C /* PPHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E992E827C0A00902E1C /* PPHUD.m */; };
 		F2736E9D2E82834F00902E1C /* PPAlertHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E9C2E82834F00902E1C /* PPAlertHelper.m */; };
-		F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */; };
 		F276D6082F13E94800782A13 /* ArabicNormalizer.m in Sources */ = {isa = PBXBuildFile; fileRef = F276D6072F13E94800782A13 /* ArabicNormalizer.m */; };
 		F276D60D2F14042600782A13 /* PPSearchHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F276D60C2F14042600782A13 /* PPSearchHelper.m */; };
 		F276E5C72DE314E400926D56 /* PetImageGalleryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F276E5C62DE314D000926D56 /* PetImageGalleryView.m */; };
@@ -475,10 +473,7 @@
 		F281B4802FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46A2FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m */; };
 		F281B4812FCB6735009118F2 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4752FCB6735009118F2 /* PPRatingView.m */; };
 		F281B4822FCB6735009118F2 /* PPSearchFilterView.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4792FCB6735009118F2 /* PPSearchFilterView.m */; };
-		F281B4832FCB6735009118F2 /* PPS.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4772FCB6735009118F2 /* PPS.m */; };
-		F281B4842FCB6735009118F2 /* PPModrenSegmrnted.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4712FCB6735009118F2 /* PPModrenSegmrnted.m */; };
 		F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */; };
-		F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46F2FCB6735009118F2 /* PPMenuHelper.m */; };
 		F281B48B2FCBBFD1009118F2 /* PPIntroViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B48A2FCBBFD1009118F2 /* PPIntroViewController.m */; };
 		F282C1122F0D7BF9001C110A /* PPSPinnerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F282C1112F0D7B5A001C110A /* PPSPinnerView.m */; };
 		F282C1172F0EC788001C110A /* PPBrowseHistoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F282C1162F0EC788001C110A /* PPBrowseHistoryManager.m */; };
@@ -624,7 +619,6 @@
 		F2A903472F9E84F10097485B /* PPPetCareViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */; };
 		F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */; };
 		F2A9034F2F9E98230097485B /* PPHomeInsetLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */; };
-		F2AAEDA62EF9AC16006E0A6F /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */; };
 		F2AB488C2C72CF3C00D88603 /* JGProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB487F2C72CF3C00D88603 /* JGProgressHUD.m */; };
 		F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48802C72CF3C00D88603 /* JGProgressHUDAnimation.m */; };
 		F2AB488E2C72CF3C00D88603 /* JGProgressHUDErrorIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48812C72CF3C00D88603 /* JGProgressHUDErrorIndicatorView.m */; };
@@ -927,18 +921,15 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		F273148F2F31548400FFA0B8 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
 				F2A1B2C32F45111100FFA0B8 /* QIBPayment.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F291D19D2C82FDF00055B078 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 8;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
@@ -2445,7 +2436,6 @@
 /* Begin PBXFrameworksBuildPhase section */
 		F2D0C5D22C4BE1B80023CE53 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				F2AEFEC83023057600892AB2 /* PPChatCellCore in Frameworks */,
 				F2FFDA052FCDCFC00025B5A9 /* FirebaseAILogic in Frameworks */,
@@ -2470,6 +2460,7 @@
 				F2AF383E300AAFD800FBF82D /* PurePetsLayoutKit in Frameworks */,
 				F251008F2F73C2D8008F6AFE /* FirebaseMLModelDownloader in Frameworks */,
 				F2ACA9FF301ACF4A00F55032 /* Kingfisher in Frameworks */,
+				F260E78D3077C99B006F79A8 /* HXPHPicker in Frameworks */,
 				F2AEFECD30230B2000892AB2 /* SpearLivingChatHeader in Frameworks */,
 				F2AD5A010000000000000001 /* PurePetsAdShareKit in Frameworks */,
 				F2AF3841300AB06200FBF82D /* PurePetsLayoutKit in Frameworks */,
@@ -2484,21 +2475,16 @@
 				F2AF3852300AC46E00FBF82D /* MatchedTransitions in Frameworks */,
 				61093601FFE9E54316BA4680 /* Speech.framework in Frameworks */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5ED2C4BE1BB0023CE53 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5F72C4BE1BB0023CE53 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -5332,8 +5318,6 @@
 			);
 			buildRules = (
 			);
-			dependencies = (
-			);
 			name = "Pure Pets";
 			productName = "Pure Pets";
 			productReference = F2D0C5D52C4BE1B80023CE53 /* Pure Pets.app */;
@@ -5382,7 +5366,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 2640;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					F2D0C5D42C4BE1B80023CE53 = {
 						CreatedOnToolsVersion = 15.4;
@@ -5399,7 +5383,6 @@
 				};
 			};
 			buildConfigurationList = F2D0C5D02C4BE1B80023CE53 /* Build configuration list for PBXProject "Pure Pets" */;
-			compatibilityVersion = "Xcode 12.0";
 			developmentRegion = ar;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -5419,8 +5402,9 @@
 				F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */,
 				F2C7743930242EF6000447CD /* XCLocalSwiftPackageReference "MyFrames/PurePetsUserLayerApple" */,
 				F2C7743F30246714000447CD /* XCLocalSwiftPackageReference "MyFrames/PureLensPackage" */,
-				F260E78A3077C89E006F79A8 /* XCRemoteSwiftPackageReference "HXPHPicker" */,
+				F260E78B3077C99B006F79A8 /* XCLocalSwiftPackageReference "MyFrames/HXPhotoPicker-master" */,
 			);
+			preferredProjectObjectVersion = 77;
 			productRefGroup = F2D0C5D62C4BE1B80023CE53 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -5435,7 +5419,6 @@
 /* Begin PBXResourcesBuildPhase section */
 		F2D0C5D32C4BE1B80023CE53 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				F33000000000000000000001 /* HomePetPulse.json in Resources */,
 				F33000000000000000000002 /* HomeCareReminder.json in Resources */,
@@ -5486,96 +5469,62 @@
 				F2916F0D2D54A3E400FF0394 /* Beiruti-Medium.ttf in Resources */,
 				F24F364D2D8A426B0094C6F2 /* BuyerCell.xib in Resources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5EE2C4BE1BB0023CE53 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5F82C4BE1BB0023CE53 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		3330C2BDA9866E3956F000A6 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		4F90F3A3874CAF002A1E3F17 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		A9A88BA485C4EE9E853D172D /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
 			inputPaths = (
 				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
 				"${PODS_ROOT}/Manifest.lock",
 			);
 			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
 			outputPaths = (
 				"$(DERIVED_FILE_DIR)/Pods-Pure Pets-checkManifestLockResult.txt",
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
 		F28F03932D95E399008F962A /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 8;
-			files = (
-			);
-			inputFileListPaths = (
-			);
 			inputPaths = (
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
@@ -5584,21 +5533,15 @@
 				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}.debug.dylib",
 			);
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "
-";
+			shellScript = "\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		F2D0C5D12C4BE1B80023CE53 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				A6B710013020000100000001 /* AppRemoteImage.swift in Sources */,
 				A6B710063020000100000001 /* PPMediaViewer.swift in Sources */,
@@ -5961,10 +5904,7 @@
 				F281B4802FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m in Sources */,
 				F281B4812FCB6735009118F2 /* PPRatingView.m in Sources */,
 				F281B4822FCB6735009118F2 /* PPSearchFilterView.m in Sources */,
-				F281B4832FCB6735009118F2 /* PPS.m in Sources */,
-				F281B4842FCB6735009118F2 /* PPModrenSegmrnted.m in Sources */,
 				F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */,
-				F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */,
 				F27FA1432CE492B000A9A078 /* NullSafe.m in Sources */,
 				F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */,
 				F2E981EF2CBFD2A7005411D0 /* CountryCodeModel.m in Sources */,
@@ -6113,7 +6053,6 @@
 				F29EFA59303FC89B0092FF3C /* PPContextAwareCheckoutView.swift in Sources */,
 				F22C079B2EF66C2F00C00EAC /* UIColor+YYAdd.m in Sources */,
 				F22C079C2EF66C2F00C00EAC /* YYLabel.m in Sources */,
-				F2AAEDA62EF9AC16006E0A6F /* UITabBarItem+PPFactory.m in Sources */,
 				F22C079D2EF66C2F00C00EAC /* YYWebImageOperation.m in Sources */,
 				F22C079E2EF66C2F00C00EAC /* YYAnimatedImageView.m in Sources */,
 				F22C079F2EF66C2F00C00EAC /* CALayer+YYWebImage.m in Sources */,
@@ -6323,7 +6262,6 @@
 				F27FAE9F2D2F363200EA6B56 /* JPGCDExtensions.m in Sources */,
 				F27FAEA02D2F363200EA6B56 /* JPVideoPlayerControlViews.m in Sources */,
 				F2E1345F2DDC6F40006770E5 /* AddNewAccessory.m in Sources */,
-				F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */,
 				F27314982F31CE9300FFA0B8 /* CartManager.m in Sources */,
 				F2CALC003F40A00000000003 /* PPCartCalculator.m in Sources */,
 				F27FAEA12D2F363200EA6B56 /* JPVideoPlayerCellProtocol.m in Sources */,
@@ -6377,8 +6315,6 @@
 				F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */,
 				F260D32C2C7B36EF0098C8F0 /* FOREmptyAssistantConfiger.m in Sources */,
 				59648CD9531E102EA6D57525 /* PPPermissionHelper.m in Sources */,
-				A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */,
-				8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */,
 				4C154A5BA40CB4EAE4FD8045 /* PPPetProfileManager.m in Sources */,
 				F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */,
 				BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */,
@@ -6404,11 +6340,9 @@
 				084CF1F2B02DD8B39A84295C /* NovaVoicePermissionManager.swift in Sources */,
 				7E88BDC6B4FDC438D09D8AC7 /* NovaVoiceService.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5EC2C4BE1BB0023CE53 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				F2E900000000000000000082 /* PPRootParityTests.swift in Sources */,
 				F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */,
@@ -6419,16 +6353,13 @@
 				C1A0000000000000000000C2 /* PPHomePresentationResolverTests.swift in Sources */,
 				B8CA00020000000000000002 /* PPMarketplaceDataViewTests.swift in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5F62C4BE1BB0023CE53 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
 			files = (
 				F2D0C6012C4BE1BB0023CE53 /* Pure_PetsUITestsLaunchTests.m in Sources */,
 				F2D0C5FF2C4BE1BB0023CE53 /* Pure_PetsUITests.m in Sources */,
 			);
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -6466,7 +6397,7 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		F2D0C6022C4BE1BB0023CE53 /* Debug */ = {
+		F2D0C6022C4BE1BB0023CE53 /* Debug configuration for PBXProject "Pure Pets" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -6536,7 +6467,7 @@
 			};
 			name = Debug;
 		};
-		F2D0C6032C4BE1BB0023CE53 /* Release */ = {
+		F2D0C6032C4BE1BB0023CE53 /* Release configuration for PBXProject "Pure Pets" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -6601,7 +6532,7 @@
 			};
 			name = Release;
 		};
-		F2D0C6052C4BE1BB0023CE53 /* Debug */ = {
+		F2D0C6052C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure Pets" */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */;
 			buildSettings = {
@@ -6659,7 +6590,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -6709,7 +6640,7 @@
 			};
 			name = Debug;
 		};
-		F2D0C6062C4BE1BB0023CE53 /* Release */ = {
+		F2D0C6062C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure Pets" */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */;
 			buildSettings = {
@@ -6770,7 +6701,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -6820,7 +6751,7 @@
 			};
 			name = Release;
 		};
-		F2D0C6082C4BE1BB0023CE53 /* Debug */ = {
+		F2D0C6082C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure PetsTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -6828,7 +6759,7 @@
 				CURRENT_PROJECT_VERSION = 237;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -6838,7 +6769,7 @@
 			};
 			name = Debug;
 		};
-		F2D0C6092C4BE1BB0023CE53 /* Release */ = {
+		F2D0C6092C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure PetsTests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -6846,7 +6777,7 @@
 				CURRENT_PROJECT_VERSION = 237;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -6856,14 +6787,14 @@
 			};
 			name = Release;
 		};
-		F2D0C60B2C4BE1BB0023CE53 /* Debug */ = {
+		F2D0C60B2C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure PetsUITests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 237;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -6873,14 +6804,14 @@
 			};
 			name = Debug;
 		};
-		F2D0C60C2C4BE1BB0023CE53 /* Release */ = {
+		F2D0C60C2C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure PetsUITests" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 237;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -6896,42 +6827,42 @@
 		F2D0C5D02C4BE1B80023CE53 /* Build configuration list for PBXProject "Pure Pets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F2D0C6022C4BE1BB0023CE53 /* Debug */,
-				F2D0C6032C4BE1BB0023CE53 /* Release */,
+				F2D0C6022C4BE1BB0023CE53 /* Debug configuration for PBXProject "Pure Pets" */,
+				F2D0C6032C4BE1BB0023CE53 /* Release configuration for PBXProject "Pure Pets" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 		F2D0C6042C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure Pets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F2D0C6052C4BE1BB0023CE53 /* Debug */,
-				F2D0C6062C4BE1BB0023CE53 /* Release */,
+				F2D0C6052C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure Pets" */,
+				F2D0C6062C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure Pets" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 		F2D0C6072C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure PetsTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F2D0C6082C4BE1BB0023CE53 /* Debug */,
-				F2D0C6092C4BE1BB0023CE53 /* Release */,
+				F2D0C6082C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure PetsTests" */,
+				F2D0C6092C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure PetsTests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 		F2D0C60A2C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure PetsUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F2D0C60B2C4BE1BB0023CE53 /* Debug */,
-				F2D0C60C2C4BE1BB0023CE53 /* Release */,
+				F2D0C60B2C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure PetsUITests" */,
+				F2D0C60C2C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure PetsUITests" */,
 			);
-			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		F260E78B3077C99B006F79A8 /* XCLocalSwiftPackageReference "MyFrames/HXPhotoPicker-master" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "MyFrames/HXPhotoPicker-master";
+		};
 		F2AD5A020000000000000001 /* XCLocalSwiftPackageReference "MyFrames/PurePetsAdShareKit-1.0.0" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "MyFrames/PurePetsAdShareKit-1.0.0";
@@ -6979,14 +6910,6 @@
 				minimumVersion = 12.17.0;
 			};
 		};
-		F260E78A3077C89E006F79A8 /* XCRemoteSwiftPackageReference "HXPHPicker" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SilenceLove/HXPHPicker";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.0;
-			};
-		};
 		F2ACA9FD301ACF4900F55032 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
@@ -7015,6 +6938,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F22D551630215DE700A5EC3C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMLModelDownloader;
+		};
+		F260E78C3077C99B006F79A8 /* HXPHPicker */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F260E78B3077C99B006F79A8 /* XCLocalSwiftPackageReference "MyFrames/HXPhotoPicker-master" */;
+			productName = HXPHPicker;
 		};
 		F29EFFAB3020EFFA00125FB9 /* PureLens */ = {
 			isa = XCSwiftPackageProductDependency;

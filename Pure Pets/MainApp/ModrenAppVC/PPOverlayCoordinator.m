@@ -12,6 +12,7 @@
 //
 
 #import "PPOverlayCoordinator.h"
+#import <QuartzCore/QuartzCore.h>
 #import "AccessViewerVC.h"
 #import "PPNavigationController.h"
 #import "ChatThreadModel.h"
@@ -338,6 +339,28 @@
 {
     if (!object || !vc) return;
 
+    static NSTimeInterval sPPLastDetailOpenTime = 0;
+    static NSString *sPPLastDetailObjectId = nil;
+
+    NSTimeInterval now = CACurrentMediaTime();
+    NSString *currentObjectId = nil;
+    if ([object isKindOfClass:[PetAccessory class]]) {
+        currentObjectId = ((PetAccessory *)object).accessoryID;
+    } else if ([object isKindOfClass:[PetAd class]]) {
+        currentObjectId = ((PetAd *)object).adID;
+    } else if ([object isKindOfClass:[ServiceModel class]]) {
+        currentObjectId = ((ServiceModel *)object).serviceID;
+    }
+
+    if (currentObjectId.length > 0 && [currentObjectId isEqualToString:sPPLastDetailObjectId] && (now - sPPLastDetailOpenTime) < 0.4) {
+        return;
+    }
+    if ((now - sPPLastDetailOpenTime) < 0.25) {
+        return;
+    }
+    sPPLastDetailOpenTime = now;
+    sPPLastDetailObjectId = currentObjectId;
+
     UIViewController *targetVC = nil;
     UIViewController *presentingVC = [self pp_resolvedPresenterFrom:vc];
     if (!presentingVC || presentingVC.isBeingPresented || presentingVC.isBeingDismissed) {
@@ -361,6 +384,15 @@
         }
 
         if (nav) {
+            if (nav.transitionCoordinator != nil) {
+                return;
+            }
+            if ([nav.topViewController isMemberOfClass:HostingClass]) {
+                return;
+            }
+            if (nav.topViewController.isBeingPresented || nav.topViewController.isBeingDismissed) {
+                return;
+            }
             [nav pushViewController:targetVC animated:YES];
         } else {
             PPNavigationController *newNav =
@@ -372,8 +404,29 @@
 
     // 🧩 PetAccessory → AccessViewerVC (push navigation)
     else if ([object isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *accessory = (PetAccessory *)object;
+        UINavigationController *nav = routingNav ?: presentingVC.navigationController;
+        if (!nav && vc.navigationController) {
+            nav = vc.navigationController;
+        }
+
+        if (nav) {
+            if (nav.transitionCoordinator != nil) {
+                return;
+            }
+            if ([nav.topViewController isKindOfClass:[AccessViewerVC class]]) {
+                AccessViewerVC *currentViewer = (AccessViewerVC *)nav.topViewController;
+                if ([currentViewer.accessAds.accessoryID isEqualToString:accessory.accessoryID]) {
+                    return;
+                }
+            }
+            if (nav.topViewController.isBeingPresented || nav.topViewController.isBeingDismissed) {
+                return;
+            }
+        }
+
         AccessViewerVC *viewer = [AccessViewerVC new];
-        viewer.accessAds = (PetAccessory *)object;
+        viewer.accessAds = accessory;
         viewer.hidesBottomBarWhenPushed = YES;
 
         if ([vc conformsToProtocol:@protocol(CartQuantityFromViewerDelegate)]) {
@@ -382,7 +435,6 @@
         targetVC = viewer;
 
         // Push onto existing navigation stack
-        UINavigationController *nav = routingNav ?: presentingVC.navigationController;
         if (nav) {
             [nav pushViewController:targetVC animated:YES];
         } else {
@@ -396,15 +448,27 @@
 
     // 🧰 Service
     else if ([object isKindOfClass:[ServiceModel class]]) {
-        ServiceViewerViewController *viewer = [ServiceViewerViewController new];
-        viewer.service = (ServiceModel *)object;
-        viewer.hidesBottomBarWhenPushed = YES;
-        targetVC = viewer;
-
         UINavigationController *nav = routingNav ?: presentingVC.navigationController;
         if (!nav && vc.navigationController) {
             nav = vc.navigationController;
         }
+
+        if (nav) {
+            if (nav.transitionCoordinator != nil) {
+                return;
+            }
+            if ([nav.topViewController isKindOfClass:[ServiceViewerViewController class]]) {
+                return;
+            }
+            if (nav.topViewController.isBeingPresented || nav.topViewController.isBeingDismissed) {
+                return;
+            }
+        }
+
+        ServiceViewerViewController *viewer = [ServiceViewerViewController new];
+        viewer.service = (ServiceModel *)object;
+        viewer.hidesBottomBarWhenPushed = YES;
+        targetVC = viewer;
 
         if (nav) {
             [nav pushViewController:targetVC animated:YES];

@@ -132,6 +132,8 @@ static NSString *PPMarketplaceTrimmedString(id value)
 @property (nonatomic, strong) NSMutableSet<NSString *> *providerIdentityFetchesInFlight;
 @property (nonatomic, strong) NSMutableSet<NSString *> *hydratedProviderIDs;
 @property (nonatomic, assign) BOOL started;
+@property (nonatomic, assign) NSTimeInterval lastOpenItemTime;
+@property (nonatomic, copy, nullable) NSString *lastOpenItemId;
 
 - (BOOL)pp_shouldUseBrandAccent;
 - (void)pp_submitReportForContentID:(NSString *)contentID
@@ -1475,6 +1477,17 @@ static NSString *PPMarketplaceTrimmedString(id value)
     if (!viewModel.ModelObject) {
         return;
     }
+    NSTimeInterval now = CACurrentMediaTime();
+    NSString *itemId = viewModel.ModelID ?: @"";
+    if (itemId.length > 0 && [itemId isEqualToString:self.lastOpenItemId] && (now - self.lastOpenItemTime) < 0.4) {
+        return;
+    }
+    if ((now - self.lastOpenItemTime) < 0.25) {
+        return;
+    }
+    self.lastOpenItemTime = now;
+    self.lastOpenItemId = itemId;
+
     [PPOverlayCoordinator pp_openDetailForObject:viewModel.ModelObject
                                           fromVC:self.presentingViewController ?: [self pp_resolvedPresenter]
                                       routingNav:nil];

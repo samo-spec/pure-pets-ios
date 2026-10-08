@@ -9,8 +9,8 @@
 
 import SwiftUI
 import UIKit
-import SDWebImage
-
+import Kingfisher
+ 
 // MARK: - Exclusive Typography Engine (100% Beiruti Only)
 
 private enum AdoptFont {
@@ -1279,18 +1279,21 @@ struct AdoptPetRemoteImageView: View {
         activeRequestID = requestID
         isLoading = true
 
-        SDWebImageManager.shared.loadImage(
+        KingfisherManager.shared.retrieveImage(
             with: validURL,
-            options: [.continueInBackground, .lowPriority],
-            progress: nil
-        ) { image, _, _, _, _, _ in
+            options: [
+                .scaleFactor(UIScreen.main.scale),
+                .cacheOriginalImage
+            ]
+        ) { result in
             DispatchQueue.main.async {
                 guard activeRequestID == requestID else { return }
                 isLoading = false
-                if let image {
-                    loadedImage = image
+                switch result {
+                case .success(let value):
+                    loadedImage = value.image
                     didFailToLoad = false
-                } else {
+                case .failure:
                     didFailToLoad = true
                 }
             }

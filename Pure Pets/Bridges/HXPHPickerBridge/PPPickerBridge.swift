@@ -2,14 +2,18 @@
 //  PPPickerBridge.swift
 //  PurePets
 //
-//  Swift bridge for HXPhotoPicker photo selection.
+//  Swift bridge for HXPHPicker photo selection.
 //  Supports Arabic/English, RTL/LTR, single & multi-selection.
 //
 
 import Foundation
 import UIKit
 import Photos
+#if canImport(HXPHPicker)
+import HXPHPicker
+#elseif canImport(HXPhotoPicker)
 import HXPhotoPicker
+#endif
 
 // MARK: - Notifications
 
@@ -232,7 +236,7 @@ public extension Notification.Name {
 
     // MARK: - Configuration Builder
 
-    /// Apply custom fonts and localized text to HXPhotoPicker's TextManager.
+    /// Apply custom fonts and localized text to HXPHPicker's TextManager.
     private func applyCustomTextManager() {
         // Bottom toolbar fonts
         // Fonts arrive already scaled via UIFontMetrics from the caller — do NOT scale again.

@@ -8,6 +8,7 @@ target 'Pure Pets' do
   pod 'IQKeyboardManager'
  
   pod 'AFNetworking', '~> 4.0'
+  pod 'SDWebImage', '5.21.7'
  
   pod 'Masonry'
  
@@ -20,7 +21,7 @@ target 'Pure Pets' do
   pod 'TOCropViewController'
    pod 'MDRadialProgress'
  
- pod 'RecaptchaEnterprise', '18.9.0-beta02'
+
 
  
 end
@@ -94,5 +95,4 @@ post_install do |installer|
     File.write(script_path, patched)
   end
 end
-
 

@@ -1565,9 +1565,7 @@ struct PPMarketplaceUniversalCard: View {
                     isHomePresentation: isProductCommerce,
                     borderMode: .pordersForHomeView,
                     palette: marketplaceCardPalette,
-                    onTap: {
-                        bridge.open(item: record.viewModel)
-                    },
+                    onTap: nil,
                     onQuantityChange: { newQuantity in
                         bridge.changeQuantity(for: record.viewModel, quantity: newQuantity)
                     }

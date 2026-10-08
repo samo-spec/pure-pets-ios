@@ -1,6 +1,10 @@
 import Foundation
 import UIKit
+#if canImport(HXPHPicker)
+import HXPHPicker
+#elseif canImport(HXPhotoPicker)
 import HXPhotoPicker
+#endif
 
 // MARK: - PPPhotoBrowserBridge
 
