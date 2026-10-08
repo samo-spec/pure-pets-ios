@@ -19,28 +19,6 @@ PODS:
   - GoogleMaps/Base (7.4.0)
   - GoogleMaps/Maps (7.4.0):
     - GoogleMaps/Base
-  - HXPhotoPicker (5.0.5):
-    - HXPhotoPicker/Default (= 5.0.5)
-  - HXPhotoPicker/Camera (5.0.5):
-    - HXPhotoPicker/Camera/Lite (= 5.0.5)
-    - HXPhotoPicker/Camera/Location (= 5.0.5)
-  - HXPhotoPicker/Camera/Lite (5.0.5):
-    - HXPhotoPicker/Core
-  - HXPhotoPicker/Camera/Location (5.0.5):
-    - HXPhotoPicker/Camera/Lite
-  - HXPhotoPicker/Core (5.0.5):
-    - HXPhotoPicker/Resources
-  - HXPhotoPicker/Default (5.0.5):
-    - HXPhotoPicker/Camera
-    - HXPhotoPicker/Editor
-    - HXPhotoPicker/Picker
-  - HXPhotoPicker/Editor (5.0.5):
-    - HXPhotoPicker/EditorView
-  - HXPhotoPicker/EditorView (5.0.5):
-    - HXPhotoPicker/Core
-  - HXPhotoPicker/Picker (5.0.5):
-    - HXPhotoPicker/Core
-  - HXPhotoPicker/Resources (5.0.5)
   - IQKeyboardManager (6.5.19)
   - KVOController (1.2.0)
   - lottie-ios_Oc (0.0.1)
@@ -52,16 +30,12 @@ PODS:
     - RecaptchaInterop (~> 101.0.0)
   - RecaptchaEnterpriseSDK (18.9.0-beta02)
   - RecaptchaInterop (101.0.0)
-  - SDWebImage (5.21.7):
-    - SDWebImage/Core (= 5.21.7)
-  - SDWebImage/Core (5.21.7)
   - SSZipArchive (2.4.3)
   - TOCropViewController (3.1.1)
 
 DEPENDENCIES:
   - AFNetworking (~> 4.0)
   - GoogleMaps
-  - HXPhotoPicker
   - IQKeyboardManager
   - KVOController (= 1.2.0)
   - lottie-ios_Oc
@@ -69,7 +43,6 @@ DEPENDENCIES:
   - MDRadialProgress
   - MMSCameraViewController (~> 1.4.0)
   - RecaptchaEnterprise (= 18.9.0-beta02)
-  - SDWebImage (~> 5.0)
   - SSZipArchive
   - TOCropViewController
 
@@ -77,7 +50,6 @@ SPEC REPOS:
   trunk:
     - AFNetworking
     - GoogleMaps
-    - HXPhotoPicker
     - IQKeyboardManager
     - KVOController
     - lottie-ios_Oc
@@ -87,14 +59,12 @@ SPEC REPOS:
     - RecaptchaEnterprise
     - RecaptchaEnterpriseSDK
     - RecaptchaInterop
-    - SDWebImage
     - SSZipArchive
     - TOCropViewController
 
 SPEC CHECKSUMS:
   AFNetworking: 3bd23d814e976cd148d7d44c3ab78017b744cd58
   GoogleMaps: 032f676450ba0779bd8ce16840690915f84e57ac
-  HXPhotoPicker: 73952d15fa0ea68a4757b786a506bdf1e44895c4
   IQKeyboardManager: c8665b3396bd0b79402b4c573eac345a31c7d485
   KVOController: d72ace34afea42468329623b3379ab3cd1d286b6
   lottie-ios_Oc: 246311aa2a6106fe03cb34e3e30f8daf7e1e7d9a
@@ -104,10 +74,9 @@ SPEC CHECKSUMS:
   RecaptchaEnterprise: c01fea5e9307ddfa15993017ea0acd8448aa5040
   RecaptchaEnterpriseSDK: 621187a39cf845b83cdf1c9f21d60bf89cdb5e76
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
-  SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
   TOCropViewController: 9002a9b12d8104d7478cdc306d80f0efea7fe2c5
 
-PODFILE CHECKSUM: 7e2e93f811f6faac323035a250641abc9efddbff
+PODFILE CHECKSUM: ace07f79bc15313c7958f67ee02c0c554f606ec9
 
 COCOAPODS: 1.16.2

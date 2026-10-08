@@ -111,6 +111,9 @@
          identifier = "../Pure Pets/Location.gpx"
          referenceType = "0">
       </LocationScenarioReference>
+      <MetalAPIValidationSettings
+         isEnabled = "No">
+      </MetalAPIValidationSettings>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
