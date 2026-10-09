@@ -5666,3 +5666,67 @@
 "ad_upload_failed_retry" = "Failed to upload ad media. Please check your connection and try again.";
 "ad_submit_session_required" = "Sign in is required to publish the ad";
 "compose_listing_kind_suffix" = " listing details and standout visuals come next.";
+
+/* Service care note — Arabic/English service detail and review recovery. */
+"service_note_provided_by" = "Provided by";
+"service_note_about" = "About this service";
+"service_note_details_error" = "Service details could not be refreshed.";
+"service_note_saved_details" = "Showing saved details. Connect to refresh.";
+"service_note_missing" = "This service is no longer available.";
+"service_note_missing_detail" = "Return to services to explore another option, or try again.";
+"service_note_contact_sign_in" = "Sign in to see the provider and contact details.";
+"service_note_sign_in" = "Sign in";
+"service_note_sign_in_contact" = "Sign in to contact";
+"service_note_contact_loading" = "Getting contact details";
+"service_note_contact_unavailable" = "Contact unavailable";
+"service_note_call_failed" = "The call could not be opened. Please try again.";
+"service_note_sign_in_failed" = "Sign-in could not be completed. Please try again.";
+"service_note_review_count" = "%@ reviews";
+"service_note_rating_format" = "%@ out of 5";
+"service_note_rate_action" = "Rate %@ out of 5";
+"service_note_your_rating" = "Your rating";
+"service_note_rating_choose" = "Choose the rating that reflects your experience.";
+"service_note_reviews_loading" = "Loading reviews";
+"service_note_reviews_error" = "Reviews could not be refreshed. Your loaded reviews are still here.";
+"service_note_reviews_empty" = "No reviews yet. Share an experience to help the next pet parent.";
+"service_note_reviews_not_loaded" = "Written reviews are not available right now.";
+"service_note_more_reviews" = "Read more reviews";
+"service_note_review_sign_in" = "Sign in to share your experience. Your draft stays here.";
+"service_note_review_checking" = "Checking your account";
+"service_note_review_own" = "You cannot review your own service.";
+"service_note_review_unavailable" = "Reviews are unavailable for this service.";
+"service_note_review_loading" = "Loading your review";
+"service_note_review_load_error" = "Your existing review could not be checked. Retry before posting.";
+"service_note_review_comment" = "A note about your experience (optional)";
+"service_note_review_remaining" = "%@ characters remaining";
+"service_note_review_too_long" = "Keep your note within 600 characters.";
+"service_note_review_saving" = "Saving your review";
+"service_note_edit_review" = "Your experience";
+"service_note_update_review" = "Update review";
+"service_note_reload_review" = "Check your review again";
+"service_note_review_saved" = "Your review is saved.";
+"service_note_review_denied" = "This review could not be posted. Your account or this service may have changed. Your text is still here.";
+"service_note_review_save_error" = "Your review could not be saved. Your text is still here; try again when connected.";
+"service_note_provider_inactive" = "This provider is currently unavailable.";
+
+// Service experience: discovery and decision recovery.
+"service_note_open_hint" = "Opens the service, provider details, and reviews.";
+"service_note_message_provider" = "Message provider";
+"service_note_actions_format" = "Actions for %@";
+"service_management_error_sign_in" = "Sign in to add a service.";
+"service_management_error_blocked" = "This account cannot add services right now.";
+"service_management_error_permission" = "You do not have permission to add services.";
+"service_management_error_session" = "Your account changed. Reopen the service editor before saving.";
+"service_management_error_image" = "The service image could not be prepared. Try choosing it again.";
+
+/* UniversalCell — service folio */
+"service_cell_price_unavailable" = "Price unavailable";
+"service_cell_explore" = "Explore service";
+"service_cell_watch_video" = "Watch video";
+"service_cell_add_favorite" = "Add service to favorites";
+"service_cell_remove_favorite" = "Remove service from favorites";
+"service_cell_favorite_saved" = "Saved in favorites";
+"service_cell_favorite_unsaved" = "Not saved in favorites";
+"service_cell_review_details" = "Reviews in service details";
+"service_cell_one_review" = "One review";
+"service_cell_review_count" = "%@ reviews";

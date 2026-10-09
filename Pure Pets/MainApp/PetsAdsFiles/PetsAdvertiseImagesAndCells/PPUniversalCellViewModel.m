@@ -461,7 +461,16 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         ServiceModel *service = (ServiceModel *)model;
 
         _title = service.title ?: PPUniversalLocalizedString(@"UntitledService", PPUniversalLocalizedPair(@"Untitled service", @"خدمة بدون اسم"));
-        _subtitle = service.category.length > 0 ? service.category : service.localizedTypeName;
+        if (service.isAllCategories) {
+            NSString *catName = service.category.length > 0 ? service.category : service.localizedTypeName;
+            _subtitle = [NSString stringWithFormat:@"%@ • %@", kLang(@"AllCategories") ?: @"جميع الفئات", catName];
+        } else if (service.targetCategories.count > 0) {
+            _subtitle = [service.targetCategories componentsJoinedByString:@" • "];
+        } else if (service.categories.count > 0) {
+            _subtitle = [service.categories componentsJoinedByString:@" • "];
+        } else {
+            _subtitle = service.category.length > 0 ? service.category : service.localizedTypeName;
+        }
         _ModelID = service.serviceID.length > 0 ? service.serviceID : _ModelID;
         _imageURL = service.imageURL;
         _blurHash = service.blurHash ?: @"";

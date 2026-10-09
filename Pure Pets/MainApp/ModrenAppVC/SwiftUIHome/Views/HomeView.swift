@@ -188,12 +188,19 @@ private struct HomeHeroV2Stage: View {
 @available(iOS 15.0, *)
 struct HomeView: View {
     @ObservedObject var store: HomeStore
+    // UIKit's launch-cover owner supplies this presentation gate. Standalone
+    // Home hosts remain ready by default; no domain/navigation state is added.
+    var isInitialPresentationReady = true
 
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @Environment(\.colorSchemeContrast) private var contrast
 
     @State private var loadedEntranceVisible = false
+    @State private var loadedEntranceStopped = false
     @State private var pureLensContentMotionReady = false
     @State private var pureLensSignalStoryPlayed = false
     @State private var presentedOrder: HomeOrderModel?
@@ -253,6 +260,7 @@ struct HomeView: View {
             \.layoutDirection,
             store.state.isRightToLeft ? .rightToLeft : .leftToRight
         )
+        .environment(\.homeEntranceMotionStopped, loadedEntranceStopped)
         .sheet(item: $presentedOrder) { order in
             HomeOrderContextSheet(
                 order: order,
@@ -275,15 +283,27 @@ struct HomeView: View {
             )
         }
         .onChange(of: scenePhase) { phase in
+            if phase != .active { settleLoadedEntrance() }
             DispatchQueue.main.async {
                 store.setSceneActive(phase == .active)
             }
         }
         .onChange(of: reduceMotion) { value in
+            if value { settleLoadedEntrance() }
             DispatchQueue.main.async {
                 store.setReduceMotion(value)
             }
         }
+        .onChange(of: voiceOverEnabled) { if $0 { settleLoadedEntrance() } }
+        .onChange(of: switchControlEnabled) { if $0 { settleLoadedEntrance() } }
+        .onChange(of: contrast) { if $0 == .increased { settleLoadedEntrance() } }
+        .onChange(of: isInitialPresentationReady) { ready in
+            if ready { startLoadedEntranceIfNeeded() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+            settleLoadedEntrance()
+        }
+        .onDisappear(perform: settleLoadedEntrance)
     }
 
     // MARK: Content
@@ -1176,11 +1196,31 @@ struct HomeView: View {
     }
 
     private func startLoadedEntranceIfNeeded() {
-        guard !loadedEntranceVisible else { return }
-        // Commit on the next run loop so the initial visible rows are already
-        // in their staged pose before the one-shot phase changes.
-        DispatchQueue.main.async {
-            guard !loadedEntranceVisible else { return }
+        guard isInitialPresentationReady, !loadedEntranceVisible else { return }
+        switch store.state.phase {
+        case .loaded, .refreshing, .partial, .empty:
+            break
+        case .coldLoading, .warmLoading, .failed:
+            return
+        }
+        guard !reduceMotion, !voiceOverEnabled, !switchControlEnabled,
+              contrast != .increased,
+              UIApplication.shared.applicationState == .active else {
+            settleLoadedEntrance()
+            return
+        }
+        // One owner introduces ready Home content. No queued reveal survives
+        // navigation, and later lazy rows are born in their final pose.
+        withAnimation(.easeOut(duration: 0.26)) {
+            loadedEntranceVisible = true
+        }
+    }
+
+    private func settleLoadedEntrance() {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            loadedEntranceStopped = true
             loadedEntranceVisible = true
         }
     }
@@ -1535,21 +1575,47 @@ private struct HomeOrderContextSheet: View {
     }
 }
 
+private struct HomeEntranceMotionStoppedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var homeEntranceMotionStopped: Bool {
+        get { self[HomeEntranceMotionStoppedKey.self] }
+        set { self[HomeEntranceMotionStoppedKey.self] = newValue }
+    }
+}
+
+private struct HomeInitialEntrancePose: AnimatableModifier {
+    var progress: Double
+    let isStatic: Bool
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        // A non-animated gate can finish an in-flight pose even when its
+        // progress already targets 1. Layout and hit testing remain native.
+        let amount = isStatic ? 1 : min(max(progress, 0), 1)
+        content
+            .opacity(0.94 + 0.06 * amount)
+            .offset(y: CGFloat(8 * (1 - amount)))
+    }
+}
+
 private struct HomeEntranceModifier: ViewModifier {
     let isVisible: Bool
     let delay: Double
     let reduceMotion: Bool
 
     func body(content: Content) -> some View {
-        content
-            .opacity(isVisible ? 1 : 0)
-            .offset(y: reduceMotion || isVisible ? 0 : 16)
-            .animation(
-                reduceMotion
-                    ? .easeOut(duration: 0.12)
-                    : .spring(response: 0.58, dampingFraction: 0.92).delay(delay),
-                value: isVisible
-            )
+        content.modifier(HomeEcosystemEntranceModifier(
+            isVisible: isVisible,
+            sectionIndex: 0,
+            reduceMotion: reduceMotion
+        ))
     }
 }
 
@@ -1557,41 +1623,6 @@ private struct HomeSectionEntranceModifier: ViewModifier {
     let isVisible: Bool
     let sectionIndex: Int
     let reduceMotion: Bool
-
-    func body(content: Content) -> some View {
-        let delay = HomeSectionEntranceMotion.staggerDelay(
-            sectionIndex: sectionIndex
-        )
-        content
-            .opacity(isVisible ? 1 : 0)
-            .scaleEffect(
-                reduceMotion || isVisible ? 1 : 0.985,
-                anchor: .top
-            )
-            .offset(y: reduceMotion || isVisible ? 0 : 18)
-            .animation(
-                reduceMotion
-                    ? .easeOut(duration: 0.12)
-                    : .spring(
-                        response: HomeSectionEntranceMotion.response,
-                        dampingFraction: 0.82,
-                        blendDuration: 0.08
-                    ).delay(delay),
-                value: isVisible
-            )
-    }
-}
-
-/// Selects exactly one section-entrance owner. The ecosystem launcher uses its
-/// quieter product-specific settle, and the marketplace Living Ledger uses its
-/// category-bound internal reveal. Every other Home row keeps the established
-/// initial and viewport entrance behavior unchanged.
-private struct HomeResolvedSectionEntranceModifier: ViewModifier {
-    let isVisible: Bool
-    let sectionIndex: Int
-    let reduceMotion: Bool
-    let usesEcosystemMotion: Bool
-    let usesIndependentContentMotion: Bool
 
     func body(content: Content) -> some View {
         content.modifier(HomeEcosystemEntranceModifier(
@@ -1602,72 +1633,73 @@ private struct HomeResolvedSectionEntranceModifier: ViewModifier {
     }
 }
 
-/// A single restrained entrance for the connected ecosystem surface.
-///
-/// It replaces, rather than layers over, Home's generic scale-and-rise reveal:
-/// opacity plus an 8pt vertical settle communicate hierarchy without making a
-/// five-action navigation surface feel unstable. Home's existing loaded-state
-/// visibility is the sole entrance driver; accessibility and lifecycle changes
-/// move the phase to rest without starting a second animation owner.
+/// Every row reads Home's one initial phase. Independently animated content
+/// can opt out; the existing role/index arguments preserve caller contracts.
+private struct HomeResolvedSectionEntranceModifier: ViewModifier {
+    let isVisible: Bool
+    let sectionIndex: Int
+    let reduceMotion: Bool
+    let usesEcosystemMotion: Bool
+    let usesIndependentContentMotion: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if usesIndependentContentMotion {
+            content
+        } else if usesEcosystemMotion {
+            content.modifier(HomeEcosystemEntranceModifier(
+                isVisible: isVisible,
+                sectionIndex: sectionIndex,
+                reduceMotion: reduceMotion
+            ))
+        } else {
+            content.modifier(HomeSectionEntranceModifier(
+                isVisible: isVisible,
+                sectionIndex: sectionIndex,
+                reduceMotion: reduceMotion
+            ))
+        }
+    }
+}
+
+/// A rendering pose, not another animation owner. HomeView animates the
+/// shared visibility value; new lazy rows start settled without replay.
 private struct HomeEcosystemEntranceModifier: ViewModifier {
     let isVisible: Bool
     let sectionIndex: Int
     let reduceMotion: Bool
 
-    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.homeEntranceMotionStopped) private var homeMotionStopped
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @Environment(\.colorSchemeContrast) private var contrast
     @State private var settledAfterDisappearance = false
 
     func body(content: Content) -> some View {
-        let currentPhase = phase
-        return content
-            .opacity(currentPhase == .staged ? 0 : 1)
-            .offset(y: currentPhase == .staged ? 8 : 0)
-            .animation(
-                currentPhase == .presented ? entranceAnimation : nil,
-                value: currentPhase
-            )
+        content
+            .modifier(HomeInitialEntrancePose(
+                progress: isVisible ? 1 : 0,
+                isStatic: motionSuppressed
+            ))
             .onDisappear(perform: settleAfterDisappearance)
     }
 
-    private var phase: Phase {
-        if motionSuppressed { return .settled }
-        return isVisible ? .presented : .staged
-    }
-
     private var motionSuppressed: Bool {
-        reduceMotion ||
+        homeMotionStopped ||
+            reduceMotion ||
             voiceOverEnabled ||
             switchControlEnabled ||
-            scenePhase != .active ||
+            contrast == .increased ||
             settledAfterDisappearance
-    }
-
-    private var entranceAnimation: Animation {
-        .spring(
-            response: 0.34,
-            dampingFraction: 0.90,
-            blendDuration: 0.04
-        )
-        .delay(HomeSectionEntranceMotion.staggerDelay(
-            sectionIndex: sectionIndex
-        ))
     }
 
     private func settleAfterDisappearance() {
         guard !settledAfterDisappearance else { return }
-        var transaction = Transaction()
-        transaction.animation = nil
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
         withTransaction(transaction) {
             settledAfterDisappearance = true
         }
-    }
-
-    private enum Phase: Equatable {
-        case staged
-        case presented
-        case settled
     }
 }
 

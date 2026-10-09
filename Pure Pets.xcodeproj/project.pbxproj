@@ -921,15 +921,18 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		F273148F2F31548400FFA0B8 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
 				F2A1B2C32F45111100FFA0B8 /* QIBPayment.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F291D19D2C82FDF00055B078 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
@@ -2436,6 +2439,7 @@
 /* Begin PBXFrameworksBuildPhase section */
 		F2D0C5D22C4BE1B80023CE53 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 				F2AEFEC83023057600892AB2 /* PPChatCellCore in Frameworks */,
 				F2FFDA052FCDCFC00025B5A9 /* FirebaseAILogic in Frameworks */,
@@ -2475,16 +2479,21 @@
 				F2AF3852300AC46E00FBF82D /* MatchedTransitions in Frameworks */,
 				61093601FFE9E54316BA4680 /* Speech.framework in Frameworks */,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5ED2C4BE1BB0023CE53 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5F72C4BE1BB0023CE53 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
@@ -5318,6 +5327,8 @@
 			);
 			buildRules = (
 			);
+			dependencies = (
+			);
 			name = "Pure Pets";
 			productName = "Pure Pets";
 			productReference = F2D0C5D52C4BE1B80023CE53 /* Pure Pets.app */;
@@ -5419,6 +5430,7 @@
 /* Begin PBXResourcesBuildPhase section */
 		F2D0C5D32C4BE1B80023CE53 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 				F33000000000000000000001 /* HomePetPulse.json in Resources */,
 				F33000000000000000000002 /* HomeCareReminder.json in Resources */,
@@ -5469,48 +5481,72 @@
 				F2916F0D2D54A3E400FF0394 /* Beiruti-Medium.ttf in Resources */,
 				F24F364D2D8A426B0094C6F2 /* BuyerCell.xib in Resources */,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5EE2C4BE1BB0023CE53 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5F82C4BE1BB0023CE53 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		3330C2BDA9866E3956F000A6 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		4F90F3A3874CAF002A1E3F17 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		A9A88BA485C4EE9E853D172D /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
 			inputPaths = (
 				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
 				"${PODS_ROOT}/Manifest.lock",
@@ -5519,12 +5555,16 @@
 			outputPaths = (
 				"$(DERIVED_FILE_DIR)/Pods-Pure Pets-checkManifestLockResult.txt",
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
 		F28F03932D95E399008F962A /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
 			inputPaths = (
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}",
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}",
@@ -5533,15 +5573,19 @@
 				"$(TARGET_BUILD_DIR)/$(EXECUTABLE_PATH)",
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${PRODUCT_NAME}.debug.dylib",
 			);
+			outputPaths = (
+			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "\n";
+			shellScript = "
+";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		F2D0C5D12C4BE1B80023CE53 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 				A6B710013020000100000001 /* AppRemoteImage.swift in Sources */,
 				A6B710063020000100000001 /* PPMediaViewer.swift in Sources */,
@@ -6340,9 +6384,11 @@
 				084CF1F2B02DD8B39A84295C /* NovaVoicePermissionManager.swift in Sources */,
 				7E88BDC6B4FDC438D09D8AC7 /* NovaVoiceService.swift in Sources */,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5EC2C4BE1BB0023CE53 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 				F2E900000000000000000082 /* PPRootParityTests.swift in Sources */,
 				F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */,
@@ -6353,13 +6399,16 @@
 				C1A0000000000000000000C2 /* PPHomePresentationResolverTests.swift in Sources */,
 				B8CA00020000000000000002 /* PPMarketplaceDataViewTests.swift in Sources */,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		F2D0C5F62C4BE1BB0023CE53 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
 			files = (
 				F2D0C6012C4BE1BB0023CE53 /* Pure_PetsUITestsLaunchTests.m in Sources */,
 				F2D0C5FF2C4BE1BB0023CE53 /* Pure_PetsUITests.m in Sources */,
 			);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
@@ -6397,7 +6446,7 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		F2D0C6022C4BE1BB0023CE53 /* Debug configuration for PBXProject "Pure Pets" */ = {
+		F2D0C6022C4BE1BB0023CE53 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -6467,7 +6516,7 @@
 			};
 			name = Debug;
 		};
-		F2D0C6032C4BE1BB0023CE53 /* Release configuration for PBXProject "Pure Pets" */ = {
+		F2D0C6032C4BE1BB0023CE53 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -6532,7 +6581,7 @@
 			};
 			name = Release;
 		};
-		F2D0C6052C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure Pets" */ = {
+		F2D0C6052C4BE1BB0023CE53 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */;
 			buildSettings = {
@@ -6576,14 +6625,15 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is needed to take pet photos and capture images for listings";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets uses the camera to search with a pet or product photo. يستخدم بيور بيتس الكاميرا للبحث بصورة حيوان أو منتج.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "The app needs to access your location so you can share it with users within the app.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to show nearby pet services and stores";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed for voice messages in chat";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images to your photo library";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library to search for pets, products, and accessories by image.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Pure Pets uses your location to place a private missing or found pet report and shows only a coarse area publicly. يستخدم بيور بيتس موقعك لتسجيل بلاغ خاص عن حيوان مفقود أو معثور عليه، ولا يعرض للعامة إلا منطقة تقريبية.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk to PURA using your microphone. تحدث مع بيورا باستخدام الميكروفون.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Pure Pets may save selected media when you choose to keep shared photos. قد يحفظ بيور بيتس الوسائط عند اختيارك الاحتفاظ بالصور المشتركة.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library so you can choose an image for visual search. يستخدم بيور بيتس مكتبة الصور لاختيار صورة للبحث المرئي.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert your speech into text so PURA can answer you. تحويل صوتك إلى نص لترد عليك بيورا.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -6640,7 +6690,7 @@
 			};
 			name = Debug;
 		};
-		F2D0C6062C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure Pets" */ = {
+		F2D0C6062C4BE1BB0023CE53 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */;
 			buildSettings = {
@@ -6687,14 +6737,15 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is needed to take pet photos and capture images for listings";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets uses the camera to search with a pet or product photo. يستخدم بيور بيتس الكاميرا للبحث بصورة حيوان أو منتج.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "The app needs to access your location so you can share it with users within the app.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to show nearby pet services and stores";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed for voice messages in chat";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images to your photo library";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library to search for pets, products, and accessories by image.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Pure Pets uses your location to place a private missing or found pet report and shows only a coarse area publicly. يستخدم بيور بيتس موقعك لتسجيل بلاغ خاص عن حيوان مفقود أو معثور عليه، ولا يعرض للعامة إلا منطقة تقريبية.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk to PURA using your microphone. تحدث مع بيورا باستخدام الميكروفون.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Pure Pets may save selected media when you choose to keep shared photos. قد يحفظ بيور بيتس الوسائط عند اختيارك الاحتفاظ بالصور المشتركة.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library so you can choose an image for visual search. يستخدم بيور بيتس مكتبة الصور لاختيار صورة للبحث المرئي.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert your speech into text so PURA can answer you. تحويل صوتك إلى نص لترد عليك بيورا.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -6751,7 +6802,7 @@
 			};
 			name = Release;
 		};
-		F2D0C6082C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure PetsTests" */ = {
+		F2D0C6082C4BE1BB0023CE53 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -6769,7 +6820,7 @@
 			};
 			name = Debug;
 		};
-		F2D0C6092C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure PetsTests" */ = {
+		F2D0C6092C4BE1BB0023CE53 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -6787,7 +6838,7 @@
 			};
 			name = Release;
 		};
-		F2D0C60B2C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure PetsUITests" */ = {
+		F2D0C60B2C4BE1BB0023CE53 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -6804,7 +6855,7 @@
 			};
 			name = Debug;
 		};
-		F2D0C60C2C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure PetsUITests" */ = {
+		F2D0C60C2C4BE1BB0023CE53 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -6827,33 +6878,37 @@
 		F2D0C5D02C4BE1B80023CE53 /* Build configuration list for PBXProject "Pure Pets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F2D0C6022C4BE1BB0023CE53 /* Debug configuration for PBXProject "Pure Pets" */,
-				F2D0C6032C4BE1BB0023CE53 /* Release configuration for PBXProject "Pure Pets" */,
+				F2D0C6022C4BE1BB0023CE53 /* Debug */,
+				F2D0C6032C4BE1BB0023CE53 /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 		F2D0C6042C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure Pets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F2D0C6052C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure Pets" */,
-				F2D0C6062C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure Pets" */,
+				F2D0C6052C4BE1BB0023CE53 /* Debug */,
+				F2D0C6062C4BE1BB0023CE53 /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 		F2D0C6072C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure PetsTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F2D0C6082C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure PetsTests" */,
-				F2D0C6092C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure PetsTests" */,
+				F2D0C6082C4BE1BB0023CE53 /* Debug */,
+				F2D0C6092C4BE1BB0023CE53 /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 		F2D0C60A2C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure PetsUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F2D0C60B2C4BE1BB0023CE53 /* Debug configuration for PBXNativeTarget "Pure PetsUITests" */,
-				F2D0C60C2C4BE1BB0023CE53 /* Release configuration for PBXNativeTarget "Pure PetsUITests" */,
+				F2D0C60B2C4BE1BB0023CE53 /* Debug */,
+				F2D0C60C2C4BE1BB0023CE53 /* Release */,
 			);
+			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */

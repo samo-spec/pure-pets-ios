@@ -43,18 +43,6 @@
 	</array>
 	<key>NSLocalizedDescription</key>
 	<string>Request</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Pure Pets uses the camera to search with a pet or product photo. يستخدم بيور بيتس الكاميرا للبحث بصورة حيوان أو منتج.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Pure Pets uses your photo library so you can choose an image for visual search. يستخدم بيور بيتس مكتبة الصور لاختيار صورة للبحث المرئي.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Pure Pets may save selected media when you choose to keep shared photos. قد يحفظ بيور بيتس الوسائط عند اختيارك الاحتفاظ بالصور المشتركة.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Talk to PURA using your microphone. تحدث مع بيورا باستخدام الميكروفون.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Pure Pets uses your location to place a private missing or found pet report and shows only a coarse area publicly. يستخدم بيور بيتس موقعك لتسجيل بلاغ خاص عن حيوان مفقود أو معثور عليه، ولا يعرض للعامة إلا منطقة تقريبية.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Convert your speech into text so PURA can answer you. تحويل صوتك إلى نص لترد عليك بيورا.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Beiruti-Medium.ttf</string>

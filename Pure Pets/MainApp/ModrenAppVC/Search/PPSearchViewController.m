@@ -440,6 +440,15 @@ PHPickerViewControllerDelegate>
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    if (previousTraitCollection &&
+        ![previousTraitCollection.preferredContentSizeCategory isEqualToString:self.traitCollection.preferredContentSizeCategory]) {
+        for (PPUniversalCellViewModel *item in self.dataSource.snapshot.itemIdentifiers) {
+            if (item.modelContext == PPCellForServices) {
+                [self.collectionView.collectionViewLayout invalidateLayout];
+                break;
+            }
+        }
+    }
     if (@available(iOS 13.0, *)) {
         if (previousTraitCollection.userInterfaceStyle != self.traitCollection.userInterfaceStyle) {
             [self pp_applyPremiumHeroBackgroundStyle];
@@ -3254,6 +3263,17 @@ PHPickerViewControllerDelegate>
 
     CGFloat availableWidth = collectionView.bounds.size.width - sectionInset.left - sectionInset.right;
     CGFloat gridWidth = floor((availableWidth - interitemSpacing) / 2.0);
+    PPUniversalCellViewModel *item = [self.dataSource itemIdentifierForIndexPath:indexPath];
+    if (item && item.modelContext == PPCellForServices) {
+        if (@available(iOS 16.0, *)) {
+            BOOL accessibilitySize = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+            CGFloat serviceWidth = MAX(0.0, accessibilitySize ? availableWidth : gridWidth);
+            CGFloat serviceHeight = [PPUniversalCardHostingCell serviceFittingHeightForViewModel:item
+                                                                                        width:serviceWidth
+                                                                          contentSizeCategory:self.traitCollection.preferredContentSizeCategory];
+            return CGSizeMake(serviceWidth, serviceHeight);
+        }
+    }
     CGFloat itemHeight = 320.0;
     return CGSizeMake(MAX(0.0, gridWidth), itemHeight);
 }

@@ -5651,3 +5651,67 @@
 "ad_upload_failed_retry" = "تعذر رفع صور الإعلان. يرجى التحقق من الاتصال والمحاولة مرة أخرى.";
 "ad_submit_session_required" = "يجب تسجيل الدخول لنشر الإعلان";
 "compose_listing_kind_suffix" = " - تفاصيل الإعلان والصور المميزة بالخطوة التالية.";
+
+/* Service care note — Arabic/English service detail and review recovery. */
+"service_note_provided_by" = "يقدّمها";
+"service_note_about" = "عن هذه الخدمة";
+"service_note_details_error" = "تعذّر تحديث تفاصيل الخدمة.";
+"service_note_saved_details" = "نعرض التفاصيل المحفوظة. اتصل بالإنترنت لتحديثها.";
+"service_note_missing" = "هذه الخدمة لم تعد متاحة.";
+"service_note_missing_detail" = "ارجع إلى الخدمات للاطّلاع على خيارات أخرى، أو حاول مجدداً.";
+"service_note_contact_sign_in" = "سجّل الدخول للاطّلاع على مقدم الخدمة وبيانات التواصل.";
+"service_note_sign_in" = "تسجيل الدخول";
+"service_note_sign_in_contact" = "سجّل الدخول للتواصل";
+"service_note_contact_loading" = "جارٍ تحميل بيانات التواصل";
+"service_note_contact_unavailable" = "التواصل غير متاح";
+"service_note_call_failed" = "تعذّر بدء المكالمة. حاول مرة أخرى.";
+"service_note_sign_in_failed" = "تعذّر إكمال تسجيل الدخول. حاول مرة أخرى.";
+"service_note_review_count" = "%@ تقييم";
+"service_note_rating_format" = "%@ من ٥";
+"service_note_rate_action" = "قيّم بـ %@ من ٥";
+"service_note_your_rating" = "تقييمك";
+"service_note_rating_choose" = "اختر التقييم الذي يعكس تجربتك.";
+"service_note_reviews_loading" = "جارٍ تحميل التقييمات";
+"service_note_reviews_error" = "تعذّر تحديث التقييمات. ما زالت التقييمات المحمّلة ظاهرة.";
+"service_note_reviews_empty" = "لا توجد تقييمات بعد. شارك تجربتك لمساعدة ملاك الحيوانات.";
+"service_note_reviews_not_loaded" = "التقييمات المكتوبة غير متاحة حالياً.";
+"service_note_more_reviews" = "عرض المزيد من التقييمات";
+"service_note_review_sign_in" = "سجّل الدخول لمشاركة تجربتك. ستبقى مسودّتك هنا.";
+"service_note_review_checking" = "جارٍ التحقق من حسابك";
+"service_note_review_own" = "لا يمكنك تقييم خدمتك.";
+"service_note_review_unavailable" = "التقييمات غير متاحة لهذه الخدمة.";
+"service_note_review_loading" = "جارٍ تحميل تقييمك";
+"service_note_review_load_error" = "تعذّر التحقق من تقييمك السابق. أعد المحاولة قبل النشر.";
+"service_note_review_comment" = "ملاحظة عن تجربتك (اختياري)";
+"service_note_review_remaining" = "%@ حرف متبقٍ";
+"service_note_review_too_long" = "يجب ألا تتجاوز الملاحظة ٦٠٠ حرف.";
+"service_note_review_saving" = "جارٍ حفظ تقييمك";
+"service_note_edit_review" = "تجربتك";
+"service_note_update_review" = "تحديث التقييم";
+"service_note_reload_review" = "التحقق من تقييمك مجدداً";
+"service_note_review_saved" = "تم حفظ تقييمك.";
+"service_note_review_denied" = "تعذّر نشر التقييم. ربما تغيّرت حالة حسابك أو الخدمة. نصّك ما زال هنا.";
+"service_note_review_save_error" = "تعذّر حفظ تقييمك. نصّك ما زال هنا؛ حاول مجدداً عند الاتصال.";
+"service_note_provider_inactive" = "مقدم الخدمة غير متاح حالياً.";
+
+// Service experience: discovery and decision recovery.
+"service_note_open_hint" = "يفتح تفاصيل الخدمة ومقدمها والتقييمات.";
+"service_note_message_provider" = "مراسلة مقدم الخدمة";
+"service_note_actions_format" = "إجراءات %@";
+"service_management_error_sign_in" = "سجّل الدخول لإضافة خدمة.";
+"service_management_error_blocked" = "لا يمكن لهذا الحساب إضافة خدمات حاليًا.";
+"service_management_error_permission" = "ليس لديك صلاحية لإضافة خدمات.";
+"service_management_error_session" = "تغيّر الحساب. افتح محرر الخدمة مجددًا قبل الحفظ.";
+"service_management_error_image" = "تعذّر تجهيز صورة الخدمة. حاول اختيارها مجددًا.";
+
+/* UniversalCell — service folio */
+"service_cell_price_unavailable" = "السعر غير متاح";
+"service_cell_explore" = "اكتشف الخدمة";
+"service_cell_watch_video" = "شاهد الفيديو";
+"service_cell_add_favorite" = "أضف الخدمة إلى المفضلة";
+"service_cell_remove_favorite" = "أزل الخدمة من المفضلة";
+"service_cell_favorite_saved" = "محفوظة في المفضلة";
+"service_cell_favorite_unsaved" = "غير محفوظة في المفضلة";
+"service_cell_review_details" = "التقييمات في تفاصيل الخدمة";
+"service_cell_one_review" = "تقييم واحد";
+"service_cell_review_count" = "التقييمات: %@";

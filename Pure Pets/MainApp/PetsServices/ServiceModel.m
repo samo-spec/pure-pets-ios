@@ -126,6 +126,23 @@
     d[@"category"]       = self.category ?: @"";
     d[@"categoryID"]     = self.categoryID ?: @"";
     d[@"petMainKindID"]  = @(self.petMainKindID);
+    d[@"isAllCategories"] = @(self.isAllCategories);
+    if (self.petMainCategoryIDs.count > 0) {
+        d[@"petMainCategoryIDs"] = self.petMainCategoryIDs;
+    } else if (self.petMainKindID > 0) {
+        d[@"petMainCategoryIDs"] = @[@(self.petMainKindID)];
+    } else {
+        d[@"petMainCategoryIDs"] = @[];
+    }
+    if (self.targetCategories.count > 0) {
+        d[@"targetCategories"] = self.targetCategories;
+    }
+    if (self.categories.count > 0) {
+        d[@"categories"] = self.categories;
+    }
+    if (self.categoryIDs.count > 0) {
+        d[@"categoryIDs"] = self.categoryIDs;
+    }
     d[@"type"]           = @(self.type);
     if (self.serviceTypeText.length > 0) {
         d[@"serviceType"] = self.serviceTypeText;
@@ -208,6 +225,38 @@
     _category       = [dict[@"category"] isKindOfClass:NSString.class] ? dict[@"category"] : (_serviceTypeText ?: @"");
     _categoryID     = [dict[@"categoryID"] isKindOfClass:NSString.class] ? dict[@"categoryID"] : @"";
     _petMainKindID  = [dict[@"petMainKindID"] integerValue];
+    
+    // Multi-category & Apex Taxonomy
+    if ([dict[@"petMainCategoryIDs"] isKindOfClass:NSArray.class]) {
+        NSMutableArray<NSNumber *> *catNums = [NSMutableArray array];
+        for (id item in (NSArray *)dict[@"petMainCategoryIDs"]) {
+            if ([item respondsToSelector:@selector(integerValue)]) {
+                [catNums addObject:@([item integerValue])];
+            }
+        }
+        _petMainCategoryIDs = catNums.copy;
+    } else if (_petMainKindID > 0) {
+        _petMainCategoryIDs = @[@(_petMainKindID)];
+    } else {
+        _petMainCategoryIDs = @[];
+    }
+    
+    if (dict[@"isAllCategories"] != nil) {
+        _isAllCategories = [dict[@"isAllCategories"] boolValue];
+    } else {
+        _isAllCategories = (_petMainKindID == 0);
+    }
+    
+    if ([dict[@"targetCategories"] isKindOfClass:NSArray.class]) {
+        _targetCategories = [(NSArray *)dict[@"targetCategories"] copy];
+    }
+    if ([dict[@"categories"] isKindOfClass:NSArray.class]) {
+        _categories = [(NSArray *)dict[@"categories"] copy];
+    }
+    if ([dict[@"categoryIDs"] isKindOfClass:NSArray.class]) {
+        _categoryIDs = [(NSArray *)dict[@"categoryIDs"] copy];
+    }
+    
     _type           = [dict[@"type"] respondsToSelector:@selector(integerValue)] ? [dict[@"type"] integerValue] : ServiceTypeTraining;
     _imageURL       = [dict[@"imageURL"] isKindOfClass:NSString.class] ? dict[@"imageURL"] : nil;
     _blurHash       = [dict[@"blurHash"] isKindOfClass:NSString.class] ? dict[@"blurHash"] : @"";
@@ -275,6 +324,7 @@
     NSSet *knownKeys = [NSSet setWithArray:@[
         @"title", @"searchTitle", @"description", @"price", @"currency",
         @"category", @"categoryID", @"petMainKindID", @"type", @"serviceType",
+        @"petMainCategoryIDs", @"isAllCategories", @"targetCategories", @"categories", @"categoryIDs",
         @"imageURL", @"blurHash", @"serviceOwnerID", @"isAvailable",
         @"availableDate", @"timestamp", @"createdAt", @"updatedAt",
         @"isDisabled", @"isBlocked", @"isDeleted", @"verificationStatus",
@@ -306,6 +356,11 @@
     c->_category       = [_category copy];
     c->_categoryID     = [_categoryID copy];
     c.petMainKindID    = _petMainKindID;
+    c.petMainCategoryIDs = [_petMainCategoryIDs copy];
+    c.isAllCategories  = _isAllCategories;
+    c.targetCategories = [_targetCategories copy];
+    c.categories       = [_categories copy];
+    c.categoryIDs      = [_categoryIDs copy];
     c.type             = _type;
     c.serviceTypeText  = [_serviceTypeText copy];
     c->_imageURL       = [_imageURL copy];

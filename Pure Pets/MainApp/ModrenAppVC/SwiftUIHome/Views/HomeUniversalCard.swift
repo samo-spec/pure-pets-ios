@@ -333,6 +333,10 @@ struct HomeUniversalCard: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: cardHeight)
+        .homeHorizontalCellReveal(
+            ordinal: entranceOrdinal,
+            entranceAlreadyPlayed: entrancePresented
+        )
     }
 }
 
@@ -356,6 +360,9 @@ private struct HomeUniversalDirectCard: View {
             onTap: nil,
             onQuantityChange: onQuantityChange
         )
+        // Home owns row/cell appearance. A settled shelf context keeps the
+        // reusable service card from adding its separate entrance underneath.
+        .ppUniversalHomeShelfEntrance(isPresented: true, ordinal: 0)
     }
 }
 

@@ -7,6 +7,7 @@
 #import "CategoryModel.h"
 #import "PPAlertHelper.h"
 #import <FirebaseAuth/FirebaseAuth.h>
+#import <Pure_Pets-Swift.h>
 
 static inline BOOL PPServicesGridIsTablet(CGFloat width)
 {
@@ -189,12 +190,23 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
     return CGSizeMake(itemWidth, mediaHeight);
 }
 
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.item >= (NSInteger)self.filteredServices.count) return;
+    ServiceModel *service = self.filteredServices[indexPath.item];
+    ServiceViewerViewController *viewer = [[ServiceViewerViewController alloc] initWithService:service];
+    viewer.hidesBottomBarWhenPushed = YES;
+    [self.navigationController pushViewController:viewer animated:YES];
+}
+
 #pragma mark - PPUniversalCellDelegate
 
 - (void)PPUniversalCell_tapEdit:(PPUniversalCellViewModel *)universalModel {
     NSIndexPath *indexPath = universalModel.indexPath;
     if (!indexPath || indexPath.item >= (NSInteger)self.filteredServices.count) return;
     ServiceModel *service = self.filteredServices[indexPath.item];
+    ServiceViewerViewController *viewer = [[ServiceViewerViewController alloc] initWithService:service];
+    viewer.hidesBottomBarWhenPushed = YES;
+    [self.navigationController pushViewController:viewer animated:YES];
 }
 
 - (void)PPUniversalCell_tapDelete:(PPUniversalCellViewModel *)universalModel {

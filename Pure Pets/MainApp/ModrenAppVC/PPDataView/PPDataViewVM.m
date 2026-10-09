@@ -1044,6 +1044,17 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 ServiceModel *svc = (ServiceModel *)obj;
                 NSString *cat = svc.category ?: @"";
                 NSString *catID = svc.categoryID ?: @"";
+                BOOL matchInMultiCategories = NO;
+                NSMutableArray<NSString *> *allCategories = [NSMutableArray array];
+                if (svc.targetCategories.count > 0) [allCategories addObjectsFromArray:svc.targetCategories];
+                if (svc.categories.count > 0) [allCategories addObjectsFromArray:svc.categories];
+                for (NSString *c in allCategories) {
+                    if (svcVal == PPFilterServiceTraining && ([c localizedCaseInsensitiveContainsString:@"train"] || [c localizedCaseInsensitiveContainsString:@"تدريب"])) { matchInMultiCategories = YES; break; }
+                    if (svcVal == PPFilterServiceGrooming && ([c localizedCaseInsensitiveContainsString:@"groom"] || [c localizedCaseInsensitiveContainsString:@"عناية"] || [c localizedCaseInsensitiveContainsString:@"حلاقة"])) { matchInMultiCategories = YES; break; }
+                    if (svcVal == PPFilterServiceWalking && ([c localizedCaseInsensitiveContainsString:@"walk"] || [c localizedCaseInsensitiveContainsString:@"تمشية"])) { matchInMultiCategories = YES; break; }
+                }
+                if (matchInMultiCategories) return YES;
+
                 switch (svcVal) {
                     case PPFilterServiceTraining:
                         return [catID isEqualToString:@"2"]
@@ -1054,6 +1065,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                         return [catID isEqualToString:@"1"]
                             || [cat localizedCaseInsensitiveContainsString:@"groom"]
                             || [cat localizedCaseInsensitiveContainsString:@"عناية"]
+                            || [cat localizedCaseInsensitiveContainsString:@"حلاقة"]
                             || svc.type == ServiceTypeGrooming;
                     case PPFilterServiceWalking:
                         return [catID isEqualToString:@"3"]

@@ -2,6 +2,7 @@
 
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
+#import <math.h>
 
 
 @import Firebase;
@@ -1643,6 +1644,22 @@ static NSString *PPMarketplaceTrimmedString(id value)
     } else if ([universalModel.ModelObject isKindOfClass:PetAd.class]) {
         [PPAdSharingHelper sharePetAd:(PetAd *)universalModel.ModelObject
                   fromViewController:presenter];
+    } else if ([universalModel.ModelObject isKindOfClass:ServiceModel.class]) {
+        if (!presenter || presenter.presentedViewController) return;
+        ServiceModel *service = (ServiceModel *)universalModel.ModelObject;
+        NSNumberFormatter *formatter = [NSNumberFormatter new];
+        formatter.locale = [NSLocale localeWithLocaleIdentifier:[Language isRTL] ? @"ar_QA" : @"en_QA"];
+        formatter.numberStyle = NSNumberFormatterCurrencyStyle;
+        formatter.currencyCode = service.currency.length == 3 ? service.currency.uppercaseString : @"QAR";
+        NSString *price = isfinite(service.price) && service.price >= 0
+            ? [formatter stringFromNumber:@(service.price)] : kLang(@"not available");
+        NSString *text = [NSString stringWithFormat:@"%@\n%@", service.title ?: @"", price ?: @""];
+        UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[text] applicationActivities:nil];
+        activity.popoverPresentationController.sourceView = presenter.view;
+        activity.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(presenter.view.bounds),
+            CGRectGetMidY(presenter.view.bounds), 1, 1);
+        activity.popoverPresentationController.permittedArrowDirections = 0;
+        [presenter presentViewController:activity animated:!UIAccessibilityIsReduceMotionEnabled() completion:nil];
     } else {
         [self openItem:universalModel];
     }

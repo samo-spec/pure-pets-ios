@@ -25,7 +25,7 @@ public final class PPHomeHostingController: UIViewController {
         let store = HomeStore(owner: owner)
         self.store = store
         self.hostingController = UIHostingController(
-            rootView: HomeView(store: store)
+            rootView: HomeView(store: store, isInitialPresentationReady: false)
         )
         super.init(nibName: nil, bundle: nil)
     }
@@ -183,7 +183,13 @@ public final class PPHomeHostingController: UIViewController {
             // Root installation and splash-cover attachment happen in the same
             // run-loop turn. Allow a few bounded retries if cached Home data
             // becomes ready before the cover has been attached.
-            guard initialCoverLookupAttempts < 4 else { return }
+            guard initialCoverLookupAttempts < 4 else {
+                // A recreated Home may have no launch snapshot. Its content
+                // is already uncovered, so do not leave entrance staged.
+                didRevealInitialContent = true
+                allowInitialHomeEntrance()
+                return
+            }
             initialCoverLookupAttempts += 1
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 [weak self] in
@@ -208,9 +214,19 @@ public final class PPHomeHostingController: UIViewController {
             animations: {
                 coverView.alpha = 0
             },
-            completion: { _ in
+            completion: { [weak self] _ in
                 coverView.removeFromSuperview()
+                self?.allowInitialHomeEntrance()
             }
+        )
+    }
+
+    private func allowInitialHomeEntrance() {
+        // Updating the same root type preserves SwiftUI's retained state and
+        // the existing HomeStore. Entrance begins after the cover is gone.
+        hostingController.rootView = HomeView(
+            store: store,
+            isInitialPresentationReady: true
         )
     }
 }

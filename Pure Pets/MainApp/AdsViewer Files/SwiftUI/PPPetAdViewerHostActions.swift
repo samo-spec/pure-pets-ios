@@ -101,7 +101,8 @@ final class PPPetAdViewerHostActions {
     }
 
     func openChat(owner: PPPetAdOwner, ad: PetAd) async throws {
-        guard let presenter else {
+        let activePresenter = presenter ?? GM.topViewController()
+        guard let activePresenter else {
             throw NSError(
                 domain: "com.purepets.pet-ad-viewer",
                 code: 2001,
@@ -120,7 +121,7 @@ final class PPPetAdViewerHostActions {
             PPPetAdViewerLegacyBridge.openChat(
                 for: owner.user,
                 ad: ad,
-                from: presenter
+                from: activePresenter
             ) { error in
                 if let error {
                     continuation.resume(throwing: error)

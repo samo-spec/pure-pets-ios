@@ -19,12 +19,13 @@
 @implementation ServicesManager {
     id<FIRListenerRegistration>  _allServicesListener;
     id<FIRListenerRegistration>  _kindServicesListener;
+    NSMutableArray<id<FIRListenerRegistration>> *_multiKindListeners;
 }
 
-static NSError *PPServiceCreatePermissionError(NSString *message) {
+static NSError *PPServiceWriteError(NSInteger code, NSString *key) {
     return [NSError errorWithDomain:@"ServicesManager"
-                               code:-41
-                           userInfo:@{NSLocalizedDescriptionKey: message ?: @"You do not have permission to add services."}];
+                               code:code
+                           userInfo:@{NSLocalizedDescriptionKey: kLang(key ?: @"service_management_error_permission")}];
 }
 
 + (instancetype)sharedInstance {
@@ -44,25 +45,41 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
     NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
 
     if (uid.length == 0) {
-        if (completion) completion(PPServiceCreatePermissionError(@"Please sign in to add a new service."));
+        if (completion) completion(PPServiceWriteError(-41, @"service_management_error_sign_in"));
         return;
     }
 
     if (currentUser.isBlocked || [userManager isCurrentUserBlocked]) {
-        if (completion) completion(PPServiceCreatePermissionError(@"Your account is blocked. You can't add services right now."));
+        if (completion) completion(PPServiceWriteError(-41, @"service_management_error_blocked"));
         return;
     }
 
     if (![currentUser hasAnyPermissionInKeys:@[kPermManageServices, kPermAdminAll]]) {
-        if (completion) completion(PPServiceCreatePermissionError(@"You don't have permission to add services."));
+        if (completion) completion(PPServiceWriteError(-41, @"service_management_error_permission"));
         return;
     }
 
-    NSMutableDictionary *data = [[service toDictionary] mutableCopy];
+    // Round-trip serialization includes moderation and review projections.
+    // Creation submits only provider content and server creation timestamps.
+    NSMutableDictionary *data = [[service providerToDictionary] mutableCopy];
+    data[@"availableDate"] = service.availableDate ?: NSNull.null;
+    data[@"timestamp"] = FIRFieldValue.fieldValueForServerTimestamp;
+    data[@"createdAt"] = FIRFieldValue.fieldValueForServerTimestamp;
     FIRFirestore *db = [FIRFirestore firestore];
+    void (^saveContent)(void) = ^{
+        if (![uid isEqualToString:FIRAuth.auth.currentUser.uid]) {
+            if (completion) completion(PPServiceWriteError(-41, @"service_management_error_session"));
+            return;
+        }
+        [[db collectionWithPath:@"serviceOffers"] addDocumentWithData:data completion:completion];
+    };
     
     if (image) {
         NSData *imageData = UIImageJPEGRepresentation(image, 0.8);
+        if (!imageData.length) {
+            if (completion) completion(PPServiceWriteError(-42, @"service_management_error_image"));
+            return;
+        }
         NSString *fileName = [NSString stringWithFormat:@"services/%@.jpg", [[NSUUID UUID] UUIDString]];
         FIRStorageReference *ref = [[FIRStorage storage].reference child:fileName];
 
@@ -76,18 +93,20 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
 
         [ref putData:imageData metadata:metadata completion:^(FIRStorageMetadata *metadata, NSError *error) {
             if (error) {
-                completion(error);
+                if (completion) completion(error);
                 return;
             }
             [ref downloadURLWithCompletion:^(NSURL * _Nullable url, NSError * _Nullable error) {
-                if (url) {
-                    data[@"imageURL"] = url.absoluteString;
+                if (error || !url) {
+                    if (completion) completion(error ?: PPServiceWriteError(-42, @"service_management_error_image"));
+                    return;
                 }
-                [[db collectionWithPath:@"serviceOffers"] addDocumentWithData:data completion:completion];
+                data[@"imageURL"] = url.absoluteString;
+                saveContent();
             }];
         }];
     } else {
-        [[db collectionWithPath:@"serviceOffers"] addDocumentWithData:data completion:completion];
+        saveContent();
     }
 }
 
@@ -95,8 +114,11 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
 
 - (void)updateService:(NSString *)documentID withModel:(ServiceModel *)service completion:(void (^)(NSError * _Nullable))completion {
     FIRFirestore *db = [FIRFirestore firestore];
-    NSDictionary *data = [service toDictionary];
-    [[[db collectionWithPath:@"serviceOffers"] documentWithPath:documentID] setData:data completion:completion];
+    // Never replace the whole document: doing so drops server projections,
+    // unknown future fields and the moderation decision already on the record.
+    NSMutableDictionary *data = [[service providerToDictionary] mutableCopy];
+    data[@"availableDate"] = service.availableDate ?: NSNull.null;
+    [[[db collectionWithPath:@"serviceOffers"] documentWithPath:documentID] updateData:data completion:completion];
 }
 
 #pragma mark - Delete Service
@@ -143,70 +165,135 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
         }];
 }
 
-#pragma mark - Listener: By petMainKindID
+#pragma mark - Listener: By petMainKindID & Multi-Category
 
 - (void)listenToServicesForPetMainKindID:(NSInteger)kindID
                               completion:(void (^)(NSArray<ServiceModel *> *, NSError * _Nullable))completion {
     FIRFirestore *db = [FIRFirestore firestore];
 
-    // Remove previous kind-specific listener to prevent stacking
+    // Remove previous listeners to prevent stacking
     [_kindServicesListener remove];
     _kindServicesListener = nil;
+    for (id<FIRListenerRegistration> reg in _multiKindListeners) {
+        [reg remove];
+    }
+    _multiKindListeners = [NSMutableArray array];
 
-    _kindServicesListener =
-    [[[db collectionWithPath:@"serviceOffers"] queryWhereField:@"petMainKindID" isEqualTo:@(kindID)]
-     addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-         if (error) {
-             completion(@[], error);
-             return;
-         }
-         
-         NSMutableArray *results = [NSMutableArray array];
-         for (FIRDocumentSnapshot *doc in snapshot.documents) {
-             ServiceModel *model = [[ServiceModel alloc] initWithDictionary:doc.data documentID:doc.documentID];
-             [results addObject:model];
-         }
-         completion(results, nil);
-     }];
+    if (kindID <= 0) {
+        [self listenToAllServicesWithCompletion:completion];
+        return;
+    }
+
+    FIRCollectionReference *coll = [db collectionWithPath:@"serviceOffers"];
+    NSArray<FIRQuery *> *queries = @[
+        [coll queryWhereField:@"petMainKindID" isEqualTo:@(kindID)],
+        [coll queryWhereField:@"petMainCategoryIDs" arrayContains:@(kindID)],
+        [coll queryWhereField:@"isAllCategories" isEqualTo:@(YES)],
+        [coll queryWhereField:@"petMainKindID" isEqualTo:@(0)]
+    ];
+
+    NSMutableDictionary<NSString *, ServiceModel *> *combinedMap = [NSMutableDictionary dictionary];
+    NSLock *mapLock = [[NSLock alloc] init];
+
+    void (^emitCombined)(void) = ^{
+        [mapLock lock];
+        NSArray<ServiceModel *> *sorted = [combinedMap.allValues sortedArrayUsingComparator:^NSComparisonResult(ServiceModel *a, ServiceModel *b) {
+            NSDate *dateA = a.updatedAt ?: a.createdAt ?: a.timestamp ?: a.availableDate ?: [NSDate distantPast];
+            NSDate *dateB = b.updatedAt ?: b.createdAt ?: b.timestamp ?: b.availableDate ?: [NSDate distantPast];
+            return [dateB compare:dateA];
+        }];
+        [mapLock unlock];
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(sorted, nil);
+        });
+    };
+
+    for (FIRQuery *q in queries) {
+        id<FIRListenerRegistration> reg = [q addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (error) {
+                // If index or query errors, emit whatever has been gathered
+                return;
+            }
+            if (snapshot) {
+                [mapLock lock];
+                for (FIRDocumentSnapshot *doc in snapshot.documents) {
+                    ServiceModel *model = [[ServiceModel alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                    if (model && model.isLive) {
+                        combinedMap[doc.documentID] = model;
+                    }
+                }
+                [mapLock unlock];
+                emitCombined();
+            }
+        }];
+        if (reg) {
+            [_multiKindListeners addObject:reg];
+        }
+    }
 }
 
 - (void)fetchServicesForPetMainKindID:(NSInteger)kindID
                            completion:(void (^)(NSArray<ServiceModel *> *services, NSError * _Nullable error))completion
 {
+    if (kindID <= 0) {
+        [self fetchServicesForAllMainKinds:completion];
+        return;
+    }
+
     FIRFirestore *db = [FIRFirestore firestore];
-    FIRQuery *query =
-    [[db collectionWithPath:@"serviceOffers"]
-     queryWhereField:@"petMainKindID" isEqualTo:@(kindID)];
+    FIRCollectionReference *coll = [db collectionWithPath:@"serviceOffers"];
 
-    [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (error || !snapshot) {
-            NSError *resolvedError = error ?: [NSError errorWithDomain:@"ServicesManager"
-                                                                   code:-52
-                                                               userInfo:@{
-                NSLocalizedDescriptionKey: @"Service offers query returned no snapshot."
-            }];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(@[], resolvedError);
-            });
-            return;
-        }
+    NSArray<FIRQuery *> *queries = @[
+        [coll queryWhereField:@"petMainKindID" isEqualTo:@(kindID)],
+        [coll queryWhereField:@"petMainCategoryIDs" arrayContains:@(kindID)],
+        [coll queryWhereField:@"isAllCategories" isEqualTo:@(YES)],
+        [coll queryWhereField:@"petMainKindID" isEqualTo:@(0)]
+    ];
 
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-            NSMutableArray<ServiceModel *> *results =
-            [NSMutableArray arrayWithCapacity:snapshot.documents.count];
+    dispatch_group_t group = dispatch_group_create();
+    NSMutableDictionary<NSString *, ServiceModel *> *uniqueMap = [NSMutableDictionary dictionary];
+    NSLock *lock = [[NSLock alloc] init];
+    __block NSError *lastError = nil;
 
-            for (FIRDocumentSnapshot *doc in snapshot.documents) {
-                ServiceModel *model = [[ServiceModel alloc] initWithDictionary:doc.data documentID:doc.documentID];
-                if (model) {
-                    [results addObject:model];
+    for (FIRQuery *query in queries) {
+        dispatch_group_enter(group);
+        [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (error) {
+                [lock lock];
+                lastError = error;
+                [lock unlock];
+            } else if (snapshot) {
+                [lock lock];
+                for (FIRDocumentSnapshot *doc in snapshot.documents) {
+                    if (!uniqueMap[doc.documentID]) {
+                        ServiceModel *model = [[ServiceModel alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                        if (model && model.isLive) {
+                            uniqueMap[doc.documentID] = model;
+                        }
+                    }
                 }
+                [lock unlock];
             }
+            dispatch_group_leave(group);
+        }];
+    }
 
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(results.copy, nil);
-            });
+    dispatch_group_notify(group, dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
+        [lock lock];
+        NSArray<ServiceModel *> *allModels = [uniqueMap.allValues sortedArrayUsingComparator:^NSComparisonResult(ServiceModel *a, ServiceModel *b) {
+            NSDate *dateA = a.updatedAt ?: a.createdAt ?: a.timestamp ?: a.availableDate ?: [NSDate distantPast];
+            NSDate *dateB = b.updatedAt ?: b.createdAt ?: b.timestamp ?: b.availableDate ?: [NSDate distantPast];
+            return [dateB compare:dateA];
+        }];
+        [lock unlock];
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) {
+                completion(allModels, (allModels.count == 0 && lastError) ? lastError : nil);
+            }
         });
-    }];
+    });
 }
 
 
@@ -419,6 +506,10 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
     _allServicesListener = nil;
     [_kindServicesListener remove];
     _kindServicesListener = nil;
+    for (id<FIRListenerRegistration> reg in _multiKindListeners) {
+        [reg remove];
+    }
+    [_multiKindListeners removeAllObjects];
 }
 
 - (void)dealloc {

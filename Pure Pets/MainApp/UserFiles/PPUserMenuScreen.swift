@@ -229,11 +229,13 @@ struct PPQuickAccessTile: View {
                         .font(PPUserMenuFont.bold(size: 15, relativeTo: .subheadline))
                         .foregroundColor(Color.ppTextPrimary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
                     Text(subtitle)
                         .font(PPUserMenuFont.medium(size: 12, relativeTo: .caption))
                         .foregroundColor(Color.ppTextSecondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
                 Spacer(minLength: 0)
             }
@@ -426,11 +428,13 @@ struct PPActivityMenuRow: View {
                         .font(PPUserMenuFont.bold(size: 16, relativeTo: .headline))
                         .foregroundColor(isDestructive ? Color.ppError : Color.ppTextPrimary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
                     Text(loc(subtitleKey))
                         .font(PPUserMenuFont.regular(size: 12.5, relativeTo: .footnote))
                         .foregroundColor(isDestructive ? Color.ppError.opacity(0.7) : Color.ppTextSecondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
 
                 Spacer(minLength: 8)
@@ -843,199 +847,159 @@ struct PPUserMenuPadView: View {
     let onAction: (PPUserMenuActionType) -> Void
 
     var body: some View {
-        HStack(spacing: 0) {
-            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            // 1. LEADING COMMAND COLUMN (380pt)
-            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 20) {
-                    // Master Profile Vitrine
-                    padProfileVitrine
+        GeometryReader { geo in
+            let totalWidth = geo.size.width
+            let isWide = totalWidth >= 960
+            let sidebarWidth: CGFloat = isWide
+                ? min(340, max(300, totalWidth * 0.30))
+                : min(310, max(285, totalWidth * 0.36))
+            let workspaceWidth = max(320, totalWidth - sidebarWidth - 1)
 
-                    // PureLens Vanguard AI Hub
-                    PPPureLensVanguardCard(onLaunch: {
-                        onAction(.pureLens)
-                    })
-                    .hoverEffect(.lift)
+            HStack(spacing: 0) {
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // 1. LEADING COMMAND COLUMN (SPATIAL SIDEBAR)
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        // Master Profile Vitrine
+                        padProfileVitrine
 
-                    // Quick Access Sensory Matrix (4 Tiles)
-                    padQuickAccessMatrix
+                        // Quick Access Sensory Matrix (4 Tactile Tiles)
+                        padQuickAccessMatrix(sidebarWidth: sidebarWidth)
 
-                    // Pinned Tools & Safe Logout
-                    padToolsCard
+                        // Pinned System Tools & Safety
+                        padToolsCard
 
-                    Spacer(minLength: 24)
+                        // Studio Craft Branding Footer
+                        padFooterBranding
+
+                        Spacer(minLength: 28)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 24)
                 }
-                .padding(24)
-            }
-            .frame(width: 380)
-            .background(Color.ppSurfaceBase.ignoresSafeArea())
-            .overlay(
+                .frame(width: sidebarWidth)
+                .background(Color.ppSurfaceBase.ignoresSafeArea())
+
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // 2. EXPLICIT SEPARATION DIVIDER (RTL & LTR SAFE)
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 Rectangle()
                     .fill(Color.ppSurfaceBorder)
-                    .frame(width: 1),
-                alignment: state.isArabic ? .leading : .trailing
-            )
+                    .frame(width: 1)
+                    .ignoresSafeArea()
 
-            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            // 2. TRAILING SPATIAL WORKSPACE (FLUID)
-            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
-                    // Header Bar
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(loc("user_menu_ipad_dashboard_title"))
-                                .font(PPUserMenuFont.bold(size: 28, relativeTo: .title))
-                                .foregroundColor(Color.ppTextPrimary)
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // 3. TRAILING SPATIAL WORKSPACE (FLUID CANVAS)
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 22) {
+                        // Workspace Header Bar
+                        padWorkspaceHeader
 
-                            Text(loc("user_menu_ipad_dashboard_subtitle"))
-                                .font(PPUserMenuFont.regular(size: 14, relativeTo: .subheadline))
-                                .foregroundColor(Color.ppTextSecondary)
-                        }
-                        Spacer()
+                        // PureLens Vanguard AI Camera Hero Banner
+                        PPPureLensVanguardCard(onLaunch: {
+                            onAction(.pureLens)
+                        })
+                        .hoverEffect(.lift)
 
-                        // Live Status Pill
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(state.isOffline ? Color.ppWarning : Color.ppSuccess)
-                                .frame(width: 8, height: 8)
-                            Text(state.isOffline
-                                 ? loc("user_menu_offline_pill")
-                                 : loc("user_menu_profile_status_ready"))
-                                .font(PPUserMenuFont.medium(size: 12, relativeTo: .caption))
-                                .foregroundColor(Color.ppTextSecondary)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(Color.ppSurfaceElevated))
+                        // Telemetry Metric Deck (Adaptive: 2x2 or 4x1)
+                        padTelemetryDeck(workspaceWidth: workspaceWidth)
+
+                        // Live Order Tracker Command Unit (Adaptive: Spatial Card or Stepper)
+                        padOrderTrackerSection(workspaceWidth: workspaceWidth)
+
+                        // Activity & Commerce Services Deck (Adaptive: 1-col or 2-col)
+                        padActivityDeck(workspaceWidth: workspaceWidth)
+
+                        Spacer(minLength: 40)
                     }
-
-                    // 1. Metric Telemetry Cards Deck (4 in a row)
-                    LazyVGrid(columns: [
-                        GridItem(.flexible(), spacing: 16),
-                        GridItem(.flexible(), spacing: 16),
-                        GridItem(.flexible(), spacing: 16),
-                        GridItem(.flexible(), spacing: 16)
-                    ], spacing: 16) {
-                        padMetricCard(titleKey: "user_menu_stat_orders", count: state.activeOrdersCount, icon: "bag.fill", tint: Color.ppPrimary) {
-                            onAction(.orders)
-                        }
-                        padMetricCard(titleKey: "user_menu_stat_cart", count: state.cartCount, icon: "cart.fill", tint: Color.ppSuccess) {
-                            onAction(.cart)
-                        }
-                        padMetricCard(titleKey: "user_menu_stat_favorites", count: state.favoritesCount, icon: "star.fill", tint: Color.ppWarning) {
-                            onAction(.favorites)
-                        }
-                        padMetricCard(titleKey: "user_menu_stat_ads", count: state.myAdsCount, icon: "circle.hexagonpath.fill", tint: Color.purple) {
-                            onAction(.myAds)
-                        }
-                    }
-
-                    // 2. Active In-Flight Order Live Tracker Banner
-                    padOrderTrackerBanner
-
-                    // 3. Marketplace & Activity Navigation Deck (2-Column Grid)
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text(loc("user_menu_activity_section"))
-                            .font(PPUserMenuFont.bold(size: 18, relativeTo: .headline))
-                            .foregroundColor(Color.ppTextPrimary)
-
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
-                            padActivityTile(
-                                icon: "cart.fill",
-                                titleKey: "Cart",
-                                subtitleKey: "user_menu_cart_subtitle",
-                                tint: Color.ppSuccess,
-                                count: state.cartCount
-                            ) {
-                                onAction(.cart)
-                            }
-
-                            padActivityTile(
-                                icon: "bag.fill",
-                                titleKey: "OrderHistory",
-                                subtitleKey: "user_menu_orders_subtitle",
-                                tint: Color.ppPrimary,
-                                count: state.activeOrdersCount
-                            ) {
-                                onAction(.orders)
-                            }
-
-                            padActivityTile(
-                                icon: "star.fill",
-                                titleKey: "showfav",
-                                subtitleKey: "user_menu_favorites_subtitle",
-                                tint: Color.ppWarning,
-                                count: state.favoritesCount
-                            ) {
-                                onAction(.favorites)
-                            }
-
-                            padActivityTile(
-                                icon: "circle.hexagonpath.fill",
-                                titleKey: "myadsTitle",
-                                subtitleKey: "user_menu_ads_subtitle",
-                                tint: Color.purple,
-                                count: state.myAdsCount
-                            ) {
-                                onAction(.myAds)
-                            }
-
-                            padActivityTile(
-                                icon: "bag.badge.plus",
-                                titleKey: "purchased_profile_menu_title",
-                                subtitleKey: "user_menu_purchased_subtitle",
-                                tint: Color.ppInfo
-                            ) {
-                                onAction(.purchased)
-                            }
-
-                            if state.isProductionActive {
-                                padActivityTile(
-                                    icon: "doc.on.doc.fill",
-                                    titleKey: "showProdection",
-                                    subtitleKey: "user_menu_production_subtitle",
-                                    tint: Color.orange
-                                ) {
-                                    onAction(.production)
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(minLength: 40)
+                    .padding(.horizontal, isWide ? 28 : 22)
+                    .padding(.vertical, 24)
                 }
-                .padding(28)
+                .frame(width: workspaceWidth)
+                .background(Color.ppBackground.ignoresSafeArea())
             }
-            .background(Color.ppBackground.ignoresSafeArea())
         }
     }
 
-    // iPad Master Profile Vitrine
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - WORKSPACE HEADER BAR
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private var padWorkspaceHeader: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(loc("user_menu_ipad_dashboard_title"))
+                    .font(PPUserMenuFont.bold(size: 26, relativeTo: .title))
+                    .foregroundColor(Color.ppTextPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+
+                Text(loc("user_menu_ipad_dashboard_subtitle"))
+                    .font(PPUserMenuFont.regular(size: 13.5, relativeTo: .subheadline))
+                    .foregroundColor(Color.ppTextSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            Spacer()
+
+            // Live Status Pill
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(state.isOffline ? Color.ppWarning : Color.ppSuccess)
+                    .frame(width: 8, height: 8)
+                Text(state.isOffline
+                     ? loc("user_menu_offline_pill")
+                     : loc("user_menu_profile_status_ready"))
+                    .font(PPUserMenuFont.medium(size: 12, relativeTo: .caption))
+                    .foregroundColor(Color.ppTextSecondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(Color.ppSurfaceElevated))
+            .overlay(Capsule().strokeBorder(Color.ppSurfaceBorder, lineWidth: 0.8))
+        }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - SIDEBAR PROFILE VITRINE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     private var padProfileVitrine: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(Color.ppSurfaceElevated)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.ppSurfaceElevated,
+                            Color.ppWarmPorcelain.opacity(0.85)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .strokeBorder(Color.ppSurfaceBorder, lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.04), radius: 14, x: 0, y: 5)
 
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 PPUserAvatarView(
                     url: state.avatarURL,
                     name: state.displayName,
                     isLoggedIn: state.isLoggedIn,
-                    size: 88
+                    size: 80
                 )
 
                 VStack(spacing: 4) {
                     Text(state.displayName.isEmpty ? "PurePets" : state.displayName)
-                        .font(PPUserMenuFont.bold(size: 22, relativeTo: .title2))
+                        .font(PPUserMenuFont.bold(size: 20, relativeTo: .title2))
                         .foregroundColor(Color.ppTextPrimary)
                         .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
                     Text(state.isLoggedIn
                          ? loc("user_menu_member_verified")
@@ -1053,23 +1017,25 @@ struct PPUserMenuPadView: View {
                             ? loc("user_menu_subtitle")
                             : loc("user_menu_guest_subtitle"))
                          : state.metaInfo)
-                        .font(PPUserMenuFont.regular(size: 12.5, relativeTo: .footnote))
+                        .font(PPUserMenuFont.regular(size: 12, relativeTo: .footnote))
                         .foregroundColor(Color.ppTextSecondary)
                         .multilineTextAlignment(.center)
-                        .padding(.top, 4)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                        .padding(.top, 2)
                 }
 
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     onAction(state.isLoggedIn ? .profile : .login)
                 }) {
-                    HStack {
+                    HStack(spacing: 8) {
                         Image(systemName: state.isLoggedIn ? "square.and.pencil" : "person.crop.circle.badge.plus")
                             .font(.system(size: 14, weight: .bold))
                         Text(state.isLoggedIn
                              ? loc("user_menu_profile_action")
                              : loc("user_menu_login_action"))
-                            .font(PPUserMenuFont.bold(size: 14, relativeTo: .subheadline))
+                            .font(PPUserMenuFont.bold(size: 13.5, relativeTo: .subheadline))
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -1086,19 +1052,22 @@ struct PPUserMenuPadView: View {
                 .buttonStyle(PPMenuCardButtonStyle())
                 .hoverEffect(.lift)
             }
-            .padding(20)
+            .padding(18)
         }
     }
 
-    // iPad Quick Access Matrix
-    private var padQuickAccessMatrix: some View {
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - SIDEBAR QUICK ACCESS MATRIX
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private func padQuickAccessMatrix(sidebarWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(loc("user_menu_quick_access_title"))
                 .font(PPUserMenuFont.bold(size: 13, relativeTo: .footnote))
                 .foregroundColor(Color.ppTextSecondary)
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                PPQuickAccessTile(
+                padQuickAccessTile(
                     icon: state.appearanceIcon,
                     title: loc(state.appearanceTitleKey),
                     subtitle: loc("quick_access_desc_appearance"),
@@ -1106,9 +1075,8 @@ struct PPUserMenuPadView: View {
                 ) {
                     onAction(.toggleAppearance)
                 }
-                .hoverEffect(.highlight)
 
-                PPQuickAccessTile(
+                padQuickAccessTile(
                     icon: "globe.central.south.asia",
                     title: loc(state.languageTitleKey),
                     subtitle: loc("quick_access_desc_language"),
@@ -1116,9 +1084,8 @@ struct PPUserMenuPadView: View {
                 ) {
                     onAction(.switchLanguage)
                 }
-                .hoverEffect(.highlight)
 
-                PPQuickAccessTile(
+                padQuickAccessTile(
                     icon: "bell.fill",
                     title: loc("user_menu_quick_access_alerts", alter: "Allow Alerts"),
                     subtitle: loc("quick_access_desc_notifications"),
@@ -1126,9 +1093,8 @@ struct PPUserMenuPadView: View {
                 ) {
                     onAction(.requestNotifications)
                 }
-                .hoverEffect(.highlight)
 
-                PPQuickAccessTile(
+                padQuickAccessTile(
                     icon: "location.fill",
                     title: "\(state.countryFlag) \(state.countryCode)",
                     subtitle: loc("quick_access_desc_location"),
@@ -1136,12 +1102,62 @@ struct PPUserMenuPadView: View {
                 ) {
                     onAction(.requestLocation)
                 }
-                .hoverEffect(.highlight)
             }
         }
     }
 
-    // iPad Pinned Tools Card
+    private func padQuickAccessTile(icon: String, title: String, subtitle: String, tint: Color, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        }) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(tint.opacity(0.14))
+                            .frame(width: 36, height: 36)
+                        Image(systemName: icon)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(tint)
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(PPUserMenuFont.bold(size: 13, relativeTo: .subheadline))
+                        .foregroundColor(Color.ppTextPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    Text(subtitle)
+                        .font(PPUserMenuFont.regular(size: 10.5, relativeTo: .caption2))
+                        .foregroundColor(Color.ppTextSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            .padding(11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.ppSurfaceElevated)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Color.ppSurfaceBorder, lineWidth: 0.8)
+                    )
+                    .shadow(color: Color.black.opacity(0.035), radius: 8, x: 0, y: 3)
+            )
+        }
+        .buttonStyle(PPMenuCardButtonStyle())
+        .hoverEffect(.highlight)
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - SIDEBAR TOOLS & BRANDING
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     private var padToolsCard: some View {
         VStack(spacing: 8) {
             PPActivityMenuRow(
@@ -1179,44 +1195,86 @@ struct PPUserMenuPadView: View {
         }
     }
 
-    // iPad Metric Card
+    private var padFooterBranding: some View {
+        VStack(spacing: 4) {
+            Text(state.isArabic ? "بيور بيتس · عالم متكامل لرعاية أليفك" : "PurePets · Category-Defining Pet Platform")
+                .font(PPUserMenuFont.medium(size: 11, relativeTo: .caption2))
+                .foregroundColor(Color.ppTextTertiary)
+                .multilineTextAlignment(.center)
+            Text(state.isArabic ? "الإصدار 6.0 · تجربة آيباد المتطورة" : "Version 6.0 · NextGen iPadOS")
+                .font(PPUserMenuFont.regular(size: 10, relativeTo: .caption2))
+                .foregroundColor(Color.ppTextTertiary.opacity(0.8))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 4)
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - TELEMETRY METRIC DECK
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private func padTelemetryDeck(workspaceWidth: CGFloat) -> some View {
+        let isCompact = workspaceWidth < 660
+        let columns: [GridItem] = isCompact
+            ? [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+            : [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+
+        return LazyVGrid(columns: columns, spacing: 12) {
+            padMetricCard(titleKey: "user_menu_stat_orders", count: state.activeOrdersCount, icon: "bag.fill", tint: Color.ppPrimary) {
+                onAction(.orders)
+            }
+            padMetricCard(titleKey: "user_menu_stat_cart", count: state.cartCount, icon: "cart.fill", tint: Color.ppSuccess) {
+                onAction(.cart)
+            }
+            padMetricCard(titleKey: "user_menu_stat_favorites", count: state.favoritesCount, icon: "star.fill", tint: Color.ppWarning) {
+                onAction(.favorites)
+            }
+            padMetricCard(titleKey: "user_menu_stat_ads", count: state.myAdsCount, icon: "circle.hexagonpath.fill", tint: Color.purple) {
+                onAction(.myAds)
+            }
+        }
+    }
+
     private func padMetricCard(titleKey: String, count: Int, icon: String, tint: Color, action: @escaping () -> Void) -> some View {
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         }) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     ZStack {
                         Circle()
                             .fill(tint.opacity(0.12))
-                            .frame(width: 38, height: 38)
+                            .frame(width: 36, height: 36)
                         Image(systemName: icon)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(tint)
                     }
                     Spacer()
-                    Image(systemName: Language.isRTL() ? "chevron.left" : "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                    Image(systemName: state.isArabic ? "chevron.left" : "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(Color.ppTextTertiary)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(count)")
-                        .font(PPUserMenuFont.bold(size: 26, relativeTo: .title))
+                        .font(PPUserMenuFont.bold(size: 24, relativeTo: .title2))
                         .foregroundColor(Color.ppTextPrimary)
 
                     Text(loc(titleKey))
-                        .font(PPUserMenuFont.medium(size: 13, relativeTo: .footnote))
+                        .font(PPUserMenuFont.medium(size: 12.5, relativeTo: .footnote))
                         .foregroundColor(Color.ppTextSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
             }
-            .padding(18)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(Color.ppSurfaceElevated)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .strokeBorder(Color.ppSurfaceBorder, lineWidth: 0.8)
                     )
                     .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
@@ -1226,9 +1284,14 @@ struct PPUserMenuPadView: View {
         .hoverEffect(.lift)
     }
 
-    // iPad Live Order Tracker
-    private var padOrderTrackerBanner: some View {
-        ZStack {
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - LIVE ORDER TRACKER COMMAND UNIT
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private func padOrderTrackerSection(workspaceWidth: CGFloat) -> some View {
+        let isWideTracker = workspaceWidth >= 660
+
+        return ZStack {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(Color.ppSurfaceElevated)
                 .overlay(
@@ -1238,6 +1301,7 @@ struct PPUserMenuPadView: View {
                 .shadow(color: Color.black.opacity(0.04), radius: 12, x: 0, y: 4)
 
             VStack(alignment: .leading, spacing: 16) {
+                // Header Bar of Order Tracker
                 HStack {
                     HStack(spacing: 8) {
                         Image(systemName: "clock.arrow.2.circlepath")
@@ -1251,25 +1315,91 @@ struct PPUserMenuPadView: View {
 
                     Spacer()
 
-                    Button(action: { onAction(.orders) }) {
-                        Text(loc("user_menu_orders_subtitle"))
-                            .font(PPUserMenuFont.medium(size: 12.5, relativeTo: .footnote))
-                            .foregroundColor(Color.ppPrimary)
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        onAction(.orders)
+                    }) {
+                        HStack(spacing: 4) {
+                            Text(loc("user_menu_orders_subtitle"))
+                                .font(PPUserMenuFont.medium(size: 12.5, relativeTo: .footnote))
+                                .foregroundColor(Color.ppPrimary)
+                            Image(systemName: state.isArabic ? "chevron.left" : "chevron.right")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(Color.ppPrimary)
+                        }
                     }
                 }
 
                 if state.hasActiveInFlightOrder {
-                    // Milestone Stepper
-                    HStack(spacing: 0) {
-                        stepperNode(titleKey: "user_menu_order_step_placed", step: 0, current: state.recentOrderStep)
-                        stepperConnector(step: 0, current: state.recentOrderStep)
-                        stepperNode(titleKey: "user_menu_order_step_confirmed", step: 1, current: state.recentOrderStep)
-                        stepperConnector(step: 1, current: state.recentOrderStep)
-                        stepperNode(titleKey: "user_menu_order_step_preparing", step: 2, current: state.recentOrderStep)
-                        stepperConnector(step: 2, current: state.recentOrderStep)
-                        stepperNode(titleKey: "user_menu_order_step_in_transit", step: 3, current: state.recentOrderStep)
-                        stepperConnector(step: 3, current: state.recentOrderStep)
-                        stepperNode(titleKey: "user_menu_order_step_delivered", step: 4, current: state.recentOrderStep)
+                    if isWideTracker {
+                        // Wide Screen: Full 5-milestone timeline
+                        HStack(spacing: 0) {
+                            stepperNode(titleKey: "user_menu_order_step_placed", step: 0, current: state.recentOrderStep)
+                            stepperConnector(step: 0, current: state.recentOrderStep)
+                            stepperNode(titleKey: "user_menu_order_step_confirmed", step: 1, current: state.recentOrderStep)
+                            stepperConnector(step: 1, current: state.recentOrderStep)
+                            stepperNode(titleKey: "user_menu_order_step_preparing", step: 2, current: state.recentOrderStep)
+                            stepperConnector(step: 2, current: state.recentOrderStep)
+                            stepperNode(titleKey: "user_menu_order_step_in_transit", step: 3, current: state.recentOrderStep)
+                            stepperConnector(step: 3, current: state.recentOrderStep)
+                            stepperNode(titleKey: "user_menu_order_step_delivered", step: 4, current: state.recentOrderStep)
+                        }
+                    } else {
+                        // Compact iPad Portrait: Spatial Journey Card (Zero Text Clipping)
+                        VStack(spacing: 12) {
+                            // Active Milestone Callout Container
+                            let stepInfo = orderStepDescription(step: state.recentOrderStep)
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.ppPrimary.opacity(0.12))
+                                        .frame(width: 44, height: 44)
+                                    Image(systemName: stepInfo.icon)
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(Color.ppPrimary)
+                                }
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text(stepInfo.headline)
+                                            .font(PPUserMenuFont.bold(size: 14.5, relativeTo: .subheadline))
+                                            .foregroundColor(Color.ppTextPrimary)
+                                            .lineLimit(1)
+
+                                        Circle()
+                                            .fill(Color.ppSuccess)
+                                            .frame(width: 6, height: 6)
+                                    }
+
+                                    Text(stepInfo.subtitle)
+                                        .font(PPUserMenuFont.regular(size: 12, relativeTo: .footnote))
+                                        .foregroundColor(Color.ppTextSecondary)
+                                        .lineLimit(1)
+                                }
+
+                                Spacer(minLength: 0)
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.ppSurfaceBase)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .strokeBorder(Color.ppSurfaceBorder, lineWidth: 0.8)
+                                    )
+                            )
+
+                            // Segmented 5-Stage Visual Progress Bar
+                            HStack(spacing: 4) {
+                                ForEach(0..<5) { index in
+                                    Capsule()
+                                        .fill(index <= state.recentOrderStep
+                                              ? LinearGradient(colors: [Color.ppPrimary, Color.ppPressedAction], startPoint: .leading, endPoint: .trailing)
+                                              : LinearGradient(colors: [Color.ppSurfaceBorder, Color.ppSurfaceBorder], startPoint: .leading, endPoint: .trailing))
+                                        .frame(height: 5)
+                                }
+                            }
+                        }
                     }
                 } else {
                     HStack {
@@ -1280,7 +1410,48 @@ struct PPUserMenuPadView: View {
                     }
                 }
             }
-            .padding(20)
+            .padding(18)
+        }
+    }
+
+    private func orderStepDescription(step: Int) -> (headline: String, subtitle: String, icon: String) {
+        switch step {
+        case 0:
+            return (
+                headline: loc("user_menu_order_step_placed"),
+                subtitle: state.isArabic ? "تم استلام طلبك وبانتظار تأكيد المتجر" : "Order received, awaiting confirmation",
+                icon: "doc.plaintext.fill"
+            )
+        case 1:
+            return (
+                headline: loc("user_menu_order_step_confirmed"),
+                subtitle: state.isArabic ? "تم تأكيد طلبك والبدء في التحضير" : "Order confirmed, preparing items",
+                icon: "checkmark.seal.fill"
+            )
+        case 2:
+            return (
+                headline: loc("user_menu_order_step_preparing"),
+                subtitle: state.isArabic ? "جاري تجهيز وتغليف طلبك بعناية" : "Carefully packing your items",
+                icon: "shippingbox.fill"
+            )
+        case 3:
+            return (
+                headline: loc("user_menu_order_step_in_transit"),
+                subtitle: state.isArabic ? "مندوب التوصيل في طريقه إلى موقعك" : "Courier is on the way to you",
+                icon: "box.truck.fill"
+            )
+        case 4:
+            return (
+                headline: loc("user_menu_order_step_delivered"),
+                subtitle: state.isArabic ? "تم التوصيل بنجاح، نتمنى لك تجربة سعيدة" : "Delivered successfully, enjoy!",
+                icon: "house.fill"
+            )
+        default:
+            return (
+                headline: loc("user_menu_order_tracker_title"),
+                subtitle: loc("user_menu_orders_subtitle"),
+                icon: "bag.fill"
+            )
         }
     }
 
@@ -1304,6 +1475,7 @@ struct PPUserMenuPadView: View {
             Text(loc(titleKey))
                 .font(PPUserMenuFont.medium(size: 11, relativeTo: .caption2))
                 .foregroundColor(isDone ? Color.ppTextPrimary : Color.ppTextTertiary)
+                .lineLimit(1)
         }
     }
 
@@ -1315,38 +1487,119 @@ struct PPUserMenuPadView: View {
             .padding(.bottom, 18)
     }
 
-    // iPad Activity Tile (Rich Grid Item)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // MARK: - ACTIVITY & COMMERCE SERVICES DECK
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    private func padActivityDeck(workspaceWidth: CGFloat) -> some View {
+        let isSingleColumn = workspaceWidth < 640
+        let columns: [GridItem] = isSingleColumn
+            ? [GridItem(.flexible(), spacing: 12)]
+            : [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+
+        return VStack(alignment: .leading, spacing: 14) {
+            Text(loc("user_menu_activity_section"))
+                .font(PPUserMenuFont.bold(size: 18, relativeTo: .headline))
+                .foregroundColor(Color.ppTextPrimary)
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                padActivityTile(
+                    icon: "cart.fill",
+                    titleKey: "Cart",
+                    subtitleKey: "user_menu_cart_subtitle",
+                    tint: Color.ppSuccess,
+                    count: state.cartCount
+                ) {
+                    onAction(.cart)
+                }
+
+                padActivityTile(
+                    icon: "bag.fill",
+                    titleKey: "OrderHistory",
+                    subtitleKey: "user_menu_orders_subtitle",
+                    tint: Color.ppPrimary,
+                    count: state.activeOrdersCount
+                ) {
+                    onAction(.orders)
+                }
+
+                padActivityTile(
+                    icon: "star.fill",
+                    titleKey: "showfav",
+                    subtitleKey: "user_menu_favorites_subtitle",
+                    tint: Color.ppWarning,
+                    count: state.favoritesCount
+                ) {
+                    onAction(.favorites)
+                }
+
+                padActivityTile(
+                    icon: "circle.hexagonpath.fill",
+                    titleKey: "myadsTitle",
+                    subtitleKey: "user_menu_ads_subtitle",
+                    tint: Color.purple,
+                    count: state.myAdsCount
+                ) {
+                    onAction(.myAds)
+                }
+
+                padActivityTile(
+                    icon: "bag.badge.plus",
+                    titleKey: "purchased_profile_menu_title",
+                    subtitleKey: "user_menu_purchased_subtitle",
+                    tint: Color.ppInfo
+                ) {
+                    onAction(.purchased)
+                }
+
+                if state.isProductionActive {
+                    padActivityTile(
+                        icon: "doc.on.doc.fill",
+                        titleKey: "showProdection",
+                        subtitleKey: "user_menu_production_subtitle",
+                        tint: Color.orange
+                    ) {
+                        onAction(.production)
+                    }
+                }
+            }
+        }
+    }
+
     private func padActivityTile(icon: String, titleKey: String, subtitleKey: String, tint: Color, count: Int = 0, action: @escaping () -> Void) -> some View {
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         }) {
-            HStack(spacing: 16) {
+            HStack(spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 15, style: .continuous)
                         .fill(tint.opacity(0.12))
-                        .frame(width: 52, height: 52)
+                        .frame(width: 48, height: 48)
                     Image(systemName: icon)
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(tint)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(loc(titleKey))
-                        .font(PPUserMenuFont.bold(size: 17, relativeTo: .headline))
+                        .font(PPUserMenuFont.bold(size: 16.5, relativeTo: .headline))
                         .foregroundColor(Color.ppTextPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
                     Text(loc(subtitleKey))
-                        .font(PPUserMenuFont.regular(size: 13, relativeTo: .footnote))
+                        .font(PPUserMenuFont.regular(size: 12.5, relativeTo: .footnote))
                         .foregroundColor(Color.ppTextSecondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
                 if count > 0 {
                     Text("\(count)")
-                        .font(PPUserMenuFont.bold(size: 13, relativeTo: .caption))
+                        .font(PPUserMenuFont.bold(size: 12.5, relativeTo: .caption))
                         .foregroundColor(.white)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 3.5)
@@ -1354,15 +1607,16 @@ struct PPUserMenuPadView: View {
                 }
 
                 Image(systemName: state.isArabic ? "chevron.left" : "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .foregroundColor(Color.ppTextTertiary)
             }
-            .padding(18)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(Color.ppSurfaceElevated)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .strokeBorder(Color.ppSurfaceBorder, lineWidth: 0.8)
                     )
                     .shadow(color: Color.black.opacity(0.035), radius: 10, x: 0, y: 4)

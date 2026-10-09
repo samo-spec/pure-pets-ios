@@ -583,49 +583,84 @@ fromViewController:(UIViewController *)viewController
        fromViewController:(UIViewController *)viewController
                completion:(void (^)(NSError * _Nullable))completion
 {
+    UserModel *resolvedUser = user;
+    if (resolvedUser.ID.length == 0 && ad.ownerID.length > 0) {
+        resolvedUser = [[UserModel alloc] init];
+        resolvedUser.ID = ad.ownerID;
+        resolvedUser.UserName = ad.ownerName ?: @"";
+    }
+
+    UIViewController *presenter = viewController ?: [GM topViewController];
+
+    void (^presentThreadBlock)(ChatThreadModel *) = ^(ChatThreadModel *thread) {
+        UIViewController *targetPresenter = presenter ?: [GM topViewController];
+        BOOL didRequestPresentation =
+            [PPOverlayCoordinator pp_openChatThread:thread
+                                       petAdContext:ad
+                                             fromVC:targetPresenter];
+        if (!didRequestPresentation) {
+            targetPresenter = [GM topViewController];
+            didRequestPresentation =
+                [PPOverlayCoordinator pp_openChatThread:thread
+                                           petAdContext:ad
+                                                 fromVC:targetPresenter];
+        }
+        if (!didRequestPresentation) {
+            NSError *presentationError =
+                [NSError errorWithDomain:PPPetAdViewerBridgeErrorDomain
+                                    code:1006
+                                userInfo:@{
+                NSLocalizedDescriptionKey:
+                    [Language get:@"pet_ad_viewer_chat_failed"
+                           alter:@"The chat could not be opened."]
+            }];
+            completion(presentationError);
+            return;
+        }
+        completion(nil);
+    };
+
     [ChManager.sharedManager
-     createOrGetChatThreadWithUser:user
+     createOrGetChatThreadWithUser:resolvedUser
      contextType:(ad.adID.length > 0 ? @"pet_ad" : nil)
      contextID:(ad.adID.length > 0 ? ad.adID : nil)
      completion:^(ChatThreadModel * _Nullable thread,
                   NSError * _Nullable error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (error || !thread) {
-                NSString *message = error
-                    ? [PPFirebaseSessionBridge publicMessageForError:error
+        if (thread && !error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                presentThreadBlock(thread);
+            });
+            return;
+        }
+
+        NSLog(@"⚠️ [PetAdViewer] Contextual chat creation failed (%@), falling back to direct user thread", error.localizedDescription);
+        [ChManager.sharedManager
+         createOrGetChatThreadWithUser:resolvedUser
+         completion:^(ChatThreadModel * _Nullable directThread,
+                      NSError * _Nullable directError) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (directThread && !directError) {
+                    presentThreadBlock(directThread);
+                    return;
+                }
+
+                NSError *finalError = directError ?: error;
+                NSString *message = finalError
+                    ? [PPFirebaseSessionBridge publicMessageForError:finalError
                                                         fallbackKey:@"pet_ad_viewer_chat_failed"]
                     : [Language get:@"pet_ad_viewer_chat_failed"
                                alter:@"The chat could not be opened."];
                 NSMutableDictionary *errorInfo = [@{
                     NSLocalizedDescriptionKey: message
                 } mutableCopy];
-                if (error) errorInfo[NSUnderlyingErrorKey] = error;
+                if (finalError) errorInfo[NSUnderlyingErrorKey] = finalError;
                 NSError *resolvedError = [NSError
                         errorWithDomain:PPPetAdViewerBridgeErrorDomain
                                    code:1005
                                userInfo:errorInfo];
                 completion(resolvedError);
-                return;
-            }
-
-            BOOL didRequestPresentation =
-                [PPOverlayCoordinator pp_openChatThread:thread
-                                           petAdContext:ad
-                                                 fromVC:viewController];
-            if (!didRequestPresentation) {
-                NSError *presentationError =
-                    [NSError errorWithDomain:PPPetAdViewerBridgeErrorDomain
-                                        code:1006
-                                    userInfo:@{
-                    NSLocalizedDescriptionKey:
-                        [Language get:@"pet_ad_viewer_chat_failed"
-                               alter:@"The chat could not be opened."]
-                }];
-                completion(presentationError);
-                return;
-            }
-            completion(nil);
-        });
+            });
+        }];
     }];
 }
 

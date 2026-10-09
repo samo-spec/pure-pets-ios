@@ -1570,6 +1570,10 @@ struct PPMarketplaceUniversalCard: View {
                         bridge.changeQuantity(for: record.viewModel, quantity: newQuantity)
                     }
                 )
+            } else if let service = record.viewModel.modelObject as? ServiceModel, !record.viewModel.isOwner {
+                // Keep the iOS 15 fallback; modern service discovery uses the
+                // same service-only renderer as search and UniversalCell hosts.
+                PPMarketplaceServiceCard(record: record, service: service, layout: layout, bridge: bridge)
             } else {
                 PPMarketplaceCompatibilityCard(
                     viewModel: record.viewModel,
@@ -1627,6 +1631,159 @@ struct PPMarketplaceUniversalCard: View {
             return .forMarket
         }
         return record.viewModel.modelContext
+    }
+}
+
+// Service discovery shares the detail's care-note hierarchy while the existing
+// bridge remains the sole owner of routes, authentication and domain actions.
+@available(iOS 15.0, *)
+private struct PPMarketplaceServiceCard: View {
+    let record: PPMarketplaceItemRecord
+    let layout: PPMarketplaceLayout
+    let bridge: PPMarketplaceDataViewBridge
+    private let note: PPServiceViewerSnapshot
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorSchemeContrast) private var contrast
+    @State private var lastOpenedAt: TimeInterval = 0
+
+    init(record: PPMarketplaceItemRecord, service: ServiceModel, layout: PPMarketplaceLayout, bridge: PPMarketplaceDataViewBridge) {
+        self.record = record
+        self.layout = layout
+        self.bridge = bridge
+        note = PPServiceViewerSnapshot(service: service)
+    }
+
+    private var compact: Bool { layout == .compact && !typeSize.isAccessibilitySize }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: open) {
+                if compact {
+                    HStack(alignment: .top, spacing: PPSpace.md) {
+                        artwork
+                        summary
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: PPSpace.md) {
+                        HStack(alignment: .top, spacing: PPSpace.md) {
+                            artwork
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.up.forward")
+                                .font(.system(size: 15, weight: .medium))
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .accessibilityHidden(true)
+                        }
+                        summary
+                    }
+                }
+            }
+            .buttonStyle(PPServiceViewerPressStyle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilitySummary)
+            .accessibilityHint(PPServiceViewerL10n.text("service_note_open_hint"))
+            .accessibilityAction(named: Text(PPMarketplaceText.localized("Details")), open)
+            .accessibilityAction(named: Text(PPMarketplaceText.localized("Share"))) { bridge.share(item: record.viewModel) }
+            .padding(PPSpace.md)
+
+            Divider().padding(.horizontal, PPSpace.md)
+            HStack(alignment: .center, spacing: PPSpace.sm) {
+                if note.ratingValue > 0 && note.reviewCount > 0 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label(PPServiceViewerL10n.number(note.ratingValue, decimals: 1), systemImage: "star.fill")
+                            .font(HomeFont.bold(14)).foregroundStyle(Color.ppAccentText)
+                        Text(PPServiceViewerL10n.format("service_view_reviews_count_format", note.reviewCount))
+                            .font(HomeFont.regular(12)).foregroundStyle(Color.ppTextSecondary)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(PPServiceViewerL10n.format("service_note_rating_format",
+                        PPServiceViewerL10n.number(note.ratingValue, decimals: 1)))
+                    .accessibilityValue(PPServiceViewerL10n.format("service_view_reviews_count_format", note.reviewCount))
+                } else {
+                    Text(PPServiceViewerL10n.text("service_view_no_reviews"))
+                        .font(HomeFont.regular(12)).foregroundStyle(Color.ppTextSecondary)
+                }
+                Spacer(minLength: 4)
+                Menu {
+                    Button { bridge.share(item: record.viewModel) } label: {
+                        Label(PPMarketplaceText.localized("Share"), systemImage: "square.and.arrow.up")
+                    }
+                    Button { bridge.toggleSaveForLater(for: record.viewModel) } label: {
+                        Label(PPMarketplaceText.localized("saved_for_later"), systemImage: "bookmark")
+                    }
+                    if !note.ownerID.isEmpty && note.isLive {
+                        Button { bridge.chat(about: record.viewModel) } label: {
+                            Label(PPServiceViewerL10n.text("service_note_message_provider"), systemImage: "bubble.left.and.bubble.right")
+                        }
+                    }
+                    Button(role: .destructive) { bridge.report(item: record.viewModel) } label: {
+                        Label(PPMarketplaceText.localized("report"), systemImage: "flag")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis").font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Color.ppTextPrimary).frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel(PPServiceViewerL10n.format("service_note_actions_format", note.title))
+            }
+            .padding(.leading, PPSpace.md).padding(.trailing, PPSpace.xs).padding(.vertical, PPSpace.xs)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+                .strokeBorder(contrast == .increased ? Color.ppTextPrimary : Color.ppSeparator.opacity(0.5),
+                              lineWidth: contrast == .increased ? 1.5 : 0.5)
+        }
+    }
+
+    private var summary: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            Text(note.category.isEmpty ? note.serviceTypeText : note.category)
+                .font(HomeFont.bold(13)).foregroundStyle(Color.ppAccentText)
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
+            Text(note.title).font(HomeFont.bold(compact ? 20 : 24))
+                .foregroundStyle(Color.ppTextPrimary)
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 3)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(note.price).font(HomeFont.bold(18)).foregroundStyle(Color.ppTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            Label(PPServiceViewerL10n.text(note.isLive ? "Serv_Available" : "Serv_Unavailable"),
+                  systemImage: note.isLive ? "checkmark.circle" : "clock")
+                .font(HomeFont.medium(13)).foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading).multilineTextAlignment(.leading)
+    }
+
+    private var artwork: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous).fill(Color.ppPrimary.opacity(0.08))
+            if note.hasImage {
+                PPAccessoryRemoteImageView(urlString: note.imageURL, blurHash: note.blurHash,
+                    contentMode: .fill, accessibilityLabel: note.title,
+                    cacheKey: "service.discovery.\(note.serviceID)", displaySize: CGSize(width: 64, height: 64))
+            } else { symbol }
+        }
+        .frame(width: compact ? 64 : 56, height: compact ? 64 : 56)
+        .clipShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var symbol: some View {
+        Image(systemName: note.symbol).font(.system(size: 24, weight: .light)).foregroundStyle(Color.ppAccentText)
+    }
+
+    private var accessibilitySummary: String {
+        [note.category.isEmpty ? note.serviceTypeText : note.category, note.title, note.price,
+         PPServiceViewerL10n.text(note.isLive ? "Serv_Available" : "Serv_Unavailable")].joined(separator: ", ")
+    }
+
+    private func open() {
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastOpenedAt > 0.4 else { return }
+        lastOpenedAt = now
+        bridge.open(item: record.viewModel)
     }
 }
 

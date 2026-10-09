@@ -2968,75 +2968,6 @@ struct HomeCardPressStyle: ButtonStyle {
     }
 }
 
-private struct HomeMainKindHabitatEntrance: ViewModifier {
-    let isPresented: Bool
-    let ordinal: Int
-    let isAllCategory: Bool
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.layoutDirection) private var layoutDirection
-
-    func body(content: Content) -> some View {
-        // Driven by Home's shared initial phase, never cell onAppear. Late
-        // lazy cells therefore stay still during horizontal scrolling.
-        //
-        // The habitat rail settles in from the semantic-leading edge only.
-        // The former 3D yaw/roll and vertical arc were decorative staging on
-        // the most frequently tapped control on Home, so they are removed:
-        // the entrance now states "the habitats are arriving" and nothing more.
-        content
-            .scaleEffect(
-                isStaged ? stagedScale : 1,
-                anchor: semanticAnchor
-            )
-            .offset(x: isStaged ? stagedHorizontalTravel : 0)
-            .animation(entranceAnimation, value: isPresented)
-    }
-
-    private var isStaged: Bool {
-        !isPresented && !reduceMotion
-    }
-
-    private var cappedOrdinal: Int {
-        min(max(ordinal, 0), 4)
-    }
-
-    private var tier: CGFloat {
-        CGFloat(cappedOrdinal)
-    }
-
-    private var semanticSign: CGFloat {
-        layoutDirection == .rightToLeft ? -1 : 1
-    }
-
-    private var semanticAnchor: UnitPoint {
-        UnitPoint(
-            x: layoutDirection == .rightToLeft ? 1 : 0,
-            y: 0.74
-        )
-    }
-
-    private var stagedScale: CGFloat {
-        if isAllCategory { return 0.965 }
-        return max(0.916, 0.946 - (tier * 0.0075))
-    }
-
-    private var stagedHorizontalTravel: CGFloat {
-        let base: CGFloat = isAllCategory ? 7 : 10
-        return semanticSign * (base + (tier * 6))
-    }
-
-    private var entranceAnimation: Animation? {
-        guard !reduceMotion else { return nil }
-        return .spring(
-            response: 0.50,
-            dampingFraction: 0.72,
-            blendDuration: 0.07
-        )
-        .delay(0.02 + (Double(cappedOrdinal) * 0.045))
-    }
-}
-
 // MARK: - Home MainKinds Scope Thread
 
 /// A quiet reading-direction cue. It responds once to a new browsing scope;
@@ -3601,13 +3532,6 @@ struct HomeCategoryRail: View {
             }
         )
         .frame(width: size.width, height: size.height)
-        .modifier(
-            HomeMainKindHabitatEntrance(
-                isPresented: entrancePresented,
-                ordinal: entranceOrdinal,
-                isAllCategory: category == nil
-            )
-        )
         .homeHorizontalCellReveal(
             ordinal: entranceOrdinal,
             entranceAlreadyPlayed: entrancePresented
@@ -6145,129 +6069,88 @@ private struct HomeSkeletonShimmer: View {
     }
 }
 
-// MARK: - HomeHorizontalCellReveal — willDisplayCell equivalent
+// MARK: - Home horizontal cell appearance
 
-/// World-class scroll-in animation for cells inside horizontal rails.
-///
-/// This is the SwiftUI equivalent of `collectionView(_:willDisplay:forItemAt:)`.
-/// It fires on `.onAppear`, which is guaranteed to trigger only when a
-/// `LazyHStack` cell is about to become visible — exactly the right moment.
-///
-/// **Dual-phase intelligence:**
-/// - If `entranceAlreadyPlayed == false` the cell is being born during the
-///   initial section entrance stagger; the existing `ppUniversalHomeShelfEntrance` /
-///   `HomeMainKindHabitatEntrance` systems own those cells. This modifier
-///   immediately marks itself revealed and stays fully transparent.
-/// - If `entranceAlreadyPlayed == true` the cell has lazily entered during
-///   horizontal scrolling. This modifier stages it at the leading edge
-///   (opacity 0, scaled down, offset toward the leading side) and then
-///   springs it into its settled pose with a brief staggered delay.
-///
-/// **Motion design:**
-///   • Scale anchor is semantic-leading so cards "grow" from where they enter
-///   • Horizontal offset follows layout direction (LTR: cell enters from right → right offset; RTL: left offset)
-///   • Slight upward lift (+7 pt) so the card feels like it surfaces
-///   • Spring: response 0.40, damping 0.76 — snappy, alive, never bouncy enough to clash with content
-///   • Stagger cap: ordinal % 3 * 0.032s — fast scroll stays fluid
-///   • Reduce Motion: opacity-only crossfade, no spatial transforms
+/// Home owns initial section movement. A cell snapshots that ownership at
+/// construction, so a later parent update cannot turn it into a second reveal.
+/// High-frequency horizontal browsing uses alpha only, at unchanged bounds.
 private struct HomeHorizontalCellReveal: ViewModifier {
-    let ordinal: Int
-    /// Pass `entrancePresented` from the parent section. When it's `true`,
-    /// the one-shot entrance has completed and this modifier handles reveals.
-    let entranceAlreadyPlayed: Bool
-
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.layoutDirection) private var layoutDirection
-    @State private var revealed = false
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
+    @Environment(\.colorSchemeContrast) private var contrast
+    @State private var revealed: Bool
+    @State private var isStopped = false
+
+    init(entranceAlreadyPlayed: Bool) {
+        _revealed = State(initialValue: !entranceAlreadyPlayed)
+    }
 
     func body(content: Content) -> some View {
         content
-            .opacity(opacityValue)
-            .scaleEffect(scaleValue, anchor: semanticLeadingAnchor)
-            .offset(x: offsetX, y: offsetY)
-            .animation(revealAnimation, value: revealed)
-            .onAppear { handleAppear() }
+            .modifier(HomeCellOpacityPose(
+                progress: revealed ? 1 : 0,
+                isStatic: isStopped || reduceMotion || voiceOverEnabled
+                    || switchControlEnabled || contrast == .increased
+            ))
+            .onAppear(perform: revealIfNeeded)
+            .onChange(of: reduceMotion) { if $0 { settleImmediately() } }
+            .onChange(of: voiceOverEnabled) { if $0 { settleImmediately() } }
+            .onChange(of: switchControlEnabled) { if $0 { settleImmediately() } }
+            .onChange(of: contrast) { if $0 == .increased { settleImmediately() } }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                settleImmediately()
+            }
+            .onDisappear(perform: settleImmediately)
     }
 
-    // MARK: Render values
-
-    private var isStaged: Bool { !revealed && !reduceMotion }
-
-    private var opacityValue: Double {
-        guard entranceAlreadyPlayed else { return 1 }
-        return revealed ? 1 : 0
-    }
-
-    private var scaleValue: CGFloat {
-        guard entranceAlreadyPlayed, isStaged else { return 1 }
-        return 0.95
-    }
-
-    private var offsetX: CGFloat {
-        guard entranceAlreadyPlayed, isStaged else { return 0 }
-        // Cards enter from the leading direction, so they start offset
-        // toward the trailing edge and slide into place.
-        let sign: CGFloat = layoutDirection == .rightToLeft ? -1 : 1
-        return sign * 14
-    }
-
-    private var offsetY: CGFloat {
-        0
-    }
-
-    private var semanticLeadingAnchor: UnitPoint {
-        layoutDirection == .rightToLeft
-            ? UnitPoint(x: 1, y: 0.5)
-            : UnitPoint(x: 0, y: 0.5)
-    }
-
-    private var revealAnimation: Animation {
-        guard entranceAlreadyPlayed else { return .easeOut(duration: 0) }
-        if reduceMotion { return .easeOut(duration: 0.18) }
-        let staggerDelay = Double(ordinal % 3) * 0.032
-        return .spring(
-            response: 0.40,
-            dampingFraction: 0.76,
-            blendDuration: 0.06
-        )
-        .delay(staggerDelay)
-    }
-
-    // MARK: onAppear
-
-    private func handleAppear() {
+    private func revealIfNeeded() {
         guard !revealed else { return }
-        if !entranceAlreadyPlayed {
-            // Initial entrance window — the section entrance modifier owns
-            // this cell. Mark ourselves settled so we stay transparent.
-            revealed = true
+        guard !reduceMotion, !voiceOverEnabled, !switchControlEnabled,
+              contrast != .increased,
+              UIApplication.shared.applicationState == .active else {
+            settleImmediately()
             return
         }
-        // Scroll-in: fire on the next run-loop to guarantee the staged pose
-        // is committed to the render tree before the spring begins.
-        DispatchQueue.main.async {
-            guard !revealed else { return }
+        // The existing ForEach record identity retains this consumed phase
+        // through category, quantity and image updates. No queue or delay.
+        withAnimation(.easeOut(duration: 0.16)) { revealed = true }
+    }
+
+    private func settleImmediately() {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isStopped = true
             revealed = true
         }
     }
 }
 
-private extension View {
-    /// Apply the scroll-in reveal animation to a horizontal rail cell.
-    /// - Parameters:
-    ///   - ordinal: The cell's index inside its `ForEach`. Used for stagger.
-    ///   - entranceAlreadyPlayed: Pass the parent section's `entrancePresented`
-    ///     flag. When `true`, this modifier handles scroll-in reveals.
+private struct HomeCellOpacityPose: AnimatableModifier {
+    var progress: Double
+    let isStatic: Bool
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let amount = isStatic ? 1 : min(max(progress, 0), 1)
+        content.opacity(0.94 + 0.06 * amount)
+    }
+}
+
+extension View {
+    /// Keep caller ordering inputs; scrolling never gets an ordinal delay.
     func homeHorizontalCellReveal(
-        ordinal: Int,
+        ordinal _: Int,
         entranceAlreadyPlayed: Bool
     ) -> some View {
-        modifier(
-            HomeHorizontalCellReveal(
-                ordinal: ordinal,
-                entranceAlreadyPlayed: entranceAlreadyPlayed
-            )
-        )
+        modifier(HomeHorizontalCellReveal(
+            entranceAlreadyPlayed: entranceAlreadyPlayed
+        ))
     }
 }
 

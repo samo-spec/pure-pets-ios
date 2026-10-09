@@ -242,13 +242,26 @@
     }
 
     if (!vc) {
+        vc = [GM topViewController];
+    }
+    if (!vc) {
         NSLog(@"❌ [Chat] Source view controller is nil");
         return NO;
     }
     UIViewController *presenter = [self pp_resolvedPresenterFrom:vc];
     if (![self pp_canPresentFrom:presenter]) {
-        NSLog(@"⚠️ [Chat] Presenter is busy, dropping duplicate open request");
-        return NO;
+        UIViewController *topPresenter = [self pp_resolvedPresenterFrom:[GM topViewController]];
+        if ([self pp_canPresentFrom:topPresenter]) {
+            presenter = topPresenter;
+        } else {
+            NSLog(@"⚠️ [Chat] Presenter is busy, searching top-most presented controller");
+            while (presenter.presentedViewController && !presenter.presentedViewController.isBeingDismissed) {
+                presenter = presenter.presentedViewController;
+            }
+        }
+    }
+    if (!presenter || presenter.isBeingDismissed) {
+        presenter = [GM topViewController];
     }
 
     NSLog(@"📨 [Chat] Thread info | threadID=%@ | messagesCount=%ld",

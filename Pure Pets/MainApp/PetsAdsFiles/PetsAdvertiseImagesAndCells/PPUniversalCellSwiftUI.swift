@@ -692,6 +692,11 @@ public struct PPUniversalCardView: View {
     }
 
     private var minimumHeight: CGFloat {
+        // Service folios size to their content. Other modes keep their existing
+        // media-led sizing, including veterinary cards.
+        if store.context == .services {
+            return store.layout == .focus ? (dynamicTypeSize.isAccessibilitySize ? 780 : 500) : 0
+        }
         if store.layout == .focus {
             return dynamicTypeSize.isAccessibilitySize ? 780 : 500
         }
@@ -1640,8 +1645,12 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     func performContextAction(
-        _ kind: PPUniversalCardContextActionKind
+        _ kind: PPUniversalCardContextActionKind,
+        expectedServiceID: String? = nil
     ) {
+        if let expectedServiceID {
+            guard context == .services, model.id == expectedServiceID, !model.isSkeleton else { return }
+        }
         PPUniversalHaptics.light()
         switch kind {
         case .viewDetails:
@@ -1666,6 +1675,9 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     private func pp_performTapHaloBurst() {
+        // Services acknowledge the press at the action surface, without an
+        // additional image burst competing with the service's name.
+        guard context != .services else { return }
         guard !UIAccessibility.isReduceMotionEnabled,
               let container = uiReferences.imageContainer,
               let haloLayer = uiReferences.tapHaloLayer else {
@@ -2162,6 +2174,718 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 }
 
+// MARK: - Services · Care Folio
+
+/// A display projection only. The universal store and its delegate retain all
+/// navigation, authentication, ownership and persistence responsibilities.
+@available(iOS 16.0, *)
+private struct PPUniversalServiceNote {
+    let id: String
+    let title: String
+    let category: String
+    let description: String
+    let price: String
+    let availability: String
+    let availabilitySymbol: String
+    let isAvailable: Bool
+    let symbol: String
+    let rating: String?
+    let reviews: String
+    let reviewAccessibility: String
+    let ownerID: String
+
+    init(model: PPUniversalCardModel, service: ServiceModel?, isRightToLeft: Bool) {
+        id = model.id
+        let locale = Locale(identifier: isRightToLeft ? "ar_QA" : "en_QA")
+        let cleanTitle = Self.clean(model.title)
+        title = cleanTitle.isEmpty ? Self.text("service_view_default_title") : cleanTitle
+        let rawCategory = Self.clean(service?.category)
+        category = rawCategory.isEmpty
+            ? Self.clean(service?.localizedTypeName() ?? Self.text("services"))
+            : rawCategory
+        description = Self.clean(service?.desc ?? model.subtitle)
+        symbol = service?.type == .grooming ? "scissors" : "pawprint"
+        ownerID = Self.clean(service?.serviceOwnerID)
+
+        let priceNumber: NSNumber? = service.map { NSNumber(value: $0.price) }
+            ?? model.price.map { NSDecimalNumber(decimal: $0) }
+        let currencyCode = Self.currencyCode(service?.currency ?? model.currencyCode)
+        if let priceNumber, priceNumber.doubleValue.isFinite, priceNumber.doubleValue >= 0,
+           let currencyCode {
+            let formatter = NumberFormatter()
+            formatter.locale = locale
+            formatter.numberStyle = .currency
+            formatter.currencyCode = currencyCode
+            formatter.minimumFractionDigits = 2
+            formatter.maximumFractionDigits = 2
+            price = formatter.string(from: priceNumber) ?? Self.text("service_cell_price_unavailable")
+        } else {
+            let legacyPrice = Self.clean(model.priceText)
+            price = priceNumber == nil && !legacyPrice.isEmpty
+                ? legacyPrice : Self.text("service_cell_price_unavailable")
+        }
+
+        isAvailable = service?.isLive() ?? (model.availability?.tone == .available)
+        availability = service != nil
+            ? Self.text(isAvailable ? "Serv_Available" : "Serv_Unavailable")
+            : Self.clean(model.availability?.text)
+        if service != nil {
+            availabilitySymbol = isAvailable ? "checkmark.circle" : "pause.circle"
+        } else {
+            switch model.availability?.tone {
+            case .available: availabilitySymbol = "checkmark.circle"
+            case .limited: availabilitySymbol = "clock"
+            case .unavailable: availabilitySymbol = "pause.circle"
+            default: availabilitySymbol = "info.circle"
+            }
+        }
+
+        let value = service?.ratingValue?.doubleValue ?? 0
+        let count = max(0, service?.reviewCount ?? 0)
+        if value.isFinite, (1...5).contains(value), count > 0 {
+            let formatter = NumberFormatter()
+            formatter.locale = locale
+            formatter.numberStyle = .decimal
+            formatter.minimumFractionDigits = 1
+            formatter.maximumFractionDigits = 1
+            let valueText = formatter.string(from: NSNumber(value: value)) ?? ""
+            formatter.minimumFractionDigits = 0
+            formatter.maximumFractionDigits = 0
+            let countText = formatter.string(from: NSNumber(value: count)) ?? ""
+            rating = valueText
+            reviews = count == 1 ? Self.text("service_cell_one_review")
+                : String(format: Self.text("service_cell_review_count"), locale: locale, countText)
+            reviewAccessibility = [
+                String(format: Self.text("service_note_rating_format"), locale: locale, valueText),
+                reviews
+            ].joined(separator: ", ")
+        } else if service == nil {
+            // The public card API can provide a rating without a review count.
+            // Preserve that number without inventing an aggregate or claiming
+            // that missing metadata means there are no reviews.
+            let formatter = NumberFormatter()
+            formatter.locale = locale
+            formatter.numberStyle = .decimal
+            let metadata = Self.clean(model.availability?.metaText)
+            let metadataValue = Double(metadata) ?? formatter.number(from: metadata)?.doubleValue
+            if model.availability?.metaSystemImage?.hasPrefix("star") == true,
+               let metadataValue, metadataValue.isFinite, (1...5).contains(metadataValue) {
+                formatter.minimumFractionDigits = 1
+                formatter.maximumFractionDigits = 1
+                rating = formatter.string(from: NSNumber(value: metadataValue))
+            } else {
+                rating = nil
+            }
+            let details = Self.text("service_cell_review_details")
+            reviews = details
+            if let rating {
+                reviewAccessibility = String(format: Self.text("service_note_rating_format"), locale: locale, rating)
+                    + ", " + details
+            } else {
+                reviewAccessibility = details
+            }
+        } else if count > 0 {
+            let formatter = NumberFormatter()
+            formatter.locale = locale
+            formatter.numberStyle = .decimal
+            formatter.maximumFractionDigits = 0
+            let countText = formatter.string(from: NSNumber(value: count)) ?? ""
+            rating = nil
+            reviews = count == 1 ? Self.text("service_cell_one_review")
+                : String(format: Self.text("service_cell_review_count"), locale: locale, countText)
+            reviewAccessibility = reviews
+        } else {
+            rating = nil
+            reviews = Self.text("service_view_no_reviews")
+            reviewAccessibility = reviews
+        }
+    }
+
+    static func text(_ key: String) -> String {
+        Language.get(key, alter: "") ?? ""
+    }
+
+    static func clean(_ value: String?) -> String {
+        (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func currencyCode(_ value: String) -> String? {
+        let raw = clean(value).uppercased()
+        if raw.isEmpty { return "QAR" }
+        if raw.utf8.count == 3 && raw.utf8.allSatisfy({ (65...90).contains($0) }) { return raw }
+        // Preserve the legacy aliases already supported by UniversalCell.
+        if raw.contains("QAR") || raw.contains("RIAL") || raw.contains("ر.ق") || raw.contains("ريال") { return "QAR" }
+        if raw.contains("EGP") || raw.contains("POUND") || raw.contains("ج.م") || raw.contains("جنيه") { return "EGP" }
+        if raw.contains("SAR") || raw.contains("ر.س") { return "SAR" }
+        if raw.contains("AED") || raw.contains("د.إ") { return "AED" }
+        // An unrecognized unit must never silently become a Qatari price.
+        return nil
+    }
+}
+
+@available(iOS 16.0, *)
+private struct PPUniversalServiceCard: View {
+    @ObservedObject var store: PPUniversalCardStore
+    let ownerName: String?
+    let ownerAvatarURL: String?
+    let ownerRating: Double
+    var isMeasuring = false
+
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorSchemeContrast) private var contrast
+    private var expanded: Bool { store.layout == .focus }
+    private var showsDescription: Bool { expanded || store.layout == .fullWidth }
+    private var compact: Bool { store.layout == .horizontalRow }
+    private var service: ServiceModel? { store.viewModel?.modelObject as? ServiceModel }
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 24, style: .continuous) }
+    private var showsFavorite: Bool {
+        !store.model.isOwner && (store.showsFavorite || (store.viewModel == nil && store.actions.onFavorite != nil))
+    }
+
+    var body: some View {
+        let note = PPUniversalServiceNote(model: store.model, service: service, isRightToLeft: store.isRightToLeft)
+        Group {
+            if store.model.isSkeleton {
+                loadingFolio
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    if store.showsOwnerRow, let ownerName {
+                        providerPreview(name: ownerName, note: note)
+                    }
+                    if expanded {
+                        // Focus carousels have a bounded height. Long copy and
+                        // AX sizes scroll while quick actions remain reachable.
+                        ScrollView(.vertical) {
+                            openSurface(note)
+                        }
+                    } else {
+                        ViewThatFits(in: .vertical) {
+                            openSurface(note).fixedSize(horizontal: false, vertical: true)
+                            if !typeSize.isAccessibilitySize {
+                                openSurface(note, condensed: true).fixedSize(horizontal: false, vertical: true)
+                            }
+                            // Legacy UIKit rows may still supply a small fixed
+                            // height. Preserve readable text and the 44pt action
+                            // edge rather than clipping the service's content.
+                            ScrollView(.vertical) { openSurface(note) }
+                        }
+                        .layoutPriority(1)
+                        Spacer(minLength: 0)
+                    }
+                    Divider().overlay(Color.ppSeparator).padding(.horizontal, 16)
+                    reviewAndActions(note)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(store.isHighlighted ? Color.ppSurfaceElevated : Color.ppSurfaceRaised, in: shape)
+                .overlay {
+                    shape.strokeBorder(
+                        contrast == .increased ? Color.ppTextPrimary
+                            : (store.isSelected || store.isContextFocused ? Color.ppBrandPrimary : Color.ppSeparator),
+                        lineWidth: contrast == .increased || store.isSelected ? 1.5 : 0.5
+                    )
+                }
+                .accessibilityElement(children: .contain)
+            }
+        }
+        .modifier(PPUniversalServiceEntrance(isReady: !store.model.isSkeleton, isMeasuring: isMeasuring))
+        .environment(\.locale, Locale(identifier: store.isRightToLeft ? "ar_QA" : "en_QA"))
+        .multilineTextAlignment(.leading)
+        .accessibilityIdentifier("pp.universal.service.\(store.model.id)")
+        .sheet(isPresented: $store.isVideoPlaying, onDismiss: { store.stopMediaPlayback() }) {
+            VStack(spacing: 0) {
+                HStack {
+                    Spacer()
+                    Button(PPUniversalServiceNote.text("Close")) { store.stopMediaPlayback() }
+                        .font(HomeFont.bold(16)).frame(minWidth: 44, minHeight: 44)
+                }
+                .padding(.horizontal, 16)
+                if let player = store.player { VideoPlayer(player: player) }
+            }
+        }
+        .onDisappear { store.stopMediaPlayback() }
+    }
+
+    private func openSurface(_ note: PPUniversalServiceNote, condensed: Bool = false) -> some View {
+        Button {
+            perform(note) {
+                PPUniversalHaptics.light()
+                store.tapCard()
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: condensed ? 8 : 16) {
+                identity(note, condensed: condensed)
+                if showsDescription, !condensed, !note.description.isEmpty, note.description != note.title {
+                    Text(note.description)
+                        .font(HomeFont.regular(16))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                terms(note)
+                if let reason = store.model.reasonText, !reason.isEmpty {
+                    Label(reason, systemImage: store.model.isOwner && !store.model.isPubliclyVisible ? "eye.slash" : "info.circle")
+                        .font(HomeFont.medium(13))
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let badge = store.model.badgeText, !badge.isEmpty, badge != note.category {
+                    Text(badge)
+                        .font(HomeFont.medium(13))
+                        .foregroundStyle(Color.ppAccentText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if !condensed {
+                    HStack(spacing: 8) {
+                        Text(PPUniversalServiceNote.text("service_cell_explore"))
+                            .font(HomeFont.bold(14))
+                        Image(systemName: "arrow.forward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .accessibilityHidden(true)
+                    }
+                    .foregroundStyle(Color.ppAccentText)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .padding(condensed ? 12 : 16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PPUniversalServicePressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel([note.category, note.title, showsDescription ? note.description : "", note.price, note.availability,
+                             store.model.reasonText ?? "", store.model.badgeText == note.category ? "" : (store.model.badgeText ?? "")]
+            .filter { !$0.isEmpty }.joined(separator: ", "))
+        .accessibilityHint(PPUniversalServiceNote.text("service_note_open_hint"))
+        .accessibilityIdentifier("pp.universal.service.open.\(store.model.id)")
+    }
+
+    @ViewBuilder
+    private func identity(_ note: PPUniversalServiceNote, condensed: Bool = false) -> some View {
+        if condensed {
+            HStack(alignment: .top, spacing: 10) {
+                if hasArtwork { artwork(note, size: 44) }
+                VStack(alignment: .leading, spacing: 4) {
+                    category(note)
+                    title(note, condensed: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                category(note)
+                title(note)
+                if hasArtwork { artwork(note, size: 72) }
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        category(note)
+                        title(note)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if hasArtwork { artwork(note, size: expanded ? 100 : 72) }
+                }
+                .frame(minWidth: 260)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 8) {
+                        category(note).frame(maxWidth: .infinity, alignment: .leading)
+                        if hasArtwork { artwork(note, size: 44) }
+                    }
+                    title(note)
+                }
+            }
+        }
+    }
+
+    private func category(_ note: PPUniversalServiceNote) -> some View {
+        Label {
+            Text(note.category).font(HomeFont.bold(13))
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: note.symbol).font(.system(size: 13, weight: .medium))
+                .accessibilityHidden(true)
+        }
+        .foregroundStyle(Color.ppAccentText)
+    }
+
+    private func title(_ note: PPUniversalServiceNote, condensed: Bool = false) -> some View {
+        Text(note.title)
+            .font(HomeFont.bold(expanded ? 28 : (compact || condensed ? 22 : 24)))
+            .foregroundStyle(Color.ppTextPrimary)
+            .lineLimit(typeSize.isAccessibilitySize || expanded ? nil : (condensed ? 2 : 3))
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func terms(_ note: PPUniversalServiceNote) -> some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                price(note)
+                availability(note)
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline, spacing: 16) {
+                    price(note).fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 0)
+                    availability(note).fixedSize(horizontal: true, vertical: false)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    price(note)
+                    availability(note)
+                }
+            }
+        }
+    }
+
+    private func price(_ note: PPUniversalServiceNote) -> some View {
+        Text(note.price)
+            .font(HomeFont.bold(22)).foregroundStyle(Color.ppTextPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private func availability(_ note: PPUniversalServiceNote) -> some View {
+        if !note.availability.isEmpty {
+            Label(note.availability, systemImage: note.availabilitySymbol)
+                .font(HomeFont.medium(13))
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var hasArtwork: Bool {
+        store.viewModel?.image != nil || validImageURL != nil
+    }
+
+    private var validImageURL: URL? {
+        guard let url = store.model.imageURL,
+              ["https", "http"].contains(url.scheme?.lowercased() ?? ""),
+              !(url.host ?? "").isEmpty, url.user == nil, url.password == nil else { return nil }
+        return url
+    }
+
+    private func artwork(_ note: PPUniversalServiceNote, size: CGFloat) -> some View {
+        Group {
+            if isMeasuring {
+                Color.ppSurfaceElevated
+            } else if let image = store.viewModel?.image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else {
+                PPUniversalImageRepresentable(
+                    references: store.uiReferences,
+                    signature: store.imageSignature,
+                    imageURL: validImageURL?.absoluteString,
+                    cacheKey: store.model.id,
+                    placeholder: store.imagePlaceholder,
+                    placeholderSystemImage: note.symbol,
+                    topCornerRadius: 16, bottomCornerRadius: 16,
+                    isHomePresentation: store.isHomePresentation,
+                    normalizesProductImage: false,
+                    contained: false, fillsEmptyAreaWithImageBackground: false,
+                    focusesPetFace: false,
+                    imageLoader: store.imageLoader
+                )
+            }
+        }
+        .frame(width: size, height: size)
+        .background(Color.ppSurfaceElevated)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func reviewAndActions(_ note: PPUniversalServiceNote) -> some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                reviewSummary(note)
+                actionControls(note).frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(16)
+        } else {
+            HStack(alignment: .center, spacing: 8) {
+                reviewSummary(note).frame(maxWidth: .infinity, alignment: .leading)
+                actionControls(note)
+            }
+            .padding(.leading, 16).padding(.trailing, 8).padding(.vertical, 4)
+        }
+    }
+
+    private func reviewSummary(_ note: PPUniversalServiceNote) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let rating = note.rating {
+                Label(rating, systemImage: "star.fill")
+                    .font(HomeFont.bold(14)).foregroundStyle(Color.ppAccentText)
+            }
+            Text(note.reviews).font(HomeFont.regular(12))
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(note.reviewAccessibility)
+    }
+
+    private func actionControls(_ note: PPUniversalServiceNote) -> some View {
+        HStack(spacing: 4) {
+            if showsFavorite { favoriteControl(note) }
+            Menu {
+                Button { perform(note) { store.tapCard() } } label: {
+                    Label(PPUniversalServiceNote.text("Details"), systemImage: "arrow.up.right.square")
+                }
+                ForEach(store.contextActions().filter {
+                    $0.kind != .viewDetails && $0.kind != .favorite &&
+                        ($0.kind != .visibility || !store.showsOwnerMenu)
+                }) { action in
+                    Button(role: action.attributes.contains(.destructive) ? .destructive : nil) {
+                        store.performContextAction(action.kind, expectedServiceID: note.id)
+                    } label: {
+                        Label(action.title, systemImage: action.systemImage)
+                    }
+                }
+                if store.viewModel == nil, store.actions.onShare != nil {
+                    Button { perform(note) { store.tapShare() } } label: {
+                        Label(PPUniversalServiceNote.text("Share"), systemImage: "square.and.arrow.up")
+                    }
+                }
+                if store.showsOwnerMenu {
+                    Button { perform(note) { store.tapEdit() } } label: {
+                        Label(PPUniversalServiceNote.text("Edit"), systemImage: "square.and.pencil")
+                    }
+                    Button { perform(note) { store.tapVisibility() } } label: {
+                        Label(PPUniversalServiceNote.text(store.model.isPubliclyVisible
+                            ? "listing_hide_action" : "listing_show_action"),
+                              systemImage: store.model.isPubliclyVisible ? "eye.slash" : "eye")
+                    }
+                    .disabled(store.delegate?.responds(to:
+                        #selector(PPUniversalCellDelegate.ppUniversalCell_tapVisibilityToggle(_:))) != true)
+                    Button(role: .destructive) { perform(note) { store.tapDelete() } } label: {
+                        Label(PPUniversalServiceNote.text("Delete"), systemImage: "trash")
+                    }
+                }
+                if !store.model.isOwner, !note.ownerID.isEmpty, note.isAvailable,
+                   store.delegate?.responds(to: #selector(PPUniversalCellDelegate.ppUniversalCell_tapChat(_:))) == true {
+                    Button { perform(note) { messageProvider() } } label: {
+                        Label(PPUniversalServiceNote.text("service_note_message_provider"),
+                              systemImage: "bubble.left.and.bubble.right")
+                    }
+                }
+                if store.model.videoURL != nil {
+                    Button { perform(note) { store.tapVideo() } } label: {
+                        Label(PPUniversalServiceNote.text("service_cell_watch_video"), systemImage: "play.circle")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.ppSurfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel(String(format: PPUniversalServiceNote.text("service_note_actions_format"), note.title))
+            .accessibilityIdentifier("pp.universal.service.actions.\(store.model.id)")
+        }
+    }
+
+    @ViewBuilder
+    private func favoriteControl(_ note: PPUniversalServiceNote) -> some View {
+        if isMeasuring {
+            Color.clear.frame(width: 44, height: 44)
+        } else if store.viewModel != nil {
+            PPUniversalFavoriteRepresentable(
+                itemID: store.model.id,
+                collection: store.favoriteCollection,
+                isRightToLeft: store.isRightToLeft,
+                accentColor: .ppBrandPrimary,
+                hidesBackground: true
+            )
+            .frame(width: 44, height: 44)
+        } else {
+            Button {
+                perform(note) {
+                    PPUniversalHaptics.light()
+                    store.tapFavorite()
+                }
+            } label: {
+                Image(systemName: store.model.isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(store.model.isFavorite ? Color.ppBrandPrimary : Color.ppTextSecondary)
+                    .frame(width: 44, height: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(PPUniversalServicePressStyle())
+            .accessibilityLabel(PPUniversalServiceNote.text(store.model.isFavorite
+                ? "service_cell_remove_favorite" : "service_cell_add_favorite"))
+            .accessibilityValue(PPUniversalServiceNote.text(store.model.isFavorite
+                ? "service_cell_favorite_saved" : "service_cell_favorite_unsaved"))
+        }
+    }
+
+    private func providerPreview(name: String, note: PPUniversalServiceNote) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            if let avatar = ownerAvatarURL, let url = URL(string: avatar) {
+                AppRemoteImage(url: url, cacheKey: note.ownerID,
+                               displaySize: CGSize(width: 32, height: 32), contentMode: .fill)
+                    .frame(width: 32, height: 32).clipShape(Circle()).accessibilityHidden(true)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).font(HomeFont.bold(14)).foregroundStyle(Color.ppTextPrimary)
+                if ownerRating.isFinite, (1...5).contains(ownerRating) {
+                    Text(ownerRating, format: .number.precision(.fractionLength(1)))
+                        .font(HomeFont.regular(12)).foregroundStyle(Color.ppTextSecondary)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            if !store.model.isOwner,
+               store.delegate?.responds(to: #selector(PPUniversalCellDelegate.ppUniversalCell_tapChat(_:))) == true {
+                Button { perform(note) { messageProvider() } } label: {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                        .font(.system(size: 16, weight: .medium))
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(PPUniversalServicePressStyle())
+                .foregroundStyle(Color.ppAccentText)
+                .accessibilityLabel(PPUniversalServiceNote.text("service_note_message_provider"))
+            }
+        }
+        .padding(.leading, 16).padding(.trailing, 8).padding(.top, 8)
+    }
+
+    private func messageProvider() {
+        guard let viewModel = store.viewModel else { return }
+        PPUniversalHaptics.light()
+        store.delegate?.ppUniversalCell_tapChat?(viewModel)
+    }
+
+    private func perform(_ note: PPUniversalServiceNote, action: () -> Void) {
+        // A menu can outlive the record in a reused cell. Keep every service
+        // intent attached to the service that was actually presented.
+        guard store.context == .services, store.model.id == note.id, !store.model.isSkeleton else { return }
+        action()
+    }
+
+    private var loadingFolio: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Capsule().fill(Color.ppSurfaceElevated).frame(width: 80, height: 12)
+            VStack(alignment: .leading, spacing: 8) {
+                Capsule().fill(Color.ppSurfaceElevated).frame(height: 20)
+                Capsule().fill(Color.ppSurfaceElevated).frame(height: 20).padding(.trailing, 32)
+            }
+            Capsule().fill(Color.ppSurfaceElevated).frame(width: 96, height: 20)
+            Capsule().fill(Color.ppSurfaceElevated).frame(width: 80, height: 12)
+            Divider()
+            HStack {
+                Capsule().fill(Color.ppSurfaceElevated).frame(width: 80, height: 12)
+                Spacer(minLength: 0)
+                RoundedRectangle(cornerRadius: 14).fill(Color.ppSurfaceElevated).frame(width: 44, height: 44)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.ppSurfaceRaised, in: shape)
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+    }
+}
+
+@available(iOS 16.0, *)
+private struct PPUniversalServiceEntrance: ViewModifier {
+    let isReady: Bool
+    let isMeasuring: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.ppUniversalHomeShelfEntrance) private var homeEntrance
+    @State private var hasEntered = false
+    @State private var isStopped = false
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isMeasuring {
+            // UIKit sizing remains deterministic, with no entrance lifecycle.
+            content
+        } else {
+            content
+                .modifier(PPUniversalServiceEntrancePose(
+                    progress: hasEntered ? 1 : 0,
+                    isStatic: isStopped || !isReady || reduceMotion
+                        || homeEntrance.isEnabled || UIAccessibility.isVoiceOverRunning
+                ))
+                .onAppear { enterIfNeeded() }
+                .onChange(of: isReady) { ready in
+                    if ready { enterIfNeeded() }
+                    else if hasEntered { settleImmediately() }
+                }
+                .onChange(of: reduceMotion) { if $0 { settleImmediately() } }
+                .onChange(of: homeEntrance.isEnabled) { if $0 { settleImmediately() } }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
+                    settleImmediately()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIAccessibility.voiceOverStatusDidChangeNotification)
+                    .receive(on: RunLoop.main)) { _ in
+                    if UIAccessibility.isVoiceOverRunning { settleImmediately() }
+                }
+                .onDisappear { settleImmediately() }
+        }
+    }
+
+    private func enterIfNeeded() {
+        guard isReady, !hasEntered else { return }
+        guard !reduceMotion, !homeEntrance.isEnabled,
+              !UIAccessibility.isVoiceOverRunning,
+              UIApplication.shared.applicationState == .active else {
+            settleImmediately()
+            return
+        }
+        // Only this presentation value animates. Model updates and button
+        // feedback retain their existing owners and never restart entrance.
+        withAnimation(.easeOut(duration: 0.20)) { hasEntered = true }
+    }
+
+    private func settleImmediately() {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            isStopped = true
+            hasEntered = true
+        }
+    }
+}
+
+@available(iOS 16.0, *)
+private struct PPUniversalServiceEntrancePose: AnimatableModifier {
+    var progress: Double
+    let isStatic: Bool
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        // The non-animated gate bypasses an in-flight interpolation on live
+        // accessibility or lifecycle changes, even if its target is already 1.
+        let amount = isStatic ? 1 : min(max(progress, 0), 1)
+        content
+            .opacity(0.90 + 0.10 * amount)
+            .offset(y: CGFloat(8 * (1 - amount)))
+    }
+}
+
+@available(iOS 16.0, *)
+private struct PPUniversalServicePressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.988 : 1, anchor: .center)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
 // MARK: - Card Renderer
 
 @available(iOS 16.0, *)
@@ -2210,7 +2934,15 @@ private struct PPUniversalCardRenderer: View {
 
     var body: some View {
         Group {
-            if store.model.isSkeleton {
+            if store.context == .services {
+                PPUniversalServiceCard(
+                    store: store,
+                    ownerName: ownerName,
+                    ownerAvatarURL: ownerAvatarURL,
+                    ownerRating: ownerRating
+                )
+                .id(store.model.id)
+            } else if store.model.isSkeleton {
                 PPUniversalSkeletonCard(
                     horizontal: store.layout.isHorizontal,
                     catalog: store.context.isCatalogCommerce,
@@ -4090,8 +4822,13 @@ private struct PPUniversalCardRenderer: View {
     private func fetchOwnerIfNeeded() {
         guard !hasFetchedOwner, let uid = ownerID, let vm = store.viewModel else { return }
         hasFetchedOwner = true
+        let wasServiceRequest = store.context == .services
         PPUniversalCellSwiftUIBridge.fetchOwnerProfile(forUID: uid, viewModel: vm) { name, avatarURL, rating in
             DispatchQueue.main.async {
+                if wasServiceRequest || store.context == .services {
+                    guard store.context == .services,
+                          ownerID == uid else { return }
+                }
                 self.ownerName = name
                 self.ownerAvatarURL = avatarURL
                 self.ownerRating = rating
@@ -4998,6 +5735,7 @@ private struct PPUniversalFavoriteRepresentable: UIViewRepresentable {
     let collection: String
     let isRightToLeft: Bool
     let accentColor: Color
+    var hidesBackground = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -5005,7 +5743,7 @@ private struct PPUniversalFavoriteRepresentable: UIViewRepresentable {
 
     func makeUIView(context: Context) -> FavoriteFloatingButton {
         let button = FavoriteFloatingButton(type: .custom)
-        button.hidesBackground = false
+        button.hidesBackground = hidesBackground
         return button
     }
 
@@ -5346,6 +6084,8 @@ private struct PPUniversalCardDirectActionSurface: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         let actions = store.contextActions()
+        let presentedContext = store.context
+        let presentedID = store.model.id
         if actions.isEmpty {
             content
         } else {
@@ -5357,6 +6097,9 @@ private struct PPUniversalCardDirectActionSurface: ViewModifier {
                                 ? .destructive
                                 : nil
                         ) {
+                            if presentedContext == .services || store.context == .services {
+                                guard store.context == presentedContext, store.model.id == presentedID else { return }
+                            }
                             store.performContextAction(action.kind)
                         } label: {
                             Label(action.title, systemImage: action.systemImage)
@@ -5366,6 +6109,9 @@ private struct PPUniversalCardDirectActionSurface: ViewModifier {
                 .accessibilityActions {
                     ForEach(actions) { action in
                         Button(action.title) {
+                            if presentedContext == .services || store.context == .services {
+                                guard store.context == presentedContext, store.model.id == presentedID else { return }
+                            }
                             store.performContextAction(action.kind)
                         }
                     }
@@ -5380,6 +6126,82 @@ private struct PPUniversalCardDirectActionSurface: ViewModifier {
 @objc(PPUniversalCardHostingCell)
 public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMenuInteractionDelegate {
     @objc public static let bridgeReuseIdentifier = "PPUniversalCell"
+
+    private static let serviceSizingCache: NSCache<NSString, NSNumber> = {
+        let cache = NSCache<NSString, NSNumber>()
+        cache.countLimit = 160
+        return cache
+    }()
+
+    /// Measures the actual service composition without starting image or
+    /// favorite reads. Fixed-height UIKit grids can adopt this only for services.
+    @objc(serviceFittingHeightForViewModel:width:contentSizeCategory:)
+    public static func serviceFittingHeight(
+        for viewModel: PPUniversalCellViewModel,
+        width: CGFloat,
+        contentSizeCategory: String
+    ) -> CGFloat {
+        guard viewModel.modelContext == .forServices, width.isFinite, width > 32 else { return 320 }
+        let snapshot = PPUniversalLegacyCardSnapshot(
+            viewModel: viewModel, delegate: nil, context: .forServices,
+            layoutMode: .cellLayoutModePinterest, discountMode: .plain,
+            hideTopBadge: false, showsSubtitle: false, dataViewPresentation: false
+        )
+        let note = PPUniversalServiceNote(
+            model: snapshot.model,
+            service: viewModel.modelObject as? ServiceModel,
+            isRightToLeft: PPUniversalCellSwiftUIBridge.isRightToLeft()
+        )
+        // Length prefixes keep provider text from colliding with key separators.
+        let keyParts = [
+            snapshot.model.id, String(describing: width), contentSizeCategory,
+            note.title, note.category, note.symbol, note.description, note.price, note.availability, note.rating ?? "", note.reviews,
+            snapshot.model.reasonText ?? "", snapshot.model.badgeText ?? "",
+            snapshot.model.imageURL?.absoluteString ?? "", String(viewModel.image != nil),
+            String(snapshot.model.isOwner), String(snapshot.model.isSkeleton), String(snapshot.showsFavorite),
+            String(PPUniversalCellSwiftUIBridge.isRightToLeft())
+        ]
+        let key = keyParts.map { "\($0.utf8.count):\($0)" }.joined() as NSString
+        if let cached = serviceSizingCache.object(forKey: key) { return CGFloat(cached.doubleValue) }
+
+        let measurementStore = PPUniversalCardStore(
+            model: snapshot.model, context: .services, layout: .market,
+            discountStyle: .inline, palette: .purePets, actions: .init()
+        )
+        measurementStore.viewModel = viewModel
+        measurementStore.showsFavorite = snapshot.showsFavorite
+        let root = PPUniversalServiceCard(
+            store: measurementStore, ownerName: nil, ownerAvatarURL: nil, ownerRating: 0,
+            isMeasuring: true
+        )
+        .environment(\.dynamicTypeSize, serviceDynamicTypeSize(contentSizeCategory))
+        .environment(\.layoutDirection, measurementStore.isRightToLeft ? .rightToLeft : .leftToRight)
+        .padding(.horizontal, 3).padding(.vertical, 2)
+        .fixedSize(horizontal: false, vertical: true)
+        .transaction { $0.disablesAnimations = true }
+        let controller = UIHostingController(rootView: root)
+        let fitting = controller.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude))
+        let height = fitting.height.isFinite && fitting.height > 0 ? ceil(fitting.height) + 2 : 320
+        serviceSizingCache.setObject(NSNumber(value: Double(height)), forKey: key)
+        return height
+    }
+
+    private static func serviceDynamicTypeSize(_ rawValue: String) -> DynamicTypeSize {
+        switch UIContentSizeCategory(rawValue: rawValue) {
+        case .extraSmall: return .xSmall
+        case .small: return .small
+        case .medium: return .medium
+        case .extraLarge: return .xLarge
+        case .extraExtraLarge: return .xxLarge
+        case .extraExtraExtraLarge: return .xxxLarge
+        case .accessibilityMedium: return .accessibility1
+        case .accessibilityLarge: return .accessibility2
+        case .accessibilityExtraLarge: return .accessibility3
+        case .accessibilityExtraExtraLarge: return .accessibility4
+        case .accessibilityExtraExtraExtraLarge: return .accessibility5
+        default: return .large
+        }
+    }
 
     private let store: PPUniversalCardStore
     private var bridgeViewModel: PPUniversalCellViewModel?
@@ -5679,6 +6501,8 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         configurationForMenuAtLocation location: CGPoint
     ) -> UIContextMenuConfiguration? {
         let actions = store.contextActions()
+        let presentedContext = store.context
+        let presentedID = store.model.id
         guard !actions.isEmpty else {
             return nil
         }
@@ -5699,7 +6523,11 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
                     image: UIImage(systemName: item.systemImage),
                     attributes: item.attributes
                 ) { [weak self] _ in
-                    self?.store.performContextAction(item.kind)
+                    guard let self else { return }
+                    if presentedContext == .services || store.context == .services {
+                        guard store.context == presentedContext, store.model.id == presentedID else { return }
+                    }
+                    store.performContextAction(item.kind)
                 }
                 if #available(iOS 16.0, *) {
                     if let customFont = UIFont(name: "Beiruti-Medium", size: 16.0) {
