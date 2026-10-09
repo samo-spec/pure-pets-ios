@@ -283,7 +283,6 @@ struct HomeView: View {
             )
         }
         .onChange(of: scenePhase) { phase in
-            if phase != .active { settleLoadedEntrance() }
             DispatchQueue.main.async {
                 store.setSceneActive(phase == .active)
             }
@@ -1206,7 +1205,7 @@ struct HomeView: View {
         guard !reduceMotion, !voiceOverEnabled, !switchControlEnabled,
               contrast != .increased,
               UIApplication.shared.applicationState == .active else {
-            settleLoadedEntrance()
+            completeLoadedEntranceWithoutMotion()
             return
         }
         // One owner introduces ready Home content. No queued reveal survives
@@ -1217,6 +1216,14 @@ struct HomeView: View {
     }
 
     private func settleLoadedEntrance() {
+        // A loading or covered Home has not begun its initial entrance yet.
+        // UIKit application notifications stop actual motion, without relying
+        // on a default scenePhase from a hosted SwiftUI hierarchy.
+        guard loadedEntranceVisible else { return }
+        completeLoadedEntranceWithoutMotion()
+    }
+
+    private func completeLoadedEntranceWithoutMotion() {
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {

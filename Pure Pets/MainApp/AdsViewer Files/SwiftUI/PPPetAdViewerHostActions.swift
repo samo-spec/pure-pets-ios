@@ -101,7 +101,7 @@ final class PPPetAdViewerHostActions {
     }
 
     func openChat(owner: PPPetAdOwner, ad: PetAd) async throws {
-        let activePresenter = presenter ?? GM.topViewController()
+        let activePresenter = presenter ?? AppMgr.topViewController()
         guard let activePresenter else {
             throw NSError(
                 domain: "com.purepets.pet-ad-viewer",
