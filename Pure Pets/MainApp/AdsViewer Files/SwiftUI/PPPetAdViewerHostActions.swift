@@ -101,21 +101,7 @@ final class PPPetAdViewerHostActions {
     }
 
     func openChat(owner: PPPetAdOwner, ad: PetAd) async throws {
-        let activePresenter = presenter ?? AppMgr.topViewController()
-        guard let activePresenter else {
-            throw NSError(
-                domain: "com.purepets.pet-ad-viewer",
-                code: 2001,
-                userInfo: [
-                    NSLocalizedDescriptionKey:
-                        PPPetAdLocalization.text(
-                            "pet_ad_viewer_chat_failed",
-                            fallback:
-                                "The chat could not be opened."
-                        )
-                ]
-            )
-        }
+        let activePresenter = presenter ?? AppManager.sharedInstance().topViewController()
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PPPetAdViewerLegacyBridge.openChat(

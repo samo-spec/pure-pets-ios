@@ -242,7 +242,7 @@
     }
 
     if (!vc) {
-        vc = [GM topViewController];
+        vc = [AppMgr topViewController];
     }
     if (!vc) {
         NSLog(@"❌ [Chat] Source view controller is nil");
@@ -250,7 +250,7 @@
     }
     UIViewController *presenter = [self pp_resolvedPresenterFrom:vc];
     if (![self pp_canPresentFrom:presenter]) {
-        UIViewController *topPresenter = [self pp_resolvedPresenterFrom:[GM topViewController]];
+        UIViewController *topPresenter = [self pp_resolvedPresenterFrom:[AppMgr topViewController]];
         if ([self pp_canPresentFrom:topPresenter]) {
             presenter = topPresenter;
         } else {
@@ -261,7 +261,7 @@
         }
     }
     if (!presenter || presenter.isBeingDismissed) {
-        presenter = [GM topViewController];
+        presenter = [AppMgr topViewController];
     }
 
     NSLog(@"📨 [Chat] Thread info | threadID=%@ | messagesCount=%ld",

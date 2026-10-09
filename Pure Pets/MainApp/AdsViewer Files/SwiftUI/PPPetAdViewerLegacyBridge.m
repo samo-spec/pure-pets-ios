@@ -590,16 +590,16 @@ fromViewController:(UIViewController *)viewController
         resolvedUser.UserName = ad.ownerName ?: @"";
     }
 
-    UIViewController *presenter = viewController ?: [GM topViewController];
+    UIViewController *presenter = viewController ?: [AppMgr topViewController];
 
     void (^presentThreadBlock)(ChatThreadModel *) = ^(ChatThreadModel *thread) {
-        UIViewController *targetPresenter = presenter ?: [GM topViewController];
+        UIViewController *targetPresenter = presenter ?: [AppMgr topViewController];
         BOOL didRequestPresentation =
             [PPOverlayCoordinator pp_openChatThread:thread
                                        petAdContext:ad
                                              fromVC:targetPresenter];
         if (!didRequestPresentation) {
-            targetPresenter = [GM topViewController];
+            targetPresenter = [AppMgr topViewController];
             didRequestPresentation =
                 [PPOverlayCoordinator pp_openChatThread:thread
                                            petAdContext:ad
