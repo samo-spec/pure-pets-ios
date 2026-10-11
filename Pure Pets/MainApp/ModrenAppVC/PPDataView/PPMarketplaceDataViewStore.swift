@@ -132,6 +132,7 @@ struct PPMarketplaceAccentPalette {
 
 @available(iOS 15.0, *)
 enum PPMarketplaceLayout: Int, CaseIterable, Identifiable {
+    case pinterest = 9002
     case compact = 2
     case showcase = 3
     case mosaic = 4
@@ -141,6 +142,7 @@ enum PPMarketplaceLayout: Int, CaseIterable, Identifiable {
 
     var titleKey: String {
         switch self {
+        case .pinterest: return "marketplace_layout_pinterest"
         case .compact: return "marketplace_layout_compact"
         case .showcase: return "marketplace_layout_showcase"
         case .mosaic: return "marketplace_layout_mosaic"
@@ -150,6 +152,7 @@ enum PPMarketplaceLayout: Int, CaseIterable, Identifiable {
 
     var iconName: String {
         switch self {
+        case .pinterest: return "rectangle.grid.2x2"
         case .compact: return "rectangle.grid.1x2"
         case .showcase: return "rectangle.grid.1x2.fill"
         case .mosaic: return "square.grid.2x2"
@@ -159,6 +162,8 @@ enum PPMarketplaceLayout: Int, CaseIterable, Identifiable {
 
     var universalLayoutMode: PPManagerCellLayoutMode {
         switch self {
+        case .pinterest:
+            return .cellLayoutModePinterest
         case .compact:
             return .cellLayoutModeHorizontalRow
         case .showcase:
@@ -178,7 +183,7 @@ enum PPMarketplaceLayout: Int, CaseIterable, Identifiable {
            ) {
             return saved
         }
-        return .mosaic
+        return .pinterest
     }
 }
 
@@ -528,9 +533,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         updateErrorMessage = nil
         UISelectionFeedbackGenerator().selectionChanged()
 
-        if !UserDefaults.standard.bool(forKey: "PPLayoutModeChangedByUser") {
-            layout = .mosaic
-        }
+        layout = PPMarketplaceLayout.resolved(sectionRawValue: descriptor.rawValue)
         bridge.switchSection(descriptor.section)
     }
 
@@ -701,8 +704,9 @@ final class PPMarketplaceDataViewStore: ObservableObject {
             return
         }
         group.selectedValue = value
-        isRefreshing = !records.isEmpty
-        prepareBridgeContentTransition(.refinement)
+        contentTransitionIntent = .refinement
+        contentRevision &+= 1
+        UISelectionFeedbackGenerator().selectionChanged()
         bridge.applyFilter(state, section: currentSection)
     }
 
@@ -716,8 +720,9 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         guard !isReplacingContext, let draft = filterDraft else { return }
         activeSheet = nil
         filterDraft = nil
-        isRefreshing = !records.isEmpty
-        prepareBridgeContentTransition(.refinement)
+        contentTransitionIntent = .refinement
+        contentRevision &+= 1
+        UISelectionFeedbackGenerator().selectionChanged()
         bridge.applyFilter(draft, section: currentSection)
     }
 
@@ -729,8 +734,9 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         state.resetAll()
         selectedProviderIDs[currentSection.rawValue] = nil
         selectedProviderID = nil
-        isRefreshing = !records.isEmpty
-        prepareBridgeContentTransition(.refinement)
+        contentTransitionIntent = .refinement
+        contentRevision &+= 1
+        UISelectionFeedbackGenerator().selectionChanged()
         bridge.applyFilter(state, section: currentSection)
     }
 
@@ -936,9 +942,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         if previousSection != currentSection.rawValue {
             selectedProviderID = selectedProviderIDs[currentSection.rawValue]
             providerOptions = []
-            if !UserDefaults.standard.bool(forKey: "PPLayoutModeChangedByUser") {
-                layout = .mosaic
-            }
+            layout = PPMarketplaceLayout.resolved(sectionRawValue: currentSection.rawValue)
         }
         refreshPresentationState(includeContext: true)
 

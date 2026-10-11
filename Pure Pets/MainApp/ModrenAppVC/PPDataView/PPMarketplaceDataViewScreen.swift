@@ -44,7 +44,7 @@ struct PPMarketplaceDataViewScreen: View {
                                 )
                                 .padding(
                                     .horizontal,
-                                    store.layout == .mosaic
+                                    store.layout == .mosaic || store.layout == .pinterest
                                         ? PPMarketplaceContentGeometry.mosaicCellSpacing
                                         : horizontalContentInset
                                 )
@@ -176,7 +176,7 @@ struct PPMarketplaceDataViewScreen: View {
                             if store.isReplacingContext {
                                 retainedScrollContentHeight = max(
                                     retainedScrollContentHeight,
-                                    measuredScrollContentHeight
+                                    min(measuredScrollContentHeight, proxy.size.height + 300)
                                 )
                             }
                         }
@@ -185,7 +185,7 @@ struct PPMarketplaceDataViewScreen: View {
                         if isReplacing {
                             retainedScrollContentHeight = max(
                                 retainedScrollContentHeight,
-                                measuredScrollContentHeight
+                                min(measuredScrollContentHeight, proxy.size.height + 300)
                             )
                         } else {
                             DispatchQueue.main.async {
@@ -455,7 +455,6 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
     final class Coordinator {
         private struct Capture {
             let offsetY: CGFloat
-            let anchorContentY: CGFloat
         }
 
         private weak var scrollView: UIScrollView?
@@ -493,36 +492,27 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
                 if isReplacingContext {
                     if !self.wasReplacingContext {
                         self.restorationToken &+= 1
-                        self.capture = self.makeCapture(
-                            anchorView: anchorView,
-                            scrollView: scrollView
-                        )
+                        self.capture = Capture(offsetY: scrollView.contentOffset.y)
                         self.lockScrollView(scrollView)
                     }
                     if self.capture == nil {
-                        self.capture = self.makeCapture(
-                            anchorView: anchorView,
-                            scrollView: scrollView
-                        )
+                        self.capture = Capture(offsetY: scrollView.contentOffset.y)
                     }
                     self.wasReplacingContext = true
                 } else {
-                    let revisionChanged = self.lastContentRevision.map {
-                        $0 != contentRevision
-                    } ?? false
-                    if (self.wasReplacingContext || revisionChanged),
-                       let capture = self.capture {
+                    if self.wasReplacingContext, let capture = self.capture {
                         self.scheduleRestoration(
                             capture,
-                            anchorView: anchorView,
                             scrollView: scrollView
                         )
-                    } else if self.wasReplacingContext {
+                    } else {
                         self.unlockScrollViewIfNeeded()
+                        self.clampScrollOffset(in: scrollView)
                     }
                     self.wasReplacingContext = false
                 }
                 self.lastContentRevision = contentRevision
+                self.clampScrollOffset(in: scrollView)
             }
         }
 
@@ -555,32 +545,9 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
             return nil
         }
 
-        private func makeCapture(
-            anchorView: UIView,
-            scrollView: UIScrollView
-        ) -> Capture {
-            Capture(
-                offsetY: scrollView.contentOffset.y,
-                anchorContentY: anchorContentY(
-                    anchorView: anchorView,
-                    scrollView: scrollView
-                )
-            )
-        }
-
-        private func anchorContentY(
-            anchorView: UIView,
-            scrollView: UIScrollView
-        ) -> CGFloat {
-            anchorView.convert(.zero, to: scrollView).y
-        }
-
         private func lockScrollView(_ scrollView: UIScrollView) {
             guard !ownsScrollLock else { return }
             previousScrollEnabled = scrollView.isScrollEnabled
-            // Selecting a taxonomy control is an explicit context handoff.
-            // Stop any residual momentum before capturing the stable offset so
-            // the completed payload cannot race deceleration or AX scrolling.
             scrollView.setContentOffset(scrollView.contentOffset, animated: false)
             scrollView.isScrollEnabled = false
             ownsScrollLock = true
@@ -594,82 +561,12 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
 
         private func scheduleRestoration(
             _ capture: Capture,
-            anchorView: UIView,
             scrollView: UIScrollView
         ) {
             restorationToken &+= 1
             let token = restorationToken
-            restore(
-                capture,
-                anchorView: anchorView,
-                scrollView: scrollView,
-                token: token,
-                remainingPasses: 2
-            )
-        }
-
-        private func restore(
-            _ capture: Capture,
-            anchorView: UIView,
-            scrollView: UIScrollView,
-            token: Int,
-            remainingPasses: Int
-        ) {
-            DispatchQueue.main.async { [weak self, weak anchorView, weak scrollView] in
-                guard let self,
-                      !self.isDismantled,
-                      let anchorView,
-                      anchorView.window != nil,
-                      let scrollView,
-                      self.restorationToken == token else {
-                    return
-                }
-                let anchorDelta = self.anchorContentY(
-                    anchorView: anchorView,
-                    scrollView: scrollView
-                ) - capture.anchorContentY
-                let minimumY = -scrollView.adjustedContentInset.top
-                let naturalMaximumY = max(
-                    minimumY,
-                    self.latestNaturalContentHeight - scrollView.bounds.height +
-                        scrollView.adjustedContentInset.bottom
-                )
-                let desiredY = min(
-                    max(minimumY, capture.offsetY + anchorDelta),
-                    naturalMaximumY
-                )
-                UIView.performWithoutAnimation {
-                    scrollView.setContentOffset(
-                        CGPoint(x: scrollView.contentOffset.x, y: desiredY),
-                        animated: false
-                    )
-                    scrollView.layoutIfNeeded()
-                }
-
-                if remainingPasses > 1 {
-                    self.restore(
-                        capture,
-                        anchorView: anchorView,
-                        scrollView: scrollView,
-                        token: token,
-                        remainingPasses: remainingPasses - 1
-                    )
-                } else {
-                    self.releaseGeometryFloor(
-                        desiredY: desiredY,
-                        scrollView: scrollView,
-                        token: token
-                    )
-                }
-            }
-        }
-
-        private func releaseGeometryFloor(
-            desiredY: CGFloat,
-            scrollView: UIScrollView,
-            token: Int
-        ) {
             latestRestorationCompletion?()
+
             DispatchQueue.main.async { [weak self, weak scrollView] in
                 guard let self,
                       !self.isDismantled,
@@ -684,7 +581,7 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
                     scrollView.contentSize.height - scrollView.bounds.height +
                         scrollView.adjustedContentInset.bottom
                 )
-                let resolvedY = min(max(minimumY, desiredY), maximumY)
+                let resolvedY = min(max(minimumY, capture.offsetY), maximumY)
                 UIView.performWithoutAnimation {
                     scrollView.setContentOffset(
                         CGPoint(x: scrollView.contentOffset.x, y: resolvedY),
@@ -695,6 +592,24 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
                 self.unlockScrollViewIfNeeded()
                 if UIAccessibility.isVoiceOverRunning {
                     UIAccessibility.post(notification: .layoutChanged, argument: nil)
+                }
+            }
+        }
+
+        private func clampScrollOffset(in scrollView: UIScrollView) {
+            guard !ownsScrollLock, !scrollView.isDragging, !scrollView.isDecelerating else { return }
+            let minimumY = -scrollView.adjustedContentInset.top
+            let maximumY = max(
+                minimumY,
+                scrollView.contentSize.height - scrollView.bounds.height +
+                    scrollView.adjustedContentInset.bottom
+            )
+            if scrollView.contentOffset.y > maximumY + 1.0 {
+                UIView.performWithoutAnimation {
+                    scrollView.setContentOffset(
+                        CGPoint(x: scrollView.contentOffset.x, y: maximumY),
+                        animated: false
+                    )
                 }
             }
         }
@@ -743,6 +658,7 @@ private struct PPMarketplaceContent: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var pinterestPartition = PPMarketplacePinterestPartition()
 
     var body: some View {
         Group {
@@ -823,6 +739,9 @@ private struct PPMarketplaceContent: View {
     @ViewBuilder
     private var content: some View {
         switch store.layout {
+        case .pinterest:
+            pinterestContent
+
         case .compact:
             LazyVStack(spacing: PPSpace.md) {
                 ForEach(store.records) { record in
@@ -894,5 +813,132 @@ private struct PPMarketplaceContent: View {
             repeating: GridItem(.flexible(), spacing: PPMarketplaceContentGeometry.mosaicCellSpacing),
             count: count
         )
+    }
+
+    private var pinterestColumnCount: Int {
+        PPMarketplaceContentGeometry.mosaicColumnCount(
+            availableWidth: availableWidth,
+            horizontalSizeClass: horizontalSizeClass,
+            isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
+        )
+    }
+
+    private var pinterestColumnWidth: CGFloat {
+        let spacing = PPMarketplaceContentGeometry.mosaicCellSpacing
+        let usableWidth = max(1, availableWidth - spacing * 2)
+        return max(1, (usableWidth - CGFloat(pinterestColumnCount - 1) * spacing) / CGFloat(pinterestColumnCount))
+    }
+
+    private var pinterestContent: some View {
+        let columnWidth = pinterestColumnWidth
+        let columns = pinterestPartition.columns(
+            records: store.records,
+            count: pinterestColumnCount,
+            width: columnWidth,
+            context: "\(store.currentSection.rawValue)|\(store.currentMainKindID)|\(store.currentSubKindID)|\(pinterestContentSizeCategory.rawValue)|\(Language.currentLanguageCode() ?? "en")",
+            height: { record in pinterestHeight(for: record, width: columnWidth) }
+        )
+        return HStack(alignment: .top, spacing: PPMarketplaceContentGeometry.mosaicCellSpacing) {
+            ForEach(columns.indices, id: \.self) { column in
+                LazyVStack(spacing: PPMarketplaceContentGeometry.mosaicLineSpacing) {
+                    ForEach(columns[column]) { item in
+                        PPMarketplaceUniversalCard(
+                            record: item.record,
+                            section: item.record.section,
+                            layout: .pinterest,
+                            bridge: store.bridge
+                        )
+                        .accessibilitySortPriority(-Double(item.sourceIndex))
+                        .onAppear {
+                            store.fetchNextPageIfNeeded(for: item.record)
+                        }
+                    }
+                }
+                .frame(width: columnWidth, alignment: .top)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+    }
+
+    private func pinterestHeight(for record: PPMarketplaceItemRecord, width: CGFloat) -> CGFloat {
+        if #available(iOS 16.0, *), record.section == .ads || record.section == .food || record.section == .accessories {
+            return PPUniversalCardHostingCell.discoveryFittingHeight(
+                for: record.viewModel,
+                width: width,
+                contentSizeCategory: pinterestContentSizeCategory.rawValue,
+                dataViewPresentation: true
+            )
+        }
+        // iOS 15 keeps its existing compatibility renderer. This deterministic
+        // estimate only chooses a column; it never fixes or truncates card height.
+        return width + (dynamicTypeSize.isAccessibilitySize ? 320 : 160)
+    }
+
+    private var pinterestContentSizeCategory: UIContentSizeCategory {
+        switch dynamicTypeSize {
+        case .xSmall: return .extraSmall
+        case .small: return .small
+        case .medium: return .medium
+        case .large: return .large
+        case .xLarge: return .extraLarge
+        case .xxLarge: return .extraExtraLarge
+        case .xxxLarge: return .extraExtraExtraLarge
+        case .accessibility1: return .accessibilityMedium
+        case .accessibility2: return .accessibilityLarge
+        case .accessibility3: return .accessibilityExtraLarge
+        case .accessibility4: return .accessibilityExtraExtraLarge
+        case .accessibility5: return .accessibilityExtraExtraExtraLarge
+        @unknown default: return .large
+        }
+    }
+}
+
+@available(iOS 15.0, *)
+private struct PPMarketplacePinterestItem: Identifiable {
+    let record: PPMarketplaceItemRecord
+    let sourceIndex: Int
+    var id: String { record.id }
+}
+
+/// Layout bookkeeping retains existing columns on append and data refresh.
+/// A reordered/filtered set or changed width/type/context starts a fresh pack.
+/// It does not publish state or own product/navigation behavior.
+@available(iOS 15.0, *)
+private final class PPMarketplacePinterestPartition {
+    private var geometryKey = ""
+    private var recordIDs: [String] = []
+    private var assignments: [String: Int] = [:]
+
+    func columns(
+        records: [PPMarketplaceItemRecord],
+        count: Int,
+        width: CGFloat,
+        context: String,
+        height: (PPMarketplaceItemRecord) -> CGFloat
+    ) -> [[PPMarketplacePinterestItem]] {
+        let key = "\(count)|\(width)|\(context)"
+        let incomingIDs = records.map(\.id)
+        let extendsCurrentRecords = incomingIDs.count >= recordIDs.count &&
+            Array(incomingIDs.prefix(recordIDs.count)) == recordIDs
+        if geometryKey != key || !extendsCurrentRecords {
+            assignments.removeAll(keepingCapacity: true)
+        }
+        geometryKey = key
+        recordIDs = incomingIDs
+
+        var columns = Array(repeating: [PPMarketplacePinterestItem](), count: count)
+        var heights = Array(repeating: CGFloat.zero, count: count)
+        for (sourceIndex, record) in records.enumerated() {
+            let measuredHeight = height(record)
+            let safeHeight = measuredHeight.isFinite && measuredHeight > 0 ? measuredHeight : width + 160
+            let column = assignments[record.id] ?? heights.indices.min {
+                heights[$0] < heights[$1]
+            } ?? 0
+            assignments[record.id] = column
+            columns[column].append(PPMarketplacePinterestItem(record: record, sourceIndex: sourceIndex))
+            heights[column] += safeHeight + PPMarketplaceContentGeometry.mosaicLineSpacing
+        }
+        return columns
     }
 }

@@ -261,12 +261,12 @@ private struct HomeProductInformationRegionModifier: ViewModifier {
 struct HomeUniversalCardSizing: DynamicProperty {
     static let productMediaHeight: CGFloat = 184
     static let advertisementMediaHeight: CGFloat = 160
-    // Renderer inset (4), card inset (8), information padding (16).
-    private static let productInformationInsets: CGFloat = 28
+    // Renderer inset (4), card inset (8), information padding (16) + 20pt Home cell height expansion.
+    private static let productInformationInsets: CGFloat = 48
 
     @Environment(\.homeProductInformationHeight) private var measuredInformationHeight
-    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 156
-    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 140
+    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 176
+    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 160
 
     func height(isAdvertisement: Bool, measuredProductInformationHeight: CGFloat? = nil) -> CGFloat {
         if isAdvertisement {

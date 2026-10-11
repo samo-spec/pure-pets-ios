@@ -1562,7 +1562,7 @@ struct PPMarketplaceUniversalCard: View {
                     showsSubtitle: true,
                     forceShowsOwnerMenuButton: true,
                     dataViewPresentation: true,
-                    isHomePresentation: isProductCommerce,
+                    isHomePresentation: isProductCommerce && layout != .pinterest,
                     borderMode: .pordersForHomeView,
                     palette: marketplaceCardPalette,
                     onTap: nil,
@@ -1601,6 +1601,8 @@ struct PPMarketplaceUniversalCard: View {
     private var universalLayoutMode: PPManagerCellLayoutMode {
         if isProductCommerce {
             switch layout {
+            case .pinterest:
+                return .cellLayoutModePinterest
             case .compact:
                 return .cellLayoutModeHorizontalRow
             case .focus:
@@ -1878,6 +1880,20 @@ struct PPMarketplaceLoadingState: View {
                         )
                     }
                 }
+            } else if layout == .pinterest {
+                HStack(alignment: .top, spacing: PPMarketplaceContentGeometry.mosaicCellSpacing) {
+                    ForEach(0..<skeletonColumnCount, id: \.self) { column in
+                        LazyVStack(spacing: PPMarketplaceContentGeometry.mosaicLineSpacing) {
+                            ForEach(Array(PPMarketplaceSkeletonSlot.allCases.enumerated()).filter { $0.offset % skeletonColumnCount == column }, id: \.element.id) { entry in
+                                PPMarketplaceSkeletonCard(
+                                    horizontal: false,
+                                    minimumHeight: skeletonMinimumHeight + CGFloat(entry.offset % 3) * 24
+                                )
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .top)
+                    }
+                }
             } else if layout == .mosaic {
                 LazyVGrid(
                     columns: skeletonColumns,
@@ -1902,19 +1918,24 @@ struct PPMarketplaceLoadingState: View {
     }
 
     private var skeletonColumns: [GridItem] {
-        let count = PPMarketplaceContentGeometry.mosaicColumnCount(
+        Array(
+            repeating: GridItem(.flexible(), spacing: PPMarketplaceContentGeometry.mosaicCellSpacing),
+            count: skeletonColumnCount
+        )
+    }
+
+    private var skeletonColumnCount: Int {
+        PPMarketplaceContentGeometry.mosaicColumnCount(
             availableWidth: availableWidth,
             horizontalSizeClass: horizontalSizeClass,
             isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
-        )
-        return Array(
-            repeating: GridItem(.flexible(), spacing: PPMarketplaceContentGeometry.mosaicCellSpacing),
-            count: count
         )
     }
 
     private var skeletonMinimumHeight: CGFloat {
         switch layout {
+        case .pinterest:
+            return dynamicTypeSize.isAccessibilitySize ? 500 : 280
         case .compact:
             return dynamicTypeSize.isAccessibilitySize ? 540 : 184
         case .showcase:

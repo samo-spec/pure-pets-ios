@@ -606,12 +606,12 @@ struct PPMarketplaceCompatibilityCard: View {
     }
 
     private var mediaHeight: CGFloat {
-        if usesQuantity && (layout == .mosaic || layout == .showcase) {
+        if usesQuantity && (layout == .pinterest || layout == .mosaic || layout == .showcase) {
             return HomeUniversalCardSizing.productMediaHeight
         }
         switch layout {
         case .focus: return dynamicTypeSize.isAccessibilitySize ? 320 : 292
-        case .mosaic: return dynamicTypeSize.isAccessibilitySize ? 250 : 188
+        case .pinterest, .mosaic: return dynamicTypeSize.isAccessibilitySize ? 250 : 188
         case .showcase: return dynamicTypeSize.isAccessibilitySize ? 280 : 242
         case .compact: return 190
         }
@@ -620,7 +620,7 @@ struct PPMarketplaceCompatibilityCard: View {
     private var remoteImageSize: CGSize {
         switch layout {
         case .compact: return CGSize(width: 300, height: 380)
-        case .mosaic: return CGSize(width: 420, height: 460)
+        case .pinterest, .mosaic: return CGSize(width: 420, height: 460)
         case .showcase: return CGSize(width: 760, height: 520)
         case .focus: return CGSize(width: 900, height: 700)
         }

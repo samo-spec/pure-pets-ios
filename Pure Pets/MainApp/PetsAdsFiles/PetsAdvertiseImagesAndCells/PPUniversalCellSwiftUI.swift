@@ -660,7 +660,10 @@ public struct PPUniversalCardView: View {
     }
 
     public var body: some View {
-        PPUniversalCardRenderer(store: store)
+        PPUniversalCardRenderer(
+            store: store,
+            usesIntrinsicDiscoveryHeight: !store.isHomePresentation || legacyDataViewPresentation
+        )
             .frame(minHeight: minimumHeight)
             .modifier(PPUniversalCardDirectActionSurface(store: store))
             .onChange(of: legacySourceSignature) { _ in
@@ -691,7 +694,26 @@ public struct PPUniversalCardView: View {
         store.context.isAdvertisement || store.isSuggestionsAd
     }
 
+    private var isProductCommerce: Bool {
+        store.context.isCatalogCommerce ||
+            store.context == .market ||
+            store.context == .accessory ||
+            store.viewModel?.modelContext == .forMarket ||
+            store.viewModel?.modelContext == .forContextAccessory ||
+            (store.viewModel?.modelObject is PetAccessory) ||
+            store.model.usesQuantityControl
+    }
+
     private var minimumHeight: CGFloat {
+        let isFood = store.context == .food ||
+            (store.context.isCatalogCommerce &&
+                (store.viewModel?.modelContext == .forFood ||
+                    (store.viewModel?.modelObject as? PetAccessory)?.isFood == true))
+        if store.layout != .focus,
+           (isProductCommerce || isFood || isAdsMode || store.layout == .pinterest),
+           (!store.isHomePresentation || legacyDataViewPresentation) {
+            return 0
+        }
         // Service folios size to their content. Other modes keep their existing
         // media-led sizing, including veterinary cards.
         if store.context == .services {
@@ -2889,8 +2911,55 @@ private struct PPUniversalServicePressStyle: ButtonStyle {
 // MARK: - Card Renderer
 
 @available(iOS 16.0, *)
+private struct PPUniversalDiscoveryLayout: Layout {
+    let horizontal: Bool
+    let mediaRatio: CGFloat
+    let minimumMediaHeight: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width.flatMap { $0.isFinite && $0 > 0 ? $0 : nil } ?? 180
+        guard subviews.count == 2 else { return CGSize(width: width, height: 0) }
+        if horizontal {
+            let mediaWidth = min(144, max(88, width * 0.32))
+            let information = subviews[1].sizeThatFits(ProposedViewSize(width: max(1, width - mediaWidth), height: nil))
+            return CGSize(width: width, height: max(minimumMediaHeight, max(mediaWidth * mediaRatio, information.height)))
+        }
+        let information = subviews[1].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        return CGSize(width: width, height: max(minimumMediaHeight, width * mediaRatio) + information.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        if horizontal {
+            let mediaWidth = min(144, max(88, bounds.width * 0.32))
+            let informationWidth = max(1, bounds.width - mediaWidth)
+            subviews[0].place(
+                at: bounds.origin,
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: mediaWidth, height: bounds.height)
+            )
+            subviews[1].place(
+                at: CGPoint(x: bounds.minX + mediaWidth, y: bounds.minY),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: informationWidth, height: bounds.height)
+            )
+        } else {
+            let mediaHeight = max(minimumMediaHeight, bounds.width * mediaRatio)
+            subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: mediaHeight))
+            subviews[1].place(
+                at: CGPoint(x: bounds.minX, y: bounds.minY + mediaHeight),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: bounds.width, height: max(0, bounds.height - mediaHeight))
+            )
+        }
+    }
+}
+
+@available(iOS 16.0, *)
 private struct PPUniversalCardRenderer: View {
     @ObservedObject var store: PPUniversalCardStore
+    private let usesIntrinsicDiscoveryHeight: Bool
+    private let isMeasuring: Bool
     @State private var ownerName: String? = nil
     @State private var ownerAvatarURL: String? = nil
     @State private var ownerRating: Double = 0.0
@@ -2903,19 +2972,46 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
     @ScaledMetric(relativeTo: .headline) private var homeTitleMinimumHeight: CGFloat = 40
+    @ScaledMetric(relativeTo: .caption) private var discoveryNoticeMinimumHeight: CGFloat = 32
 
     private var cardRadius: CGFloat {
         store.isHomePresentation ? HomeVisualTokens.universalCardCorner : 24
     }
-    private let mediaBottomRadius: CGFloat = 12
+    private var mediaBottomRadius: CGFloat {
+        (isFoodPresentation || isProductCommercePresentation) ? 0 : (isAdsMode ? 8 : 12)
+    }
 
-    init(store: PPUniversalCardStore) {
+    private var isFoodPresentation: Bool {
+        store.context == .food ||
+            (store.context.isCatalogCommerce &&
+                (store.viewModel?.modelContext == .forFood ||
+                    (store.viewModel?.modelObject as? PetAccessory)?.isFood == true))
+    }
+
+    private var isProductCommercePresentation: Bool {
+        isFoodPresentation ||
+            store.context.isCatalogCommerce ||
+            store.context == .market ||
+            store.context == .accessory ||
+            store.viewModel?.modelContext == .forMarket ||
+            store.viewModel?.modelContext == .forContextAccessory ||
+            (store.viewModel?.modelObject is PetAccessory) ||
+            store.model.usesQuantityControl
+    }
+
+    private var usesProductCardActionStyle: Bool {
+        store.model.usesQuantityControl
+    }
+
+    init(store: PPUniversalCardStore, usesIntrinsicDiscoveryHeight: Bool = false, isMeasuring: Bool = false) {
         self.store = store
+        self.usesIntrinsicDiscoveryHeight = usesIntrinsicDiscoveryHeight
+        self.isMeasuring = isMeasuring
     }
 
     private var mediaOuterInset: CGFloat {
         if store.layout.isHorizontal && !dynamicTypeSize.isAccessibilitySize {
-            return 9
+            return isFoodPresentation || isProductCommercePresentation || isAdsMode ? 4 : 9
         }
         return store.model.prefersEdgeToEdgeMedia ? 0 : 4
     }
@@ -2975,8 +3071,12 @@ private struct PPUniversalCardRenderer: View {
                             )
                     }
 
-                    GeometryReader { proxy in
-                        cardLayout(size: proxy.size)
+                    if usesIntrinsicDiscoveryHeight && store.layout != .focus && (isFoodPresentation || isAdsMode || isProductCommercePresentation || store.layout == .pinterest) {
+                        intrinsicDiscoveryCard
+                    } else {
+                        GeometryReader { proxy in
+                            cardLayout(size: proxy.size)
+                        }
                     }
                 }
                 .animation(
@@ -3037,20 +3137,20 @@ private struct PPUniversalCardRenderer: View {
             }
         }
         .onAppear {
-            if store.showsOwnerRow {
+            if !isMeasuring && store.showsOwnerRow {
                 fetchOwnerIfNeeded()
             }
         }
         .onChange(of: store.showsOwnerRow) { showsOwnerRow in
-            guard showsOwnerRow else { return }
+            guard !isMeasuring && showsOwnerRow else { return }
             fetchOwnerIfNeeded()
         }
-        .onChange(of: ownerID ?? "") { _ in
+        .onChange(of: ownerProfileIdentity) { _ in
             ownerName = nil
             ownerAvatarURL = nil
             ownerRating = 0
             hasFetchedOwner = false
-            if store.showsOwnerRow {
+            if !isMeasuring && store.showsOwnerRow {
                 fetchOwnerIfNeeded()
             }
         }
@@ -3058,6 +3158,360 @@ private struct PPUniversalCardRenderer: View {
 
     @ViewBuilder
     private func cardLayout(size: CGSize) -> some View {
+        if isFoodPresentation || isAdsMode || isProductCommercePresentation || store.layout == .pinterest {
+            discoveryCardLayout(size: size)
+        } else {
+            legacyCardLayout(size: size)
+        }
+    }
+
+    private var discoveryMinimumMediaHeight: CGFloat {
+        let hasNotices = store.model.badgeText?.isEmpty == false ||
+            store.model.reasonText?.isEmpty == false ||
+            (store.discountStyle == .badge && store.model.discountText?.isEmpty == false)
+        return 64 + (hasNotices ? discoveryNoticeMinimumHeight : 0)
+    }
+
+    private var discoveryMediaRatio: CGFloat {
+        if isFoodPresentation {
+            return 0.96
+        }
+        if isProductCommercePresentation {
+            return min(max(store.model.preferredAspectRatio, 0.84), 1.15)
+        }
+        return min(max(store.model.preferredAspectRatio, 0.84), 1.20)
+    }
+
+    @ViewBuilder
+    private var discoveryMedia: some View {
+        if isMeasuring {
+            Color.clear
+        } else {
+            cardTapMedia
+        }
+    }
+
+    private var intrinsicDiscoveryCard: some View {
+        let card = PPUniversalDiscoveryLayout(
+            horizontal: store.layout.isHorizontal && !dynamicTypeSize.isAccessibilitySize,
+            mediaRatio: discoveryMediaRatio,
+            minimumMediaHeight: discoveryMinimumMediaHeight
+        ) {
+            discoveryMedia
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            discoveryInformation.fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(store.model.prefersEdgeToEdgeMedia ? 0 : 4)
+        return decoratedCard(card)
+    }
+
+    // Fixed Home, focus and UIKit hosts allocate the photograph first. Only
+    // those explicitly bounded hosts may scroll overflowing information.
+    private func discoveryCardLayout(size: CGSize) -> some View {
+        let horizontal = store.layout.isHorizontal && !dynamicTypeSize.isAccessibilitySize
+        let inset: CGFloat = store.model.prefersEdgeToEdgeMedia ? 0 : 4
+        let contentWidth = max(1, size.width - inset * 2)
+        let desiredMediaHeight = store.isHomePresentation && store.layout != .focus
+            ? homeMediaHeight
+            : contentWidth * discoveryMediaRatio
+        let mediaHeight = store.layout == .focus
+            ? max(discoveryMinimumMediaHeight, min(desiredMediaHeight, size.height * 0.50))
+            : max(discoveryMinimumMediaHeight, desiredMediaHeight)
+        let card = Group {
+            if horizontal {
+                HStack(alignment: .top, spacing: 0) {
+                    discoveryMedia
+                        .frame(width: min(144, max(88, size.width * 0.32)))
+                        .frame(maxHeight: .infinity)
+                    discoveryInformationViewport
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+                .padding(4)
+            } else {
+                VStack(spacing: 0) {
+                    discoveryMedia
+                        .frame(maxWidth: .infinity)
+                        .frame(height: mediaHeight)
+                        .modifier(PPUniversalHomeShelfMediaSettle(state: homeShelfEntrance))
+                    discoveryInformationViewport
+                        .frame(maxWidth: .infinity)
+                        .frame(height: max(0, size.height - mediaHeight - inset - 4), alignment: .topLeading)
+                        .modifier(PPUniversalHomeShelfInformationDock(state: homeShelfEntrance))
+                }
+                .padding(.horizontal, inset)
+                .padding(.top, inset)
+                .padding(.bottom, 4)
+            }
+        }
+        return decoratedCard(card, size: size)
+    }
+
+    private var discoveryInformationViewport: some View {
+        ViewThatFits(in: .vertical) {
+            discoveryInformation
+                .fixedSize(horizontal: false, vertical: true)
+            ScrollView(.vertical) {
+                discoveryInformation
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var discoveryInformation: some View {
+        if (isFoodPresentation || isProductCommercePresentation) && !isAdsMode {
+            foodInformation
+        } else {
+            petAdvertisementInformation
+        }
+    }
+
+    /// A package, its sellable identity, then one purchase decision. Identity and
+    /// purchase information stay outside the image; the variant/cart gate stays intact.
+    private var foodInformation: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            scopedCardNavigationTarget(
+                VStack(alignment: .leading, spacing: 3) {
+                    discoveryTitle
+                    if let subtitle = discoveryText(store.model.subtitle) {
+                        discoverySecondaryText(subtitle)
+                    }
+                    if !store.isHomePresentation, let variant = discoveryText(store.model.variantInfoText) {
+                        discoveryFact(variant, symbol: store.model.variantInfoIconName ?? "square.2.layers.3d", color: store.palette.secondaryInk)
+                            .padding(.top, 2)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            )
+
+            scopedCardNavigationTarget(foodPurchaseInformation)
+
+            if showsBottomCTA && !store.isContextFocused {
+                Group {
+                    if isMeasuring {
+                        if usesProductCardActionStyle {
+                            PPProductCardActionLabel(
+                                title: primaryActionTitle,
+                                symbol: store.requiresVariantSelection && store.quantity == 0
+                                    ? "cart.badge.plus" : primaryActionIcon,
+                                height: homeCartActionHeight,
+                                tint: primaryActionAccent
+                            )
+                        } else {
+                            standardPrimaryActionLabel
+                        }
+                    } else {
+                        primaryAction
+                    }
+                }
+                .frame(minHeight: 44)
+                .padding(.top, 2)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var foodPurchaseInformation: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if hasPrice {
+                discoveryPrice
+            }
+            if store.isHomePresentation {
+                homeAvailabilityAndOptionsRow
+            } else {
+                if let availability = store.model.availability,
+                   let text = discoveryText(availability.text) {
+                    discoveryFact(text, symbol: availabilitySymbol(availability.tone), color: availabilityForeground(availability.tone))
+                }
+                if let metadata = discoveryText(store.model.availability?.metaText) {
+                    discoveryFact(metadata, symbol: store.model.availability?.metaSystemImage ?? "info.circle", color: store.palette.secondaryInk)
+                }
+            }
+        }
+    }
+
+    /// The portrait remains unobstructed. Name, price and identity have separate
+    /// reading roles; breed/age are not mistaken for inventory availability.
+    private var petAdvertisementInformation: some View {
+        scopedCardNavigationTarget(
+            VStack(alignment: .leading, spacing: 8) {
+                discoveryTitle
+                if hasPrice {
+                    discoveryPrice
+                }
+                if let identity = discoveryText(store.model.availability?.text) {
+                    discoverySecondaryText(identity)
+                }
+                if let location = discoveryText(store.model.subtitle) {
+                    let unspecified = location == PPUniversalCardStore.localized("ad_no_location_placeholder", fallback: "Location not specified")
+                    discoveryFact(location, symbol: unspecified ? "mappin.slash" : "mappin.and.ellipse", color: store.palette.secondaryInk)
+                        .accessibilityLabel("\(PPUniversalCardStore.localized("location", fallback: "Location")): \(location)")
+                }
+
+                if store.model.gender != nil || petAdvertisementIsSold {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            petAdvertisementFacts
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                        VStack(alignment: .leading, spacing: 4) {
+                            petAdvertisementFacts
+                        }
+                    }
+                }
+                if let metadata = discoveryText(store.model.availability?.metaText) {
+                    discoveryFact(metadata, symbol: store.model.availability?.metaSystemImage ?? "info.circle", color: store.palette.secondaryInk)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+        )
+    }
+
+    @ViewBuilder
+    private var petAdvertisementFacts: some View {
+        if let gender = store.model.gender {
+            discoveryFact(genderTitle(gender), symbol: "pawprint", color: store.palette.secondaryInk)
+                .accessibilityLabel("\(PPUniversalCardStore.localized("Gender", fallback: "Gender")): \(genderTitle(gender))")
+        }
+        if petAdvertisementIsSold {
+            discoveryFact(PPUniversalCardStore.localized("Sold", fallback: "Sold"), symbol: "checkmark.circle", color: store.palette.secondaryInk)
+        }
+    }
+
+    private var petAdvertisementIsSold: Bool {
+        if let advertisement = store.viewModel?.modelObject as? PetAd {
+            return advertisement.isSold
+        }
+        return store.model.availability?.tone == .unavailable
+    }
+
+    private var discoveryTitle: some View {
+        Text(store.model.title)
+            .font(.custom("Beiruti-Bold", size: isAdsMode ? 19 : 17, relativeTo: .headline))
+            .foregroundStyle(store.palette.ink)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel(store.model.title)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func discoverySecondaryText(_ text: String) -> some View {
+        Text(text)
+            .font(.custom("Beiruti-Medium", size: 14, relativeTo: .subheadline))
+            .foregroundStyle(discoverySecondaryInk)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func discoveryFact(_ text: String, symbol: String, color: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(color)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.custom("Beiruti-Medium", size: 13, relativeTo: .footnote))
+                .foregroundStyle(discoverySecondaryInk)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .multilineTextAlignment(.leading)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var discoverySecondaryInk: Color {
+        colorSchemeContrast == .increased ? store.palette.ink : .ppTextSecondary
+    }
+
+    private var discoveryPrice: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let price = store.model.price {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        discoveryAmount(price)
+                        discoveryCurrency
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                    VStack(alignment: .leading, spacing: 0) {
+                        discoveryAmount(price)
+                        discoveryCurrency
+                    }
+                }
+            } else {
+                Text(displayPrice)
+                    .font(.custom("Beiruti-Black", size: 25, relativeTo: .title2))
+                    .foregroundStyle(store.palette.ink)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .multilineTextAlignment(.leading)
+            }
+            if let original = store.model.originalPrice {
+                Text(discoveryFormattedPrice(original))
+                    .font(.custom("Beiruti-Medium", size: 13, relativeTo: .caption))
+                    .foregroundStyle(discoverySecondaryInk)
+                    .strikethrough()
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            }
+            if store.discountStyle == .inline,
+               let discount = discoveryText(store.model.discountText) {
+                PPDiscountBadge(localizedText: discount, style: .inline)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func discoveryAmount(_ price: Decimal) -> some View {
+        Text(HomeModelAdapter.isolated(discoveryFormattedNumber(price)))
+            .font(.custom("Beiruti-Black", size: isAdsMode ? 27 : 25, relativeTo: .title2))
+            .foregroundStyle(store.palette.ink)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var discoveryCurrency: some View {
+        Text(HomeModelAdapter.isolated(normalizedCurrency))
+            .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+            .foregroundStyle(discoverySecondaryInk)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func discoveryFormattedNumber(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: store.isRightToLeft ? "ar_QA" : "en_QA")
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 2
+        let number = NSDecimalNumber(decimal: value)
+        formatter.minimumFractionDigits = number.doubleValue.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2
+        return formatter.string(from: number) ?? number.stringValue
+    }
+
+    private func discoveryFormattedPrice(_ value: Decimal) -> String {
+        let amount = HomeModelAdapter.isolated(discoveryFormattedNumber(value))
+        let currency = HomeModelAdapter.isolated(normalizedCurrency)
+        return store.isRightToLeft ? "\(amount) \(currency)" : "\(currency) \(amount)"
+    }
+
+    private func discoveryText(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+
+    private func availabilitySymbol(_ tone: PPUniversalAvailability.Tone) -> String {
+        switch tone {
+        case .available: return "checkmark.circle"
+        case .limited: return "clock"
+        case .unavailable: return "minus.circle"
+        case .used: return "arrow.triangle.2.circlepath"
+        case .neutral: return "info.circle"
+        }
+    }
+
+    @ViewBuilder
+    private func legacyCardLayout(size: CGSize) -> some View {
         let focusAvailableWidth = max(220, size.width - 8)
         let focusPreferredRatio = min(
             max(store.model.preferredAspectRatio, 0.74),
@@ -3197,7 +3651,7 @@ private struct PPUniversalCardRenderer: View {
     @ViewBuilder
     private func decoratedCard<Content: View>(
         _ card: Content,
-        size: CGSize
+        size: CGSize? = nil
     ) -> some View {
         let decorated = ZStack {
             if store.isHomePresentation {
@@ -3212,7 +3666,7 @@ private struct PPUniversalCardRenderer: View {
             }
             card
         }
-            .frame(width: size.width, height: size.height)
+            .frame(width: size?.width, height: size?.height, alignment: .top)
             .ppElevation(
                 .raised,
                 cornerRadius: cardRadius,
@@ -3286,13 +3740,13 @@ private struct PPUniversalCardRenderer: View {
                     placeholderSystemImage: store.model.placeholderSystemImage,
                     topCornerRadius: imageTopRadius,
                     bottomCornerRadius: imageBottomRadius,
-                    isHomePresentation: store.isHomePresentation,
-                    normalizesProductImage: store.isHomePresentation && store.context.isCatalogCommerce,
+                    isHomePresentation: store.isHomePresentation || isFoodPresentation || isProductCommercePresentation,
+                    normalizesProductImage: (store.isHomePresentation || isProductCommercePresentation) && store.context.isCatalogCommerce,
                     contained:
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
                     fillsEmptyAreaWithImageBackground:
-                        !store.isHomePresentation &&
+                        !store.isHomePresentation && !isFoodPresentation && !isProductCommercePresentation &&
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
                     focusesPetFace: !store.isHomePresentation && mediaFocusesPetFace,
@@ -3628,31 +4082,41 @@ private struct PPUniversalCardRenderer: View {
         }
     }
 
-    private var homeMetadata: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            // Availability and Options (Variants) in one unified row
+    @ViewBuilder
+    private var homeAvailabilityAndOptionsRow: some View {
+        let availabilityText = discoveryText(store.model.availability?.text)
+        let variantText = discoveryText(store.model.variantInfoText)
+        let metaText = discoveryText(store.model.availability?.metaText)
+        let hasAvailability = availabilityText != nil
+        let hasVariant = variantText != nil
+        let hasMeta = metaText != nil
+
+        if hasAvailability || hasVariant || hasMeta {
             HStack(alignment: .center, spacing: 5) {
-                if let availability = store.model.availability, !availability.text.isEmpty {
-                    Text(availability.text)
-                        .foregroundStyle(availabilityForeground(availability.tone))
+                if let text = availabilityText, let tone = store.model.availability?.tone {
+                    Text(text)
+                        .foregroundStyle(availabilityForeground(tone))
                         .lineLimit(1)
                 }
 
-                if let availability = store.model.availability, !availability.text.isEmpty,
-                   let variant = store.model.variantInfoText, !variant.isEmpty {
+                if hasAvailability && hasVariant {
                     Text("•")
                         .foregroundStyle(store.palette.secondaryInk.opacity(0.45))
                 }
 
-                if let variant = store.model.variantInfoText, !variant.isEmpty {
+                if let variant = variantText {
                     Text(variant)
                         .foregroundStyle(store.palette.secondaryInk)
                         .lineLimit(1)
                 }
 
-                if let availability = store.model.availability,
-                   let metadata = availability.metaText, !metadata.isEmpty {
-                    if let symbol = availability.metaSystemImage, !symbol.isEmpty {
+                if (hasAvailability || hasVariant) && hasMeta {
+                    Text("•")
+                        .foregroundStyle(store.palette.secondaryInk.opacity(0.45))
+                }
+
+                if let metadata = metaText {
+                    if let symbol = store.model.availability?.metaSystemImage, !symbol.isEmpty {
                         Label(metadata, systemImage: symbol)
                             .foregroundStyle(store.palette.secondaryInk)
                             .lineLimit(1)
@@ -3663,7 +4127,16 @@ private struct PPUniversalCardRenderer: View {
                     }
                 }
             }
+            .font(.custom("Beiruti-Medium", size: 12, relativeTo: .caption))
             .lineLimit(1)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private var homeMetadata: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            homeAvailabilityAndOptionsRow
 
             if let gender = store.model.gender {
                 Text(genderTitle(gender))
@@ -4167,8 +4640,8 @@ private struct PPUniversalCardRenderer: View {
             tint: primaryActionAccent,
             itemSymbol: "shippingbox.fill",
             isEnabled: store.canIncreaseQuantity,
-            cornerRadius: store.isHomePresentation ? 12 : 13,
-            presentationStyle: store.isHomePresentation ? .productCard : .standard,
+            cornerRadius: usesProductCardActionStyle ? 12 : 13,
+            presentationStyle: usesProductCardActionStyle ? .productCard : .standard,
             quantityMode: .init(
                 quantity: Binding(
                     get: { store.quantity },
@@ -4218,7 +4691,7 @@ private struct PPUniversalCardRenderer: View {
         .frame(
             maxWidth: .infinity,
             minHeight: homeCartActionHeight,
-            maxHeight: store.isHomePresentation ? homeCartActionHeight : nil
+            maxHeight: usesProductCardActionStyle || store.isHomePresentation ? homeCartActionHeight : nil
         )
         .contentShape(Rectangle())
     }
@@ -4228,7 +4701,7 @@ private struct PPUniversalCardRenderer: View {
             PPUniversalHaptics.medium()
             store.handlePrimaryAction()
         } label: {
-            if store.isHomePresentation && store.model.usesQuantityControl {
+            if usesProductCardActionStyle {
                 PPProductCardActionLabel(
                     title: primaryActionTitle,
                     symbol: store.requiresVariantSelection && store.quantity == 0
@@ -4244,7 +4717,7 @@ private struct PPUniversalCardRenderer: View {
             }
         }
         .buttonStyle(PPUniversalScaleButtonStyle(
-            isProductCart: store.isHomePresentation && store.model.usesQuantityControl
+            isProductCart: usesProductCardActionStyle
         ))
         .disabled(store.isNotifyInFlight)
         .accessibilityLabel(primaryActionTitle)
@@ -4734,7 +5207,7 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var primaryActionAccent: Color {
-        store.isHomePresentation ? HomeSemanticTone.brand : store.palette.primary
+        usesProductCardActionStyle || store.isHomePresentation ? HomeSemanticTone.brand : store.palette.primary
     }
 
     private var semanticAccent: Color {
@@ -4819,16 +5292,20 @@ private struct PPUniversalCardRenderer: View {
         return nil
     }
 
+    private var ownerProfileIdentity: [String] {
+        [store.model.id, String(describing: store.context), ownerID ?? ""]
+    }
+
     private func fetchOwnerIfNeeded() {
         guard !hasFetchedOwner, let uid = ownerID, let vm = store.viewModel else { return }
         hasFetchedOwner = true
-        let wasServiceRequest = store.context == .services
+        let requestedModelID = store.model.id
+        let requestedContext = store.context
         PPUniversalCellSwiftUIBridge.fetchOwnerProfile(forUID: uid, viewModel: vm) { name, avatarURL, rating in
             DispatchQueue.main.async {
-                if wasServiceRequest || store.context == .services {
-                    guard store.context == .services,
-                          ownerID == uid else { return }
-                }
+                guard store.model.id == requestedModelID,
+                      store.context == requestedContext,
+                      ownerID == uid else { return }
                 self.ownerName = name
                 self.ownerAvatarURL = avatarURL
                 self.ownerRating = rating
@@ -4947,6 +5424,9 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var mediaContentInset: CGFloat {
+        if isFoodPresentation || (isProductCommercePresentation && store.layout == .pinterest) {
+            return 12
+        }
         if store.isHomePresentation {
             return 8
         }
@@ -5191,13 +5671,13 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var universalCardActionHeight: CGFloat {
-        store.isHomePresentation && store.model.usesQuantityControl
+        (usesProductCardActionStyle || store.isHomePresentation) && store.model.usesQuantityControl
             ? PPProductCardActionMetrics.height(for: dynamicTypeSize)
             : (dynamicTypeSize.isAccessibilitySize ? 52 : 44)
     }
 
     private var standardActionHeight: CGFloat {
-        guard store.isHomePresentation else {
+        guard usesProductCardActionStyle || store.isHomePresentation else {
             return dynamicTypeSize.isAccessibilitySize ? 52 : (HomeVisualTokens.minimumTouchTarget - 4)
         }
         return universalCardActionHeight
@@ -5205,7 +5685,7 @@ private struct PPUniversalCardRenderer: View {
 
     /// On Home presentation, all cart and action states maintain uniform geometry.
     private var homeCartActionHeight: CGFloat {
-        guard store.isHomePresentation else {
+        guard usesProductCardActionStyle || store.isHomePresentation else {
             return standardActionHeight
         }
         return universalCardActionHeight
@@ -5213,7 +5693,7 @@ private struct PPUniversalCardRenderer: View {
 
     /// Ads and standard actions maintain uniform action geometry on Home presentation.
     private var standardActionVisualHeight: CGFloat {
-        guard store.isHomePresentation else {
+        guard usesProductCardActionStyle || store.isHomePresentation else {
             return standardActionHeight
         }
         return universalCardActionHeight
@@ -6132,6 +6612,89 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         cache.countLimit = 160
         return cache
     }()
+
+    private static let discoverySizingCache: NSCache<NSString, NSNumber> = {
+        let cache = NSCache<NSString, NSNumber>()
+        cache.countLimit = 256
+        return cache
+    }()
+
+    /// Uses the same intrinsic discovery composition as the visible Pinterest
+    /// cell. Measurement does not load artwork, favorites or owner profiles.
+    @objc(discoveryFittingHeightForViewModel:width:contentSizeCategory:dataViewPresentation:)
+    public static func discoveryFittingHeight(
+        for viewModel: PPUniversalCellViewModel,
+        width: CGFloat,
+        contentSizeCategory: String,
+        dataViewPresentation: Bool
+    ) -> CGFloat {
+        guard width.isFinite, width > 32 else { return 320 }
+        let isAdvertisement = PPUniversalCellSwiftUIBridge.isAdvertisementViewModel(viewModel)
+        let isFood = viewModel.modelContext == .forFood || (viewModel.modelObject as? PetAccessory)?.isFood == true
+        let isAccessory = viewModel.modelContext == .forMarket ||
+            viewModel.modelContext == .forContextAccessory ||
+            (viewModel.modelObject is PetAccessory) ||
+            PPUniversalCellSwiftUIBridge.isAccessoryViewModel(viewModel) ||
+            PPUniversalCellSwiftUIBridge.usesQuantityControl(for: viewModel)
+        guard isAdvertisement || isFood || isAccessory, !viewModel.isSkeleton else {
+            return width + (serviceDynamicTypeSize(contentSizeCategory).isAccessibilitySize ? 320 : 160)
+        }
+        let snapshot = PPUniversalLegacyCardSnapshot(
+            viewModel: viewModel, delegate: nil, context: viewModel.modelContext,
+            layoutMode: .cellLayoutModePinterest, discountMode: .badge,
+            hideTopBadge: false, showsSubtitle: true, dataViewPresentation: dataViewPresentation
+        )
+        let model = snapshot.model
+        let isSold = (viewModel.modelObject as? PetAd)?.isSold ?? false
+        var keyParts: [String] = []
+        keyParts.append("discovery-v4")
+        keyParts.append(model.id)
+        keyParts.append(String(describing: width))
+        keyParts.append(contentSizeCategory)
+        keyParts.append(String(dataViewPresentation))
+        keyParts.append(String(PPUniversalCellSwiftUIBridge.isRightToLeft()))
+        keyParts.append(String(describing: snapshot.context))
+        keyParts.append(model.title)
+        keyParts.append(model.subtitle ?? "")
+        keyParts.append(String(describing: model.price))
+        keyParts.append(String(describing: model.originalPrice))
+        keyParts.append(model.priceText ?? "")
+        keyParts.append(model.currencyCode)
+        keyParts.append(model.discountText ?? "")
+        keyParts.append(model.variantInfoText ?? "")
+        keyParts.append(model.availability?.text ?? "")
+        keyParts.append(model.availability?.metaText ?? "")
+        keyParts.append(String(describing: model.gender))
+        keyParts.append(model.reasonText ?? "")
+        keyParts.append(model.badgeText ?? "")
+        keyParts.append(String(describing: model.preferredAspectRatio))
+        keyParts.append(String(model.usesQuantityControl))
+        keyParts.append(String(model.requiresVariantSelection))
+        keyParts.append(String(model.quantity))
+        keyParts.append(String(describing: model.stock))
+        keyParts.append(String(model.isSkeleton))
+        keyParts.append(String(isSold))
+        let key = keyParts.map { "\($0.utf8.count):\($0)" }.joined() as NSString
+        if let cached = discoverySizingCache.object(forKey: key) { return CGFloat(cached.doubleValue) }
+        let measurementStore = PPUniversalCardStore(
+            model: model, context: snapshot.context, layout: .pinterest,
+            discountStyle: snapshot.discountStyle, palette: .purePets, actions: .init()
+        )
+        measurementStore.viewModel = viewModel
+        measurementStore.isHomePresentation = false
+        let root = PPUniversalCardRenderer(
+            store: measurementStore, usesIntrinsicDiscoveryHeight: true, isMeasuring: true
+        )
+        .environment(\.dynamicTypeSize, serviceDynamicTypeSize(contentSizeCategory))
+        .environment(\.layoutDirection, measurementStore.isRightToLeft ? .rightToLeft : .leftToRight)
+        .fixedSize(horizontal: false, vertical: true)
+        .transaction { $0.disablesAnimations = true }
+        let controller = UIHostingController(rootView: root)
+        let size = controller.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude))
+        let height = size.height.isFinite && size.height > 0 ? ceil(size.height) + 2 : 320
+        discoverySizingCache.setObject(NSNumber(value: Double(height)), forKey: key)
+        return height
+    }
 
     /// Measures the actual service composition without starting image or
     /// favorite reads. Fixed-height UIKit grids can adopt this only for services.

@@ -7,11 +7,13 @@
 
 #import "PPAdsBrowser.h"
 #import "PetAd.h"
+#import "PetAccessory.h"
 #import "PPImageLoaderManager.h"
 #import "PPAdSharingHelper.h"
 #import "YYWebImageManager.h"
 #import "YYWebImageOperation.h"
 #import "PPUniversalCellHelper.h"
+#import <Pure_Pets-Swift.h>
 
 
 #define SCREEN_WIDTH [UIScreen mainScreen].bounds.size.width
@@ -821,6 +823,26 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
  heightForItemAtIndexPath:(NSIndexPath *)indexPath
                 withWidth:(CGFloat)width {
 
+    PPUniversalCellViewModel *model = [self.adsDataSource itemIdentifierForIndexPath:indexPath];
+    if (!model) {
+        NSArray<PPUniversalCellViewModel *> *fallbackModels = self.adsDataSource.snapshot.itemIdentifiers;
+        if (indexPath.item < fallbackModels.count) {
+            model = fallbackModels[indexPath.item];
+        }
+    }
+    if (@available(iOS 16.0, *)) {
+        BOOL isFood = model.modelContext == PPCellForFood ||
+            ([model.ModelObject isKindOfClass:PetAccessory.class] && ((PetAccessory *)model.ModelObject).isFood);
+        if (model && (isFood || [PPUniversalCellSwiftUIBridge isAdvertisementViewModel:model])) {
+            // The discovery renderer owns both image and complete information
+            // height. Its cache includes content, language, width and text size.
+            return [PPUniversalCardHostingCell discoveryFittingHeightForViewModel:model
+                                                                           width:width
+                                                             contentSizeCategory:UIApplication.sharedApplication.preferredContentSizeCategory
+                                                            dataViewPresentation:NO];
+        }
+    }
+
     NSString *cacheKey = [self pp_heightCacheKeyForWidth:width];
     NSNumber *cachedHeight = [[PPHeightCacheManager sharedManager]
                               heightForIndexPath:indexPath
@@ -830,11 +852,6 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     }
 
     CGFloat height = MAX(kPPPinterestMinCellHeight, width);
-    PPUniversalCellViewModel *model = [self.adsDataSource itemIdentifierForIndexPath:indexPath];
-    if (!model && indexPath.item < [self buildViewModelsFromAds:self.ads].count) {
-        model = [self buildViewModelsFromAds:self.ads][indexPath.item];
-    }
-
     if (model) {
         height = PPAdsBrowserPinterestHeightForViewModel(model, width);
     }

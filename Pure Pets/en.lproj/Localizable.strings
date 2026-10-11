@@ -4581,6 +4581,7 @@
 "marketplace_section_food_subtitle" = "Food selected for every pet";
 "marketplace_section_services_subtitle" = "Care from marketplace providers";
 "marketplace_layout_compact" = "Compact";
+"marketplace_layout_pinterest" = "Pinterest";
 "marketplace_layout_showcase" = "Showcase";
 "marketplace_layout_mosaic" = "Mosaic";
 "marketplace_layout_focus" = "Focus";
