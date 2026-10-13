@@ -3233,10 +3233,17 @@ private struct PPUniversalCardRenderer: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: mediaHeight)
                         .modifier(PPUniversalHomeShelfMediaSettle(state: homeShelfEntrance))
-                    discoveryInformationViewport
-                        .frame(maxWidth: .infinity)
-                        .frame(height: max(0, size.height - mediaHeight - inset - 4), alignment: .topLeading)
-                        .modifier(PPUniversalHomeShelfInformationDock(state: homeShelfEntrance))
+                    Group {
+                        if store.isHomePresentation && !isAdsMode &&
+                            (isFoodPresentation || isProductCommercePresentation) {
+                            homePinnedFoodInformation
+                        } else {
+                            discoveryInformationViewport
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: max(0, size.height - mediaHeight - inset - 4), alignment: .topLeading)
+                    .modifier(PPUniversalHomeShelfInformationDock(state: homeShelfEntrance))
                 }
                 .padding(.horizontal, inset)
                 .padding(.top, inset)
@@ -3244,6 +3251,31 @@ private struct PPUniversalCardRenderer: View {
             }
         }
         return decoratedCard(card, size: size)
+    }
+
+    /// Only the Home product shelf pins the purchase action. Descriptions,
+    /// prices and availability can vary without shifting the CTA between
+    /// neighboring cards; scrolling is limited to overflowing information.
+    private var homePinnedFoodInformation: some View {
+        VStack(spacing: 0) {
+            ViewThatFits(in: .vertical) {
+                foodInformation(showsAction: false)
+                    .fixedSize(horizontal: false, vertical: true)
+                ScrollView(.vertical, showsIndicators: false) {
+                    foodInformation(showsAction: false)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            if showsBottomCTA && !store.isContextFocused {
+                foodPrimaryAction
+                    .frame(height: homeCartActionHeight)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 12)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var discoveryInformationViewport: some View {
@@ -3269,6 +3301,10 @@ private struct PPUniversalCardRenderer: View {
     /// A package, its sellable identity, then one purchase decision. Identity and
     /// purchase information stay outside the image; the variant/cart gate stays intact.
     private var foodInformation: some View {
+        foodInformation(showsAction: true)
+    }
+
+    private func foodInformation(showsAction: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             scopedCardNavigationTarget(
                 VStack(alignment: .leading, spacing: 3) {
@@ -3286,30 +3322,35 @@ private struct PPUniversalCardRenderer: View {
 
             scopedCardNavigationTarget(foodPurchaseInformation)
 
-            if showsBottomCTA && !store.isContextFocused {
-                Group {
-                    if isMeasuring {
-                        if usesProductCardActionStyle {
-                            PPProductCardActionLabel(
-                                title: primaryActionTitle,
-                                symbol: store.requiresVariantSelection && store.quantity == 0
-                                    ? "cart.badge.plus" : primaryActionIcon,
-                                height: homeCartActionHeight,
-                                tint: primaryActionAccent
-                            )
-                        } else {
-                            standardPrimaryActionLabel
-                        }
-                    } else {
-                        primaryAction
-                    }
-                }
-                .frame(minHeight: 44)
-                .padding(.top, 2)
+            if showsAction && showsBottomCTA && !store.isContextFocused {
+                foodPrimaryAction
+                    .padding(.top, 2)
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var foodPrimaryAction: some View {
+        Group {
+            if isMeasuring {
+                if usesProductCardActionStyle {
+                    PPProductCardActionLabel(
+                        title: primaryActionTitle,
+                        symbol: store.requiresVariantSelection && store.quantity == 0
+                            ? "cart.badge.plus" : primaryActionIcon,
+                        height: homeCartActionHeight,
+                        tint: primaryActionAccent
+                    )
+                } else {
+                    standardPrimaryActionLabel
+                }
+            } else {
+                primaryAction
+            }
+        }
+        .frame(minHeight: 44)
     }
 
     private var foodPurchaseInformation: some View {
