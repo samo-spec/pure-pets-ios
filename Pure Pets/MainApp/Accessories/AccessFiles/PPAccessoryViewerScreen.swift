@@ -220,7 +220,8 @@ struct PPAccessoryViewerScreen: View {
 
                             PPAccessorySuggestionShore(
                                 store: store,
-                                compact: compact
+                                compact: compact,
+                                horizontalPadding: horizontalPadding
                             )
                             .id("accessory-recommendations")
                         }

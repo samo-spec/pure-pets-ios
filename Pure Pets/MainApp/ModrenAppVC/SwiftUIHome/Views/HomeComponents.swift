@@ -6154,7 +6154,7 @@ extension View {
     }
 }
 
-private extension View {
+extension View {
     @ViewBuilder
     func contentMarginsCompat() -> some View {
         if #available(iOS 17.0, *) {

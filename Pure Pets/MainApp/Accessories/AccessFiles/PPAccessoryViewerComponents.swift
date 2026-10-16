@@ -3523,38 +3523,86 @@ struct PPAccessoryEditorialDescription: View {
 struct PPAccessorySuggestionShore: View {
     @ObservedObject var store: PPAccessoryViewerStore
     let compact: Bool
+    var horizontalPadding: CGFloat = 16
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var cardSizing = HomeUniversalCardSizing()
 
-    private var suggestionCardHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 508 : 336
+    @State private var productInformationHeight: CGFloat = 0
+    @State private var productInformationRegions: [HomeProductInformationRegion: CGFloat] = [:]
+
+    private var targetCardHeight: CGFloat {
+        cardSizing.height(
+            isAdvertisement: false,
+            measuredProductInformationHeight: productInformationHeight
+        )
+    }
+
+    private var cardRailHeight: CGFloat {
+        targetCardHeight + (PPSpace.xs * 2)
+    }
+
+    private func cardWidth(in viewportWidth: CGFloat) -> CGFloat {
+        HomeCarouselMetrics.cardWidth(
+            viewport: viewportWidth,
+            accessibility: dynamicTypeSize.isAccessibilitySize
+        )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionTitle(
-                PPAccessoryViewerL10n.text(
-                    store.suggestionsFromSameProvider
-                        ? "accessory_view_more_from_provider"
-                        : "SimilarAaccess"
-                ),
-                symbol: "sparkles"
-            )
+        VStack(alignment: .leading, spacing: 14) {
+            heading
+                .padding(.horizontal, horizontalPadding)
 
             switch store.suggestionsPhase {
             case .idle, .loading:
-                suggestionSkeleton
+                GeometryReader { geometry in
+                    let resolvedCardWidth = cardWidth(in: geometry.size.width)
+                    suggestionSkeleton(width: resolvedCardWidth)
+                }
+                .frame(height: cardRailHeight)
             case .loaded:
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(store.suggestions) { suggestion in
-                            universalSuggestionCard(suggestion)
+                GeometryReader { geometry in
+                    let resolvedCardWidth = cardWidth(in: geometry.size.width)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: HomeCarouselMetrics.gap) {
+                            ForEach(Array(store.suggestions.enumerated()), id: \.element.id) { ordinal, suggestion in
+                                universalSuggestionCard(
+                                    suggestion,
+                                    width: resolvedCardWidth,
+                                    ordinal: ordinal
+                                )
+                            }
+                        }
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.vertical, PPSpace.xs)
+                    }
+                    .contentMarginsCompat()
+                    .scrollShadowClipDisabledCompat()
+                    .environment(\.homeProductInformationHeight, productInformationHeight)
+                    .environment(\.homeProductInformationRegions, productInformationRegions)
+                    .onPreferenceChange(HomeProductInformationRegionsKey.self) { heights in
+                        let resolved = heights.filter { $0.value.isFinite && $0.value >= 0 }
+                            .mapValues { ceil($0) }
+                        guard !resolved.isEmpty, resolved != productInformationRegions else { return }
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            productInformationRegions = resolved
                         }
                     }
-                    .padding(.horizontal, 4)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
+                    .onPreferenceChange(HomeProductInformationHeightPreferenceKey.self) { height in
+                        guard height.isFinite, height > 0 else { return }
+                        let resolvedHeight = ceil(height)
+                        guard productInformationHeight != resolvedHeight else { return }
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            productInformationHeight = resolvedHeight
+                        }
+                    }
                 }
+                .frame(height: cardRailHeight)
             case .empty:
                 Text(
                     PPAccessoryViewerL10n.text(
@@ -3563,6 +3611,7 @@ struct PPAccessorySuggestionShore: View {
                 )
                 .font(PPAccessoryTypography.callout)
                 .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 12)
             case let .failed(message):
                 HStack(spacing: 12) {
@@ -3577,12 +3626,35 @@ struct PPAccessorySuggestionShore: View {
                     .font(PPAccessoryTypography.calloutBold)
                     .frame(minHeight: 44)
                 }
+                .padding(.horizontal, horizontalPadding)
             }
+        }
+        .padding(.horizontal, -horizontalPadding)
+    }
+
+    private var heading: some View {
+        HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+            Text(
+                PPAccessoryViewerL10n.text(
+                    store.suggestionsFromSameProvider
+                        ? "accessory_view_more_from_provider"
+                        : "SimilarAaccess"
+                )
+            )
+            .font(HomeFont.title2())
+            .foregroundStyle(Color.homeTextPrimary)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
+
+            Spacer(minLength: 0)
         }
     }
 
     private func universalSuggestionCard(
-        _ suggestion: PPAccessoryViewerSuggestion
+        _ suggestion: PPAccessoryViewerSuggestion,
+        width: CGFloat,
+        ordinal: Int
     ) -> some View {
         let cellContext: PPCellContext = suggestion.accessory.isFood ? .forFood : .forMarket
         let viewModel = PPUniversalCellViewModel(
@@ -3595,29 +3667,38 @@ struct PPAccessorySuggestionShore: View {
             delegate: nil,
             context: cellContext,
             layoutMode: .cellLayoutModeVertical,
-            discountMode: .plain,
+            discountMode: .badge,
             imageLoader: nil,
             hideTopBadge: false,
             showsSubtitle: true,
+            isHomePresentation: true,
+            borderMode: .pordersForHomeView,
             onTap: {
                 store.openSuggestion(suggestion)
+            },
+            onQuantityChange: { quantity in
+                store.setSuggestionQuantity(quantity, for: suggestion)
             }
         )
-        .frame(width: compact ? 172 : 195, height: suggestionCardHeight)
+        .frame(width: width)
+        .frame(height: targetCardHeight)
+        .ppUniversalHomeShelfEntrance(isPresented: true, ordinal: ordinal)
+        .homeHorizontalCellReveal(ordinal: ordinal, entranceAlreadyPlayed: true)
         .accessibilityElement(children: .combine)
     }
 
-    private var suggestionSkeleton: some View {
+    private func suggestionSkeleton(width: CGFloat) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .top, spacing: 12) {
-                ForEach(["skeleton-0", "skeleton-1", "skeleton-2"], id: \.self) { itemID in
-                    skeletonCard(itemID)
+            LazyHStack(alignment: .top, spacing: HomeCarouselMetrics.gap) {
+                ForEach(["skeleton-0", "skeleton-1", "skeleton-2", "skeleton-3"], id: \.self) { itemID in
+                    skeletonCard(itemID, width: width)
                 }
             }
-            .padding(.horizontal, 4)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, PPSpace.xs)
         }
+        .contentMarginsCompat()
+        .scrollShadowClipDisabledCompat()
         .accessibilityLabel(
             PPAccessoryViewerL10n.text(
                 "accessory_view_loading_suggestions"
@@ -3625,7 +3706,7 @@ struct PPAccessorySuggestionShore: View {
         )
     }
 
-    private func skeletonCard(_ itemID: String) -> some View {
+    private func skeletonCard(_ itemID: String, width: CGFloat) -> some View {
         let skeletonVM = PPUniversalCellViewModel(model: nil, context: .forMarket)
         skeletonVM.isSkeleton = true
         return PPUniversalCardView(
@@ -3633,10 +3714,12 @@ struct PPAccessorySuggestionShore: View {
             delegate: nil,
             context: .forMarket,
             layoutMode: .cellLayoutModeVertical,
-            discountMode: .plain,
-            showsSubtitle: true
+            discountMode: .badge,
+            showsSubtitle: true,
+            isHomePresentation: true,
+            borderMode: .pordersForHomeView
         )
-        .frame(width: compact ? 172 : 195, height: suggestionCardHeight)
+        .frame(width: width, height: targetCardHeight)
     }
 }
 

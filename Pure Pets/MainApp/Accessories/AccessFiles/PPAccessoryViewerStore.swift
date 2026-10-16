@@ -940,6 +940,35 @@ final class PPAccessoryViewerStore: ObservableObject {
         )
     }
 
+    func setSuggestionQuantity(_ quantity: Int, for suggestion: PPAccessoryViewerSuggestion) {
+        let accessory = suggestion.accessory
+        let existingQuantity = PPAccessoryViewerLegacyBridge.cartQuantity(for: accessory)
+        if quantity == 0 || existingQuantity > 0 {
+            PPAccessoryViewerLegacyBridge.updateCartQuantity(
+                quantity,
+                for: accessory
+            ) { _, _, _ in
+                NotificationCenter.default.post(
+                    name: Notification.Name("CartUpdated"),
+                    object: nil
+                )
+            }
+            return
+        }
+
+        guard let presenter else { return }
+        PPAccessoryViewerLegacyBridge.addToCart(
+            accessory,
+            quantity: max(quantity, 1),
+            from: presenter
+        ) { _, _, _, _ in
+            NotificationCenter.default.post(
+                name: Notification.Name("CartUpdated"),
+                object: nil
+            )
+        }
+    }
+
     func openSellerProfile() {
         guard let accessory,
               let owner,

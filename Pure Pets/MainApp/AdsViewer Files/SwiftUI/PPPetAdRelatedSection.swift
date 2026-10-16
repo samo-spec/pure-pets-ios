@@ -258,6 +258,8 @@ struct PPPetAdRelatedSection: View {
             model: model,
             context: context,
             layout: .vertical,
+            discountStyle: .badge,
+            borderMode: .pordersForHomeView,
             actions: PPUniversalCardActions(
                 onTap: { _ in onSelect(item) }
             )
