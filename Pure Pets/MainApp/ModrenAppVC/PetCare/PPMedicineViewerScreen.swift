@@ -7,7 +7,7 @@ struct PPMedicineViewerScreen: View {
     let onReturnToCare: () -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.accessibilityContrast) private var contrast
+    @Environment(\.colorSchemeContrast) private var contrast
     @ScaledMetric(relativeTo: .body) private var accessibleImageHeight: CGFloat = 120
 
     private var snapshot: PPMedicineViewerSnapshot { presentation.snapshot }
