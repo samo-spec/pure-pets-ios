@@ -92,7 +92,8 @@ enum HomeModelAdapter {
         from objects: [Any],
         context: PPCellContext,
         kind: HomeCardKind,
-        limit: Int = 12
+        limit: Int = 12,
+        excluding identifiers: Set<String> = []
     ) -> [HomeCardModel] {
         var seen = Set<String>()
         var result: [HomeCardModel] = []
@@ -109,6 +110,7 @@ enum HomeModelAdapter {
                 in: .whitespacesAndNewlines
             )
             let stableID = candidate.isEmpty ? pointerID : candidate
+            guard !identifiers.contains(stableID) else { continue }
             guard seen.insert(stableID).inserted else { continue }
             result.append(
                 HomeCardModel(

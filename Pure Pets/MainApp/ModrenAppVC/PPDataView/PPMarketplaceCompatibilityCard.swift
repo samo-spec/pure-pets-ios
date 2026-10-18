@@ -32,7 +32,11 @@ struct PPMarketplaceCompatibilityCard: View {
     }
 
     private var usesContainedMedia: Bool {
-        PPUniversalCellSwiftUIBridge.prefersContainedImage(for: viewModel)
+        if usesQuantity || viewModel.modelObject is PetAccessory ||
+            context == .forMarket || context == .forFood || context == .forContextAccessory {
+            return false
+        }
+        return PPUniversalCellSwiftUIBridge.prefersContainedImage(for: viewModel)
     }
 
     private var metadataText: String? {
@@ -55,14 +59,14 @@ struct PPMarketplaceCompatibilityCard: View {
         layoutContent
         .background(
             Color.ppMarketplaceSurface,
-            in: RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+            in: RoundedRectangle(cornerRadius: HomeVisualTokens.universalCardCorner, style: .continuous)
         )
         .clipShape(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+            RoundedRectangle(cornerRadius: HomeVisualTokens.universalCardCorner, style: .continuous)
         )
         .overlay {
             RoundedRectangle(
-                cornerRadius: PPCorner.card,
+                cornerRadius: HomeVisualTokens.universalCardCorner,
                 style: .continuous
             )
             .strokeBorder(
@@ -81,7 +85,7 @@ struct PPMarketplaceCompatibilityCard: View {
             y: 6
         )
         .contentShape(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+            RoundedRectangle(cornerRadius: HomeVisualTokens.universalCardCorner, style: .continuous)
         )
         .onTapGesture {
             bridge.open(item: viewModel)
@@ -117,20 +121,20 @@ struct PPMarketplaceCompatibilityCard: View {
     private var layoutContent: AnyView {
         if layout == .compact && !dynamicTypeSize.isAccessibilitySize {
             return AnyView(
-                HStack(alignment: .top, spacing: PPSpace.md) {
-                    media.frame(width: 138)
+                HStack(alignment: .top, spacing: 8) {
+                    media.frame(width: 120)
                     information
-                        .padding(.vertical, PPSpace.md)
-                        .padding(.trailing, PPSpace.md)
+                        .padding(.vertical, 8)
+                        .padding(.trailing, 8)
                 }
-                .frame(minHeight: 184)
+                .frame(minHeight: 140)
             )
         }
         return AnyView(
             VStack(alignment: .leading, spacing: 0) {
                 media.frame(height: mediaHeight)
                 information
-                    .padding(PPSpace.md)
+                    .padding(8)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         )
@@ -283,18 +287,18 @@ struct PPMarketplaceCompatibilityCard: View {
     }
 
     private var information: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(viewModel.title)
-                .font(HomeFont.headline())
+                .font(HomeFont.subheadline())
                 .foregroundStyle(Color.ppMarketplaceTextPrimary)
                 .multilineTextAlignment(.leading)
                 .lineLimit(layout == .focus ? 3 : 1)
-                .minimumScaleFactor(0.86)
+                .minimumScaleFactor(0.85)
                 .fixedSize(horizontal: false, vertical: true)
 
             if !viewModel.subtitle.isEmpty {
                 Text(viewModel.subtitle)
-                    .font(HomeFont.subheadline())
+                    .font(HomeFont.footnote())
                     .foregroundStyle(Color.ppMarketplaceTextSecondary)
                     .lineLimit(layout == .focus ? 3 : 1)
             }
@@ -308,7 +312,7 @@ struct PPMarketplaceCompatibilityCard: View {
 
             HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
                 Text(viewModel.priceText)
-                    .font(HomeFont.bold(layout == .focus ? 22 : 20))
+                    .font(HomeFont.bold(layout == .focus ? 22 : 18))
                     .foregroundStyle(Color.ppMarketplaceTextPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
@@ -324,7 +328,7 @@ struct PPMarketplaceCompatibilityCard: View {
             }
 
             if !viewModel.availabilityText.isEmpty || (viewModel.variantInfoText?.isEmpty == false) || (metadataText?.isEmpty == false) {
-                HStack(alignment: .center, spacing: 6) {
+                HStack(alignment: .center, spacing: 4) {
                     if !viewModel.availabilityText.isEmpty {
                         Text(viewModel.availabilityText)
                             .foregroundStyle(Color(red: 0x10 / 255.0, green: 0xB9 / 255.0, blue: 0x81 / 255.0))
@@ -338,7 +342,7 @@ struct PPMarketplaceCompatibilityCard: View {
 
                     if let variantInfo = viewModel.variantInfoText, !variantInfo.isEmpty {
                         Text(variantInfo)
-                            .font(HomeFont.bold(11))
+                            .font(HomeFont.bold(11.5))
                             .foregroundStyle(usesQuantity ? Color.ppPrimary : Color(uiColor: bridge.accentColor))
                             .lineLimit(1)
                     }
@@ -360,12 +364,12 @@ struct PPMarketplaceCompatibilityCard: View {
             }
 
             if !usesQuantity {
-                Spacer(minLength: PPSpace.sm)
+                Spacer(minLength: 2)
             }
 
             action
-                .padding(.top, usesQuantity ? 2 : 0)
-                .padding(.bottom, 8)
+                .padding(.top, usesQuantity ? 1 : 0)
+                .padding(.bottom, 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
@@ -391,13 +395,13 @@ struct PPMarketplaceCompatibilityCard: View {
                         .flipsForRightToLeftLayoutDirection(true)
                         .accessibilityHidden(true)
                 }
-                .font(HomeFont.bold(14))
+                .font(HomeFont.bold(13))
                 .foregroundStyle(Color(uiColor: bridge.accentColor))
-                .padding(.horizontal, PPSpace.md)
-                .frame(maxWidth: .infinity, minHeight: 46)
+                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, minHeight: 34)
                 .background(
                     Color(uiColor: bridge.accentColor).opacity(0.10),
-                    in: Capsule(style: .continuous)
+                    in: RoundedRectangle(cornerRadius: 9, style: .continuous)
                 )
             }
             .buttonStyle(.plain)
@@ -405,7 +409,7 @@ struct PPMarketplaceCompatibilityCard: View {
     }
 
     private var actionHeight: CGFloat {
-        PPProductCardActionMetrics.height(for: dynamicTypeSize)
+        dynamicTypeSize.isAccessibilitySize ? 46 : 34
     }
 
     private func actionLabel(title: String, symbol: String, loading: Bool = false) -> some View {
@@ -489,7 +493,7 @@ struct PPMarketplaceCompatibilityCard: View {
         .padding(.horizontal, PPSpace.xs)
         .background(
             Color.ppSecondarySurface,
-            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 9, style: .continuous)
         )
     }
 
@@ -500,7 +504,7 @@ struct PPMarketplaceCompatibilityCard: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Color(uiColor: bridge.accentColor))
                 .frame(width: 44, height: 44)
         }

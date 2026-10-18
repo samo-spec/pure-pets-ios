@@ -18,6 +18,7 @@ enum HomeRepositoryEvent {
     case promotions([NSObject])
     case accessories([PetAccessory])
     case food([PetAccessory])
+    case medicines([PetAccessory])
     case advertisements([PetAd])
     case nearbyAdvertisements([PetAd], showingRecentFallback: Bool)
     case services([ServiceModel])
@@ -200,6 +201,9 @@ final class HomeRepository {
         }
         bridge.foodDidChange = { [weak self] models in
             self?.forward(.food(models))
+        }
+        bridge.medicinesDidChange = { [weak self] models in
+            self?.forward(.medicines(models))
         }
         bridge.advertisementsDidChange = { [weak self] models in
             self?.forward(.advertisements(models))

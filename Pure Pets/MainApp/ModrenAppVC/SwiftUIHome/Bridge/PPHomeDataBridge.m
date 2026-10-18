@@ -762,6 +762,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
     [self startPromotionListener];
     [self refreshAccessoriesForGeneration:generation];
     [self refreshFoodForGeneration:generation];
+    [self refreshMedicinesForGeneration:generation];
     [self refreshAdvertisementsForGeneration:generation];
     [self refreshServicesForGeneration:generation];
     [self refreshPetContextForGeneration:generation];
@@ -1035,6 +1036,59 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
     }];
 }
 
+- (void)refreshMedicinesForGeneration:(NSInteger)generation
+{
+    __weak typeof(self) weakSelf = self;
+    void (^applyMedicines)(NSArray<PetAccessory *> *) = ^(NSArray<PetAccessory *> *medicines) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        NSArray<PetAccessory *> *sorted =
+            [[(medicines ?: @[]) filteredArrayUsingPredicate:
+                [NSPredicate predicateWithBlock:^BOOL(PetAccessory *item,
+                                                     __unused NSDictionary *bindings) {
+                    return [item isKindOfClass:PetAccessory.class] &&
+                           item.accessKindType == AccessTypePetMedicine &&
+                           !item.isDeleted &&
+                           !item.isBlocked &&
+                           !item.isDisabled;
+                }]]
+             sortedArrayUsingComparator:^NSComparisonResult(PetAccessory *lhs, PetAccessory *rhs) {
+                 NSDate *lhsDate = lhs.createdAt ?: NSDate.distantPast;
+                 NSDate *rhsDate = rhs.createdAt ?: NSDate.distantPast;
+                 NSComparisonResult dateResult = [rhsDate compare:lhsDate];
+                 if (dateResult != NSOrderedSame) {
+                     return dateResult;
+                 }
+                 return [lhs.accessoryID ?: @"" compare:rhs.accessoryID ?: @""];
+             }];
+        if (sorted.count > 20) {
+            sorted = [sorted subarrayWithRange:NSMakeRange(0, 20)];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (![self isRefreshGenerationCurrent:generation]) {
+                return;
+            }
+            if (self.medicinesDidChange) {
+                self.medicinesDidChange(sorted ?: @[]);
+            }
+        });
+    };
+
+    [PetAccessoryManager fetchPublicPharmacyAccessoriesWithCompletion:^(NSArray<PetAccessory *> *items,
+                                                                      NSError * _Nullable error) {
+        if (!error && items.count > 0) {
+            applyMedicines(items);
+        } else {
+            [[PetAccessoryManager sharedManager] fetchAccessoriesOfKind:AccessTypePetMedicine
+                                                             completion:^(NSArray<PetAccessory *> *fallbackItems) {
+                applyMedicines(fallbackItems);
+            }];
+        }
+    }];
+}
+
 - (void)refreshAdvertisementsForGeneration:(NSInteger)generation
 {
     __weak typeof(self) weakSelf = self;
@@ -1280,6 +1334,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionLastFood),
+        @(PPHomeSectionMedicines),
         @(PPHomeSectionAdsNearBy),
         @(PPHomeSectionNearbyServices),
         @(PPHomeSectionAdopt),
@@ -1302,6 +1357,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
         case PPHomeSectionPetProfile: return @"PPHomeSectionPetProfile";
         case PPHomeSectionPremiumCare: return @"PPHomeSectionPremiumCare";
         case PPHomeSectionLastFood: return @"PPHomeSectionLastFood";
+        case PPHomeSectionMedicines: return @"PPHomeSectionMedicines";
         case PPHomeSectionNearbyServices: return @"PPHomeSectionNearbyServices";
         case PPHomeSectionAdsNearBy: return @"PPHomeSectionAdsNearBy";
         case PPHomeSectionAdopt: return @"PPHomeSectionAdopt";
@@ -1355,6 +1411,7 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
             @"PPHomeSectionPetProfile" : @(PPHomeSectionPetProfile),
             @"PPHomeSectionPremiumCare" : @(PPHomeSectionPremiumCare),
             @"PPHomeSectionLastFood" : @(PPHomeSectionLastFood),
+            @"PPHomeSectionMedicines" : @(PPHomeSectionMedicines),
             @"PPHomeSectionNearbyServices" : @(PPHomeSectionNearbyServices),
             @"PPHomeSectionAdsNearBy" : @(PPHomeSectionAdsNearBy),
             @"PPHomeSectionAdopt" : @(PPHomeSectionAdopt),
@@ -1440,6 +1497,21 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
             ? row[@"type"]
             : [self defaultTypeForSectionID:sectionID.integerValue];
         [merged addObject:preservedRow.copy];
+    }
+
+    if (![seen containsObject:@(PPHomeSectionMedicines)]) {
+        NSUInteger foodIndex = [merged indexOfObjectPassingTest:^BOOL(NSDictionary *obj, NSUInteger idx, BOOL *stop) {
+            return [obj[@"id"] isEqual:@(PPHomeSectionLastFood)];
+        }];
+        NSDictionary *medicinesRow = @{
+            @"id" : @(PPHomeSectionMedicines),
+            @"visible" : @([self defaultVisibilityForSectionID:PPHomeSectionMedicines]),
+            @"type" : [self defaultTypeForSectionID:PPHomeSectionMedicines],
+        };
+        if (foodIndex != NSNotFound) {
+            [merged insertObject:medicinesRow atIndex:foodIndex + 1];
+            [seen addObject:@(PPHomeSectionMedicines)];
+        }
     }
 
     for (NSNumber *sectionID in catalog) {

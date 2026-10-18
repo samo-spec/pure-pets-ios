@@ -29,6 +29,7 @@ enum PPHomeSectionRegistry {
     static let suggestionAds = 18
     static let suggestionAccessories = 19
     static let pureLens = 20
+    static let medicines = 21
 
     /// Every identifier this renderer can present. Anything else is retained
     /// with its original identity and deliberately not rendered.
@@ -37,6 +38,7 @@ enum PPHomeSectionRegistry {
         accessories, petProfile, premiumCare, lastFood, nearbyServices,
         adsNearby, adopt, buyAgain, premiumSearch, providerCategoryNav,
         marketplaceHero, suggestionAds, suggestionAccessories, pureLens,
+        medicines,
     ]
 
     /// Identifiers that can legitimately own the single Marketing Stage.
@@ -63,7 +65,7 @@ enum PPHomePresentationLimits {
     static let ecosystemLauncherActions = 7
     /// Seven compact destinations across Home's ecosystem launcher.
     static let ecosystemLauncherSecondaryActions = 7
-    static let commerceRails = 3
+    static let commerceRails = 4
     static let partnerFeatures = 1
 }
 

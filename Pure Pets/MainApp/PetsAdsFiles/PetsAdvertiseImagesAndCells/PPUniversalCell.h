@@ -61,6 +61,7 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 @property (nonatomic, assign) BOOL forceShowsOwnerMenuButton;
 @property (nonatomic, assign) BOOL showsSubtitle;
 @property (nonatomic, assign) BOOL dataViewPresentation;
+@property (nonatomic, assign) BOOL isHomePresentation;
 @property (nonatomic, assign) BOOL userBordersV2;
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) PPUniversalGradientView *imageContainer;

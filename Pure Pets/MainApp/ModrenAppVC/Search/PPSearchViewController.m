@@ -713,13 +713,11 @@ PHPickerViewControllerDelegate>
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.adjustsImageWhenHighlighted = NO;
+    button.adjustsImageWhenHighlighted = YES;
     button.showsTouchWhenHighlighted = NO;
     button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    button.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
     button.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-    button.titleLabel.font = [self pp_novaNavigationTitleFont];
-    button.titleLabel.adjustsFontSizeToFitWidth = YES;
-    button.titleLabel.minimumScaleFactor = 0.82;
     button.accessibilityLabel = kLang(@"nova_title");
     button.accessibilityHint = kLang(@"nova_subtitle");
     button.accessibilityTraits = UIAccessibilityTraitButton;
@@ -734,6 +732,10 @@ PHPickerViewControllerDelegate>
     }
     button.layer.borderWidth = 1.0;
     button.layer.masksToBounds = NO;
+
+    if (button.imageView) {
+        button.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    }
 
     [button addTarget:self action:@selector(pp_novaNavigationButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
     [button addTarget:self action:@selector(pp_novaNavigationButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside];
@@ -752,20 +754,16 @@ PHPickerViewControllerDelegate>
     return button;
 }
 
-- (UIFont *)pp_novaNavigationTitleFont
+- (UIImage *)pp_novaNavigationIcon
 {
-    return [GM BlackFontWithSize:16.0] ?: [GM boldFontWithSize:16.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightBlack];
-}
-
-- (NSAttributedString *)pp_novaNavigationAttributedTitleWithColor:(UIColor *)color alpha:(CGFloat)alpha
-{
-    UIColor *resolvedColor = color ?: (AppPrimaryClr ?: UIColor.systemPinkColor);
-    UIFont *font = [self pp_novaNavigationTitleFont];
-    NSDictionary *attributes = @{
-        NSFontAttributeName: font,
-        NSForegroundColorAttributeName: [resolvedColor colorWithAlphaComponent:alpha]
-    };
-    return [[NSAttributedString alloc] initWithString:@"N" attributes:attributes];
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *config =
+            [UIImageSymbolConfiguration configurationWithPointSize:16.0
+                                                            weight:UIImageSymbolWeightSemibold];
+        UIImage *image = [UIImage systemImageNamed:@"sparkles" withConfiguration:config];
+        return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
+    return nil;
 }
 
 - (void)pp_applyNovaNavigationButtonStyle
@@ -786,15 +784,15 @@ PHPickerViewControllerDelegate>
         }
     }
 
-    button.titleLabel.font = [self pp_novaNavigationTitleFont];
+    UIImage *icon = [self pp_novaNavigationIcon];
     button.backgroundColor = background;
     button.tintColor = foreground;
-    [button setAttributedTitle:[self pp_novaNavigationAttributedTitleWithColor:foreground alpha:1.0]
-                      forState:UIControlStateNormal];
-    [button setAttributedTitle:[self pp_novaNavigationAttributedTitleWithColor:foreground alpha:0.62]
-                      forState:UIControlStateHighlighted];
-    [button setTitleColor:foreground forState:UIControlStateNormal];
-    [button setTitleColor:[foreground colorWithAlphaComponent:0.62] forState:UIControlStateHighlighted];
+    [button setImage:icon forState:UIControlStateNormal];
+    [button setImage:icon forState:UIControlStateHighlighted];
+    [button setAttributedTitle:nil forState:UIControlStateNormal];
+    [button setAttributedTitle:nil forState:UIControlStateHighlighted];
+    [button setTitle:nil forState:UIControlStateNormal];
+    [button setTitle:nil forState:UIControlStateHighlighted];
     [button pp_setBorderColor:stroke];
     [button pp_setShadowColor:shadow];
     button.layer.shadowOpacity = 0.10f;

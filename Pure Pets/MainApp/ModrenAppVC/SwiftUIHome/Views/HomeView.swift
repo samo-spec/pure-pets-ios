@@ -954,6 +954,7 @@ struct HomeView: View {
         case .accessories: return "bag.fill"
         case .advertisements: return "megaphone.fill"
         case .food: return "cart.fill"
+        case .medicines: return "cross.case.fill"
         case .nearbyAdvertisements: return "location.fill"
         case .services: return "wrench.and.screwdriver.fill"
         }

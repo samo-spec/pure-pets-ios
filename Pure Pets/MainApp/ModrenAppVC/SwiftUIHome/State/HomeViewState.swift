@@ -336,6 +336,7 @@ struct HomePriorityAction: Identifiable {
 enum HomeCardKind {
     case accessory
     case food
+    case medicine
     case advertisement
     case service
     case buyAgain
@@ -369,6 +370,7 @@ enum HomeSectionID: String, Hashable {
     case accessories
     case advertisements
     case food
+    case medicines
     case nearbyAdvertisements
     case services
 }
@@ -431,6 +433,7 @@ struct HomeConfigModel {
             HomeConfigSection(id: 6, type: "PPHomeSectionSuggestions", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 4, type: "PPHomeSectionCarousel", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 10, type: "PPHomeSectionLastFood", isVisible: true, metadata: [:]),
+            HomeConfigSection(id: 21, type: "PPHomeSectionMedicines", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 12, type: "PPHomeSectionAdsNearBy", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 11, type: "PPHomeSectionNearbyServices", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 13, type: "PPHomeSectionAdopt", isVisible: true, metadata: [:]),

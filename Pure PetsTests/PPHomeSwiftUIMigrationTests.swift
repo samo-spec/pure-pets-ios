@@ -3,6 +3,71 @@ import XCTest
 @testable import Pure_Pets
 
 final class PPHomeSwiftUIMigrationTests: XCTestCase {
+    private func product(_ id: String) -> PetAccessory {
+        let product = PetAccessory()
+        product.accessoryID = id
+        product.name = id
+        product.price = 10
+        product.imageURLsArray = []
+        return product
+    }
+
+    func testHomeShelvesFillFromProductsBeyondTheEarlierPreviewLimit() {
+        let products = (1...30).map { product("product-\($0)") }
+        let featured = HomeModelAdapter.cards(
+            from: products, context: .forMarket, kind: .accessory, limit: 8
+        )
+        let essentials = HomeModelAdapter.cards(
+            from: products, context: .forMarket, kind: .accessory,
+            limit: 12, excluding: Set(featured.map(\.id))
+        )
+
+        XCTAssertEqual(featured.map(\.id), (1...8).map { "product-\($0)" })
+        XCTAssertEqual(essentials.map(\.id), (9...20).map { "product-\($0)" })
+        XCTAssertTrue(Set(featured.map(\.id)).isDisjoint(with: essentials.map(\.id)))
+    }
+
+    func testHomeShelvesDoNotRestoreDuplicatesForASmallCatalog() {
+        let products = [product("first"), product("second"), product("third")]
+        let remaining = HomeModelAdapter.cards(
+            from: products, context: .forMarket, kind: .accessory,
+            excluding: ["first", "second"]
+        )
+        let exhausted = HomeModelAdapter.cards(
+            from: products, context: .forMarket, kind: .accessory,
+            excluding: ["first", "second", "third"]
+        )
+
+        XCTAssertEqual(remaining.map(\.id), ["third"])
+        XCTAssertTrue(exhausted.isEmpty)
+    }
+
+    func testDuplicateProductDocumentsDoNotConsumePreviewCapacity() {
+        let products = [product("used"), product("used"), product("fresh"),
+                        product("fresh"), product("next")]
+        let cards = HomeModelAdapter.cards(
+            from: products, context: .forMarket, kind: .accessory,
+            limit: 2, excluding: ["used"]
+        )
+
+        XCTAssertEqual(cards.map(\.id), ["fresh", "next"])
+    }
+
+    func testHomePreviewClaimsDoNotMutateTheSourceOrLeakIntoANewContext() {
+        let products = [product("first"), product("second")]
+        let nextShelf = HomeModelAdapter.cards(
+            from: products, context: .forMarket, kind: .accessory,
+            excluding: ["first"]
+        )
+        let newContext = HomeModelAdapter.cards(
+            from: products, context: .forMarket, kind: .accessory
+        )
+
+        XCTAssertEqual(nextShelf.map(\.id), ["second"])
+        XCTAssertEqual(newContext.map(\.id), ["first", "second"])
+        XCTAssertEqual(products.map(\.accessoryID), ["first", "second"])
+    }
+
     func testConfigPreservesServerOrderAndVisibility() {
         let rows: [[AnyHashable: Any]] = [
             ["id": NSNumber(value: 17), "visible": NSNumber(value: true)],

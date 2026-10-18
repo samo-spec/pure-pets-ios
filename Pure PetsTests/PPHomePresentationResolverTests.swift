@@ -171,6 +171,7 @@ final class PPHomePresentationResolverTests: XCTestCase {
             rail(id: 19, kind: .recommendations),
             rail(id: 6, kind: .recommendations),
             rail(id: 10, kind: .food),
+            rail(id: 21, kind: .medicines),
             rail(id: 12, kind: .nearbyAdvertisements),
             rail(id: 11, kind: .services),
             rail(id: 14, kind: .buyAgain),
@@ -599,11 +600,11 @@ final class PPHomePresentationResolverTests: XCTestCase {
         }
 
         XCTAssertEqual(rails.count, PPHomePresentationLimits.commerceRails)
-        // Fallback order presents accessories 7, suggestion ads 18, then
-        // suggestion accessories 19.
-        XCTAssertEqual(rails.map(\.rawID), [7, 18, 19])
+        // Fallback order presents accessories 7, suggestion ads 18,
+        // suggestion accessories 19, then suggestions 6.
+        XCTAssertEqual(rails.map(\.rawID), [7, 18, 19, 6])
 
-        for overflow in [6, 10, 12, 11, 14] {
+        for overflow in [10, 21, 12, 11, 14] {
             let suppressed = plan.suppressedModules.first {
                 $0.rawID == overflow
             }

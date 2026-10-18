@@ -52,6 +52,8 @@
 		A9F200030000000000000003 /* PPPetProfilesHostingControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9F100030000000000000003 /* PPPetProfilesHostingControllers.swift */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		AA70C0012026100700000001 /* PPPetCareDiscoveryView.m in Sources */ = {isa = PBXBuildFile; fileRef = AA70C0012026100700000002 /* PPPetCareDiscoveryView.m */; };
+		AAF710192026101900000001 /* PPMedicineViewerHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF710192026101900000003 /* PPMedicineViewerHostingController.swift */; };
+		AAF710192026101900000002 /* PPMedicineViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF710192026101900000004 /* PPMedicineViewerScreen.swift */; };
 		AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */; };
 		AC1050013000000100000001 /* MessagingScreenVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1050013000000100000002 /* MessagingScreenVC.swift */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
@@ -1002,6 +1004,8 @@
 		AA170DFB35D11ED0D638DF8B /* AttachmentButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttachmentButton.swift; sourceTree = "<group>"; };
 		AA70C0012026100700000002 /* PPPetCareDiscoveryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareDiscoveryView.m; sourceTree = "<group>"; };
 		AA70C0012026100700000003 /* PPPetCareDiscoveryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareDiscoveryView.h; sourceTree = "<group>"; };
+		AAF710192026101900000003 /* PPMedicineViewerHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMedicineViewerHostingController.swift; sourceTree = "<group>"; };
+		AAF710192026101900000004 /* PPMedicineViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMedicineViewerScreen.swift; sourceTree = "<group>"; };
 		AC1050013000000100000002 /* MessagingScreenVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagingScreenVC.swift; sourceTree = "<group>"; };
 		B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageUploadValidator.m; sourceTree = "<group>"; };
 		B7885155DFA157651B6B5E91 /* PPImageUploadValidator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageUploadValidator.h; sourceTree = "<group>"; };
@@ -2518,6 +2522,8 @@
 				C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */,
 				F2A903492F9E84F30097485B /* PPPetCareViewerVC.h */,
 				F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */,
+				AAF710192026101900000003 /* PPMedicineViewerHostingController.swift */,
+				AAF710192026101900000004 /* PPMedicineViewerScreen.swift */,
 				F2A9034B2F9E84F50097485B /* PPPetCareVetViewrVC.h */,
 				F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */,
 				F2A903462F9E84120097485B /* PetCareHelpers.h */,
@@ -5750,6 +5756,8 @@
 				F27146812CCE6B5300F7F3BA /* XLFormRowDescriptor.m in Sources */,
 				F2DF5DD42EFC9196009C7B6F /* PPHomeViewController.m in Sources */,
 				AA70C0012026100700000001 /* PPPetCareDiscoveryView.m in Sources */,
+				AAF710192026101900000001 /* PPMedicineViewerHostingController.swift in Sources */,
+				AAF710192026101900000002 /* PPMedicineViewerScreen.swift in Sources */,
 				B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */,
 				F283FABC2E542933001EF0BA /* UserContactView.m in Sources */,
 				F21C2B0F2CD01E3A00B2373D /* XLFormCustomCell.m in Sources */,

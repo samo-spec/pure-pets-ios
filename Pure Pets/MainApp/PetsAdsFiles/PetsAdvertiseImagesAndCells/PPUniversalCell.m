@@ -60,6 +60,7 @@ void PPUniversalCellSetShowsCTA(BOOL showsCTA) {
 @synthesize forceShowsOwnerMenuButton = _forceShowsOwnerMenuButton;
 @synthesize showsSubtitle = _showsSubtitle;
 @synthesize dataViewPresentation = _dataViewPresentation;
+@synthesize isHomePresentation = _isHomePresentation;
 @synthesize userBordersV2 = _userBordersV2;
 @synthesize imageView = _imageView;
 @synthesize imageContainer = _imageContainer;

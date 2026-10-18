@@ -66,6 +66,9 @@ typedef NS_ENUM(NSInteger, BBCartBottomBarPresentationStyle) {
 
 
 @interface BBCartBottomBar : UIView
+- (instancetype)initWithPresentationStyle:(BBCartBottomBarPresentationStyle)presentationStyle;
+/// Content-fitted medicine dock height, including the host's bottom safe area.
+- (CGFloat)preferredHeightForWidth:(CGFloat)width bottomSafeAreaInset:(CGFloat)bottomInset;
 @property (nonatomic, assign) BBCartBottomBarPresentationStyle presentationStyle;
 @property (nonatomic, strong, readonly) UIButton *totalContainer;
 @property (nonatomic, strong, readonly) UIButton *qtyContainer;

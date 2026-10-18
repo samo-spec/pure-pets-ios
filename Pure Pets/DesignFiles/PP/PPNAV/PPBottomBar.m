@@ -319,6 +319,12 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 @property (nonatomic, assign, getter=isPurchaseAvailable) BOOL purchaseAvailable;
 @property (nonatomic, assign, getter=isAddToCartPending) BOOL addToCartPending;
 @property (nonatomic, assign) NSInteger lastRenderedQuantity;
+@property (nonatomic, copy) NSArray<NSLayoutConstraint *> *cartLayoutConstraints;
+@property (nonatomic, strong) NSLayoutConstraint *medicineActionHeightConstraint;
+@property (nonatomic, strong) UIStackView *medicineUtilityRow;
+@property (nonatomic, strong) UIStackView *medicineQuantityRow;
+@property (nonatomic, strong) UILabel *medicineQuantityLabel;
+@property (nonatomic, assign) BOOL medicineConfirmationVisible;
 - (void)pp_refreshStepperButtonStyle:(UIButton *)button symbolName:(NSString *)symbolName;
 - (void)pp_applyTypography;
 - (void)pp_refreshMaterialEffects;
@@ -330,6 +336,14 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 - (void)pp_refreshLiquidBorderAppearance;
 - (void)pp_refreshLiquidBorderMotion;
 - (BOOL)pp_usesViewerChrome;
+- (BOOL)pp_isMedicineDock;
+- (void)pp_buildLayoutRows;
+- (void)pp_buildMedicineLayoutRows;
+- (void)pp_applyMedicineChrome;
+- (void)pp_updateMedicineFlowForWidth:(CGFloat)width;
+- (void)pp_activateCartLayoutConstraints:(NSArray<NSLayoutConstraint *> *)constraints;
+- (void)pp_setMedicineActionTitle:(NSString *)title imageName:(NSString *)imageName foreground:(UIColor *)foreground background:(UIColor *)background;
+
 @end
 @implementation BBCartBottomBar
 @synthesize presentationStyle = _presentationStyle;
@@ -343,12 +357,29 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     return self;
 }
 
+- (instancetype)initWithPresentationStyle:(BBCartBottomBarPresentationStyle)presentationStyle
+{
+    if ((self = [super initWithFrame:CGRectZero])) {
+        _presentationStyle = presentationStyle;
+        _purchaseAvailable = YES;
+        [self setupUI];
+    }
+    return self;
+}
+
+- (BOOL)pp_isMedicineDock
+{
+    return self.presentationStyle == BBCartBottomBarPresentationStyleMedicineViewer;
+}
+
 - (void)setPresentationStyle:(BBCartBottomBarPresentationStyle)presentationStyle
 {
     if (_presentationStyle == presentationStyle) {
         return;
     }
+    BOOL changesMedicineLayout = [self pp_isMedicineDock] || presentationStyle == BBCartBottomBarPresentationStyleMedicineViewer;
     _presentationStyle = presentationStyle;
+    if (changesMedicineLayout) { [self pp_buildLayoutRows]; }
     [self pp_refreshChromeColors];
     [self pp_applyTypography];
     [self setNeedsLayout];
@@ -358,6 +389,15 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 {
     [super layoutSubviews];
 
+    if ([self pp_isMedicineDock]) {
+        self.layer.shadowOpacity = 0.0;
+        self.BackgroundB.layer.cornerRadius = 0.0;
+        self.totalContainer.layer.cornerRadius = 0.0;
+        self.qtyContainer.layer.cornerRadius = PPCornerSmall;
+        [self pp_updateMedicineFlowForWidth:CGRectGetWidth(self.bounds)];
+        [self pp_bringShowCartBadgeToFront];
+        return;
+    }
     self.clipsToBounds = NO;
     [self pp_setShadowColor:AppShadowClr];
     BOOL viewerChrome = [self pp_usesViewerChrome];
@@ -405,6 +445,12 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
 - (void)pp_prepareEntranceState
 {
+    // The medicine controller owns this dock's entrance as part of its screen.
+    if ([self pp_isMedicineDock]) {
+        self.didPrepareEntranceAnimation = YES;
+        self.didRunEntranceAnimation = YES;
+        return;
+    }
     if (self.didPrepareEntranceAnimation || self.didRunEntranceAnimation) {
         return;
     }
@@ -497,11 +543,16 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     if (contentSizeChanged) {
         [self pp_applyTypography];
         [self setNeedsLayout];
+        if ([self pp_isMedicineDock]) { [self.superview setNeedsLayout]; }
     }
 }
 
 - (void)pp_refreshChromeColors
 {
+    if ([self pp_isMedicineDock]) {
+        [self pp_applyMedicineChrome];
+        return;
+    }
     BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
     BOOL viewerChrome = [self pp_usesViewerChrome];
     UIColor *surface = PPBBCartColor(AppForgroundColr, UIColor.systemBackgroundColor);
@@ -838,7 +889,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     }
     for (CAGradientLayer *layer in layers) {
         [layer removeAnimationForKey:motionKey];
-        if (UIAccessibilityIsReduceMotionEnabled() || !self.window) {
+        if ([self pp_isMedicineDock] || UIAccessibilityIsReduceMotionEnabled() || !self.window) {
             continue;
         }
 
@@ -930,7 +981,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     _priceStack.translatesAutoresizingMaskIntoConstraints = NO;
     _priceStack.semanticContentAttribute = GM.setSemantic;
 
-    _totalContainer = PPMakeGlassBackgroundButton(22);
+    _totalContainer = [self pp_isMedicineDock]
+        ? [UIButton buttonWithType:UIButtonTypeCustom] : PPMakeGlassBackgroundButton(22);
     _totalContainer.translatesAutoresizingMaskIntoConstraints = NO;
     _totalContainer.userInteractionEnabled = YES;
     _totalContainer.isAccessibilityElement = YES;
@@ -986,7 +1038,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     CGFloat utilitySize = PPBBCartUtilityButtonSize();
     [_showCartButton.widthAnchor constraintEqualToConstant:utilitySize].active = YES;
     [_showCartButton.heightAnchor constraintEqualToConstant:utilitySize].active = YES;
-    [self pp_setupShowCartLottieAnimation];
+    if (![self pp_isMedicineDock]) { [self pp_setupShowCartLottieAnimation]; }
 
     _qtyStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         _minusButton, _countLabel, _plusButton
@@ -1064,6 +1116,25 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
 - (void)pp_applyTypography
 {
+    if ([self pp_isMedicineDock]) {
+        self.countLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+            scaledFontForFont:([GM boldFontWithSize:17.0] ?: [UIFont boldSystemFontOfSize:18.0])];
+        self.amountLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2]
+            scaledFontForFont:([GM boldFontWithSize:25.0] ?: [UIFont boldSystemFontOfSize:26.0])];
+        self.totalLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+            scaledFontForFont:([GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:13.0])];
+        self.currencyLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+            scaledFontForFont:([GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:14.0])];
+        self.medicineQuantityLabel.font = self.currencyLabel.font;
+        for (UILabel *label in @[self.countLabel, self.amountLabel, self.totalLabel, self.currencyLabel]) {
+            label.adjustsFontForContentSizeCategory = YES;
+            label.adjustsFontSizeToFitWidth = NO;
+        }
+        self.amountLabel.numberOfLines = 0;
+        self.amountLabel.lineBreakMode = NSLineBreakByCharWrapping;
+        [self.superview setNeedsLayout];
+        return;
+    }
     BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
     UIFont *quantityBase = [GM boldFontWithSize:(legacyIPadBar ? 19.0 : 21.0)]
         ?: [UIFont systemFontOfSize:(legacyIPadBar ? 19.0 : 21.0) weight:UIFontWeightBold];
@@ -1483,7 +1554,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     UIButton *btn = [PPBBCartHitButton buttonWithType:UIButtonTypeSystem];
     btn.translatesAutoresizingMaskIntoConstraints = NO;
     btn.accessibilityTraits = UIAccessibilityTraitButton;
-    CGFloat buttonSize = PPBBCartStepperButtonSize();
+    CGFloat buttonSize = [self pp_isMedicineDock] ? PPTouchTargetMin : PPBBCartStepperButtonSize();
     CGFloat symbolPointSize = PPBBCartUsesLegacyIPadBelowIOS18() ? 14.0 : 15.0;
     NSString *symbolName = [title isEqualToString:@"-"] ? @"minus" : ([title isEqualToString:@"+"] ? @"plus" : title);
     UIImage *symbolImage = PPBBCartSymbol(symbolName, symbolPointSize, UIImageSymbolWeightSemibold, PPBBCartColor(AppPrimaryClr, UIColor.labelColor));
@@ -1525,7 +1596,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.backgroundFadeLayer.drawsAsynchronously = YES;
     [self.layer insertSublayer:self.backgroundFadeLayer atIndex:0];
     
-    self.BackgroundB = PPMakeGlassBackgroundButton(32);
+    self.BackgroundB = [self pp_isMedicineDock]
+        ? [UIButton buttonWithType:UIButtonTypeCustom] : PPMakeGlassBackgroundButton(32);
     self.BackgroundB.translatesAutoresizingMaskIntoConstraints = NO;
     self.BackgroundB.userInteractionEnabled = YES;
     self.BackgroundB.isAccessibilityElement = NO;
@@ -1573,8 +1645,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.separator.backgroundColor = UIColor.clearColor;
     [self.BackgroundB addSubview:self.separator];
 
-    CGFloat horizontalInset = PPBBCartSurfaceHorizontalInset();
-    CGFloat bottomInset = 4.0;//PPBBCartSurfaceBottomInset();
+    CGFloat horizontalInset = [self pp_isMedicineDock] ? 0.0 : PPBBCartSurfaceHorizontalInset();
+    CGFloat bottomInset = [self pp_isMedicineDock] ? 0.0 : 4.0;//PPBBCartSurfaceBottomInset();
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray array];
     if (self.blurBackground) {
         [constraints addObjectsFromArray:@[
@@ -1606,12 +1678,18 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 }
 
 - (void)pp_buildLayoutRows {
+    [NSLayoutConstraint deactivateConstraints:self.cartLayoutConstraints ?: @[]];
+    self.cartLayoutConstraints = @[];
     [self.contentStack removeFromSuperview];
     [self.addToCartButton removeFromSuperview];
     [self.favButton removeFromSuperview];
     [self.showCartButton removeFromSuperview];
     [self.totalContainer removeFromSuperview];
     [self.qtyContainer removeFromSuperview];
+    if ([self pp_isMedicineDock]) {
+        [self pp_buildMedicineLayoutRows];
+        return;
+    }
     BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
     CGFloat contentInset = PPBBCartContentInset();
     CGFloat controlHeight = PPBBCartControlHeight();
@@ -1619,7 +1697,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     CGFloat stepperVerticalInset = 2.0;
     CGFloat stepperHorizontalInset = legacyIPadBar ? 5.0 : 6.0;
     
-    [NSLayoutConstraint activateConstraints:@[
+    [self pp_activateCartLayoutConstraints:@[
         [self.priceMarkerView.leadingAnchor constraintEqualToAnchor:self.totalContainer.leadingAnchor constant:PPSpaceMD],
         [self.priceMarkerView.centerYAnchor constraintEqualToAnchor:self.totalContainer.centerYAnchor],
         [self.priceMarkerView.widthAnchor constraintEqualToConstant:3.0],
@@ -1671,7 +1749,9 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     [self.addToCartButton setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.addToCartButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.qtyContainer setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.addToCartButton.heightAnchor constraintEqualToConstant:PPBBCartAddButtonHeight()].active = YES;
+    [self pp_activateCartLayoutConstraints:@[
+        [self.addToCartButton.heightAnchor constraintEqualToConstant:PPBBCartAddButtonHeight()]
+    ]];
     self.contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         topRow,
         bottomRow
@@ -1683,12 +1763,256 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.BackgroundB addSubview:self.contentStack];
 
-    [NSLayoutConstraint activateConstraints:@[
+    [self pp_activateCartLayoutConstraints:@[
         [self.contentStack.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor constant:12],
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PPSpaceMD],
         [self.contentStack.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-PPSpaceMD],
         [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.BackgroundB.bottomAnchor constant:-contentInset]
     ]];
+}
+
+#pragma mark - Medicine Purchase Dock
+
+- (void)pp_activateCartLayoutConstraints:(NSArray<NSLayoutConstraint *> *)constraints
+{
+    self.cartLayoutConstraints = [(self.cartLayoutConstraints ?: @[]) arrayByAddingObjectsFromArray:constraints];
+    [NSLayoutConstraint activateConstraints:constraints];
+}
+
+- (UIFont *)pp_medicineActionFont
+{
+    UIFont *base = [GM boldFontWithSize:17.0] ?: [UIFont boldSystemFontOfSize:18.0];
+    return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:base];
+}
+
+- (void)pp_buildMedicineLayoutRows
+{
+    self.priceStack.spacing = PPSpaceXXS;
+    self.priceStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.priceValueStack.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.priceValueStack.spacing = PPSpaceXS;
+    self.qtyStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.qtyStack.spacing = PPSpaceXS;
+
+    self.medicineQuantityLabel = [[UILabel alloc] init];
+    self.medicineQuantityLabel.text = kLang(@"medicine_purchase_quantity");
+    self.medicineQuantityLabel.numberOfLines = 0;
+    self.medicineQuantityLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.medicineQuantityLabel.adjustsFontForContentSizeCategory = YES;
+    UIView *quantitySpacer = [[UIView alloc] init];
+    self.medicineQuantityRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.medicineQuantityLabel, quantitySpacer, self.qtyContainer
+    ]];
+    self.medicineQuantityRow.axis = UILayoutConstraintAxisHorizontal;
+    self.medicineQuantityRow.alignment = UIStackViewAlignmentCenter;
+    self.medicineQuantityRow.spacing = PPSpaceSM;
+    self.medicineQuantityRow.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.medicineQuantityRow setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.qtyContainer setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+
+    topRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.totalContainer, self.medicineQuantityRow]];
+    topRow.axis = UILayoutConstraintAxisHorizontal;
+    topRow.spacing = PPSpaceBase;
+    topRow.alignment = UIStackViewAlignmentCenter;
+    topRow.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    UIView *utilitySpacer = [[UIView alloc] init];
+    self.medicineUtilityRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        utilitySpacer, self.showCartButton, self.favButton
+    ]];
+    self.medicineUtilityRow.axis = UILayoutConstraintAxisHorizontal;
+    self.medicineUtilityRow.alignment = UIStackViewAlignmentCenter;
+    self.medicineUtilityRow.spacing = PPSpaceSM;
+    self.medicineUtilityRow.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.medicineUtilityRow setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.medicineUtilityRow setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+
+    bottomRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.addToCartButton, self.medicineUtilityRow]];
+    bottomRow.axis = UILayoutConstraintAxisHorizontal;
+    bottomRow.spacing = PPSpaceMD;
+    bottomRow.alignment = UIStackViewAlignmentCenter;
+    bottomRow.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.addToCartButton setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.addToCartButton setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+
+    self.contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[topRow, bottomRow]];
+    self.contentStack.axis = UILayoutConstraintAxisVertical;
+    self.contentStack.spacing = PPSpaceMD;
+    self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.BackgroundB addSubview:self.contentStack];
+
+    NSLayoutConstraint *fillWidth = [self.contentStack.widthAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.widthAnchor constant:-2.0 * PPSpaceBase];
+    fillWidth.priority = UILayoutPriorityDefaultHigh;
+    self.medicineActionHeightConstraint = [self.addToCartButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPButtonHeightLG];
+    [self pp_activateCartLayoutConstraints:@[
+        [self.priceStack.topAnchor constraintEqualToAnchor:self.totalContainer.topAnchor],
+        [self.priceStack.bottomAnchor constraintEqualToAnchor:self.totalContainer.bottomAnchor],
+        [self.priceStack.leadingAnchor constraintEqualToAnchor:self.totalContainer.leadingAnchor],
+        [self.priceStack.trailingAnchor constraintEqualToAnchor:self.totalContainer.trailingAnchor],
+        [self.qtyStack.topAnchor constraintEqualToAnchor:self.qtyContainer.topAnchor constant:PPSpaceXS],
+        [self.qtyStack.bottomAnchor constraintEqualToAnchor:self.qtyContainer.bottomAnchor constant:-PPSpaceXS],
+        [self.qtyStack.leadingAnchor constraintEqualToAnchor:self.qtyContainer.leadingAnchor constant:PPSpaceSM],
+        [self.qtyStack.trailingAnchor constraintEqualToAnchor:self.qtyContainer.trailingAnchor constant:-PPSpaceSM],
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor constant:PPSpaceBase],
+        [self.contentStack.centerXAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.centerXAnchor],
+        [self.contentStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.safeAreaLayoutGuide.leadingAnchor constant:PPSpaceBase],
+        [self.contentStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.safeAreaLayoutGuide.trailingAnchor constant:-PPSpaceBase],
+        [self.contentStack.widthAnchor constraintLessThanOrEqualToConstant:640.0],
+        [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceMD],
+        fillWidth, self.medicineActionHeightConstraint
+    ]];
+    self.accessibilityElements = @[
+        self.totalContainer, self.minusButton, self.countLabel, self.plusButton,
+        self.addToCartButton, self.showCartButton, self.favButton
+    ];
+    self.addToCartButton.accessibilityIdentifier = @"medicine.purchase.add";
+    self.qtyContainer.accessibilityIdentifier = @"medicine.purchase.quantity";
+    [self pp_updateMedicineFlowForWidth:CGRectGetWidth(self.bounds)];
+}
+
+- (void)pp_updateMedicineFlowForWidth:(CGFloat)width
+{
+    if (![self pp_isMedicineDock] || !self.contentStack) { return; }
+    CGFloat contentWidth = MIN(MAX(width - self.safeAreaInsets.left - self.safeAreaInsets.right - 2.0 * PPSpaceBase, 1.0), 640.0);
+    BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    CGFloat priceWidth = [self.amountLabel.text sizeWithAttributes:@{NSFontAttributeName:self.amountLabel.font ?: [UIFont preferredFontForTextStyle:UIFontTextStyleTitle2]}].width;
+    CGFloat currencyWidth = [self.currencyLabel.text sizeWithAttributes:@{NSFontAttributeName:self.currencyLabel.font ?: [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote]}].width;
+    CGFloat countWidth = MAX(28.0, self.countLabel.intrinsicContentSize.width);
+    CGFloat quantityWidth = 2.0 * PPTouchTargetMin + countWidth + 2.0 * PPSpaceXS + 2.0 * PPSpaceSM;
+    BOOL stacked = accessibility || priceWidth + currencyWidth + PPSpaceXS + quantityWidth + PPSpaceBase > contentWidth;
+    topRow.axis = stacked ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    topRow.alignment = stacked ? UIStackViewAlignmentFill : UIStackViewAlignmentCenter;
+    self.medicineQuantityLabel.hidden = !stacked;
+    self.priceValueStack.axis = accessibility ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    self.priceValueStack.alignment = accessibility ? UIStackViewAlignmentLeading : UIStackViewAlignmentFirstBaseline;
+    self.priceValueStack.semanticContentAttribute = accessibility
+        ? Language.semanticAttributeForCurrentLanguage : UISemanticContentAttributeForceLeftToRight;
+    self.amountLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.currencyLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    bottomRow.axis = accessibility ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    bottomRow.alignment = accessibility ? UIStackViewAlignmentFill : UIStackViewAlignmentCenter;
+    self.amountLabel.preferredMaxLayoutWidth = stacked ? contentWidth : MAX(1.0, contentWidth - quantityWidth - PPSpaceBase - currencyWidth - PPSpaceXS);
+    CGFloat buttonWidth = accessibility ? contentWidth : MAX(1.0, contentWidth - (2.0 * PPTouchTargetMin + PPSpaceSM) - PPSpaceMD);
+    CGFloat titleWidth = MAX(1.0, buttonWidth - 2.0 * PPSpaceBase - 28.0);
+    NSString *title = self.addToCartButton.currentTitle ?: self.idleAddToCartTitle;
+    CGRect titleRect = [title boundingRectWithSize:CGSizeMake(titleWidth, CGFLOAT_MAX)
+        options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+        attributes:@{NSFontAttributeName:[self pp_medicineActionFont]} context:nil];
+    self.medicineActionHeightConstraint.constant = MAX(PPButtonHeightLG, ceil(CGRectGetHeight(titleRect)) + 2.0 * PPSpaceMD);
+}
+
+- (CGFloat)preferredHeightForWidth:(CGFloat)width bottomSafeAreaInset:(CGFloat)bottomInset
+{
+    if (![self pp_isMedicineDock]) { return 108.0 + MAX(0.0, bottomInset); }
+    [self pp_updateMedicineFlowForWidth:width];
+    CGFloat contentWidth = MIN(MAX(width - self.safeAreaInsets.left - self.safeAreaInsets.right - 2.0 * PPSpaceBase, 1.0), 640.0);
+    CGSize fitted = [self.contentStack systemLayoutSizeFittingSize:CGSizeMake(contentWidth, UILayoutFittingCompressedSize.height)
+        withHorizontalFittingPriority:UILayoutPriorityRequired verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    return ceil(fitted.height) + PPSpaceBase + PPSpaceMD + MAX(0.0, bottomInset);
+}
+
+- (void)pp_setMedicineActionTitle:(NSString *)title imageName:(NSString *)imageName
+                     foreground:(UIColor *)foreground background:(UIColor *)background
+{
+    NSString *resolvedTitle = title.length ? title : kLang(@"addToCart");
+    UIColor *ink = foreground ?: UIColor.whiteColor;
+    UIColor *fill = background ?: AppPrimaryClr;
+    UIImage *image = imageName.length ? PPBBCartSymbol(imageName, 18.0, UIImageSymbolWeightSemibold, ink) : nil;
+    self.addToCartButton.accessibilityLabel = resolvedTitle;
+    self.addToCartButton.titleLabel.numberOfLines = 0;
+    self.addToCartButton.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    self.addToCartButton.titleLabel.adjustsFontSizeToFitWidth = NO;
+    self.addToCartButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+    self.addToCartButton.layer.shadowOpacity = 0.0;
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
+        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        config.background.cornerRadius = PPCorner16;
+        config.baseBackgroundColor = fill;
+        config.baseForegroundColor = ink;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMD, PPSpaceBase, PPSpaceMD, PPSpaceBase);
+        config.title = resolvedTitle;
+        config.titleLineBreakMode = NSLineBreakByWordWrapping;
+        config.image = self.isAddToCartPending ? nil : image;
+        config.imagePadding = PPSpaceSM;
+        config.showsActivityIndicator = self.isAddToCartPending;
+        config.titleTextAttributesTransformer = ^NSDictionary *(NSDictionary *attributes) {
+            NSMutableDictionary *result = [attributes mutableCopy];
+            result[NSFontAttributeName] = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+                scaledFontForFont:([GM boldFontWithSize:17.0] ?: [UIFont boldSystemFontOfSize:18.0])];
+            result[NSForegroundColorAttributeName] = ink;
+            return result;
+        };
+        self.addToCartButton.configuration = config;
+    } else {
+        [self.addToCartButton setTitle:resolvedTitle forState:UIControlStateNormal];
+        [self.addToCartButton setTitleColor:ink forState:UIControlStateNormal];
+        [self.addToCartButton setImage:image forState:UIControlStateNormal];
+        self.addToCartButton.backgroundColor = fill;
+        self.addToCartButton.titleLabel.font = [self pp_medicineActionFont];
+        self.addToCartButton.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceMD, PPSpaceBase, PPSpaceMD, PPSpaceBase);
+        PPApplyContinuousCorners(self.addToCartButton, PPCorner16);
+    }
+    [self.superview setNeedsLayout];
+}
+
+- (void)pp_applyMedicineChrome
+{
+    UIColor *surface = PPBBCartColor(AppForgroundColr, UIColor.systemBackgroundColor);
+    self.BackgroundB.backgroundColor = [surface colorWithAlphaComponent:1.0];
+    self.BackgroundB.layer.borderWidth = 0.0;
+    self.layer.shadowOpacity = 0.0;
+    self.backgroundFadeLayer.hidden = YES;
+    self.surfaceLightLayer.hidden = YES;
+    self.surfaceTintView.hidden = YES;
+    self.priceMarkerView.hidden = YES;
+    self.separator.hidden = NO;
+    self.separator.backgroundColor = UIColor.separatorColor;
+    for (UIVisualEffectView *effect in @[self.blurBackground, self.totalGlassBackgroundView,
+            self.qtyGlassBackgroundView, self.showCartGlassBackgroundView, self.shareGlassBackgroundView]) {
+        effect.hidden = YES;
+        effect.effect = nil;
+    }
+    for (CAGradientLayer *layer in @[self.totalLiquidBorderLayer, self.qtyLiquidBorderLayer, self.containerLiquidBorderLayer]) {
+        layer.hidden = YES;
+        [layer removeAllAnimations];
+    }
+    for (UIView *view in @[self.totalContainer, self.qtyContainer, self.addToCartButton, self.showCartButton, self.favButton]) {
+        view.layer.shadowOpacity = 0.0;
+    }
+    self.totalContainer.backgroundColor = UIColor.clearColor;
+    self.totalContainer.layer.borderWidth = 0.0;
+    self.qtyContainer.backgroundColor = PPBBCartColor(AppBackgroundClr, UIColor.secondarySystemBackgroundColor);
+    self.qtyContainer.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [self.qtyContainer pp_setBorderColor:UIColor.separatorColor];
+    self.countLabel.textColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
+    self.amountLabel.textColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
+    self.totalLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
+    self.currencyLabel.textColor = self.totalLabel.textColor;
+    self.medicineQuantityLabel.textColor = self.totalLabel.textColor;
+    NSArray<UIButton *> *buttons = @[self.minusButton, self.plusButton, self.showCartButton, self.favButton];
+    NSArray<NSString *> *symbols = @[@"minus", @"plus", @"cart", @"square.and.arrow.up"];
+    for (NSUInteger index = 0; index < buttons.count; index++) {
+        UIButton *button = buttons[index];
+        UIImage *image = PPBBCartSymbol(symbols[index], 19.0, UIImageSymbolWeightMedium, self.countLabel.textColor);
+        if (@available(iOS 15.0, *)) {
+            UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+            config.image = image;
+            config.baseForegroundColor = self.countLabel.textColor;
+            config.contentInsets = NSDirectionalEdgeInsetsZero;
+            button.configuration = config;
+        } else {
+            [button setImage:image forState:UIControlStateNormal];
+        }
+        button.backgroundColor = UIColor.clearColor;
+        button.tintColor = self.countLabel.textColor;
+        button.layer.borderWidth = 0.0;
+        button.layer.shadowOpacity = 0.0;
+        button.layer.cornerRadius = PPCornerSmall;
+    }
+    self.addToCartButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self pp_updateShowCartBadgeStyle];
+    [self pp_refreshLiquidBorderMotion];
 }
 
 - (void)pp_styleUtilityButton:(UIButton *)button {
@@ -1737,6 +2061,10 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
                    imageName:(NSString *)imageName
                   foreground:(UIColor *)foreground
                   background:(UIColor *)background {
+    if ([self pp_isMedicineDock]) {
+        [self pp_setMedicineActionTitle:title imageName:imageName foreground:foreground background:background];
+        return;
+    }
     NSString *resolvedTitle = title.length ? title : kLang(@"addToCart");
     UIColor *resolvedForeground = PPBBCartColor(foreground, UIColor.whiteColor);
     UIColor *resolvedBackground = PPBBCartColor(background, UIColor.systemBlueColor);
@@ -1887,7 +2215,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.qtyContainer.userInteractionEnabled = !pending && self.isPurchaseAvailable;
     self.qtyContainer.alpha = pending ? 0.82 : (self.isPurchaseAvailable ? 1.0 : 0.58);
     self.addToCartButton.accessibilityValue = pending ? kLang(@"Loading") : nil;
-    BOOL canChangeQuantity = !pending && self.isPurchaseAvailable;
+    BOOL canChangeQuantity = !pending && self.isPurchaseAvailable && !self.medicineConfirmationVisible;
     self.minusButton.enabled = canChangeQuantity && self.cartItemquantity > 1;
     self.minusButton.alpha = self.minusButton.enabled ? 1.0 : 0.36;
     self.plusButton.enabled = canChangeQuantity;
@@ -1916,6 +2244,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 }
 
 - (void)pp_restoreAddToCartButton {
+    self.medicineConfirmationVisible = NO;
     self.restoringButton = YES;
     [self pp_setAddToCartPending:NO];
     BOOL available = self.isPurchaseAvailable;
@@ -1971,7 +2300,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     NSString *nextText = [NSString stringWithFormat:@"%ld", (long)safeQuantity];
 
     if (![self.countLabel.text isEqualToString:nextText]) {
-        if (UIAccessibilityIsReduceMotionEnabled()) {
+        if ([self pp_isMedicineDock] || UIAccessibilityIsReduceMotionEnabled()) {
             [UIView transitionWithView:self.countLabel
                               duration:0.14
                                options:UIViewAnimationOptionTransitionCrossDissolve |
@@ -1996,12 +2325,13 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     }
     self.lastRenderedQuantity = safeQuantity;
 
-    BOOL canChangeQuantity = self.isPurchaseAvailable && !self.isAddToCartPending;
+    BOOL canChangeQuantity = self.isPurchaseAvailable && !self.isAddToCartPending && !self.medicineConfirmationVisible;
     self.minusButton.enabled = canChangeQuantity && safeQuantity > 1;
     self.minusButton.alpha = self.minusButton.enabled ? 1.0 : 0.36;
-    self.plusButton.enabled = self.isPurchaseAvailable && !self.isAddToCartPending;
+    self.plusButton.enabled = canChangeQuantity;
     self.plusButton.alpha = self.plusButton.enabled ? 1.0 : 0.36;
     self.countLabel.accessibilityValue = nextText;
+    if ([self pp_isMedicineDock]) { [self.superview setNeedsLayout]; }
 
     if (self.onQuantityChanged) self.onQuantityChanged(self.cartItemquantity);
 }
@@ -2012,7 +2342,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     if (!available && self.isAddToCartPending) {
         [self pp_setAddToCartPending:NO];
     }
-    BOOL interactive = available && !self.isAddToCartPending;
+    BOOL interactive = available && !self.isAddToCartPending && !self.medicineConfirmationVisible;
     self.addToCartButton.enabled = interactive;
     self.addToCartButton.userInteractionEnabled = interactive;
     self.qtyContainer.userInteractionEnabled = interactive;
@@ -2021,6 +2351,11 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.addToCartButton.accessibilityHint = available
         ? kLang(@"a11y_btn_add_to_cart_hint")
         : kLang(@"Out of stock");
+    if (self.medicineConfirmationVisible || ([self pp_isMedicineDock] && self.isAddToCartPending)) {
+        self.minusButton.enabled = NO;
+        self.plusButton.enabled = NO;
+        return;
+    }
     [self pp_setAddToCartTitle:available ? self.idleAddToCartTitle : kLang(@"Out of stock")
                     imageName:available ? @"cart.badge.plus" : @"cart.badge.minus"
                    foreground:UIColor.whiteColor
@@ -2060,6 +2395,19 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
 - (void)performAddToCartSuccessAnimation {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if ([self pp_isMedicineDock]) {
+            [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(pp_restoreAddToCartButton) object:nil];
+            self.medicineConfirmationVisible = YES;
+            [self pp_setAddToCartPending:NO];
+            self.addToCartButton.userInteractionEnabled = NO;
+            self.addToCartButton.enabled = NO;
+            [self pp_setAddToCartTitle:kLang(@"AddedToCart") imageName:@"checkmark"
+                foreground:UIColor.whiteColor background:PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)];
+            [self pp_refreshShowCartBadgeAnimated:NO];
+            UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, kLang(@"ItemAddedToCart"));
+            [self performSelector:@selector(pp_restoreAddToCartButton) withObject:nil afterDelay:0.8];
+            return;
+        }
         [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(pp_restoreAddToCartButton) object:nil];
         [self pp_setAddToCartPending:NO];
         self.addToCartButton.userInteractionEnabled = NO;
@@ -2118,6 +2466,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         [self pp_setAddToCartPending:NO];
         [self pp_restoreAddToCartButton];
 
+        if ([self pp_isMedicineDock]) { return; }
         if (!UIAccessibilityIsReduceMotionEnabled()) {
             CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
             shake.values = @[@0, @(-8), @(7), @(-5), @(3), @0];

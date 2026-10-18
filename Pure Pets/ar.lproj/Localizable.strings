@@ -4428,6 +4428,7 @@
 "home_pulse_section_category_accessories_format" = "مستلزمات %@";
 "home_pulse_section_category_featured_format" = "مستلزمات مميزة %@";
 "home_pulse_section_category_food_format" = "غذاء مناسب %@";
+"home_pulse_section_category_medicines_format" = "أدوية مناسبة %@";
 "home_pulse_section_category_listings_format" = "إعلانات %@";
 "home_pulse_section_category_picks_format" = "مختارات %@";
 "home_pulse_section_category_services_format" = "خدمات مناسبة %@";
@@ -4436,6 +4437,8 @@
 "home_pulse_section_error_title" = "تعذّر تحميل هذا القسم";
 "home_pulse_section_food" = "أحدث منتجات الغذاء";
 "home_pulse_section_food_subtitle" = "أحدث منتجات الغذاء والتغذية المضافة";
+"home_pulse_section_medicines" = "أحدث الأدوية والمستلزمات الطبية";
+"home_pulse_section_medicines_subtitle" = "أدوية ومنتجات بيطرية وصحية معتمدة";
 "home_pulse_section_listings" = "أحدث إعلانات الحيوانات";
 "home_pulse_section_listings_subtitle" = "أحدث إعلانات الحيوانات المعتمدة";
 "home_pulse_section_loading" = "جارٍ تحميل القسم";
@@ -4443,6 +4446,7 @@
 "home_pulse_section_nearby_subtitle" = "اختر منطقة لاكتشاف ما حولك";
 "home_pulse_section_pet_featured" = "مختارات مميزة لحيوانك";
 "home_pulse_section_pet_food" = "غذاء مناسب لحيوانك";
+"home_pulse_section_pet_medicines" = "أدوية ورعاية لحيوانك";
 "home_pulse_section_pet_listings" = "إعلانات مناسبة لحيوانك";
 "home_pulse_section_pet_services" = "رعاية تناسب حيوانك";
 "home_pulse_section_picked" = "مختارات لك";
@@ -5491,6 +5495,7 @@
 "home_for_pet_recommendations" = "اختيارات لـ%@";
 "home_for_pet_essentials" = "مستلزمات %@";
 "home_for_pet_food" = "طعام لـ%@";
+"home_for_pet_medicines" = "أدوية لـ%@";
 "home_for_pet_care" = "رعاية لـ%@";
 "home_personal_category_basis" = "بحسب فئة رفيقك، لتختار ما يناسبه";
 "home_universal_search_placeholder" = "ابحث في بيوربتس";
@@ -5716,3 +5721,32 @@
 "service_cell_review_details" = "التقييمات في تفاصيل الخدمة";
 "service_cell_one_review" = "تقييم واحد";
 "service_cell_review_count" = "التقييمات: %@";
+
+/* Medicine purchase dock */
+"medicine_purchase_quantity" = "الكمية";
+
+
+/* Medicine record — package identity and factual catalog details. */
+"medicine_record_eyebrow" = "بيانات الدواء";
+"medicine_record_product_photo" = "صورة المنتج";
+"medicine_record_image_loading" = "جارٍ تحميل صورة المنتج…";
+"medicine_record_image_format" = "صورة المنتج: %@";
+"medicine_record_image_retry" = "تعذّر تحميل الصورة. اضغط للمحاولة مجددًا.";
+"medicine_record_image_missing" = "لم تُضف صورة للمنتج";
+"medicine_record_unit_price" = "سعر الوحدة";
+"medicine_record_stock_format" = "الكمية المتاحة: %@";
+"medicine_record_cart_format" = "في سلتك: %@";
+"medicine_record_all_in_cart" = "موجود في سلتك";
+"medicine_record_unavailable_detail" = "يمكنك الاطلاع على التفاصيل أو العودة إلى رعاية الحيوانات.";
+"medicine_record_description" = "عن هذا الدواء";
+"medicine_record_description_missing" = "لم يضف البائع وصفًا لهذا الدواء بعد.";
+"medicine_record_details" = "تفاصيل المنتج";
+"medicine_record_listed_species" = "أنواع الحيوانات المدرجة";
+"medicine_record_browsing_for" = "الحيوان المختار للتصفح";
+"medicine_record_not_supplied" = "لم تُذكر";
+"medicine_record_before_use" = "قبل الاستخدام";
+"medicine_record_guidance" = "اقرأ تعليمات العبوة واتبع إرشادات الطبيب البيطري قبل الاستخدام.";
+"medicine_record_back_to_care" = "العودة إلى رعاية الحيوانات";
+"medicine_record_share_price_format" = "السعر: %@";
+"medicine_record_partial_add_format" = "أُضيفت الكمية المتاحة المتبقية: %@.";
+"medicine_record_list_separator" = "، ";

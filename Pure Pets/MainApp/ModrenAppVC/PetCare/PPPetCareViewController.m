@@ -3,6 +3,7 @@
 #import "PPDesignTokens.h"
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
+#import <Pure_Pets-Swift.h>
 #import "PPImageLoaderManager.h"
 #import "PPOverlayCoordinator.h"
 #import "PetAccessory.h"
@@ -908,6 +909,25 @@ static NSString *PPPetCareNormalizedText(NSString *value)
         BOOL accessibility = PPPetCareUsesAccessibilityLayout(self.traitCollection);
         NSInteger columns = accessibility ? 1 : (available >= 680 ? 3 : (available >= 344 ? 2 : 1));
         CGFloat itemWidth = floor((available - (columns - 1) * PPSpaceMD) / columns);
+        if (@available(iOS 16.0, *)) {
+            if (indexPath.item < self.filteredMedicines.count) {
+                VetMedicineModel *medicine = self.filteredMedicines[indexPath.item];
+                NSString *mainKindName = self.selectedMainKind ? [self pp_mainKindNameForID:self.selectedMainKind.ID] : PPPetCareLocalized(@"pet_care_all_pets", @"All pets");
+                PPUniversalCellViewModel *vm = [self pp_universalViewModelForMedicine:medicine
+                                                                          mainKindName:mainKindName
+                                                                            indexPath:indexPath];
+                // Visible medicine cells hide this badge; measure the same
+                // composition, including at accessibility text sizes.
+                vm.badgeText = @"";
+                // Measure the shared card's actual text and action at this
+                // width. Keep the medicine grid's columns and content intact.
+                CGFloat height = [PPUniversalCardHostingCell discoveryFittingHeightForViewModel:vm
+                                                                                         width:itemWidth
+                                                                           contentSizeCategory:self.traitCollection.preferredContentSizeCategory
+                                                                          dataViewPresentation:NO];
+                return CGSizeMake(itemWidth, height);
+            }
+        }
         // Geometry depends only on width and text category, never on image arrival or scrolling.
         CGFloat informationHeight = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
             scaledValueForValue:192 compatibleWithTraitCollection:self.traitCollection];

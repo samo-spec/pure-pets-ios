@@ -97,9 +97,9 @@
 
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
-    layout.minimumLineSpacing = 14;
+    layout.minimumLineSpacing = 12.0;
     layout.minimumInteritemSpacing = 0;
-    layout.sectionInset = UIEdgeInsetsMake(0, 18, 0, 18);
+    layout.sectionInset = UIEdgeInsetsMake(6.0, 18.0, 10.0, 18.0);
 
     self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -124,7 +124,7 @@
         [self.collectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.collectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-20.0],
-        [self.collectionView.heightAnchor constraintEqualToConstant:286.0]
+        [self.collectionView.heightAnchor constraintEqualToConstant:306.0]
     ]];
 }
 
@@ -296,6 +296,9 @@
     PPCellContext context = [self pp_cellContextForNovaItem:item];
     PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:item context:context];
 
+    cell.delegate = self;
+    cell.isHomePresentation = YES;
+
     [cell applyViewModel:vm
                  context:context
               layoutMode:PPCellLayoutModeMarket
@@ -322,12 +325,16 @@
     if (availableWidth <= 1.0) {
         availableWidth = self.contentView.bounds.size.width > 0 ? self.contentView.bounds.size.width : self.maxWidth;
     }
+    if (availableWidth <= 1.0) {
+        availableWidth = [UIScreen mainScreen].bounds.size.width;
+    }
     CGFloat horizontalInset = 36.0;
-    CGFloat lineSpacing = 12.0;
-    CGFloat cardWidth = floor((availableWidth - horizontalInset - lineSpacing) / 2.0);
-    cardWidth = MAX(154.0, MIN(cardWidth, 2085.0));
-    cardWidth = cardWidth - 20.0;
-    return CGSizeMake(cardWidth , 270.0);
+    CGFloat gap = 12.0;
+    CGFloat available = MAX(1.0, availableWidth - horizontalInset);
+    // Align with HomeCarouselMetrics: 2 complete cards and a peek of the 3rd
+    CGFloat cardWidth = floor((available + gap) / 2.25);
+    cardWidth = MAX(148.0, MIN(cardWidth, 176.0));
+    return CGSizeMake(cardWidth, 290.0);
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didHighlightItemAtIndexPath:(NSIndexPath *)indexPath {

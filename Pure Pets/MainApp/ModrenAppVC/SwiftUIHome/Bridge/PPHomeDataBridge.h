@@ -24,6 +24,7 @@ typedef NS_ENUM(NSInteger, PPHomeBridgeSource) {
     PPHomeBridgeSourceOrders,
     PPHomeBridgeSourceHomeConfig,
     PPHomeBridgeSourceLocation,
+    PPHomeBridgeSourceMedicines,
 };
 
 typedef NS_ENUM(NSInteger, PPHomeBridgeLocationState) {
@@ -49,6 +50,7 @@ typedef void (^PPHomeExactCountCompletion)(NSInteger count,
 @property (nonatomic, copy, nullable) void (^promotionsDidChange)(NSArray<NSObject *> *promotions);
 @property (nonatomic, copy, nullable) void (^accessoriesDidChange)(NSArray<PetAccessory *> *accessories);
 @property (nonatomic, copy, nullable) void (^foodDidChange)(NSArray<PetAccessory *> *food);
+@property (nonatomic, copy, nullable) void (^medicinesDidChange)(NSArray<PetAccessory *> *medicines);
 @property (nonatomic, copy, nullable) void (^advertisementsDidChange)(NSArray<PetAd *> *advertisements);
 @property (nonatomic, copy, nullable) void (^nearbyAdvertisementsDidChange)(NSArray<PetAd *> *advertisements,
                                                                               BOOL showingRecentFallback);

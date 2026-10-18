@@ -10,6 +10,12 @@ import AVKit
 import SwiftUI
 import UIKit
 
+/// One outer silhouette for every shared card, including Home and UIKit hosts.
+/// Matches the established medicine card rather than changing its corners.
+enum PPUniversalCardMetrics {
+    static let cornerRadius: CGFloat = 24
+}
+
 // MARK: - Public SwiftUI API
 
 public enum PPUniversalCardContext: Equatable {
@@ -606,9 +612,10 @@ public struct PPUniversalCardView: View {
         )
         let delegateUsesHomePresentation: Bool
         if let delegate,
-           let object = delegate as? NSObject,
-           let homeClass = NSClassFromString("PPHomeViewController") {
-            delegateUsesHomePresentation = object.isKind(of: homeClass)
+           let object = delegate as? NSObject {
+            let isHome = NSClassFromString("PPHomeViewController").map { object.isKind(of: $0) } ?? false
+            let isNova = NSClassFromString("PPNovaProductMessageCell").map { object.isKind(of: $0) } ?? false
+            delegateUsesHomePresentation = isHome || isNova
         } else {
             delegateUsesHomePresentation = false
         }
@@ -1463,10 +1470,13 @@ private final class PPUniversalCardStore: ObservableObject {
     func updatePresentationHost(_ delegate: PPUniversalCellDelegate?) {
         self.delegate = delegate
         let nextIsHomePresentation: Bool
-        if let delegate,
-           let object = delegate as? NSObject,
-           let homeClass = NSClassFromString("PPHomeViewController") {
-            nextIsHomePresentation = object.isKind(of: homeClass)
+        if isHomePresentation {
+            nextIsHomePresentation = true
+        } else if let delegate,
+           let object = delegate as? NSObject {
+            let isHome = NSClassFromString("PPHomeViewController").map { object.isKind(of: $0) } ?? false
+            let isNova = NSClassFromString("PPNovaProductMessageCell").map { object.isKind(of: $0) } ?? false
+            nextIsHomePresentation = isHome || isNova
         } else {
             nextIsHomePresentation = false
         }
@@ -2359,7 +2369,7 @@ private struct PPUniversalServiceCard: View {
     private var showsDescription: Bool { expanded || store.layout == .fullWidth }
     private var compact: Bool { store.layout == .horizontalRow }
     private var service: ServiceModel? { store.viewModel?.modelObject as? ServiceModel }
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 24, style: .continuous) }
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: PPUniversalCardMetrics.cornerRadius, style: .continuous) }
     private var showsFavorite: Bool {
         !store.model.isOwner && (store.showsFavorite || (store.viewModel == nil && store.actions.onFavorite != nil))
     }
@@ -2603,8 +2613,7 @@ private struct PPUniversalServiceCard: View {
                     placeholder: store.imagePlaceholder,
                     placeholderSystemImage: note.symbol,
                     topCornerRadius: 16, bottomCornerRadius: 16,
-                    isHomePresentation: store.isHomePresentation,
-                    normalizesProductImage: false,
+                    usesAspectFitContainment: store.isHomePresentation,
                     contained: false, fillsEmptyAreaWithImageBackground: false,
                     focusesPetFace: false,
                     imageLoader: store.imageLoader
@@ -2975,7 +2984,7 @@ private struct PPUniversalCardRenderer: View {
     @ScaledMetric(relativeTo: .caption) private var discoveryNoticeMinimumHeight: CGFloat = 32
 
     private var cardRadius: CGFloat {
-        store.isHomePresentation ? HomeVisualTokens.universalCardCorner : 24
+        PPUniversalCardMetrics.cornerRadius
     }
     private var mediaBottomRadius: CGFloat {
         (isFoodPresentation || isProductCommercePresentation) ? 0 : (isAdsMode ? 8 : 12)
@@ -3272,7 +3281,7 @@ private struct PPUniversalCardRenderer: View {
                 foodPrimaryAction
                     .frame(height: homeCartActionHeight)
                     .padding(.horizontal, store.isHomePresentation ? 8 : 12)
-                    .padding(.bottom, store.isHomePresentation ? 6 : 12)
+                    .padding(.bottom, store.isHomePresentation ? 8 : 12)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -3350,7 +3359,7 @@ private struct PPUniversalCardRenderer: View {
                 primaryAction
             }
         }
-        .frame(minHeight: store.isHomePresentation ? 32 : 44)
+        .frame(minHeight: store.isHomePresentation ? 36 : 44)
     }
 
     private var foodPurchaseInformation: some View {
@@ -3435,7 +3444,7 @@ private struct PPUniversalCardRenderer: View {
                 .custom(
                     "Beiruti-Bold",
                     size: store.isHomePresentation
-                        ? (isAdsMode ? 14.5 : 13.5)
+                        ? (isAdsMode ? 14.5 : 15.0)
                         : (isAdsMode ? 19 : 17),
                     relativeTo: .headline
                 )
@@ -3451,7 +3460,7 @@ private struct PPUniversalCardRenderer: View {
 
     private func discoverySecondaryText(_ text: String) -> some View {
         Text(text)
-            .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11 : 14, relativeTo: .subheadline))
+            .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 12 : 14, relativeTo: .subheadline))
             .foregroundStyle(discoverySecondaryInk)
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             .multilineTextAlignment(.leading)
@@ -3461,11 +3470,11 @@ private struct PPUniversalCardRenderer: View {
     private func discoveryFact(_ text: String, symbol: String, color: Color) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
             Image(systemName: symbol)
-                .font(.system(size: store.isHomePresentation ? 9.5 : 11, weight: .semibold))
+                .font(.system(size: store.isHomePresentation ? 10.5 : 11, weight: .semibold))
                 .foregroundStyle(color)
                 .accessibilityHidden(true)
             Text(text)
-                .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11 : 13, relativeTo: .footnote))
+                .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11.5 : 13, relativeTo: .footnote))
                 .foregroundStyle(discoverySecondaryInk)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                 .multilineTextAlignment(.leading)
@@ -3496,7 +3505,7 @@ private struct PPUniversalCardRenderer: View {
                     .font(
                         .custom(
                             "Beiruti-Black",
-                            size: store.isHomePresentation ? 16 : 25,
+                            size: store.isHomePresentation ? 18 : 25,
                             relativeTo: .title2
                         )
                     )
@@ -3506,7 +3515,7 @@ private struct PPUniversalCardRenderer: View {
             }
             if let original = store.model.originalPrice {
                 Text(discoveryFormattedPrice(original))
-                    .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11 : 13, relativeTo: .caption))
+                    .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 12 : 13, relativeTo: .caption))
                     .foregroundStyle(discoverySecondaryInk)
                     .strikethrough()
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
@@ -3526,7 +3535,7 @@ private struct PPUniversalCardRenderer: View {
                 .custom(
                     "Beiruti-Black",
                     size: store.isHomePresentation
-                        ? (isAdsMode ? 17 : 16)
+                        ? (isAdsMode ? 19 : 18)
                         : (isAdsMode ? 27 : 25),
                     relativeTo: .title2
                 )
@@ -3538,7 +3547,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var discoveryCurrency: some View {
         Text(HomeModelAdapter.isolated(normalizedCurrency))
-            .font(.custom("Beiruti-Bold", size: store.isHomePresentation ? 10 : 12, relativeTo: .caption))
+            .font(.custom("Beiruti-Bold", size: store.isHomePresentation ? 10.5 : 12, relativeTo: .caption))
             .foregroundStyle(discoverySecondaryInk)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -3804,8 +3813,8 @@ private struct PPUniversalCardRenderer: View {
                     placeholderSystemImage: store.model.placeholderSystemImage,
                     topCornerRadius: imageTopRadius,
                     bottomCornerRadius: imageBottomRadius,
-                    isHomePresentation: store.isHomePresentation || isFoodPresentation || isProductCommercePresentation,
-                    normalizesProductImage: (store.isHomePresentation || isProductCommercePresentation) && store.context.isCatalogCommerce,
+                    usesAspectFitContainment:
+                        store.isHomePresentation && !isFoodPresentation && !isProductCommercePresentation,
                     contained:
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
@@ -4236,19 +4245,19 @@ private struct PPUniversalCardRenderer: View {
             }
             .foregroundStyle(store.notifySucceeded ? store.palette.success : store.palette.ink)
             .frame(
-                width: store.isHomePresentation ? 34 : 44,
-                height: store.isHomePresentation ? 34 : 44
+                width: store.isHomePresentation ? 38 : 44,
+                height: store.isHomePresentation ? 38 : 44
             )
             .background(
                 store.palette.groupedSurface,
                 in: RoundedRectangle(
-                    cornerRadius: store.isHomePresentation ? 9 : 12,
+                    cornerRadius: store.isHomePresentation ? 10 : 12,
                     style: .continuous
                 )
             )
             .overlay {
                 RoundedRectangle(
-                    cornerRadius: store.isHomePresentation ? 9 : 12,
+                    cornerRadius: store.isHomePresentation ? 10 : 12,
                     style: .continuous
                 )
                 .strokeBorder(Color(uiColor: .separator).opacity(0.45), lineWidth: 0.5)
@@ -5503,11 +5512,12 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var mediaContentInset: CGFloat {
+        // Product photography occupies the complete media field in every host.
+        if isFoodPresentation || isProductCommercePresentation {
+            return 0
+        }
         if store.isHomePresentation {
             return 6
-        }
-        if isFoodPresentation || (isProductCommercePresentation && store.layout == .pinterest) {
-            return 12
         }
         // No inset for market cards – they should fill the container edge‑to‑edge.
         if store.context == .market {
@@ -5521,6 +5531,9 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var shouldFillMediaImage: Bool {
+        if isFoodPresentation || isProductCommercePresentation {
+            return true
+        }
         if store.model.prefersContainedImage {
             return false
         }
@@ -5751,7 +5764,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var universalCardActionHeight: CGFloat {
         if store.isHomePresentation {
-            return dynamicTypeSize.isAccessibilitySize ? 46 : 34
+            return dynamicTypeSize.isAccessibilitySize ? 50 : 38
         }
         return usesProductCardActionStyle && store.model.usesQuantityControl
             ? PPProductCardActionMetrics.height(for: dynamicTypeSize)
@@ -6092,8 +6105,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     let placeholderSystemImage: String
     let topCornerRadius: CGFloat
     let bottomCornerRadius: CGFloat
-    let isHomePresentation: Bool
-    let normalizesProductImage: Bool
+    let usesAspectFitContainment: Bool
     let contained: Bool
     let fillsEmptyAreaWithImageBackground: Bool
     let focusesPetFace: Bool
@@ -6205,8 +6217,8 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
             contained && fillsEmptyAreaWithImageBackground
         let resolvedPlaceholder: UIImage? =
             placeholder ?? UIImage(systemName: placeholderSystemImage)
-        imageView.usesAspectFitContainment = isHomePresentation
-        imageView.contentMode = isHomePresentation ? .scaleAspectFit : .scaleAspectFill
+        imageView.usesAspectFitContainment = usesAspectFitContainment
+        imageView.contentMode = usesAspectFitContainment ? .scaleAspectFit : .scaleAspectFill
         imageView.configurePetFaceFocus(
             enabled: focusesPetFace,
             signature: signature,
@@ -6219,15 +6231,14 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         }
         context.coordinator.signature = signature
         context.coordinator.task?.cancel()
-        context.coordinator.preparation?.cancel()
-        context.coordinator.preparation = nil
         context.coordinator.task = nil
+        context.coordinator.imageView = imageView
         imageView.image =
             resolvedPlaceholder
 
         if let imageLoader {
             imageLoader(imageView, imageURL, placeholder, container)
-            imageView.contentMode = isHomePresentation ? .scaleAspectFit : .scaleAspectFill
+            imageView.contentMode = usesAspectFitContainment ? .scaleAspectFit : .scaleAspectFill
             context.coordinator.setImageBackgroundVisible(fillsEmptyArea)
             return
         }
@@ -6238,22 +6249,22 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
                 urlString: imageURL,
                 cacheKey: cacheKey,
                 displaySize: container.bounds.size
-            ) { [weak coordinator, weak imageView] image in
-                guard let coordinator, coordinator.signature == signature, let image else { return }
-                let applyImage: (UIImage) -> Void = { [weak coordinator, weak imageView] prepared in
-                    guard coordinator?.signature == signature, let imageView else { return }
-                    UIView.transition(
-                        with: imageView,
-                        duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.18,
-                        options: [.transitionCrossDissolve, .allowAnimatedContent]
-                    ) {
-                        imageView.image = prepared
-                    }
+            ) { [weak coordinator] image in
+                guard let coordinator,
+                      coordinator.signature == signature,
+                      let image,
+                      let targetView = coordinator.imageView else {
+                    return
                 }
-                if normalizesProductImage {
-                    coordinator.preparation = HomeProductImagePreparation.prepare(image, key: "home-product-v2|\(imageURL)|\(signature)", completion: applyImage)
-                } else {
-                    applyImage(image)
+                UIView.transition(
+                    with: targetView,
+                    duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.18,
+                    options: [.transitionCrossDissolve, .allowAnimatedContent]
+                ) {
+                    targetView.image = image
+                }
+                if coordinator.backgroundImageView?.isHidden == false {
+                    coordinator.backgroundImageView?.image = image
                 }
             }
             return
@@ -6265,14 +6276,16 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         coordinator: Coordinator
     ) {
         coordinator.task?.cancel()
-        coordinator.preparation?.cancel()
+        coordinator.task = nil
         coordinator.signature = nil
+        coordinator.imageView = nil
+        coordinator.backgroundImageView = nil
+        coordinator.washView = nil
     }
 
     final class Coordinator {
         var signature: String?
         var task: AppRemoteImageTask?
-        var preparation: Operation?
         weak var imageView: PPUniversalMirroredImageView?
         weak var backgroundImageView: UIImageView?
         weak var washView: UIView?
@@ -6916,6 +6929,13 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         }
     }
 
+    @objc public var isHomePresentation = false {
+        didSet {
+            store.isHomePresentation = isHomePresentation
+            reconfigureIfNeeded()
+        }
+    }
+
     @objc public var quantity: Int {
         store.quantity
     }
@@ -7038,6 +7058,9 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         indexPath = viewModel.indexPath
         store.delegate = delegate
         store.cardTap = onTap
+        if isHomePresentation {
+            store.isHomePresentation = true
+        }
         configureStore()
     }
 
@@ -7058,6 +7081,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         forceShowsOwnerMenuButton = false
         userBordersV2 = true
         dataViewPresentation = false
+        isHomePresentation = false
         transform = .identity
         alpha = 1
         contentView.transform = .identity

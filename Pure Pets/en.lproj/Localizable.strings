@@ -4452,6 +4452,7 @@
 "home_pulse_section_category_accessories_format" = "Essentials for %@";
 "home_pulse_section_category_featured_format" = "Featured for %@";
 "home_pulse_section_category_food_format" = "Food for %@";
+"home_pulse_section_category_medicines_format" = "Medicines for %@";
 "home_pulse_section_category_listings_format" = "Listings for %@";
 "home_pulse_section_category_picks_format" = "Picks for %@";
 "home_pulse_section_category_services_format" = "Services for %@";
@@ -4460,6 +4461,8 @@
 "home_pulse_section_error_title" = "This section could not load";
 "home_pulse_section_food" = "New food arrivals";
 "home_pulse_section_food_subtitle" = "Recently added food and nutrition";
+"home_pulse_section_medicines" = "Pet medicines and health";
+"home_pulse_section_medicines_subtitle" = "Licensed veterinary medicines and care";
 "home_pulse_section_listings" = "New pet listings";
 "home_pulse_section_listings_subtitle" = "Recent approved pet listings";
 "home_pulse_section_loading" = "Loading section";
@@ -4467,6 +4470,7 @@
 "home_pulse_section_nearby_subtitle" = "Choose an area for nearby discovery";
 "home_pulse_section_pet_featured" = "Featured for your pet";
 "home_pulse_section_pet_food" = "Food for your pet";
+"home_pulse_section_pet_medicines" = "Medicines for your pet";
 "home_pulse_section_pet_listings" = "Listings for your pet";
 "home_pulse_section_pet_services" = "Care for your pet";
 "home_pulse_section_picked" = "Picked for you";
@@ -5507,6 +5511,7 @@
 "home_for_pet_recommendations" = "Discoveries for %@";
 "home_for_pet_essentials" = "Essentials for %@";
 "home_for_pet_food" = "Food for %@";
+"home_for_pet_medicines" = "Medicines for %@";
 "home_for_pet_care" = "Care for %@";
 "home_personal_category_basis" = "Based on your pet’s category; choose what suits them";
 "home_universal_search_placeholder" = "Search Pure Pets";
@@ -5731,3 +5736,32 @@
 "service_cell_review_details" = "Reviews in service details";
 "service_cell_one_review" = "One review";
 "service_cell_review_count" = "%@ reviews";
+
+/* Medicine purchase dock */
+"medicine_purchase_quantity" = "Quantity";
+
+
+/* Medicine record — package identity and factual catalog details. */
+"medicine_record_eyebrow" = "Medicine record";
+"medicine_record_product_photo" = "Product photo";
+"medicine_record_image_loading" = "Loading product photo…";
+"medicine_record_image_format" = "Product photo: %@";
+"medicine_record_image_retry" = "Couldn’t load the photo. Tap to retry.";
+"medicine_record_image_missing" = "Product photo not provided";
+"medicine_record_unit_price" = "Unit price";
+"medicine_record_stock_format" = "Available quantity: %@";
+"medicine_record_cart_format" = "In your cart: %@";
+"medicine_record_all_in_cart" = "Already in your cart";
+"medicine_record_unavailable_detail" = "You can still read the details or return to pet care.";
+"medicine_record_description" = "About this medicine";
+"medicine_record_description_missing" = "The seller hasn’t added a description for this medicine yet.";
+"medicine_record_details" = "The product record";
+"medicine_record_listed_species" = "Listed pet types";
+"medicine_record_browsing_for" = "Browsing for";
+"medicine_record_not_supplied" = "Not provided";
+"medicine_record_before_use" = "Before use";
+"medicine_record_guidance" = "Read the product label and follow your veterinarian’s instructions before use.";
+"medicine_record_back_to_care" = "Back to pet care";
+"medicine_record_share_price_format" = "Price: %@";
+"medicine_record_partial_add_format" = "Added the remaining available quantity: %@.";
+"medicine_record_list_separator" = ", ";

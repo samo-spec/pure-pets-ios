@@ -1,124 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Home-only image preparation. Source assets and the shared network cache are
-/// untouched. Work is bounded, serialized off-main, and reused across shelves.
-enum HomeProductImagePreparation {
-    private static let queue: OperationQueue = {
-        let queue = OperationQueue()
-        queue.name = "com.purepets.home.product-images"
-        queue.qualityOfService = .utility
-        queue.maxConcurrentOperationCount = 1
-        return queue
-    }()
-    private static let cache: NSCache<NSString, UIImage> = {
-        let cache = NSCache<NSString, UIImage>()
-        cache.countLimit = 48
-        cache.totalCostLimit = 24 * 1_024 * 1_024
-        return cache
-    }()
-
-    @discardableResult
-    static func prepare(_ image: UIImage, key: String, completion: @escaping (UIImage) -> Void) -> Operation? {
-        if let prepared = cache.object(forKey: key as NSString) {
-            completion(prepared)
-            return nil
-        }
-        let operation = BlockOperation()
-        operation.addExecutionBlock { [weak operation] in
-            guard let operation, !operation.isCancelled else { return }
-            let prepared = autoreleasepool {
-                cache.object(forKey: key as NSString) ?? normalize(image)
-            }
-            guard !operation.isCancelled else { return }
-            cache.setObject(prepared, forKey: key as NSString,
-                            cost: Int(prepared.size.width * prepared.size.height * 4))
-            DispatchQueue.main.async {
-                guard !operation.isCancelled else { return }
-                completion(prepared)
-            }
-        }
-        queue.addOperation(operation)
-        return operation
-    }
-
-    private static func normalize(_ source: UIImage) -> UIImage {
-        guard source.size.width > 0, source.size.height > 0 else { return source }
-        let side: CGFloat = 480
-        let ratio = min(1, side / max(source.size.width, source.size.height))
-        let size = CGSize(width: max(1, (source.size.width * ratio).rounded()),
-                          height: max(1, (source.size.height * ratio).rounded()))
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = false
-        let scaled = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            source.draw(in: CGRect(origin: .zero, size: size))
-        }
-        guard let original = scaled.cgImage else { return source }
-        let width = original.width, height = original.height
-        var pixels = [UInt8](repeating: 0, count: width * height * 4)
-        let prepared: CGImage? = pixels.withUnsafeMutableBytes { buffer in
-            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
-                                          bitsPerComponent: 8, bytesPerRow: width * 4,
-                                          space: CGColorSpaceCreateDeviceRGB(),
-                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue |
-                                            CGBitmapInfo.byteOrder32Big.rawValue),
-                  let bytes = buffer.baseAddress?.assumingMemoryBound(to: UInt8.self)
-            else { return nil }
-            context.draw(original, in: CGRect(x: 0, y: 0, width: width, height: height))
-            let corners = [0, width - 1, (height - 1) * width, width * height - 1]
-            let background = (0..<3).map { channel in
-                corners.reduce(0) { $0 + Int(bytes[$1 * 4 + channel]) } / 4
-            }
-            func matches(_ pixel: Int) -> Bool {
-                bytes[pixel * 4 + 3] >= 250 && (0..<3).allSatisfy {
-                    abs(Int(bytes[pixel * 4 + $0]) - background[$0]) <= 10
-                }
-            }
-            var boundary: [Int] = []
-            for x in 0..<width { boundary += [x, (height - 1) * width + x] }
-            for y in 0..<height { boundary += [y * width, y * width + width - 1] }
-            // Never flood-fill packaging: the product itself may be white,
-            // black, or the same colour as the photographed background. Only
-            // trim verified outer margins; all interior source pixels survive.
-            let hasFlatBackground = boundary.allSatisfy(matches)
-            var minX = width, minY = height, maxX = -1, maxY = -1, contentCount = 0
-            for y in 0..<height {
-                for x in 0..<width {
-                    let pixel = y * width + x
-                    guard bytes[pixel * 4 + 3] > 20,
-                          !hasFlatBackground || !matches(pixel) else { continue }
-                    minX = min(minX, x); maxX = max(maxX, x)
-                    minY = min(minY, y); maxY = max(maxY, y)
-                    contentCount += 1
-                }
-            }
-            guard contentCount > width * height / 40,
-                  maxX - minX > width / 12, maxY - minY > height / 12 else { return original }
-            // Transparent margins are explicit. An opaque photograph is more
-            // ambiguous, so never trim more than 12% from any source edge.
-            let maxTrimX = hasFlatBackground ? Int(Double(width) * 0.12) : width
-            let maxTrimY = hasFlatBackground ? Int(Double(height) * 0.12) : height
-            let left = min(maxTrimX, max(0, minX - 6))
-            let top = min(maxTrimY, max(0, minY - 6))
-            let right = max(width - maxTrimX, min(width, maxX + 7))
-            let bottom = max(height - maxTrimY, min(height, maxY + 7))
-            let crop = CGRect(x: left, y: top, width: right - left, height: bottom - top)
-            let result = original
-            return result.cropping(to: crop) ?? original
-        }
-        guard let prepared else { return scaled }
-        let subject = UIImage(cgImage: prepared)
-        let fit = side * 0.88 / max(subject.size.width, subject.size.height)
-        let fitted = CGSize(width: subject.size.width * fit, height: subject.size.height * fit)
-        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format).image { _ in
-            subject.draw(in: CGRect(x: (side - fitted.width) / 2, y: (side - fitted.height) / 2,
-                                    width: fitted.width, height: fitted.height))
-        }
-    }
-}
-
-/// The same image treatment on the iOS 15 Home compatibility renderer.
+/// The same full-media product image treatment on the iOS 15 Home renderer.
 struct HomePreparedProductImage: UIViewRepresentable {
     let url: String?
     let placeholder: UIImage?
@@ -127,7 +10,7 @@ struct HomePreparedProductImage: UIViewRepresentable {
 
     func makeUIView(context: Context) -> UIImageView {
         let view = UIImageView()
-        view.contentMode = .scaleAspectFit
+        view.contentMode = .scaleAspectFill
         view.isAccessibilityElement = false
         view.clipsToBounds = true
         return view
@@ -138,7 +21,6 @@ struct HomePreparedProductImage: UIViewRepresentable {
         context.coordinator.loaded = true
         context.coordinator.url = url
         context.coordinator.task?.cancel()
-        context.coordinator.preparation?.cancel()
         view.image = placeholder ?? UIImage(systemName: "shippingbox")
         view.tintColor = .secondaryLabel
         guard let url, !url.isEmpty else { return }
@@ -147,24 +29,19 @@ struct HomePreparedProductImage: UIViewRepresentable {
             urlString: url, cacheKey: url, displaySize: CGSize(width: 240, height: 144)
         ) { [weak view, weak coordinator] image in
             guard let image, coordinator?.url == url else { return }
-            coordinator?.preparation = HomeProductImagePreparation.prepare(image, key: "home-product-v2|\(url)") { [weak view, weak coordinator] prepared in
-                guard coordinator?.url == url else { return }
-                view?.image = prepared
-            }
+            view?.image = image
         }
     }
 
     static func dismantleUIView(_ view: UIImageView, coordinator: Coordinator) {
         coordinator.url = nil
         coordinator.task?.cancel()
-        coordinator.preparation?.cancel()
     }
 
     final class Coordinator {
         var loaded = false
         var url: String?
         var task: AppRemoteImageTask?
-        var preparation: Operation?
     }
 }
 
@@ -259,14 +136,14 @@ private struct HomeProductInformationRegionModifier: ViewModifier {
 /// Loaded product rails share the tallest intrinsic information stack. Media
 /// stays stable; long titles, larger text and quantity controls grow the rail.
 struct HomeUniversalCardSizing: DynamicProperty {
-    static let productMediaHeight: CGFloat = 130
-    static let advertisementMediaHeight: CGFloat = 118
+    static let productMediaHeight: CGFloat = 134
+    static let advertisementMediaHeight: CGFloat = 120
     // Renderer inset (3), card inset (6), compact information padding (8).
     private static let productInformationInsets: CGFloat = 16
 
     @Environment(\.homeProductInformationHeight) private var measuredInformationHeight
-    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 130
-    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 118
+    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 142
+    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 124
 
     func height(isAdvertisement: Bool, measuredProductInformationHeight: CGFloat? = nil) -> CGFloat {
         if isAdvertisement {
@@ -387,6 +264,13 @@ private struct HomeUniversalCompatibilityCard: View {
         PPUniversalCellSwiftUIBridge.usesQuantityControl(for: viewModel)
     }
 
+    private var usesProductMedia: Bool {
+        switch card.kind {
+        case .accessory, .food, .medicine, .buyAgain: return true
+        case .advertisement, .service: return false
+        }
+    }
+
     private var stockLimit: Int {
         max(0, PPUniversalCellSwiftUIBridge.stockLimit(for: viewModel))
     }
@@ -413,7 +297,7 @@ private struct HomeUniversalCompatibilityCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
                 Group {
-                    if usesQuantity {
+                    if usesProductMedia {
                         HomePreparedProductImage(url: viewModel.imageURL, placeholder: viewModel.image ?? viewModel.placeholder)
                     } else {
                         HomeRemoteImage(
@@ -425,7 +309,7 @@ private struct HomeUniversalCompatibilityCard: View {
                         )
                     }
                 }
-                .padding(6)
+                .padding(usesProductMedia ? 0 : 6)
                 .frame(maxWidth: .infinity)
                 .frame(height: mediaHeight)
                 .background(Color.ppSecondarySurface)
@@ -548,7 +432,7 @@ private struct HomeUniversalCompatibilityCard: View {
     }
 
     private var actionHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 46 : 34
+        dynamicTypeSize.isAccessibilitySize ? 50 : 38
     }
 
     private func actionLabel(title: String, symbol: String, loading: Bool = false) -> some View {
@@ -634,7 +518,7 @@ private struct HomeUniversalCompatibilityCard: View {
                 }
                 .frame(height: actionHeight)
                 .padding(.horizontal, PPSpace.xs)
-                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             } else {
                 Button {
                     mutateQuantity(1)

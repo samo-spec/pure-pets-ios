@@ -1562,7 +1562,7 @@ struct PPMarketplaceUniversalCard: View {
                     showsSubtitle: true,
                     forceShowsOwnerMenuButton: true,
                     dataViewPresentation: true,
-                    isHomePresentation: isProductCommerce && layout != .pinterest,
+                    isHomePresentation: layout == .compact || layout == .showcase || (isProductCommerce && layout != .pinterest),
                     borderMode: .pordersForHomeView,
                     palette: marketplaceCardPalette,
                     onTap: nil,

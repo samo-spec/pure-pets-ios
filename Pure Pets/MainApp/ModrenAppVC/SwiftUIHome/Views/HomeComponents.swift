@@ -14,12 +14,12 @@ enum HomeVisualTokens {
     static let heroTopBreezeSpacing = PPSpace.sm
     static let minimumTouchTarget: CGFloat = 44
     /// The shared Home marketplace shelf is compact and proportional.
-    static let universalCardHeight: CGFloat = 260
-    static let universalAdsCardHeight: CGFloat = 236
+    static let universalCardHeight: CGFloat = 276
+    static let universalAdsCardHeight: CGFloat = 244
 
     // Shared surfaces
     static let cardCorner: CGFloat = 20
-    static let universalCardCorner: CGFloat = 16
+    static let universalCardCorner = PPUniversalCardMetrics.cornerRadius
     static let compactCardCorner = PPCorner.small
     static let iconContainerSize: CGFloat = 44
     static let compactIconContainerSize: CGFloat = 36
@@ -43,9 +43,9 @@ enum HomeVisualTokens {
     static let productTitleToPriceSpacing = PPSpace.xs + PPSpace.xxs
     static let productPriceRowSpacing = PPSpace.xs + PPSpace.xxs
     /// The Home cart surface is visually unified across all action states.
-    static let universalCartActionVisualHeight: CGFloat = 34
-    static let advertisementActionVisualHeight: CGFloat = 34
-    static let primaryActionCorner: CGFloat = 9
+    static let universalCartActionVisualHeight: CGFloat = 38
+    static let advertisementActionVisualHeight: CGFloat = 38
+    static let primaryActionCorner: CGFloat = 10
     static let advertisementActionCorner = primaryActionCorner
 
     // Command surface

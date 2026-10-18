@@ -27,6 +27,7 @@ enum HomeLegacySectionID: Int, CaseIterable {
     case suggestionAds = 18
     case suggestionAccessories = 19
     case pureLens = 20
+    case medicines = 21
 }
 
 private enum HomeHeroPresentationMode {
@@ -39,6 +40,7 @@ private enum HomeMarketplaceFeedKind {
     case accessorySuggestions
     case accessories
     case food
+    case medicines
     case nearbyAdvertisements
     case services
 }
@@ -71,6 +73,7 @@ final class HomeStore: ObservableObject {
     private var promotions: [NSObject] = []
     private var accessories: [PetAccessory] = []
     private var food: [PetAccessory] = []
+    private var medicines: [PetAccessory] = []
     private var advertisements: [PetAd] = []
     private var nearbyAdvertisements: [PetAd] = []
     private var services: [ServiceModel] = []
@@ -133,6 +136,7 @@ final class HomeStore: ObservableObject {
         PPHomeBridgeSource.promotions.rawValue,
         PPHomeBridgeSource.accessories.rawValue,
         PPHomeBridgeSource.food.rawValue,
+        PPHomeBridgeSource.medicines.rawValue,
         PPHomeBridgeSource.advertisements.rawValue,
         PPHomeBridgeSource.nearbyAdvertisements.rawValue,
         PPHomeBridgeSource.services.rawValue,
@@ -630,6 +634,8 @@ final class HomeStore: ObservableObject {
             router.openAdvertisements(mainKind: selectedMainKind)
         case .food:
             router.openFood(mainKind: selectedMainKind)
+        case .medicines:
+            router.openPharmacy(mainKind: selectedMainKind)
         case .nearbyAdvertisements:
             if state.location.hasCoordinate {
                 router.openNearbyAdvertisements()
@@ -787,6 +793,7 @@ final class HomeStore: ObservableObject {
     private var hasAnyContent: Bool {
         !accessories.isEmpty ||
         !food.isEmpty ||
+        !medicines.isEmpty ||
         !advertisements.isEmpty ||
         !nearbyAdvertisements.isEmpty ||
         !services.isEmpty ||
@@ -821,6 +828,9 @@ final class HomeStore: ObservableObject {
         case let .food(models):
             food = models
             markLoaded(PPHomeBridgeSource.food.rawValue)
+        case let .medicines(models):
+            medicines = models
+            markLoaded(PPHomeBridgeSource.medicines.rawValue)
         case let .advertisements(models):
             advertisements = models
             // A generic latest-feed refresh does not prove that every cached
@@ -1095,6 +1105,8 @@ final class HomeStore: ObservableObject {
             return PPHomeBridgeSource.accessories.rawValue
         case .food:
             return PPHomeBridgeSource.food.rawValue
+        case .medicines:
+            return PPHomeBridgeSource.medicines.rawValue
         case .advertisements:
             return PPHomeBridgeSource.advertisements.rawValue
         case .nearbyAdvertisements:
@@ -1123,6 +1135,7 @@ final class HomeStore: ObservableObject {
             HomeLegacySectionID.suggestions.rawValue,
             HomeLegacySectionID.accessories.rawValue,
             HomeLegacySectionID.lastFood.rawValue,
+            HomeLegacySectionID.medicines.rawValue,
             HomeLegacySectionID.nearbyServices.rawValue,
             HomeLegacySectionID.adsNearby.rawValue,
             HomeLegacySectionID.suggestionAds.rawValue,
@@ -1146,6 +1159,8 @@ final class HomeStore: ObservableObject {
             ]
         case PPHomeBridgeSource.food.rawValue:
             return [HomeLegacySectionID.lastFood.rawValue]
+        case PPHomeBridgeSource.medicines.rawValue:
+            return [HomeLegacySectionID.medicines.rawValue]
         case PPHomeBridgeSource.advertisements.rawValue:
             return [
                 HomeLegacySectionID.suggestions.rawValue,
@@ -1235,6 +1250,7 @@ final class HomeStore: ObservableObject {
         case HomeLegacySectionID.suggestions.rawValue,
              HomeLegacySectionID.accessories.rawValue,
              HomeLegacySectionID.lastFood.rawValue,
+             HomeLegacySectionID.medicines.rawValue,
              HomeLegacySectionID.nearbyServices.rawValue,
              HomeLegacySectionID.adsNearby.rawValue,
              HomeLegacySectionID.buyAgain.rawValue,
@@ -1911,6 +1927,7 @@ final class HomeStore: ObservableObject {
         let audience = marketplaceAudience(for: selectedCategoryID)
         let relevantAccessories: [PetAccessory]
         let relevantFood: [PetAccessory]
+        let relevantMedicines: [PetAccessory]
         let relevantAds: [PetAd]
         let relevantNearbyAds: [PetAd]
         let relevantServices: [ServiceModel]
@@ -1926,6 +1943,9 @@ final class HomeStore: ObservableObject {
             relevantFood = food.filter {
                 $0.matchesMainCategoryID(selectedCategoryID)
             }
+            relevantMedicines = medicines.filter {
+                $0.matchesMainCategoryID(selectedCategoryID)
+            }
             relevantAds = (categoryAdvertisements[selectedCategoryID] ?? [])
                 .filter {
                     integerValue($0, key: "category") == selectedCategoryID
@@ -1939,97 +1959,45 @@ final class HomeStore: ObservableObject {
         } else {
             relevantAccessories = accessories
             relevantFood = food
+            relevantMedicines = medicines
             relevantAds = advertisements
             relevantNearbyAds = nearbyAdvertisements
             relevantServices = services
         }
 
-        let prioritizedAccessories = relevantAccessories
-        let prioritizedFood = relevantFood
-        let prioritizedAds = relevantAds
-        let prioritizedNearbyAds = relevantNearbyAds
-        let prioritizedServices = relevantServices
-
         let usesContextualRecommendations = selectedCategoryID != nil
-        let recommendationAccessories = relevantAccessories
-        let recommendationAds = relevantAds
-        let recommendationServices = relevantServices
 
-        let suggestionAccessoryCards = HomeModelAdapter.cards(
-            from: Array(prioritizedAccessories.prefix(8)),
-            context: .forMarket,
-            kind: .accessory,
-            limit: 8
-        )
-        let suggestionAdCards = HomeModelAdapter.cards(
-            from: Array(prioritizedAds.prefix(8)),
-            context: .forAds,
-            kind: .advertisement,
-            limit: 8
-        )
-        let recommendationAccessoryCards = HomeModelAdapter.cards(
-            from: Array(recommendationAccessories.prefix(8)),
-            context: .forMarket,
-            kind: .accessory,
-            limit: 8
-        )
-        let recommendationAdCards = HomeModelAdapter.cards(
-            from: Array(recommendationAds.prefix(8)),
-            context: .forAds,
-            kind: .advertisement,
-            limit: 8
-        )
-        let recommendationServiceCards = HomeModelAdapter.cards(
-            from: Array(recommendationServices.prefix(4)),
-            context: .forServices,
-            kind: .service,
-            limit: 4
-        )
-        let recommendationCards = uniqueCards(
-            Array(recommendationAccessoryCards.prefix(4)) +
-            Array(recommendationAdCards.prefix(3)) +
-            Array(recommendationServiceCards.prefix(2))
-        )
-        let recommendationIDs = state.config.isVisible(
-            HomeLegacySectionID.suggestions.rawValue
-        )
-            ? Set(recommendationCards.map(\.id))
-            : []
+        // Allocate previews in the Console's section order. Exclude before
+        // applying each rail's limit so later rails can reach fresh products.
+        // These sets live for this rebuild only; category/pet changes and live
+        // refreshes never inherit claims from the previous Home context.
+        var displayedInventoryIDs = Set<String>()
+        var displayedAdvertisementIDs = Set<String>()
+        var displayedServiceIDs = Set<String>()
 
-        let allAccessoryCards = HomeModelAdapter.cards(
-            from: prioritizedAccessories,
-            context: .forMarket,
-            kind: .accessory
-        )
-        let accessoryCards = usefulCards(
-            from: allAccessoryCards,
-            excluding: recommendationIDs
-        )
-        let foodCards = HomeModelAdapter.cards(
-            from: prioritizedFood,
-            context: .forFood,
-            kind: .food
-        )
-        let nearbyCards = HomeModelAdapter.cards(
-            from: prioritizedNearbyAds,
-            context: .forAds,
-            kind: .advertisement
-        )
-        let allServiceCards = HomeModelAdapter.cards(
-            from: prioritizedServices,
-            context: .forServices,
-            kind: .service
-        )
-        let serviceCards = usefulCards(
-            from: allServiceCards,
-            excluding: recommendationIDs
-        )
-        let buyAgainCards = HomeModelAdapter.cards(
-            from: buyAgainAccessories,
-            context: .forMarket,
-            kind: .buyAgain,
-            limit: 8
-        )
+        func previewCards(
+            from objects: [Any],
+            context: PPCellContext,
+            kind: HomeCardKind,
+            limit: Int = 12
+        ) -> [HomeCardModel] {
+            let excludedIDs: Set<String>
+            switch kind {
+            case .accessory, .food, .medicine, .buyAgain:
+                excludedIDs = displayedInventoryIDs
+            case .advertisement:
+                excludedIDs = displayedAdvertisementIDs
+            case .service:
+                excludedIDs = displayedServiceIDs
+            }
+            return HomeModelAdapter.cards(
+                from: objects,
+                context: context,
+                kind: kind,
+                limit: limit,
+                excluding: excludedIDs
+            )
+        }
 
         let recommendationCopy = marketplaceSectionCopy(
             for: .recommendations,
@@ -2056,6 +2024,11 @@ final class HomeStore: ObservableObject {
             audience: audience,
             usesContext: !relevantFood.isEmpty
         )
+        let medicineCopy = marketplaceSectionCopy(
+            for: .medicines,
+            audience: audience,
+            usesContext: !relevantMedicines.isEmpty
+        )
         let nearbyCopy = marketplaceSectionCopy(
             for: .nearbyAdvertisements,
             audience: audience,
@@ -2074,6 +2047,10 @@ final class HomeStore: ObservableObject {
             let section: HomeSectionModel?
             switch rawID {
             case HomeLegacySectionID.buyAgain.rawValue:
+                let buyAgainCards = previewCards(
+                    from: buyAgainAccessories, context: .forMarket,
+                    kind: .buyAgain, limit: 8
+                )
                 guard !buyAgainCards.isEmpty else { continue }
                 section = makeSection(
                     kind: .buyAgain,
@@ -2088,6 +2065,11 @@ final class HomeStore: ObservableObject {
                     source: PPHomeBridgeSource.orders.rawValue
                 )
             case HomeLegacySectionID.suggestions.rawValue:
+                let recommendationCards = uniqueCards(
+                    previewCards(from: relevantAccessories, context: .forMarket, kind: .accessory, limit: 4) +
+                    previewCards(from: relevantAds, context: .forAds, kind: .advertisement, limit: 3) +
+                    previewCards(from: relevantServices, context: .forServices, kind: .service, limit: 2)
+                )
                 section = makeSection(
                     kind: .recommendations,
                     rawID: rawID,
@@ -2100,7 +2082,7 @@ final class HomeStore: ObservableObject {
                     kind: .advertisements,
                     rawID: rawID,
                     copy: advertisementCopy,
-                    cards: suggestionAdCards,
+                    cards: previewCards(from: relevantAds, context: .forAds, kind: .advertisement, limit: 8),
                     source: PPHomeBridgeSource.advertisements.rawValue
                 )
             case HomeLegacySectionID.suggestionAccessories.rawValue:
@@ -2108,7 +2090,7 @@ final class HomeStore: ObservableObject {
                     kind: .recommendations,
                     rawID: rawID,
                     copy: accessorySuggestionCopy,
-                    cards: suggestionAccessoryCards,
+                    cards: previewCards(from: relevantAccessories, context: .forMarket, kind: .accessory, limit: 8),
                     source: PPHomeBridgeSource.accessories.rawValue
                 )
             case HomeLegacySectionID.accessories.rawValue:
@@ -2116,7 +2098,7 @@ final class HomeStore: ObservableObject {
                     kind: .accessories,
                     rawID: rawID,
                     copy: accessoryCopy,
-                    cards: accessoryCards,
+                    cards: previewCards(from: relevantAccessories, context: .forMarket, kind: .accessory),
                     source: PPHomeBridgeSource.accessories.rawValue
                 )
             case HomeLegacySectionID.lastFood.rawValue:
@@ -2124,13 +2106,21 @@ final class HomeStore: ObservableObject {
                     kind: .food,
                     rawID: rawID,
                     copy: foodCopy,
-                    cards: foodCards,
+                    cards: previewCards(from: relevantFood, context: .forFood, kind: .food),
                     source: PPHomeBridgeSource.food.rawValue
+                )
+            case HomeLegacySectionID.medicines.rawValue:
+                section = makeSection(
+                    kind: .medicines,
+                    rawID: rawID,
+                    copy: medicineCopy,
+                    cards: previewCards(from: relevantMedicines, context: .forMarket, kind: .medicine),
+                    source: PPHomeBridgeSource.medicines.rawValue
                 )
             case HomeLegacySectionID.adsNearby.rawValue:
                 section = nearbySection(
                     rawID: rawID,
-                    cards: nearbyCards,
+                    cards: previewCards(from: relevantNearbyAds, context: .forAds, kind: .advertisement),
                     copy: nearbyCopy
                 )
             case HomeLegacySectionID.nearbyServices.rawValue:
@@ -2138,7 +2128,7 @@ final class HomeStore: ObservableObject {
                     kind: .services,
                     rawID: rawID,
                     copy: serviceCopy,
-                    cards: serviceCards,
+                    cards: previewCards(from: relevantServices, context: .forServices, kind: .service),
                     source: PPHomeBridgeSource.services.rawValue
                 )
             default:
@@ -2147,6 +2137,20 @@ final class HomeStore: ObservableObject {
 
             if let section, emitted.insert(section.id).inserted {
                 result.append(section)
+                // Failed/loading/location-required rows display no cards and
+                // must not reserve identities that another row can present.
+                if case let .content(cards) = section.state {
+                    for card in cards {
+                        switch card.kind {
+                        case .accessory, .food, .medicine, .buyAgain:
+                            displayedInventoryIDs.insert(card.id)
+                        case .advertisement:
+                            displayedAdvertisementIDs.insert(card.id)
+                        case .service:
+                            displayedServiceIDs.insert(card.id)
+                        }
+                    }
+                }
             }
         }
         return result
@@ -2303,6 +2307,7 @@ final class HomeStore: ObservableObject {
             case .recommendations: key = "home_for_pet_recommendations"
             case .accessories, .accessorySuggestions: key = "home_for_pet_essentials"
             case .food: key = "home_for_pet_food"
+            case .medicines: key = "home_for_pet_medicines"
             case .services: key = "home_for_pet_care"
             default: key = nil
             }
@@ -2346,6 +2351,13 @@ final class HomeStore: ObservableObject {
             return localizedSectionCopy(
                 titleKey: "home_pulse_section_pet_food",
                 titleFallback: "Food for your pet",
+                subtitleKey: "home_pulse_section_relevant_subtitle",
+                subtitleFallback: "Matched to the selected pet category"
+            )
+        case .medicines:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_pet_medicines",
+                titleFallback: "Medicines for your pet",
                 subtitleKey: "home_pulse_section_relevant_subtitle",
                 subtitleFallback: "Matched to the selected pet category"
             )
@@ -2463,6 +2475,9 @@ final class HomeStore: ObservableObject {
         case .food:
             titleKey = "home_pulse_section_category_food_format"
             titleFallback = "Food for %@"
+        case .medicines:
+            titleKey = "home_pulse_section_category_medicines_format"
+            titleFallback = "Medicines for %@"
         case .services:
             titleKey = "home_pulse_section_category_services_format"
             titleFallback = "Services for %@"
@@ -2476,7 +2491,7 @@ final class HomeStore: ObservableObject {
         switch kind {
         case .recommendations, .advertisements, .nearbyAdvertisements:
             value = forms.definite
-        case .accessorySuggestions, .accessories, .food, .services:
+        case .accessorySuggestions, .accessories, .food, .medicines, .services:
             value = forms.dative
         }
 
@@ -2527,6 +2542,13 @@ final class HomeStore: ObservableObject {
                 titleFallback: "New food arrivals",
                 subtitleKey: "home_pulse_section_food_subtitle",
                 subtitleFallback: "Recently added food and nutrition"
+            )
+        case .medicines:
+            return localizedSectionCopy(
+                titleKey: "home_pulse_section_medicines",
+                titleFallback: "Pet medicines and health",
+                subtitleKey: "home_pulse_section_medicines_subtitle",
+                subtitleFallback: "Licensed veterinary products and care"
             )
         case .nearbyAdvertisements:
             if showingRecentNearbyFallback {
@@ -2607,6 +2629,8 @@ final class HomeStore: ObservableObject {
             return [PPHomeBridgeSource.advertisements.rawValue]
         case .food:
             return [PPHomeBridgeSource.food.rawValue]
+        case .medicines:
+            return [PPHomeBridgeSource.medicines.rawValue]
         case .nearbyAdvertisements:
             return [PPHomeBridgeSource.nearbyAdvertisements.rawValue]
         case .services:
@@ -2864,16 +2888,6 @@ final class HomeStore: ObservableObject {
     private func uniqueCards(_ cards: [HomeCardModel]) -> [HomeCardModel] {
         var seen = Set<String>()
         return cards.filter { seen.insert($0.id).inserted }
-    }
-
-    private func usefulCards(
-        from cards: [HomeCardModel],
-        excluding identifiers: Set<String>
-    ) -> [HomeCardModel] {
-        guard !identifiers.isEmpty else { return cards }
-        let filtered = cards.filter { !identifiers.contains($0.id) }
-        let minimumUsefulCount = min(3, cards.count)
-        return filtered.count >= minimumUsefulCount ? filtered : cards
     }
 
     private func integerValue(_ object: NSObject, key: String) -> Int {
