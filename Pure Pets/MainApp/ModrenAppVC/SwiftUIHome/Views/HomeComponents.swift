@@ -13,14 +13,13 @@ enum HomeVisualTokens {
     /// Breeze spacing between the top command surface and the leading hero card.
     static let heroTopBreezeSpacing = PPSpace.sm
     static let minimumTouchTarget: CGFloat = 44
-    /// The shared Home marketplace shelf is six points tighter than the
-    /// legacy universal-card footprint.
-    static let universalCardHeight: CGFloat = 340
-    static let universalAdsCardHeight: CGFloat = 300
+    /// The shared Home marketplace shelf is compact and proportional.
+    static let universalCardHeight: CGFloat = 260
+    static let universalAdsCardHeight: CGFloat = 236
 
     // Shared surfaces
     static let cardCorner: CGFloat = 20
-    static let universalCardCorner: CGFloat = 20
+    static let universalCardCorner: CGFloat = 16
     static let compactCardCorner = PPCorner.small
     static let iconContainerSize: CGFloat = 44
     static let compactIconContainerSize: CGFloat = 36
@@ -44,9 +43,9 @@ enum HomeVisualTokens {
     static let productTitleToPriceSpacing = PPSpace.xs + PPSpace.xxs
     static let productPriceRowSpacing = PPSpace.xs + PPSpace.xxs
     /// The Home cart surface is visually unified across all action states.
-    static let universalCartActionVisualHeight: CGFloat = minimumTouchTarget - PPSpace.sm
-    static let advertisementActionVisualHeight: CGFloat = 38
-    static let primaryActionCorner = PPCorner.small
+    static let universalCartActionVisualHeight: CGFloat = 34
+    static let advertisementActionVisualHeight: CGFloat = 34
+    static let primaryActionCorner: CGFloat = 9
     static let advertisementActionCorner = primaryActionCorner
 
     // Command surface
@@ -90,17 +89,15 @@ enum HomeVisualTokens {
 /// A visible next-card slice is deliberate at every width, including RTL.
 enum HomeCarouselMetrics {
     static let inset = HomeVisualTokens.contentHorizontalMargin
-    static let gap: CGFloat = 16
-    static let peek: CGFloat = 28
+    static let gap: CGFloat = 12
+    static let peek: CGFloat = 24
 
     static func cardWidth(viewport: CGFloat, accessibility: Bool) -> CGFloat {
         let available = max(1, viewport - inset * 2)
-        if accessibility { return min(360, max(1, available - gap - peek)) }
-        // Keep phone shelves compact: one complete card and most of the next.
-        // Counting only whole visible cards forced typical phones to the old
-        // 240pt cap. A fractional span also avoids width jumps at breakpoints.
-        let width = (available + gap) / 1.9
-        return min(available, min(220, max(160, width)))
+        if accessibility { return min(320, max(1, available - gap - peek)) }
+        // Keep phone shelves compact: 2 complete cards and a peek of the 3rd.
+        let width = (available + gap) / 2.25
+        return min(available, min(176, max(148, width)))
     }
 }
 
@@ -5871,24 +5868,22 @@ private struct HomeCardSkeletonRail: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: HomeCarouselMetrics.gap) {
                 ForEach(Array(Self.skeletonIDs.enumerated()), id: \.element) { index, _ in
-                    VStack(alignment: .leading, spacing: PPSpace.sm) {
-                        RoundedRectangle(cornerRadius: PPCorner.medium)
+                    VStack(alignment: .leading, spacing: PPSpace.xs) {
+                        RoundedRectangle(cornerRadius: PPCorner.small)
                             .fill(Color.ppSeparator.opacity(0.7))
-                            .frame(height: isCompact ? 132 : 166)
-                        Capsule().fill(Color.ppSeparator).frame(height: 16)
+                            .frame(height: 122)
+                        Capsule().fill(Color.ppSeparator).frame(height: 12)
                         Capsule()
                             .fill(Color.ppSeparator)
-                            .frame(width: 100, height: 13)
-                        if !isCompact {
-                            Spacer()
-                            Capsule()
-                                .fill(Color.ppSoftRose)
-                                .frame(
-                                    height: HomeVisualTokens.universalCartActionVisualHeight
-                                )
-                        }
+                            .frame(width: 80, height: 10)
+                        Spacer(minLength: 0)
+                        Capsule()
+                            .fill(Color.ppSoftRose)
+                            .frame(
+                                height: HomeVisualTokens.universalCartActionVisualHeight
+                            )
                     }
-                    .padding(PPSpace.sm)
+                    .padding(PPSpace.xs)
                     .frame(
                         width: cardWidth,
                         height: cardHeight

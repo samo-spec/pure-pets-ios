@@ -3528,7 +3528,7 @@ struct PPAccessorySuggestionShore: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private var cardSizing = HomeUniversalCardSizing()
 
-    @State private var productInformationHeight: CGFloat = 0
+    @State private var productInformationHeight: CGFloat?
     @State private var productInformationRegions: [HomeProductInformationRegion: CGFloat] = [:]
 
     private var targetCardHeight: CGFloat {

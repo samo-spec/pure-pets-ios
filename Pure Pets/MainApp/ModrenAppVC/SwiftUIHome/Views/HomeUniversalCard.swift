@@ -259,20 +259,21 @@ private struct HomeProductInformationRegionModifier: ViewModifier {
 /// Loaded product rails share the tallest intrinsic information stack. Media
 /// stays stable; long titles, larger text and quantity controls grow the rail.
 struct HomeUniversalCardSizing: DynamicProperty {
-    static let productMediaHeight: CGFloat = 184
-    static let advertisementMediaHeight: CGFloat = 160
-    // Renderer inset (4), card inset (8), information padding (16) + 20pt Home cell height expansion.
-    private static let productInformationInsets: CGFloat = 48
+    static let productMediaHeight: CGFloat = 130
+    static let advertisementMediaHeight: CGFloat = 118
+    // Renderer inset (3), card inset (6), compact information padding (8).
+    private static let productInformationInsets: CGFloat = 16
 
     @Environment(\.homeProductInformationHeight) private var measuredInformationHeight
-    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 176
-    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 160
+    @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 130
+    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 118
 
     func height(isAdvertisement: Bool, measuredProductInformationHeight: CGFloat? = nil) -> CGFloat {
         if isAdvertisement {
             return Self.advertisementMediaHeight + advertisementInformationHeight
         }
-        let measured = measuredProductInformationHeight ?? measuredInformationHeight
+        let candidate = measuredProductInformationHeight ?? measuredInformationHeight
+        let measured = candidate.flatMap { $0 > 0 ? $0 : nil }
         let informationHeight = measured.map { ceil($0) + Self.productInformationInsets }
             ?? productInformationHeight
         return Self.productMediaHeight + informationHeight
@@ -372,7 +373,7 @@ private struct HomeUniversalCompatibilityCard: View {
     let onQuantityChange: (Int) -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .headline) private var titleMinimumHeight: CGFloat = 40
+    @ScaledMetric(relativeTo: .headline) private var titleMinimumHeight: CGFloat = 26
 
     @State private var quantity = 0
     @State private var notificationLoading = false
@@ -424,34 +425,34 @@ private struct HomeUniversalCompatibilityCard: View {
                         )
                     }
                 }
-                .padding(8)
+                .padding(6)
                 .frame(maxWidth: .infinity)
                 .frame(height: mediaHeight)
                 .background(Color.ppSecondarySurface)
-                .clipShape(PPUniversalMediaRoundedShape(topRadius: max(0, HomeVisualTokens.universalCardCorner - 4), bottomRadius: 12))
+                .clipShape(PPUniversalMediaRoundedShape(topRadius: max(0, HomeVisualTokens.universalCardCorner - 3), bottomRadius: 8))
 
                 if !viewModel.badgeText.isEmpty {
                     Text(viewModel.badgeText)
-                        .font(HomeFont.bold(11))
+                        .font(HomeFont.bold(10))
                         .foregroundStyle(Color.ppTextPrimary)
-                        .padding(.horizontal, PPSpace.sm)
-                        .padding(.vertical, PPSpace.xs)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                         .background(Color.ppSurfaceRaised, in: Capsule())
-                        .padding(PPSpace.sm)
+                        .padding(6)
                 }
             }
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
             .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 6) {
-                VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(viewModel.title)
-                        .font(HomeFont.headline())
+                        .font(HomeFont.subheadline())
                         .foregroundStyle(Color.ppTextPrimary)
                         .multilineTextAlignment(.leading)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.86)
+                        .minimumScaleFactor(0.85)
                         .frame(maxWidth: .infinity, minHeight: isAdvertisement ? titleMinimumHeight : nil, alignment: .topLeading)
 
                     if !viewModel.subtitle.isEmpty {
@@ -463,7 +464,7 @@ private struct HomeUniversalCompatibilityCard: View {
 
                     HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
                         Text(viewModel.priceText)
-                            .font(HomeFont.bold(20))
+                            .font(HomeFont.bold(18))
                             .foregroundStyle(Color.ppTextPrimary)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -491,20 +492,18 @@ private struct HomeUniversalCompatibilityCard: View {
                     availability
                         .homeProductInformationRegion(.metadata, enabled: true)
                     action
-                        .padding(.bottom, 8)
                 } else {
-                    HStack(alignment: .bottom, spacing: 6) {
+                    HStack(alignment: .bottom, spacing: 4) {
                         availability
                             .frame(maxWidth: .infinity, alignment: .leading)
                         action
-                            .padding(.bottom, 8)
                     }
                 }
             }
             .homeProductInformationMeasurement(enabled: !isAdvertisement)
-            .padding(10)
+            .padding(8)
         }
-        .padding(4)
+        .padding(3)
         .background {
             Button(action: onTap) {
                 RoundedRectangle(cornerRadius: HomeVisualTokens.universalCardCorner, style: .continuous)
@@ -525,7 +524,7 @@ private struct HomeUniversalCompatibilityCard: View {
     }
 
     private var availability: some View {
-        HStack(alignment: .center, spacing: 5) {
+        HStack(alignment: .center, spacing: 4) {
             if !viewModel.availabilityText.isEmpty {
                 Text(viewModel.availabilityText)
                     .lineLimit(1)
@@ -549,7 +548,7 @@ private struct HomeUniversalCompatibilityCard: View {
     }
 
     private var actionHeight: CGFloat {
-        PPProductCardActionMetrics.height(for: dynamicTypeSize)
+        dynamicTypeSize.isAccessibilitySize ? 46 : 34
     }
 
     private func actionLabel(title: String, symbol: String, loading: Bool = false) -> some View {
@@ -604,7 +603,7 @@ private struct HomeUniversalCompatibilityCard: View {
                 .buttonStyle(.plain)
                 .disabled(notificationLoading || notificationRegistered)
             } else if quantity > 0 {
-                HStack(spacing: PPSpace.sm) {
+                HStack(spacing: PPSpace.xs) {
                     quantityButton(
                         symbol: "minus",
                         labelKey: "home_pulse_decrease_quantity_a11y",
@@ -613,7 +612,7 @@ private struct HomeUniversalCompatibilityCard: View {
                         mutateQuantity(quantity - 1)
                     }
                     Text(quantity.formatted(.number.locale(Locale(identifier: Language.isRTL() ? "ar" : "en"))))
-                        .font(HomeFont.bold(16))
+                        .font(HomeFont.bold(14))
                         .frame(maxWidth: .infinity)
                         .accessibilityLabel(
                             String(
@@ -635,7 +634,7 @@ private struct HomeUniversalCompatibilityCard: View {
                 }
                 .frame(height: actionHeight)
                 .padding(.horizontal, PPSpace.xs)
-                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             } else {
                 Button {
                     mutateQuantity(1)
@@ -668,7 +667,7 @@ private struct HomeUniversalCompatibilityCard: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 11, weight: .bold))
                 .frame(width: actionHeight, height: actionHeight)
         }
         .buttonStyle(.plain)

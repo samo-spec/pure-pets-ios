@@ -2971,7 +2971,7 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.ppUniversalHomeShelfEntrance) private var homeShelfEntrance
-    @ScaledMetric(relativeTo: .headline) private var homeTitleMinimumHeight: CGFloat = 40
+    @ScaledMetric(relativeTo: .headline) private var homeTitleMinimumHeight: CGFloat = 26
     @ScaledMetric(relativeTo: .caption) private var discoveryNoticeMinimumHeight: CGFloat = 32
 
     private var cardRadius: CGFloat {
@@ -3013,7 +3013,7 @@ private struct PPUniversalCardRenderer: View {
         if store.layout.isHorizontal && !dynamicTypeSize.isAccessibilitySize {
             return isFoodPresentation || isProductCommercePresentation || isAdsMode ? 4 : 9
         }
-        return store.model.prefersEdgeToEdgeMedia ? 0 : 4
+        return store.model.prefersEdgeToEdgeMedia ? 0 : (store.isHomePresentation ? 3 : 4)
     }
 
     private var mediaTopRadius: CGFloat {
@@ -3209,7 +3209,7 @@ private struct PPUniversalCardRenderer: View {
     // those explicitly bounded hosts may scroll overflowing information.
     private func discoveryCardLayout(size: CGSize) -> some View {
         let horizontal = store.layout.isHorizontal && !dynamicTypeSize.isAccessibilitySize
-        let inset: CGFloat = store.model.prefersEdgeToEdgeMedia ? 0 : 4
+        let inset: CGFloat = store.model.prefersEdgeToEdgeMedia ? 0 : (store.isHomePresentation ? 3 : 4)
         let contentWidth = max(1, size.width - inset * 2)
         let desiredMediaHeight = store.isHomePresentation && store.layout != .focus
             ? homeMediaHeight
@@ -3242,12 +3242,12 @@ private struct PPUniversalCardRenderer: View {
                         }
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: max(0, size.height - mediaHeight - inset - 4), alignment: .topLeading)
+                    .frame(height: max(0, size.height - mediaHeight - inset - (store.isHomePresentation ? 2 : 4)), alignment: .topLeading)
                     .modifier(PPUniversalHomeShelfInformationDock(state: homeShelfEntrance))
                 }
                 .padding(.horizontal, inset)
                 .padding(.top, inset)
-                .padding(.bottom, 4)
+                .padding(.bottom, store.isHomePresentation ? 2 : 4)
             }
         }
         return decoratedCard(card, size: size)
@@ -3271,8 +3271,8 @@ private struct PPUniversalCardRenderer: View {
             if showsBottomCTA && !store.isContextFocused {
                 foodPrimaryAction
                     .frame(height: homeCartActionHeight)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 12)
+                    .padding(.horizontal, store.isHomePresentation ? 8 : 12)
+                    .padding(.bottom, store.isHomePresentation ? 6 : 12)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -3305,9 +3305,9 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private func foodInformation(showsAction: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: store.isHomePresentation ? 3 : 6) {
             scopedCardNavigationTarget(
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: store.isHomePresentation ? 1.5 : 3) {
                     discoveryTitle
                     if let subtitle = discoveryText(store.model.subtitle) {
                         discoverySecondaryText(subtitle)
@@ -3324,10 +3324,10 @@ private struct PPUniversalCardRenderer: View {
 
             if showsAction && showsBottomCTA && !store.isContextFocused {
                 foodPrimaryAction
-                    .padding(.top, 2)
+                    .padding(.top, store.isHomePresentation ? 1 : 2)
             }
         }
-        .padding(12)
+        .padding(store.isHomePresentation ? 8 : 12)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -3350,11 +3350,11 @@ private struct PPUniversalCardRenderer: View {
                 primaryAction
             }
         }
-        .frame(minHeight: 44)
+        .frame(minHeight: store.isHomePresentation ? 32 : 44)
     }
 
     private var foodPurchaseInformation: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: store.isHomePresentation ? 2 : 4) {
             if hasPrice {
                 discoveryPrice
             }
@@ -3376,7 +3376,7 @@ private struct PPUniversalCardRenderer: View {
     /// reading roles; breed/age are not mistaken for inventory availability.
     private var petAdvertisementInformation: some View {
         scopedCardNavigationTarget(
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: store.isHomePresentation ? 4 : 8) {
                 discoveryTitle
                 if hasPrice {
                     discoveryPrice
@@ -3392,11 +3392,11 @@ private struct PPUniversalCardRenderer: View {
 
                 if store.model.gender != nil || petAdvertisementIsSold {
                     ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        HStack(alignment: .firstTextBaseline, spacing: store.isHomePresentation ? 6 : 12) {
                             petAdvertisementFacts
                         }
                         .fixedSize(horizontal: true, vertical: false)
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: store.isHomePresentation ? 2 : 4) {
                             petAdvertisementFacts
                         }
                     }
@@ -3405,7 +3405,7 @@ private struct PPUniversalCardRenderer: View {
                     discoveryFact(metadata, symbol: store.model.availability?.metaSystemImage ?? "info.circle", color: store.palette.secondaryInk)
                 }
             }
-            .padding(12)
+            .padding(store.isHomePresentation ? 8 : 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
         )
@@ -3431,9 +3431,18 @@ private struct PPUniversalCardRenderer: View {
 
     private var discoveryTitle: some View {
         Text(store.model.title)
-            .font(.custom("Beiruti-Bold", size: isAdsMode ? 19 : 17, relativeTo: .headline))
+            .font(
+                .custom(
+                    "Beiruti-Bold",
+                    size: store.isHomePresentation
+                        ? (isAdsMode ? 14.5 : 13.5)
+                        : (isAdsMode ? 19 : 17),
+                    relativeTo: .headline
+                )
+            )
             .foregroundStyle(store.palette.ink)
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : (store.isHomePresentation ? 1 : 2))
+            .minimumScaleFactor(store.isHomePresentation ? 0.85 : 1.0)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(store.model.title)
@@ -3442,9 +3451,9 @@ private struct PPUniversalCardRenderer: View {
 
     private func discoverySecondaryText(_ text: String) -> some View {
         Text(text)
-            .font(.custom("Beiruti-Medium", size: 14, relativeTo: .subheadline))
+            .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11 : 14, relativeTo: .subheadline))
             .foregroundStyle(discoverySecondaryInk)
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -3452,13 +3461,13 @@ private struct PPUniversalCardRenderer: View {
     private func discoveryFact(_ text: String, symbol: String, color: Color) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
             Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: store.isHomePresentation ? 9.5 : 11, weight: .semibold))
                 .foregroundStyle(color)
                 .accessibilityHidden(true)
             Text(text)
-                .font(.custom("Beiruti-Medium", size: 13, relativeTo: .footnote))
+                .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11 : 13, relativeTo: .footnote))
                 .foregroundStyle(discoverySecondaryInk)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                 .multilineTextAlignment(.leading)
         }
         .accessibilityElement(children: .combine)
@@ -3469,10 +3478,10 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var discoveryPrice: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: store.isHomePresentation ? 1 : 2) {
             if let price = store.model.price {
                 ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: store.isHomePresentation ? 2 : 4) {
                         discoveryAmount(price)
                         discoveryCurrency
                     }
@@ -3484,17 +3493,23 @@ private struct PPUniversalCardRenderer: View {
                 }
             } else {
                 Text(displayPrice)
-                    .font(.custom("Beiruti-Black", size: 25, relativeTo: .title2))
+                    .font(
+                        .custom(
+                            "Beiruti-Black",
+                            size: store.isHomePresentation ? 16 : 25,
+                            relativeTo: .title2
+                        )
+                    )
                     .foregroundStyle(store.palette.ink)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     .multilineTextAlignment(.leading)
             }
             if let original = store.model.originalPrice {
                 Text(discoveryFormattedPrice(original))
-                    .font(.custom("Beiruti-Medium", size: 13, relativeTo: .caption))
+                    .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11 : 13, relativeTo: .caption))
                     .foregroundStyle(discoverySecondaryInk)
                     .strikethrough()
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
             }
             if store.discountStyle == .inline,
                let discount = discoveryText(store.model.discountText) {
@@ -3507,7 +3522,15 @@ private struct PPUniversalCardRenderer: View {
 
     private func discoveryAmount(_ price: Decimal) -> some View {
         Text(HomeModelAdapter.isolated(discoveryFormattedNumber(price)))
-            .font(.custom("Beiruti-Black", size: isAdsMode ? 27 : 25, relativeTo: .title2))
+            .font(
+                .custom(
+                    "Beiruti-Black",
+                    size: store.isHomePresentation
+                        ? (isAdsMode ? 17 : 16)
+                        : (isAdsMode ? 27 : 25),
+                    relativeTo: .title2
+                )
+            )
             .foregroundStyle(store.palette.ink)
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
@@ -3515,7 +3538,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var discoveryCurrency: some View {
         Text(HomeModelAdapter.isolated(normalizedCurrency))
-            .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+            .font(.custom("Beiruti-Bold", size: store.isHomePresentation ? 10 : 12, relativeTo: .caption))
             .foregroundStyle(discoverySecondaryInk)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -3627,9 +3650,9 @@ private struct PPUniversalCardRenderer: View {
                                 maxHeight: store.isContextFocused ? nil : .infinity,
                                 alignment: .top
                             )
-                            .padding(.horizontal, 12)
-                            .padding(.top, 8)
-                            .padding(.bottom, 10)
+                            .padding(.horizontal, 8)
+                            .padding(.top, 6)
+                            .padding(.bottom, 8)
                             .modifier(
                                 PPUniversalHomeShelfInformationDock(
                                     state: homeShelfEntrance
@@ -3648,13 +3671,13 @@ private struct PPUniversalCardRenderer: View {
                 }
                 .padding(
                     .horizontal,
-                    store.model.prefersEdgeToEdgeMedia ? 0 : 4
+                    store.model.prefersEdgeToEdgeMedia ? 0 : (store.isHomePresentation ? 3 : 4)
                 )
                 .padding(
                     .top,
-                    store.model.prefersEdgeToEdgeMedia ? 0 : 4
+                    store.model.prefersEdgeToEdgeMedia ? 0 : (store.isHomePresentation ? 3 : 4)
                 )
-                .padding(.bottom, 4)
+                .padding(.bottom, store.isHomePresentation ? 2 : 4)
             }
         }
 
@@ -4046,9 +4069,9 @@ private struct PPUniversalCardRenderer: View {
     /// Keep product information compact above one full-width action. Add,
     /// progress and quantity states use the same control footprint.
     private var homeVerticalInformation: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             scopedCardNavigationTarget(
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1.5) {
                     titleContent
                         .frame(minHeight: isAdsMode ? homeTitleMinimumHeight : nil, alignment: .topLeading)
                     subtitleContent
@@ -4071,17 +4094,15 @@ private struct PPUniversalCardRenderer: View {
                         .homeProductInformationRegion(.metadata, enabled: true)
                 }
                 if showsBottomCTA && !store.isContextFocused {
-                    Spacer(minLength: 4)
+                    Spacer(minLength: 2)
                     primaryAction
-                        .padding(.bottom, 8)
                 }
             } else {
-                HStack(alignment: .bottom, spacing: 6) {
+                HStack(alignment: .bottom, spacing: 4) {
                     scopedCardNavigationTarget(homeMetadata)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     if showsBottomCTA && !store.isContextFocused {
                         homeCompactAction
-                            .padding(.bottom, 8)
                     }
                 }
             }
@@ -4092,11 +4113,11 @@ private struct PPUniversalCardRenderer: View {
 
     private var homePriceRow: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 homeCurrentPrice
                 homeOriginalPrice
             }
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1.5) {
                 homeCurrentPrice
                 homeOriginalPrice
             }
@@ -4107,7 +4128,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var homeCurrentPrice: some View {
         Text(displayPrice)
-            .font(.custom("Beiruti-Bold", size: 20, relativeTo: .title3))
+            .font(.custom("Beiruti-Bold", size: store.isHomePresentation ? 18 : 20, relativeTo: store.isHomePresentation ? .body : .title3))
             .foregroundStyle(store.palette.ink)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -4116,7 +4137,7 @@ private struct PPUniversalCardRenderer: View {
     private var homeOriginalPrice: some View {
         if let originalPrice = store.model.originalPrice {
             Text(formattedPrice(originalPrice))
-                .font(.custom("Beiruti-Medium", size: 12, relativeTo: .caption))
+                .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 12 : 12, relativeTo: .caption))
                 .strikethrough()
                 .foregroundStyle(store.palette.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
@@ -4133,7 +4154,7 @@ private struct PPUniversalCardRenderer: View {
         let hasMeta = metaText != nil
 
         if hasAvailability || hasVariant || hasMeta {
-            HStack(alignment: .center, spacing: 5) {
+            HStack(alignment: .center, spacing: store.isHomePresentation ? 3 : 5) {
                 if let text = availabilityText, let tone = store.model.availability?.tone {
                     Text(text)
                         .foregroundStyle(availabilityForeground(tone))
@@ -4168,7 +4189,7 @@ private struct PPUniversalCardRenderer: View {
                     }
                 }
             }
-            .font(.custom("Beiruti-Medium", size: 12, relativeTo: .caption))
+            .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11.5 : 12, relativeTo: .caption))
             .lineLimit(1)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityElement(children: .combine)
@@ -4190,7 +4211,7 @@ private struct PPUniversalCardRenderer: View {
                     .lineLimit(1)
             }
         }
-        .font(.custom("Beiruti-Medium", size: 12, relativeTo: .caption))
+        .font(.custom("Beiruti-Medium", size: store.isHomePresentation ? 11.5 : 12, relativeTo: .caption))
         .multilineTextAlignment(.leading)
         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
         .fixedSize(horizontal: false, vertical: true)
@@ -4210,15 +4231,27 @@ private struct PPUniversalCardRenderer: View {
                         .controlSize(.small)
                 } else {
                     Image(systemName: homeCompactActionIcon)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: store.isHomePresentation ? 15 : 17, weight: .semibold))
                 }
             }
             .foregroundStyle(store.notifySucceeded ? store.palette.success : store.palette.ink)
-            .frame(width: 44, height: 44)
-            .background(store.palette.groupedSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .frame(
+                width: store.isHomePresentation ? 34 : 44,
+                height: store.isHomePresentation ? 34 : 44
+            )
+            .background(
+                store.palette.groupedSurface,
+                in: RoundedRectangle(
+                    cornerRadius: store.isHomePresentation ? 9 : 12,
+                    style: .continuous
+                )
+            )
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color(uiColor: .separator).opacity(0.45), lineWidth: 0.5)
+                RoundedRectangle(
+                    cornerRadius: store.isHomePresentation ? 9 : 12,
+                    style: .continuous
+                )
+                .strokeBorder(Color(uiColor: .separator).opacity(0.45), lineWidth: 0.5)
             }
             .contentShape(Rectangle())
         }
@@ -4244,9 +4277,11 @@ private struct PPUniversalCardRenderer: View {
             .font(
                 .custom(
                     "Beiruti-Bold",
-                    size: store.layout == .focus
-                        ? 18
-                        : (store.layout.isHorizontal || store.isHomePresentation ? 17 : 15.5),
+                    size: store.isHomePresentation
+                        ? 15
+                        : (store.layout == .focus
+                            ? 18
+                            : (store.layout.isHorizontal ? 17 : 15.5)),
                     relativeTo: .headline
                 )
             )
@@ -4259,7 +4294,7 @@ private struct PPUniversalCardRenderer: View {
                         : (store.layout == .focus ? 2 : 1))
             )
             .multilineTextAlignment(.leading)
-            .minimumScaleFactor(0.86)
+            .minimumScaleFactor(0.85)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(store.model.title)
             .accessibilityAddTraits(.isHeader)
@@ -4274,14 +4309,14 @@ private struct PPUniversalCardRenderer: View {
                 let isPlaceholder = (subtitle == PPUniversalCardStore.localized("ad_no_location_placeholder", fallback: "Location not specified"))
                 HStack(spacing: 4) {
                     Image(systemName: isPlaceholder ? "mappin.slash" : "mappin.and.ellipse")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: store.isHomePresentation ? 10.5 : 11, weight: .bold))
                         .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : semanticAccent)
 
                     Text("\(PPUniversalCardStore.localized("location", fallback: "Location")): \(subtitle)")
                         .font(
                             .custom(
                                 "Beiruti-Medium",
-                                size: store.layout.isHorizontal ? 13 : 12,
+                                size: store.isHomePresentation ? 12 : (store.layout.isHorizontal ? 13 : 12),
                                 relativeTo: .subheadline
                             )
                         )
@@ -4298,13 +4333,13 @@ private struct PPUniversalCardRenderer: View {
                         .multilineTextAlignment(.leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 5)
+                .padding(.top, store.isHomePresentation ? 2 : 5)
             } else {
                 Text(subtitle)
                     .font(
                         .custom(
                             "Beiruti-Medium",
-                            size: store.layout.isHorizontal ? 14 : 13,
+                            size: store.isHomePresentation ? 12 : (store.layout.isHorizontal ? 14 : 13),
                             relativeTo: .subheadline
                         )
                     )
@@ -4320,7 +4355,7 @@ private struct PPUniversalCardRenderer: View {
                     )
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 5)
+                    .padding(.top, store.isHomePresentation ? 2 : 5)
             }
         }
     }
@@ -4374,7 +4409,7 @@ private struct PPUniversalCardRenderer: View {
                     .font(
                         .custom(
                             "Beiruti-Medium",
-                            size: store.isHomePresentation ? 15 : 17,
+                            size: store.isHomePresentation ? 12 : 17,
                             relativeTo: .caption
                         )
                     )
@@ -4409,6 +4444,9 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var priceFontSize: CGFloat {
+        if store.isHomePresentation {
+            return (store.context.isAdvertisement || store.isSuggestionsAd) ? 19 : 18
+        }
         let baseSize: CGFloat = store.layout.isHorizontal ? 24 : 22
         return (store.context.isAdvertisement || store.isSuggestionsAd) ? (baseSize + 4) : baseSize
     }
@@ -4681,7 +4719,7 @@ private struct PPUniversalCardRenderer: View {
             tint: primaryActionAccent,
             itemSymbol: "shippingbox.fill",
             isEnabled: store.canIncreaseQuantity,
-            cornerRadius: usesProductCardActionStyle ? 12 : 13,
+            cornerRadius: store.isHomePresentation ? 9 : (usesProductCardActionStyle ? 12 : 13),
             presentationStyle: usesProductCardActionStyle ? .productCard : .standard,
             quantityMode: .init(
                 quantity: Binding(
@@ -5465,11 +5503,11 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var mediaContentInset: CGFloat {
+        if store.isHomePresentation {
+            return 6
+        }
         if isFoodPresentation || (isProductCommercePresentation && store.layout == .pinterest) {
             return 12
-        }
-        if store.isHomePresentation {
-            return 8
         }
         // No inset for market cards – they should fill the container edge‑to‑edge.
         if store.context == .market {
@@ -5712,7 +5750,10 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var universalCardActionHeight: CGFloat {
-        (usesProductCardActionStyle || store.isHomePresentation) && store.model.usesQuantityControl
+        if store.isHomePresentation {
+            return dynamicTypeSize.isAccessibilitySize ? 46 : 34
+        }
+        return usesProductCardActionStyle && store.model.usesQuantityControl
             ? PPProductCardActionMetrics.height(for: dynamicTypeSize)
             : (dynamicTypeSize.isAccessibilitySize ? 52 : 44)
     }
@@ -5753,8 +5794,8 @@ private struct PPUniversalCardRenderer: View {
 
     private var actionShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: store.isHomePresentation && isAdAction
-                ? HomeVisualTokens.advertisementActionCorner
+            cornerRadius: store.isHomePresentation
+                ? (isAdAction ? HomeVisualTokens.advertisementActionCorner : 9)
                 : 13,
             style: .continuous
         )
