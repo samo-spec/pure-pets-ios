@@ -22,7 +22,10 @@ public struct PureLensView: View {
     public var body: some View {
         Group {
             if store.cameraAuthorization == .authorized {
+                // Keep the live camera dark without changing the modal host's
+                // preferred appearance when a detection presents its sheet.
                 lensExperience
+                    .environment(\.colorScheme, .dark)
             } else {
                 LensPermissionView(
                     authorization: store.cameraAuthorization,
@@ -35,11 +38,8 @@ public struct PureLensView: View {
         }
         .environment(\.locale, Locale(identifier: store.localeIdentifier))
         .environment(\.layoutDirection, store.isRightToLeft ? .rightToLeft : .leftToRight)
-        // The live camera is intentionally dark in either app appearance. Let
-        // permission and result surfaces retain their normal adaptive theme.
-        .preferredColorScheme(
-            store.cameraAuthorization == .authorized && store.presentation == nil ? .dark : nil
-        )
+        // Do not change the modal host's preferred color scheme when a
+        // detection opens: a host appearance transition may dismiss the sheet.
         .task {
             await store.start()
         }
@@ -58,7 +58,7 @@ public struct PureLensView: View {
         }
         .alert(
             store.localized("lens.privacy.consent.title"),
-            isPresented: $store.showsRemoteProcessingConsent
+            isPresented: cameraConsentPresentation
         ) {
             Button(store.localized("lens.cancel"), role: .cancel) {
                 store.cancelRemoteProcessing()
@@ -174,6 +174,18 @@ public struct PureLensView: View {
             maximumHeight: max(0, maximumHeight),
             isSidePanel: isSidePanel,
             fillsAvailableHeight: fillsAvailableHeight
+        )
+    }
+
+    // Show consent on the camera only before the discovery sheet exists.
+    // Once discovery begins, the sheet owns the consent presentation.
+    private var cameraConsentPresentation: Binding<Bool> {
+        Binding(
+            get: { store.presentation == nil && store.showsRemoteProcessingConsent },
+            set: { newValue in
+                guard store.presentation == nil else { return }
+                store.showsRemoteProcessingConsent = newValue
+            }
         )
     }
 
