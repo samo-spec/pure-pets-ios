@@ -11,6 +11,7 @@
 
 
 #import <Pure_Pets-Swift.h>
+#import "PPMenuHelper.h"
 #import "FTPopOverMenu.h"
 #import "ZMJTipView.h"
 

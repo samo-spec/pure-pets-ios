@@ -32,6 +32,10 @@ static NSArray<NSString *> *PPVetStringArray(id value) {
     return items.copy;
 }
 
+static BOOL PPVetBoolFromValue(id value) {
+    return [value respondsToSelector:@selector(boolValue)] && [value boolValue];
+}
+
 static NSDate * _Nullable PPVetDateFromValue(id value) {
     if ([value isKindOfClass:[FIRTimestamp class]]) {
         return [(FIRTimestamp *)value dateValue];
@@ -115,6 +119,15 @@ static NSString *PPVetNormalizedTypeString(id value) {
         @"canEditProfile": @(self.canEditProfile),
         @"canPostServices": @(self.canPostServices),
         @"canPostMedicines": @(self.canPostMedicines),
+        @"cityID": self.cityID ?: @"",
+        @"cityName": self.cityName ?: @"",
+        @"workingAreas": self.workingAreas ?: @[],
+        @"supportedKindIDs": self.supportedKindIDs ?: @[],
+        @"address": self.address ?: @"",
+        @"licenseNumber": self.licenseNumber ?: @"",
+        @"workingHours": self.workingHours ?: @"",
+        @"emergency247": @(self.emergency247),
+        @"homeVisitAvailable": @(self.homeVisitAvailable),
     } mutableCopy];
     if (self.subscriptionStartDate) dict[@"subscriptionStartDate"] = self.subscriptionStartDate;
     if (self.subscriptionEndDate) dict[@"subscriptionEndDate"] = self.subscriptionEndDate;
@@ -143,7 +156,9 @@ static NSString *PPVetNormalizedTypeString(id value) {
     model.vetCost = [dict[@"vetCost"] respondsToSelector:@selector(doubleValue)] ? [dict[@"vetCost"] doubleValue] : 0.0;
     model.animalTypes = PPVetStringArray(dict[@"animalTypes"]);
     model.readyToContact = [dict[@"readyToContact"] boolValue] || model.phone.length > 0 || model.whatsapp.length > 0;
-    model.isDisabled = [dict[@"isDisabled"] boolValue];
+    // Console moderation and soft deletion must also hide public directory entries.
+    model.isDisabled = PPVetBoolFromValue(dict[@"isDisabled"]) ||
+        PPVetBoolFromValue(dict[@"isBlocked"]) || PPVetBoolFromValue(dict[@"isDeleted"]);
     model.verificationStatus = PPVetSafeString(dict[@"verificationStatus"]).length > 0 ? PPVetSafeString(dict[@"verificationStatus"]) : @"approved";
     model.subscriptionActive = [dict[@"subscriptionActive"] boolValue];
     model.subscriptionTier = [dict[@"subscriptionTier"] integerValue];
@@ -154,7 +169,28 @@ static NSString *PPVetNormalizedTypeString(id value) {
     model.canPostMedicines = [dict[@"canPostMedicines"] boolValue];
     model.createdAt = PPVetDateFromValue(dict[@"createdAt"]);
     model.updatedAt = PPVetDateFromValue(dict[@"updatedAt"]);
+
+    // Geographic Coverage & Clinical Practice
+    model.cityID = PPVetSafeString(dict[@"cityID"]);
+    model.cityName = PPVetSafeString(dict[@"cityName"]);
+    model.workingAreas = PPVetStringArray(dict[@"workingAreas"]);
+    if ([dict[@"supportedKindIDs"] isKindOfClass:NSArray.class]) {
+        NSMutableArray<NSNumber *> *kindNums = [NSMutableArray array];
+        for (id num in (NSArray *)dict[@"supportedKindIDs"]) {
+            if ([num respondsToSelector:@selector(integerValue)]) {
+                [kindNums addObject:@([num integerValue])];
+            }
+        }
+        model.supportedKindIDs = kindNums.copy;
+    }
+    model.address = PPVetSafeString(dict[@"address"]);
+    model.licenseNumber = PPVetSafeString(dict[@"licenseNumber"]);
+    model.workingHours = PPVetSafeString(dict[@"workingHours"]);
+    model.emergency247 = PPVetBoolFromValue(dict[@"emergency247"]);
+    model.homeVisitAvailable = PPVetBoolFromValue(dict[@"homeVisitAvailable"]);
+
     return model;
 }
 
 @end
+

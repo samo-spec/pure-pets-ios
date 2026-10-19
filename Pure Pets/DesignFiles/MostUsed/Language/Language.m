@@ -259,11 +259,15 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
 #pragma mark - Strings
 
 + (NSString *)get:(NSString *)key alter:(NSString *)alternate {
+    return [self get:key table:nil alter:alternate];
+}
+
++ (NSString *)get:(NSString *)key table:(NSString *)table alter:(NSString *)alternate {
     if (!bundle) {
         // Ensure bundle loads cached language at first call
         [self pp_loadLanguage:[self currentLanguageCode] notifyChange:NO];
     }
-    NSString *val = [bundle localizedStringForKey:key value:alternate table:nil];
+    NSString *val = [bundle localizedStringForKey:key value:alternate table:table];
     // Optional debug (comment out if noisy)
     // DLog(@"[Language] get key='%@' → '%@'", key, val ?: key);
     return val ?: key;

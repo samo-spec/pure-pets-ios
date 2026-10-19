@@ -59,14 +59,24 @@ struct PPProductCardActionLabel: View {
 }
 
 struct PPProductCardButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
-            .opacity(configuration.isPressed ? 0.86 : 1)
+            .modifier(PPProductCardPressFeedback(isPressed: configuration.isPressed))
+    }
+}
+
+/// Shared by the direct-add and universal-card styles. Read the environment in
+/// an installed modifier rather than manually invoking another ButtonStyle.
+struct PPProductCardPressFeedback: ViewModifier {
+    let isPressed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed && !reduceMotion ? 0.985 : 1)
+            .opacity(isPressed ? 0.86 : 1)
             .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.9),
-                       value: configuration.isPressed)
+                       value: isPressed)
     }
 }
 

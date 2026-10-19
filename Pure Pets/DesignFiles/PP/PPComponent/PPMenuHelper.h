@@ -56,11 +56,25 @@ typedef void (^PPMenuHandler)(NSInteger index, NSString *title);
                  destructive:(NSIndexSet * _Nullable)destructiveIndexes
                       handler:(PPMenuHandler)handler;
 
++ (NSArray<UIAction *> *)makeActionsFromTitles:(NSArray<NSString *> *)titles
+                                       images:(nullable NSArray<UIImage *> *)images
+                                 destructive:(nullable NSIndexSet *)destructiveIndexes
+                                     handler:(PPMenuHandler)handler;
+
 + (UIAction *)actionWithTitle:(NSString *)title
               systemImageName:(nullable NSString *)systemImageName
                          font:(nullable UIFont *)font
                         color:(nullable UIColor *)color
                       handler:(void (^)(UIAction *action))handler;
+
+/// Applies the platform menu action font pattern (MenuActionTitleFont: [GM MidFontWithSize:15]) to a single UIAction.
++ (void)applyFontPatternToAction:(nullable UIAction *)action;
+
+/// Recursively applies the font pattern to all UIActions within a UIMenu (including nested submenus).
++ (void)applyFontPatternToMenu:(nullable UIMenu *)menu;
+
+/// Applies the font pattern to an array of UIMenuElements / UIActions.
++ (void)applyFontPatternToActions:(nullable NSArray<UIMenuElement *> *)actions;
 @end
 
 NS_ASSUME_NONNULL_END

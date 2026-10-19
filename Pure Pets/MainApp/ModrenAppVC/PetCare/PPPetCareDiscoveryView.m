@@ -1,5 +1,6 @@
 #import "PPPetCareDiscoveryView.h"
 #import "PPDesignTokens.h"
+#import "AppClasses.h"
 
 static UIFont *PPCareFont(CGFloat size, UIFontTextStyle style, BOOL emphasized, UITraitCollection *traits)
 {
@@ -41,7 +42,10 @@ static UIButton *PPCareButton(NSString *identifier)
     UILabel *_retainedLabel;
     UIView *_searchSurface;
     UIImageView *_searchIcon;
+    UIView *_careContainer;
     UIImageView *_careMark;
+    LOTAnimationView *_careLottieView;
+    BOOL _careLottieLoaded;
     UIView *_stateSurface;
     UIStackView *_stateStack;
     UIImageView *_stateIcon;
@@ -52,7 +56,7 @@ static UIButton *PPCareButton(NSString *identifier)
     UIView *_modeSeparator;
     NSLayoutConstraint *_selectionCenter;
     NSLayoutConstraint *_selectionWidth;
-    BOOL _veterinarians;
+    PPPetCareInitialSection _selectedSection;
     BOOL _hasConfiguration;
     BOOL _loading;
     PPPetCareDiscoveryState _state;
@@ -88,24 +92,66 @@ static UIButton *PPCareButton(NSString *identifier)
     UIStackView *introCopy = [[UIStackView alloc] initWithArrangedSubviews:@[_title, _subtitle]];
     introCopy.axis = UILayoutConstraintAxisVertical;
     introCopy.spacing = PPSpaceXS;
-    _careMark = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"cross.case"]];
-    _careMark.contentMode = UIViewContentModeScaleAspectFit;
-    _careMark.isAccessibilityElement = NO;
-    NSLayoutConstraint *markWidth = [_careMark.widthAnchor constraintEqualToConstant:36];
+    _careContainer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 124.0, 62.0)];
+    _careContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    _careContainer.backgroundColor = UIColor.clearColor;
+    _careContainer.clipsToBounds = NO;
+    _careContainer.isAccessibilityElement = NO;
+    NSLayoutConstraint *markWidth = [_careContainer.widthAnchor constraintEqualToConstant:124.0];
     markWidth.priority = 999;
     markWidth.active = YES;
-    [_careMark.heightAnchor constraintEqualToConstant:36].active = YES;
-    UIStackView *intro = [[UIStackView alloc] initWithArrangedSubviews:@[introCopy, _careMark]];
+    NSLayoutConstraint *markHeight = [_careContainer.heightAnchor constraintEqualToConstant:62.0];
+    markHeight.priority = 999;
+    markHeight.active = YES;
+    [_careContainer setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [_careContainer setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+
+    _careMark = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"cross.case"]];
+    _careMark.translatesAutoresizingMaskIntoConstraints = NO;
+    _careMark.contentMode = UIViewContentModeScaleAspectFit;
+    _careMark.isAccessibilityElement = NO;
+    _careMark.tintColor = AppPrimaryClr;
+    [_careContainer addSubview:_careMark];
+
+    _careLottieView = [[LOTAnimationView alloc] initWithFrame:CGRectMake(0, 0, 124.0, 62.0)];
+    _careLottieView.translatesAutoresizingMaskIntoConstraints = NO;
+    _careLottieView.contentMode = UIViewContentModeScaleAspectFit;
+    _careLottieView.backgroundColor = UIColor.clearColor;
+    _careLottieView.opaque = NO;
+    _careLottieView.loopAnimation = YES;
+    _careLottieView.animationSpeed = 0.5;
+    _careLottieView.isAccessibilityElement = NO;
+    _careLottieView.alpha = 0.0;
+    _careLottieView.hidden = YES;
+    [_careContainer addSubview:_careLottieView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_careMark.centerXAnchor constraintEqualToAnchor:_careContainer.centerXAnchor],
+        [_careMark.centerYAnchor constraintEqualToAnchor:_careContainer.centerYAnchor],
+        [_careMark.widthAnchor constraintEqualToConstant:38.0],
+        [_careMark.heightAnchor constraintEqualToConstant:38.0],
+
+        [_careLottieView.leadingAnchor constraintEqualToAnchor:_careContainer.leadingAnchor],
+        [_careLottieView.trailingAnchor constraintEqualToAnchor:_careContainer.trailingAnchor],
+        [_careLottieView.topAnchor constraintEqualToAnchor:_careContainer.topAnchor],
+        [_careLottieView.bottomAnchor constraintEqualToAnchor:_careContainer.bottomAnchor]
+    ]];
+
+    UIStackView *intro = [[UIStackView alloc] initWithArrangedSubviews:@[introCopy, _careContainer]];
     intro.alignment = UIStackViewAlignmentTop;
     intro.spacing = PPSpaceBase;
     [_stack addArrangedSubview:intro];
 
+    [self pp_loadCareLottieAnimation];
+
     _medicineButton = PPCareButton(@"petCare.medicines");
     _vetsButton = PPCareButton(@"petCare.veterinarians");
-    _medicineButton.tag = 0;
-    _vetsButton.tag = 1;
+    _clinicsButton = PPCareButton(@"petCare.clinics");
+    _medicineButton.tag = PPPetCareInitialSectionMedicines;
+    _vetsButton.tag = PPPetCareInitialSectionVeterinarians;
+    _clinicsButton.tag = PPPetCareInitialSectionClinics;
     UIView *modeSurface = [[UIView alloc] init];
-    _modeStack = [[UIStackView alloc] initWithArrangedSubviews:@[_medicineButton, _vetsButton]];
+    _modeStack = [[UIStackView alloc] initWithArrangedSubviews:@[_medicineButton, _vetsButton, _clinicsButton]];
     _modeStack.translatesAutoresizingMaskIntoConstraints = NO;
     _modeStack.distribution = UIStackViewDistributionFillEqually;
     _modeStack.spacing = PPSpaceSM;
@@ -257,9 +303,17 @@ static UIButton *PPCareButton(NSString *identifier)
 
 - (void)configureForVeterinarians:(BOOL)veterinarians kindName:(NSString *)kindName filterName:(NSString *)filterName count:(NSUInteger)count state:(PPPetCareDiscoveryState)state loading:(BOOL)loading animated:(BOOL)animated
 {
-    BOOL changedSection = _hasConfiguration && _veterinarians != veterinarians;
+    [self configureForSection:veterinarians ? PPPetCareInitialSectionVeterinarians : PPPetCareInitialSectionMedicines
+                    kindName:kindName filterName:filterName count:count state:state loading:loading animated:animated];
+}
+
+- (void)configureForSection:(PPPetCareInitialSection)section kindName:(NSString *)kindName filterName:(NSString *)filterName count:(NSUInteger)count state:(PPPetCareDiscoveryState)state loading:(BOOL)loading animated:(BOOL)animated
+{
+    BOOL medicines = section == PPPetCareInitialSectionMedicines;
+    BOOL clinics = section == PPPetCareInitialSectionClinics;
+    BOOL changedSection = _hasConfiguration && _selectedSection != section;
     _hasConfiguration = YES;
-    _veterinarians = veterinarians;
+    _selectedSection = section;
     _kindName = [kindName copy];
     _filterName = [filterName copy];
     _count = count;
@@ -269,9 +323,23 @@ static UIButton *PPCareButton(NSString *identifier)
     BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
     _modeStack.axis = accessibility ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
     _scopeStack.axis = accessibility ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    _careMark.hidden = accessibility;
+    _careContainer.hidden = accessibility;
+    if (!accessibility) {
+        if (_careLottieLoaded) {
+            _careLottieView.hidden = NO;
+            _careLottieView.alpha = 1.0;
+            _careMark.hidden = YES;
+            _careMark.alpha = 0.0;
+            [self resumeCareAnimationIfNeeded];
+        } else {
+            _careMark.hidden = NO;
+            _careMark.alpha = 1.0;
+            _careLottieView.hidden = YES;
+            _careLottieView.alpha = 0.0;
+        }
+    }
     _title.text = kLang(@"pet_care_discovery_title");
-    _subtitle.text = kLang(veterinarians ? @"pet_care_discovery_vets" : @"pet_care_discovery_medicines");
+    _subtitle.text = kLang(medicines ? @"pet_care_discovery_medicines" : (clinics ? @"pet_care_discovery_clinics" : @"pet_care_discovery_vets"));
     _title.font = PPCareFont(PPFontTitle1, UIFontTextStyleTitle1, YES, self.traitCollection);
     _subtitle.font = PPCareFont(PPFontSubheadline, UIFontTextStyleSubheadline, NO, self.traitCollection);
     _resultLabel.font = PPCareFont(PPFontFootnote, UIFontTextStyleFootnote, YES, self.traitCollection);
@@ -294,16 +362,29 @@ static UIButton *PPCareButton(NSString *identifier)
     _searchField.font = PPCareFont(PPFontBody, UIFontTextStyleBody, NO, self.traitCollection);
     _searchField.textAlignment = [Language alignmentForCurrentLanguage];
     _searchField.semanticContentAttribute = self.semanticContentAttribute;
-    NSString *placeholder = kLang(veterinarians ? @"pet_care_search_vets" : @"pet_care_search_medicines");
+    NSString *placeholder = kLang(medicines ? @"pet_care_search_medicines" : (clinics ? @"pet_care_search_clinics" : @"pet_care_search_vets"));
     _searchField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:placeholder attributes:@{NSForegroundColorAttributeName: AppSecondaryTextClr}];
     _searchField.accessibilityLabel = placeholder;
 
-    [self styleButton:_medicineButton title:kLang(@"pet_care_medicines") symbol:accessibility && !veterinarians ? @"checkmark.circle.fill" : @"pills" selected:!veterinarians filled:NO];
-    [self styleButton:_vetsButton title:kLang(@"pet_care_veterinarians") symbol:accessibility && veterinarians ? @"checkmark.circle.fill" : @"stethoscope" selected:veterinarians filled:NO];
-    _medicineButton.accessibilityTraits = UIAccessibilityTraitButton | (veterinarians ? 0 : UIAccessibilityTraitSelected);
-    _vetsButton.accessibilityTraits = UIAccessibilityTraitButton | (veterinarians ? UIAccessibilityTraitSelected : 0);
-    _medicineButton.selected = !veterinarians;
-    _vetsButton.selected = veterinarians;
+    NSArray<UIButton *> *sectionButtons = @[_medicineButton, _vetsButton, _clinicsButton];
+    NSArray<NSString *> *sectionTitles = @[@"pet_care_medicines", @"pet_care_veterinarians", @"pet_care_clinics"];
+    NSArray<NSString *> *sectionSymbols = @[@"pills", @"stethoscope", @"building.2.crop.circle"];
+    for (NSUInteger index = 0; index < sectionButtons.count; index++) {
+        UIButton *button = sectionButtons[index];
+        BOOL selected = button.tag == section;
+        [self styleButton:button title:kLang(sectionTitles[index]) symbol:accessibility && selected ? @"checkmark.circle.fill" : sectionSymbols[index] selected:selected filled:NO];
+        // Stacked symbols leave room for three translated titles on compact phones.
+        UIButtonConfiguration *configuration = button.configuration;
+        configuration.imagePlacement = accessibility ? NSDirectionalRectEdgeLeading : NSDirectionalRectEdgeTop;
+        configuration.titleAlignment = accessibility ? UIButtonConfigurationTitleAlignmentLeading : UIButtonConfigurationTitleAlignmentCenter;
+        configuration.imagePadding = PPSpaceXS;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMD, PPSpaceXS, PPSpaceMD, PPSpaceXS);
+        button.configuration = configuration;
+        button.contentHorizontalAlignment = accessibility ? UIControlContentHorizontalAlignmentLeading : UIControlContentHorizontalAlignmentCenter;
+        button.titleLabel.textAlignment = accessibility ? [Language alignmentForCurrentLanguage] : NSTextAlignmentCenter;
+        button.accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
+        button.selected = selected;
+    }
     [self styleButton:_kindButton title:kindName.length ? kindName : kLang(@"pet_care_all_pets") symbol:@"pawprint" selected:NO filled:NO];
     [self styleButton:_filterButton title:filterName.length ? filterName : kLang(@"pet_care_filter_by") symbol:@"slider.horizontal.3" selected:filterName.length > 0 filled:NO];
     _kindButton.accessibilityLabel = kLang(@"pet_care_kind_filter");
@@ -324,7 +405,7 @@ static UIButton *PPCareButton(NSString *identifier)
         formatter.numberStyle = NSNumberFormatterDecimalStyle;
         _resultLabel.text = [NSString stringWithFormat:kLang(@"pet_care_results_format"), [formatter stringFromNumber:@(count)]];
     } else {
-        _resultLabel.text = kLang(veterinarians ? @"pet_care_vets_title" : @"pet_care_medicine_title");
+        _resultLabel.text = kLang(medicines ? @"pet_care_medicine_title" : (clinics ? @"pet_care_clinics_title" : @"pet_care_vets_title"));
     }
     _retainedLabel.text = kLang(@"pet_care_retained_error");
     _retainedLabel.hidden = state != PPPetCareDiscoveryStateRetainedError;
@@ -332,9 +413,9 @@ static UIButton *PPCareButton(NSString *identifier)
     _stateSurface.hidden = !showsState;
     _alternateButton.hidden = !showsState || loading;
     _primaryButton.hidden = loading;
-    NSString *symbol = veterinarians ? @"stethoscope" : @"pills";
-    NSString *titleKey = veterinarians ? @"pet_care_directory_empty_vets" : @"pet_care_directory_empty_medicines";
-    NSString *messageKey = veterinarians ? @"pet_care_directory_empty_vets_body" : @"pet_care_directory_empty_medicines_body";
+    NSString *symbol = medicines ? @"pills" : (clinics ? @"building.2.crop.circle" : @"stethoscope");
+    NSString *titleKey = medicines ? @"pet_care_directory_empty_medicines" : (clinics ? @"pet_care_directory_empty_clinics" : @"pet_care_directory_empty_vets");
+    NSString *messageKey = medicines ? @"pet_care_directory_empty_medicines_body" : (clinics ? @"pet_care_directory_empty_clinics_body" : @"pet_care_directory_empty_vets_body");
     NSString *actionKey = @"pet_care_refresh";
     if (state == PPPetCareDiscoveryStateLoading) {
         titleKey = @"pet_care_loading_title";
@@ -354,10 +435,11 @@ static UIButton *PPCareButton(NSString *identifier)
     _stateTitle.text = kLang(titleKey);
     _stateMessage.text = kLang(messageKey);
     [self styleButton:_primaryButton title:kLang(actionKey) symbol:state == PPPetCareDiscoveryStateNoMatches ? @"line.3.horizontal.decrease" : @"arrow.clockwise" selected:YES filled:YES];
-    [self styleButton:_alternateButton title:kLang(veterinarians ? @"pet_care_explore_medicines" : @"pet_care_explore_vets") symbol:Language.isRTL ? @"arrow.left" : @"arrow.right" selected:NO filled:NO];
+    NSString *alternateKey = section == PPPetCareInitialSectionVeterinarians ? @"pet_care_explore_medicines" : @"pet_care_explore_vets";
+    [self styleButton:_alternateButton title:kLang(alternateKey) symbol:Language.isRTL ? @"arrow.left" : @"arrow.right" selected:NO filled:NO];
     _primaryButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
 
-    UIButton *selection = veterinarians ? _vetsButton : _medicineButton;
+    UIButton *selection = medicines ? _medicineButton : (clinics ? _clinicsButton : _vetsButton);
     [_selectionCenter setActive:NO];
     [_selectionWidth setActive:NO];
     _selectionCenter = [_selectionLine.centerXAnchor constraintEqualToAnchor:selection.centerXAnchor];
@@ -383,7 +465,159 @@ static UIButton *PPCareButton(NSString *identifier)
 {
     [super traitCollectionDidChange:previousTraitCollection];
     if (_hasConfiguration) {
-        [self configureForVeterinarians:_veterinarians kindName:_kindName filterName:_filterName count:_count state:_state loading:_loading animated:NO];
+        [self configureForSection:_selectedSection kindName:_kindName filterName:_filterName count:_count state:_state loading:_loading animated:NO];
     }
 }
+
+#pragma mark - Layout & Lifecycle
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    if (_careLottieLoaded && _careLottieView && !CGRectIsEmpty(_careLottieView.bounds)) {
+        if (![_careLottieView isAnimationPlaying] && !_careContainer.hidden && !_careLottieView.hidden) {
+            [_careLottieView play];
+        }
+    }
+}
+
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    if (self.window) {
+        [self resumeCareAnimationIfNeeded];
+    }
+}
+
+- (void)resumeCareAnimationIfNeeded
+{
+    if (_careLottieLoaded && _careLottieView && !_careContainer.hidden && !_careLottieView.hidden) {
+        if (![_careLottieView isAnimationPlaying]) {
+            [_careLottieView play];
+        }
+    }
+}
+
+#pragma mark - Lottie Animation
+
+- (void)pp_loadCareLottieAnimation
+{
+    __weak typeof(self) weakSelf = self;
+    void (^applyLottieJSON)(NSDictionary *) = ^(NSDictionary *jsonDict) {
+        if (![jsonDict isKindOfClass:[NSDictionary class]] || jsonDict.count == 0) {
+            NSLog(@"⚠️ PPPetCareDiscoveryView: Invalid JSON dictionary for ecg1.json");
+            return;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+
+            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
+            if (!composition) {
+                NSLog(@"⚠️ PPPetCareDiscoveryView: Failed to build LOTComposition for ecg1.json");
+                return;
+            }
+
+            self->_careLottieLoaded = YES;
+            [self->_careLottieView setSceneModel:composition];
+            self->_careLottieView.loopAnimation = YES;
+            self->_careLottieView.autoReverseAnimation = NO;
+            self->_careLottieView.animationSpeed = 0.5;
+            self->_careLottieView.animationProgress = 0.0;
+            self->_careLottieView.hidden = NO;
+
+            // Ensure layout bounds are non-zero before triggering Core Animation
+            [self layoutIfNeeded];
+            [self->_careLottieView layoutIfNeeded];
+
+            [self->_careLottieView play];
+
+            [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+                self->_careLottieView.alpha = 1.0;
+                self->_careMark.alpha = 0.0;
+            } completion:^(BOOL finished) {
+                self->_careMark.hidden = YES;
+            }];
+        });
+    };
+
+    // Tier 1: Check bundled resource first (instant offline/online load)
+    NSString *bundledPath = [[NSBundle mainBundle] pathForResource:@"ecg1" ofType:@"json"];
+    if (bundledPath.length > 0) {
+        NSData *localData = [NSData dataWithContentsOfFile:bundledPath];
+        if (localData.length > 0) {
+            NSError *jsonErr = nil;
+            NSDictionary *localJSON = [NSJSONSerialization JSONObjectWithData:localData options:kNilOptions error:&jsonErr];
+            if (localJSON && !jsonErr && [localJSON isKindOfClass:[NSDictionary class]]) {
+                NSLog(@"✅ PPPetCareDiscoveryView: Loaded ecg1.json from app bundle");
+                applyLottieJSON(localJSON);
+                return;
+            }
+        }
+    }
+
+    // Tier 2: Check YYCache (cache key used by AppClasses & Styling)
+    YYCache *cache = [[YYCache alloc] initWithName:@"LottieJSONCache"];
+    NSString *cacheKey = @"lottie_LottieAnimations/ecg1.json";
+    NSDictionary *cachedJSON = (NSDictionary *)[cache objectForKey:cacheKey];
+    if (cachedJSON && [cachedJSON isKindOfClass:[NSDictionary class]]) {
+        NSLog(@"✅ PPPetCareDiscoveryView: Loaded ecg1.json from cache");
+        applyLottieJSON(cachedJSON);
+        return;
+    }
+
+    // Tier 3: Fetch via Firebase Storage SDK (canonical path "LottieAnimations/ecg1.json")
+    [AppClasses fetchLottieJSONFromFirebasePath:@"LottieAnimations/ecg1.json" completion:^(NSDictionary * _Nonnull jsonDict, NSError * _Nonnull error) {
+        if (jsonDict && !error) {
+            NSLog(@"✅ PPPetCareDiscoveryView: Downloaded ecg1.json via Firebase Storage SDK");
+            applyLottieJSON(jsonDict);
+            return;
+        }
+
+        NSLog(@"⚠️ PPPetCareDiscoveryView: FIRStorage download failed (%@), falling back to direct HTTPS fetch...", error.localizedDescription);
+
+        // Tier 4: Direct HTTPS download fallback (bypasses SDK App Check & Auth constraints)
+        NSURL *publicURL = [NSURL URLWithString:@"https://firebasestorage.googleapis.com/v0/b/pure-pets-49199.firebasestorage.app/o/LottieAnimations%2Fecg1.json?alt=media"];
+        NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:publicURL completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable httpError) {
+            if (data && !httpError) {
+                NSError *parseError = nil;
+                NSDictionary *downloadedJSON = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&parseError];
+                if (downloadedJSON && !parseError && [downloadedJSON isKindOfClass:[NSDictionary class]]) {
+                    NSLog(@"✅ PPPetCareDiscoveryView: Downloaded ecg1.json via direct HTTPS");
+                    [cache setObject:downloadedJSON forKey:cacheKey];
+                    applyLottieJSON(downloadedJSON);
+                    return;
+                }
+            }
+
+            NSLog(@"❌ PPPetCareDiscoveryView: All sources failed for ecg1.json: %@", httpError.localizedDescription ?: error.localizedDescription);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                self->_careLottieLoaded = NO;
+                self->_careMark.hidden = NO;
+                self->_careMark.alpha = 1.0;
+                self->_careLottieView.hidden = YES;
+                self->_careLottieView.alpha = 0.0;
+            });
+        }];
+        [task resume];
+    }];
+}
+
+- (UIImageView *)careMark
+{
+    return _careMark;
+}
+
+- (LOTAnimationView *)careLottieView
+{
+    return _careLottieView;
+}
+
+- (UIView *)careContainer
+{
+    return _careContainer;
+}
+
 @end

@@ -155,6 +155,18 @@ final class PPMarketplaceDataViewController: UIViewController, UIGestureRecogniz
         store.schedulePresentationStateRefresh()
     }
 
+    @objc(pp_scrollToTop:)
+    func scrollToTop(animated: Bool) {
+        guard let scrollView = view.pp_firstScrollView() else { return }
+        let targetY = -scrollView.adjustedContentInset.top
+        if abs(scrollView.contentOffset.y - targetY) > 0.5 {
+            scrollView.setContentOffset(
+                CGPoint(x: scrollView.contentOffset.x, y: targetY),
+                animated: animated
+            )
+        }
+    }
+
     private func installSwiftUIHierarchy() {
         let hosting = UIHostingController(
             rootView: PPMarketplaceDataViewScreen(store: store)
@@ -253,5 +265,19 @@ final class PPMarketplaceDataViewController: UIViewController, UIGestureRecogniz
         navigationItem.standardAppearance = appearance
         navigationItem.scrollEdgeAppearance = appearance
         navigationItem.compactAppearance = appearance
+    }
+}
+
+private extension UIView {
+    func pp_firstScrollView() -> UIScrollView? {
+        if let scrollView = self as? UIScrollView {
+            return scrollView
+        }
+        for subview in subviews {
+            if let found = subview.pp_firstScrollView() {
+                return found
+            }
+        }
+        return nil
     }
 }

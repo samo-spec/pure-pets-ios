@@ -166,11 +166,91 @@ static void PPVetManagerGetDocumentsServerThenCache(FIRQuery *query,
         _userId = @"";
         _animalTypes = @[];
         _category = @"";
+        _accessoryCategoryID = @"";
+        _productType = @"";
         _currency = @"QAR";
         _isAvailable = YES;
         _isPublished = YES;
     }
     return self;
+}
+
+- (BOOL)isCareProduct {
+    NSString *pType = [self.productType lowercaseString] ?: @"";
+    if ([pType isEqualToString:@"care"]) {
+        return YES;
+    }
+    if ([pType isEqualToString:@"medicine"]) {
+        return NO;
+    }
+
+    NSString *catID = [(self.accessoryCategoryID.length > 0 ? self.accessoryCategoryID : self.category) lowercaseString] ?: @"";
+    if ([catID hasPrefix:@"care_"]) {
+        return YES;
+    }
+    if ([catID hasPrefix:@"med_"]) {
+        return NO;
+    }
+
+    static NSSet<NSString *> *careCatIDs = nil;
+    static dispatch_once_t onceCareToken;
+    dispatch_once(&onceCareToken, ^{
+        careCatIDs = [NSSet setWithObjects:
+            @"care_shampoo", @"care_dental", @"care_paw_nail", @"care_grooming",
+            @"care_ear_eye", @"care_deodorant", @"care_pads_diapers",
+            @"care_habitat_clean", @"care_nursing", @"care_general", nil];
+    });
+    if ([careCatIDs containsObject:catID]) {
+        return YES;
+    }
+
+    static NSSet<NSString *> *medCatIDs = nil;
+    static dispatch_once_t onceMedToken;
+    dispatch_once(&onceMedToken, ^{
+        medCatIDs = [NSSet setWithObjects:
+            @"med_antibiotics", @"med_dewormers", @"med_flea_tick", @"med_vitamins",
+            @"med_anti_inflammatory", @"med_digestive", @"med_eyes_ears",
+            @"med_dermatology", @"med_respiratory", @"med_antiseptic",
+            @"med_calming", @"med_general", nil];
+    });
+    if ([medCatIDs containsObject:catID]) {
+        return NO;
+    }
+
+    NSString *title = (self.title ?: @"").lowercaseString;
+    NSString *desc = (self.medicineDescription ?: @"").lowercaseString;
+
+    // Definite medical indicators take precedence
+    if ([title containsString:@"مضاد"] || [title containsString:@"دواء"] ||
+        [title containsString:@"علاج"] || [title containsString:@"فيتامين"] ||
+        [title containsString:@"لقاح"] || [title containsString:@"مرهم طبي"] ||
+        [title containsString:@"تحصين"] || [title containsString:@"antibiotic"] ||
+        [title containsString:@"medicine"] || [title containsString:@"vitamin"]) {
+        return NO;
+    }
+
+    // Care indicators
+    if ([catID containsString:@"shampoo"] || [catID containsString:@"groom"] ||
+        [catID containsString:@"dental"] || [catID containsString:@"hygiene"] ||
+        [catID containsString:@"deodorant"] || [catID containsString:@"diaper"] ||
+        [catID containsString:@"pad"] || [catID containsString:@"clean"] ||
+        [title containsString:@"شامبو"] || [title containsString:@"نظافة"] ||
+        [title containsString:@"عناية"] || [title containsString:@"حفاض"] ||
+        [title containsString:@"حفاضات"] || [title containsString:@"معطر"] ||
+        [title containsString:@"مشط"] || [title containsString:@"فرشاة"] ||
+        [title containsString:@"أظافر"] || [title containsString:@"shampoo"] ||
+        [title containsString:@"grooming"] || [title containsString:@"deodorant"] ||
+        [title containsString:@"wipes"] || [title containsString:@"مناديل"] ||
+        [desc containsString:@"شامبو"] || [desc containsString:@"حفاضات"] ||
+        [desc containsString:@"معطر"]) {
+        return YES;
+    }
+
+    return NO;
+}
+
+- (BOOL)isMedicine {
+    return ![self isCareProduct];
 }
 
 - (NSString *)title_lowercase {
@@ -214,6 +294,7 @@ static void PPVetManagerGetDocumentsServerThenCache(FIRQuery *query,
         @"isAvailable": @(self.isAvailable && quantity > 0),
         @"isPublished": @(self.isPublished),
         @"isDisabled": @(self.isDisabled),
+        @"isNew": @(self.isNew),
         @"condition": @(1),
     } mutableCopy];
     if (self.createdAt) dict[@"createdAt"] = self.createdAt;
@@ -243,7 +324,27 @@ static void PPVetManagerGetDocumentsServerThenCache(FIRQuery *query,
     NSString *userId = PPVetManagerSafeString(dict[@"userId"]);
     model.userId = userId.length > 0 ? userId : ownerID;
     model.animalTypes = PPVetManagerStringArray(dict[@"animalTypes"]);
-    model.category = PPVetManagerSafeString(dict[@"category"]);
+    NSString *categoryID = @"";
+    for (NSString *key in @[@"AccessoryCategoryID", @"accessoryCategoryID", @"accessoryCategory", @"AccessoryCategory", @"categoryID", @"categoryId", @"category"]) {
+        NSString *val = PPVetManagerSafeString(dict[key]);
+        if (val.length > 0) {
+            categoryID = val;
+            break;
+        }
+    }
+    model.accessoryCategoryID = categoryID;
+    NSString *legacyCat = PPVetManagerSafeString(dict[@"category"]);
+    model.category = legacyCat.length > 0 ? legacyCat : categoryID;
+
+    NSString *productType = @"";
+    for (NSString *key in @[@"medicineCareProductType", @"productType", @"product_type"]) {
+        NSString *val = PPVetManagerSafeString(dict[key]);
+        if (val.length > 0) {
+            productType = val;
+            break;
+        }
+    }
+    model.productType = productType;
     model.price = [dict[@"price"] respondsToSelector:@selector(doubleValue)] ? [dict[@"price"] doubleValue] : ([dict[@"finalPrice"] respondsToSelector:@selector(doubleValue)] ? [dict[@"finalPrice"] doubleValue] : 0.0);
     model.currency = PPVetManagerSafeString(dict[@"currency"]).length > 0 ? PPVetManagerSafeString(dict[@"currency"]) : @"QAR";
     model.stockQuantity = [dict[@"stockQuantity"] respondsToSelector:@selector(integerValue)] ? [dict[@"stockQuantity"] integerValue] : ([dict[@"quantity"] respondsToSelector:@selector(integerValue)] ? [dict[@"quantity"] integerValue] : 0);
@@ -257,6 +358,17 @@ static void PPVetManagerGetDocumentsServerThenCache(FIRQuery *query,
     model.isDisabled = [dict[@"isDisabled"] boolValue] || blocked || deleted || archived;
     model.createdAt = PPVetManagerDateFromValue(dict[@"createdAt"]);
     model.updatedAt = PPVetManagerDateFromValue(dict[@"updatedAt"]);
+    BOOL isNewFlag = NO;
+    if (dict[@"isNew"] != nil) {
+        isNewFlag = PPVetManagerBoolFromValue(dict[@"isNew"]);
+    } else if (dict[@"condition"] != nil) {
+        NSInteger cond = [dict[@"condition"] respondsToSelector:@selector(integerValue)] ? [dict[@"condition"] integerValue] : 0;
+        isNewFlag = (cond == 1);
+    }
+    if (!isNewFlag && model.createdAt) {
+        isNewFlag = [model.createdAt timeIntervalSinceNow] >= -(30.0 * 24.0 * 60.0 * 60.0);
+    }
+    model.isNew = isNewFlag;
     return model;
 }
 

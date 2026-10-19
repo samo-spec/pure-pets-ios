@@ -464,86 +464,53 @@
 }
 
 - (IBAction)delBTN:(id)sender {
-    
-    FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-    configuration.menuRowHeight = 30;
-    configuration.backgroundColor =[GM appPrimaryColor];
-    configuration.menuWidth = 120;
-    configuration.textColor = [UIColor whiteColor];
-    configuration.textFont = [[AppManager sharedInstance] fontSize:14];
-    configuration.borderColor = [UIColor blackColor];
-    configuration.borderWidth = 0.1;
-    configuration.textAlignment = NSTextAlignmentCenter;
-    configuration.ignoreImageOriginalColor = YES;// set 'ignoreImageOriginalColor' to YES, images color will be same as textColor
-    configuration.allowRoundedArrow = YES;
+    NSArray *titles = @[kLang(@"editCard"), kLang(@"deleteCard")];
+    NSArray *icons = @[
+        [UIImage systemImageNamed:@"pencil"] ?: [UIImage new],
+        [UIImage systemImageNamed:@"trash"] ?: [UIImage new]
+    ];
+    NSIndexSet *destructive = [NSIndexSet indexSetWithIndex:1];
 
-    
-     
-//@[[UIImage imageNamed:@"eye"],[UIImage imageNamed:@"giving"],[UIImage imageNamed:@"bribery"]]
-[FTPopOverMenu showForSender:sender
-               withMenuArray:@[kLang(@"editCard")
-                               , kLang(@"deleteCard")]
-                  imageArray:nil
-               configuration:configuration
-                   doneBlock:^(NSInteger selectedIndex) {
-                       // // NSLog(@"done block. do something. selectedIndex : %ld", (long)selectedIndex);
-  
-    [self.delegate deleteEditOptions:self->_cellRowIndex index:selectedIndex CardData:self.CardData cellView:self.contentView cellIndexPath:self.cellIndexPath];
-                   } dismissBlock:^{
-                       
-                       // // NSLog(@"user canceled. do nothing.");
-                       
-//                           FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-//                           configuration.allowRoundedArrow = !configuration.allowRoundedArrow;
-                       
-                   }];
-    
+    UIButton *btn = [sender isKindOfClass:[UIButton class]] ? (UIButton *)sender : nil;
+    [PPMenuHelper presentMenuFromButton:btn
+                                 titles:titles
+                                 images:icons
+                            destructive:destructive
+                                handler:^(NSInteger selectedIndex, NSString *title) {
+        [self.delegate deleteEditOptions:self->_cellRowIndex index:selectedIndex CardData:self.CardData cellView:self.contentView cellIndexPath:self.cellIndexPath];
+    }];
 }
 
 - (IBAction)postAdBTN:(id)sender {
-    
-    // Do any of the following setting to set the style (Only set what you want to change)
-   // return;
-        FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-        configuration.menuRowHeight = 30;
-        configuration.backgroundColor =[GM appPrimaryColor];
-        configuration.menuWidth = 120;
-        configuration.textColor = [UIColor whiteColor];
-    configuration.textFont = [[AppManager sharedInstance] fontSize:14];
-        configuration.borderColor = [UIColor blackColor];
-        configuration.borderWidth = 0.1;
-        configuration.textAlignment = NSTextAlignmentCenter;
-        configuration.ignoreImageOriginalColor = YES;// set 'ignoreImageOriginalColor' to YES, images color will be same as textColor
-        configuration.allowRoundedArrow = YES;
-    
-  
-    
-    
-//@[[UIImage imageNamed:@"eye"],[UIImage imageNamed:@"giving"],[UIImage imageNamed:@"bribery"]]
-    [FTPopOverMenu showForSender:sender
-                   withMenuArray:@[kLang(@"share_review"),
-                                   kLang(@"share_loan"),
-                                   kLang(@"share_sell")
-                                   ,kLang(@"share_other")
-                                   ,kLang(@"share_story")]
-                      imageArray:nil
-                   configuration:configuration
-                       doneBlock:^(NSInteger selectedIndex) {
-                           // // NSLog(@"done block. do something. selectedIndex : %ld", (long)selectedIndex);
+    NSArray *titles = @[
+        kLang(@"share_review"),
+        kLang(@"share_loan"),
+        kLang(@"share_sell"),
+        kLang(@"share_other"),
+        kLang(@"share_story")
+    ];
+    NSArray *icons = @[
+        [UIImage systemImageNamed:@"square.and.arrow.up"] ?: [UIImage new],
+        [UIImage systemImageNamed:@"arrow.triangle.2.circlepath"] ?: [UIImage new],
+        [UIImage imageNamed:@"hotSaleee"] ?: [UIImage systemImageNamed:@"tag"] ?: [UIImage new],
+        [UIImage systemImageNamed:@"ellipsis.circle"] ?: [UIImage new],
+        [UIImage systemImageNamed:@"camera"] ?: [UIImage new]
+    ];
+
+    UIButton *btn = [sender isKindOfClass:[UIButton class]] ? (UIButton *)sender : (self.shareBtn ?: nil);
+    [PPMenuHelper presentMenuFromButton:btn
+                                 titles:titles
+                                 images:icons
+                            destructive:nil
+                                handler:^(NSInteger selectedIndex, NSString *title) {
         [self.delegate shareCard:self->_cellRowIndex index:selectedIndex cardImage:self.mainImageView.image subKind:self->_subKind cardID:self.CardData.ID];
-                       } dismissBlock:^{
-                           
-                           // // NSLog(@"user canceled. do nothing.");
-                           
-//                           FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-//                           configuration.allowRoundedArrow = !configuration.allowRoundedArrow;
-                           
-                       }];
+    }];
+}
     
     //
   //  return;
     
-}
+
 
 
 

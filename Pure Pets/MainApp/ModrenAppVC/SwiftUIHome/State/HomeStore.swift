@@ -91,6 +91,12 @@ final class HomeStore: ObservableObject {
         [HomeMarketplaceSignalKind: Int] = [:]
     private var showingRecentNearbyFallback = false
 
+    /// App launch session seed to ensure fresh product rotation across app relaunches
+    private static let sessionLaunchSeed: Int = Int(Date().timeIntervalSince1970) ^ Int.random(in: 1...100_000)
+
+    /// Per-category visit counter so that switching categories provides fresh product rotation
+    private var categoryVisitCounters: [Int: Int] = [:]
+
     private var loadedSources = Set<Int>()
     private var sourceErrors: [Int: String] = [:]
     private var observers: [NSObjectProtocol] = []
@@ -455,6 +461,7 @@ final class HomeStore: ObservableObject {
             guard identifier > 0 else { return }
             wasAlreadySelected = (state.selectedMainKindID == identifier)
             state.selectedMainKindID = identifier
+            categoryVisitCounters[identifier, default: 0] += 1
             UserDefaults.standard.set(
                 identifier,
                 forKey: Self.selectedMainKindKey
@@ -483,6 +490,7 @@ final class HomeStore: ObservableObject {
             // sentinel must prevent a default pet from silently re-scoping Home.
             wasAlreadySelected = (state.selectedMainKindID == nil)
             state.selectedMainKindID = nil
+            categoryVisitCounters[0, default: 0] += 1
             UserDefaults.standard.set(-1, forKey: Self.selectedMainKindKey)
             rebuildState()
             queueOrPublishSectionDataReload(
@@ -529,6 +537,8 @@ final class HomeStore: ObservableObject {
             UserDefaults.standard.set(pet.id, forKey: Self.selectedPetKey)
             let categoryID = self.validCategoryID(for: pet)
             self.state.selectedMainKindID = categoryID
+            let catKey = categoryID ?? 0
+            self.categoryVisitCounters[catKey, default: 0] += 1
             UserDefaults.standard.set(
                 categoryID ?? -1,
                 forKey: Self.selectedMainKindKey
@@ -924,6 +934,7 @@ final class HomeStore: ObservableObject {
         refreshPendingSources = Self.trackedRefreshSources
         refreshUpdatedSectionIDs.removeAll(keepingCapacity: true)
         state.phase = .refreshing
+        categoryVisitCounters[state.selectedMainKindID ?? 0, default: 0] += 1
 
         let signpostID = OSSignpostID(log: Self.refreshLog)
         refreshSignpostID = signpostID
@@ -1936,10 +1947,12 @@ final class HomeStore: ObservableObject {
             // Category context is strict. A missing or still-loading category
             // result is represented by an empty shelf, never substituted with
             // a capped global feed from another species.
-            relevantAccessories = (categoryAccessories[selectedCategoryID] ?? [])
+            let rawCategoryAccessories = (categoryAccessories[selectedCategoryID] ?? [])
                 .filter {
                     $0.matchesMainCategoryID(selectedCategoryID)
                 }
+            let seed = currentDiversitySeed(for: selectedCategoryID)
+            relevantAccessories = Self.diversifiedAccessories(rawCategoryAccessories, seed: seed)
             relevantFood = food.filter {
                 $0.matchesMainCategoryID(selectedCategoryID)
             }
@@ -1957,7 +1970,8 @@ final class HomeStore: ObservableObject {
                 integerValue($0, key: "petMainKindID") == selectedCategoryID
             }
         } else {
-            relevantAccessories = accessories
+            let seed = currentDiversitySeed(for: nil)
+            relevantAccessories = Self.diversifiedAccessories(accessories, seed: seed)
             relevantFood = food
             relevantMedicines = medicines
             relevantAds = advertisements
@@ -2094,11 +2108,19 @@ final class HomeStore: ObservableObject {
                     source: PPHomeBridgeSource.accessories.rawValue
                 )
             case HomeLegacySectionID.accessories.rawValue:
+                let cards = previewCards(from: relevantAccessories, context: .forMarket, kind: .accessory)
+                let finalCards = cards.count >= 4 ? cards : HomeModelAdapter.cards(
+                    from: relevantAccessories,
+                    context: .forMarket,
+                    kind: .accessory,
+                    limit: 12,
+                    excluding: []
+                )
                 section = makeSection(
                     kind: .accessories,
                     rawID: rawID,
                     copy: accessoryCopy,
-                    cards: previewCards(from: relevantAccessories, context: .forMarket, kind: .accessory),
+                    cards: finalCards,
                     source: PPHomeBridgeSource.accessories.rawValue
                 )
             case HomeLegacySectionID.lastFood.rawValue:
@@ -2949,5 +2971,42 @@ final class HomeStore: ObservableObject {
 
     private func colorByte(_ component: CGFloat) -> Int {
         min(255, max(0, Int(round(component * 255))))
+    }
+
+    private func currentDiversitySeed(for categoryID: Int?) -> Int {
+        let catKey = categoryID ?? 0
+        let visit = categoryVisitCounters[catKey, default: 0]
+        return Self.sessionLaunchSeed ^ (catKey &* 7919) ^ (visit &* 104729)
+    }
+
+    static func diversifiedAccessories(
+        _ items: [PetAccessory],
+        seed: Int
+    ) -> [PetAccessory] {
+        guard items.count > 1 else { return items }
+
+        let inStock = items.filter { $0.isPurchasable }
+        let outOfStock = items.filter { !$0.isPurchasable }
+
+        func permute(_ list: [PetAccessory], initialSeed: Int) -> [PetAccessory] {
+            guard list.count > 1 else { return list }
+            var array = list
+            var s = abs(initialSeed)
+            for i in stride(from: array.count - 1, through: 1, by: -1) {
+                s = (s &* 1103515245 &+ 12345) & 0x7fffffff
+                let j = s % (i + 1)
+                array.swapAt(i, j)
+            }
+            return array
+        }
+
+        if inStock.isEmpty {
+            return permute(outOfStock, initialSeed: seed)
+        }
+
+        let permutedInStock = permute(inStock, initialSeed: seed)
+        let permutedOutOfStock = permute(outOfStock, initialSeed: seed &+ 31)
+
+        return permutedInStock + permutedOutOfStock
     }
 }

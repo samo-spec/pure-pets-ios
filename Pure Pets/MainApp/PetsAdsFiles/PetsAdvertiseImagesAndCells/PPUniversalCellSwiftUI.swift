@@ -3005,7 +3005,16 @@ private struct PPUniversalCardRenderer: View {
             store.viewModel?.modelContext == .forMarket ||
             store.viewModel?.modelContext == .forContextAccessory ||
             (store.viewModel?.modelObject is PetAccessory) ||
-            store.model.usesQuantityControl
+            store.model.usesQuantityControl ||
+            store.model.prefersContainedImage ||
+            (store.viewModel != nil && (
+                PPUniversalCellSwiftUIBridge.isAccessoryViewModel(store.viewModel!) ||
+                PPUniversalCellSwiftUIBridge.usesQuantityControl(for: store.viewModel!)
+            ))
+    }
+
+    private var isProductImagePresentation: Bool {
+        isFoodPresentation || isProductCommercePresentation
     }
 
     private var usesProductCardActionStyle: Bool {
@@ -3814,18 +3823,19 @@ private struct PPUniversalCardRenderer: View {
                     topCornerRadius: imageTopRadius,
                     bottomCornerRadius: imageBottomRadius,
                     usesAspectFitContainment:
-                        store.isHomePresentation && !isFoodPresentation && !isProductCommercePresentation,
+                        isProductImagePresentation ? true : (store.isHomePresentation && !isAdsMode),
                     contained:
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
                     fillsEmptyAreaWithImageBackground:
-                        !store.isHomePresentation && !isFoodPresentation && !isProductCommercePresentation &&
+                        !isProductImagePresentation &&
+                        !store.isHomePresentation &&
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
-                    focusesPetFace: !store.isHomePresentation && mediaFocusesPetFace,
+                    focusesPetFace: !isProductImagePresentation && !store.isHomePresentation && mediaFocusesPetFace,
                     imageLoader: store.imageLoader
                 )
-                .padding(mediaContentInset)
+                .padding(isProductImagePresentation ? 0 : mediaContentInset)
             }
 
             if store.isVideoPlaying, let player = store.player {
@@ -5512,8 +5522,8 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var mediaContentInset: CGFloat {
-        // Product photography occupies the complete media field in every host.
-        if isFoodPresentation || isProductCommercePresentation {
+        // Product photography occupies the complete media field in every host with zero inset.
+        if isProductImagePresentation {
             return 0
         }
         if store.isHomePresentation {
@@ -5818,7 +5828,23 @@ private struct PPUniversalCardRenderer: View {
 @available(iOS 16.0, *)
 private final class PPUniversalMirroredImageView: UIImageView {
     weak var mirroredBackgroundImageView: UIImageView?
-    var usesAspectFitContainment = false
+    var usesAspectFitContainment = false {
+        didSet {
+            if usesAspectFitContainment {
+                super.contentMode = .scaleAspectFit
+                layer.contentsGravity = CALayerContentsGravity.resizeAspect
+            }
+        }
+    }
+
+    override var contentMode: UIView.ContentMode {
+        get {
+            usesAspectFitContainment ? .scaleAspectFit : super.contentMode
+        }
+        set {
+            super.contentMode = usesAspectFitContainment ? .scaleAspectFit : newValue
+        }
+    }
     private var petFaceFocusEnabled = false
     private var petFaceFocusSignature: String?
     private var petFaceFocusPlaceholder: UIImage?
@@ -6412,7 +6438,8 @@ private struct PPUniversalScaleButtonStyle: ButtonStyle {
     @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
         if isProductCart {
-            PPProductCardButtonStyle().makeBody(configuration: configuration)
+            configuration.label
+                .modifier(PPProductCardPressFeedback(isPressed: configuration.isPressed))
         } else {
             configuration.label
             .scaleEffect(

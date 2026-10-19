@@ -18,6 +18,8 @@ static NSString * const PPLanguageDidChangeNotification = @"PPLanguageDidChangeN
 + (NSInteger)languageVal;                 // 0 = en, 1 = ar
 + (void)userSelectedLanguage:(NSString *)selectedLanguage;
 + (NSString *)get:(NSString *)key alter:(NSString *)alternate;
+/// Resolves a feature table using the same app-selected language bundle.
++ (NSString *)get:(NSString *)key table:(NSString *)table alter:(NSString *)alternate;
 
 + (BOOL)isRTL;
 + (UISemanticContentAttribute)semanticAttributeForCurrentLanguage;

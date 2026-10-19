@@ -23,7 +23,11 @@
 #define FTDefaultSelectedTextColor          [UIColor whiteColor]
 #define FTDefaultCellSelectedBackgroundColor    [UIColor darkGrayColor]
 #define FTDefaultSeparatorColor             [UIColor lightGrayColor]
+#ifdef MenuActionTitleFont
+#define FTDefaultMenuFont                   MenuActionTitleFont
+#else
 #define FTDefaultMenuFont                   [UIFont systemFontOfSize:14.f]
+#endif
 #define FTDefaultMenuWidth                  120.f
 #define FTDefaultMenuIconSize               24.f
 #define FTDefaultMenuRowHeight              40.f
@@ -188,7 +192,7 @@ typedef NS_ENUM(NSUInteger, FTPopOverMenuArrowDirection) {
         [self.contentView addSubview:self.iconImageView];
     }
     self.menuNameLabel.frame = menuNameRect;
-    self.menuNameLabel.font = configuration.textFont;
+    self.menuNameLabel.font = configuration.textFont ?: FTDefaultMenuFont;
     self.menuNameLabel.textColor = configuration.textColor;
     self.menuNameLabel.textAlignment = configuration.textAlignment;
     self.menuNameLabel.text = menuName;

@@ -86,6 +86,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign, readonly) PPDataSection currentSection;
 @property (nonatomic, assign, readonly) NSInteger currentSubKindID;
 @property (nonatomic, assign, readonly, getter=isLoading) BOOL loading;
+@property (nonatomic, assign, readonly) BOOL hasLoadedEmptyAds;
 @property (nonatomic, assign, readonly, getter=isNetworkAvailable) BOOL networkAvailable;
 @property (nonatomic, copy, readonly) NSString *currentMainKindTitle;
 @property (nonatomic, copy, readonly) NSString *currentSubKindTitle;

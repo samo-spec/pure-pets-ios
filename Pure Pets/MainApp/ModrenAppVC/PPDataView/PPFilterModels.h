@@ -23,8 +23,16 @@ extern NSString * const PPFilterIDPrice;       // Price range tiers
 extern NSString * const PPFilterIDSort;        // Sort order
 extern NSString * const PPFilterIDHasOffer;    // Has Offer (Accessories/Food)
 extern NSString * const PPFilterIDAvailability; // Available Now / Upcoming (Services)
+extern NSString * const PPFilterIDMedicineGroup;     // All / Veterinary Medicines / Pet Care & Hygiene
+extern NSString * const PPFilterIDMedicineCategory;  // Specific category under medicine or care
 
 // ─── Generic enum values used across sections ────────────────────────
+
+typedef NS_ENUM(NSInteger, PPFilterMedicineGroup) {
+    PPFilterMedicineGroupAll = 0,
+    PPFilterMedicineGroupVeterinaryMedicines = 1,
+    PPFilterMedicineGroupPetCare = 2,
+};
 
 typedef NS_ENUM(NSInteger, PPFilterPriceRange) {
     PPFilterPriceAll = 0,

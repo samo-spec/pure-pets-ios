@@ -10,7 +10,7 @@ struct HomePreparedProductImage: UIViewRepresentable {
 
     func makeUIView(context: Context) -> UIImageView {
         let view = UIImageView()
-        view.contentMode = .scaleAspectFill
+        view.contentMode = .scaleAspectFit
         view.isAccessibilityElement = false
         view.clipsToBounds = true
         return view

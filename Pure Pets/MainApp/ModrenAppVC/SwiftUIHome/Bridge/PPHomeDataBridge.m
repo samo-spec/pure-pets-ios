@@ -2062,7 +2062,7 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
     [[PetAccessoryManager sharedManager]
         fetchAccessoriesForMainCategoryID:mainCategoryID
                             subCategoryID:0
-                                    limit:24
+                                    limit:40
                                completion:^(NSArray<PetAccessory *> *accessories) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) {

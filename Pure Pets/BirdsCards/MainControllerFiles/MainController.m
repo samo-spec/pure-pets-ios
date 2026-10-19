@@ -3078,6 +3078,8 @@ NSString* getSubKindName(NSInteger subKindID, NSArray<SubKindModel*> *subKindsAr
                   options:0
                  children:actions];
 
+    [PPMenuHelper applyFontPatternToMenu:menu];
+
     return menu;
 }
 
@@ -3481,6 +3483,8 @@ NSString* getSubKindName(NSInteger subKindID, NSArray<SubKindModel*> *subKindsAr
                   options:0
                  children:@[filterMenu, sortMenu]];
 
+    [PPMenuHelper applyFontPatternToMenu:root];
+
     self.searchView.primaryButton.menu = root;
     self.searchView.primaryButton.showsMenuAsPrimaryAction = YES;
 }
@@ -3552,6 +3556,8 @@ NSString* getSubKindName(NSInteger subKindID, NSArray<SubKindModel*> *subKindsAr
     action.state = (self.selectedSort == type)
                  ? UIMenuElementStateOn
                  : UIMenuElementStateOff;
+
+    [PPMenuHelper applyFontPatternToAction:action];
 
     return action;
 }
@@ -3659,6 +3665,8 @@ NSString* getSubKindName(NSInteger subKindID, NSArray<SubKindModel*> *subKindsAr
     ? UIMenuElementStateOn
     : UIMenuElementStateOff;
 
+    [PPMenuHelper applyFontPatternToAction:action];
+
     return action;
 }
 
@@ -3693,6 +3701,7 @@ NSString* getSubKindName(NSInteger subKindID, NSArray<SubKindModel*> *subKindsAr
     }];
 
     action.attributes = UIMenuElementAttributesDestructive;
+    [PPMenuHelper applyFontPatternToAction:action];
     return action;
 }
 

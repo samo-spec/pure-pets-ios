@@ -20,6 +20,14 @@
                                       image:(UIImage *)image
                                  identifier:(UIActionIdentifier)identifier
                                     handler:(void (^)(__kindof UIAction *action))handler;
+
++ (instancetype)pp_purepets_actionWithTitle:(NSString *)title
+                                      image:(UIImage *)image
+                                 identifier:(UIActionIdentifier)identifier
+                       discoverabilityTitle:(NSString *)discoverabilityTitle
+                                 attributes:(UIMenuElementAttributes)attributes
+                                      state:(UIMenuElementState)state
+                                    handler:(void (^)(__kindof UIAction *action))handler;
 @end
 
 static BOOL PPMenuHelperShouldSkipAutoFontForCurrentMenuAction(void) {
@@ -37,6 +45,15 @@ static void PPMenuHelperApplyMenuActionTitleFont(UIAction *action) {
     if (!action) return;
 
     NSString *title = action.title ?: @"";
+    if (title.length == 0) {
+        NSAttributedString *current = nil;
+        @try {
+            current = [action valueForKey:@"attributedTitle"];
+        } @catch (__unused NSException *e) {}
+        if (current.string.length > 0) {
+            title = current.string;
+        }
+    }
     if (title.length == 0) return;
 
     UIFont *font = MenuActionTitleFont ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
@@ -54,6 +71,15 @@ static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIC
     if (!action) return;
 
     NSString *title = action.title ?: @"";
+    if (title.length == 0) {
+        NSAttributedString *current = nil;
+        @try {
+            current = [action valueForKey:@"attributedTitle"];
+        } @catch (__unused NSException *e) {}
+        if (current.string.length > 0) {
+            title = current.string;
+        }
+    }
     if (title.length == 0) return;
 
     NSMutableDictionary<NSAttributedStringKey, id> *attributes = [NSMutableDictionary dictionary];
@@ -80,6 +106,12 @@ static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIC
         if (originalMethod && swizzledMethod) {
             method_exchangeImplementations(originalMethod, swizzledMethod);
         }
+
+        Method origFull = class_getClassMethod(self, @selector(actionWithTitle:image:identifier:discoverabilityTitle:attributes:state:handler:));
+        Method swizFull = class_getClassMethod(self, @selector(pp_purepets_actionWithTitle:image:identifier:discoverabilityTitle:attributes:state:handler:));
+        if (origFull && swizFull) {
+            method_exchangeImplementations(origFull, swizFull);
+        }
     });
 }
 
@@ -98,9 +130,52 @@ static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIC
     return action;
 }
 
++ (instancetype)pp_purepets_actionWithTitle:(NSString *)title
+                                      image:(UIImage *)image
+                                 identifier:(UIActionIdentifier)identifier
+                       discoverabilityTitle:(NSString *)discoverabilityTitle
+                                 attributes:(UIMenuElementAttributes)attributes
+                                      state:(UIMenuElementState)state
+                                    handler:(void (^)(__kindof UIAction *action))handler
+{
+    UIAction *action = [self pp_purepets_actionWithTitle:title
+                                                   image:image
+                                              identifier:identifier
+                                    discoverabilityTitle:discoverabilityTitle
+                                              attributes:attributes
+                                                   state:state
+                                                 handler:handler];
+    if (!PPMenuHelperShouldSkipAutoFontForCurrentMenuAction()) {
+        PPMenuHelperApplyMenuActionTitleFont(action);
+    }
+    return action;
+}
+
 @end
 
 @implementation PPMenuHelper
+
+#pragma mark - Font Pattern Application
+
++ (void)applyFontPatternToAction:(nullable UIAction *)action {
+    PPMenuHelperApplyMenuActionTitleFont(action);
+}
+
++ (void)applyFontPatternToActions:(nullable NSArray<UIMenuElement *> *)actions {
+    if (!actions) return;
+    for (UIMenuElement *element in actions) {
+        if ([element isKindOfClass:[UIAction class]]) {
+            PPMenuHelperApplyMenuActionTitleFont((UIAction *)element);
+        } else if ([element isKindOfClass:[UIMenu class]]) {
+            [self applyFontPatternToMenu:(UIMenu *)element];
+        }
+    }
+}
+
++ (void)applyFontPatternToMenu:(nullable UIMenu *)menu {
+    if (!menu) return;
+    [self applyFontPatternToActions:menu.children];
+}
 
 #pragma mark - Helpers
 
@@ -126,6 +201,8 @@ static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIC
             action.attributes = UIMenuElementAttributesDestructive;
         }
 
+        PPMenuHelperApplyMenuActionTitleFont(action);
+
         [actions addObject:action];        
     }
     return actions;
@@ -142,6 +219,7 @@ static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIC
     if (@available(iOS 14.0, *)) {
         NSArray<UIAction *> *actions = [self makeActionsFromTitles:titles images:images destructive:destructiveIndexes handler:handler];
         UIMenu *menu = [UIMenu menuWithTitle:@"" children:actions];
+        [self applyFontPatternToMenu:menu];
         barButtonItem.menu = menu;
         // The menu will be shown when the user taps the bar button item.
         // If you need to present immediately you must trigger the bar button's action in context of the app UI.
@@ -163,6 +241,7 @@ static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIC
     if (@available(iOS 14.0, *)) {
         NSArray<UIAction *> *actions = [self makeActionsFromTitles:titles images:images destructive:destructiveIndexes handler:handler];
         UIMenu *menu = [UIMenu menuWithTitle:@"" children:actions];
+        [self applyFontPatternToMenu:menu];
         button.menu = menu;
         button.showsMenuAsPrimaryAction = YES;
 
@@ -202,6 +281,7 @@ static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIC
                      handler:(PPMenuHandler)handler
 {
     if (@available(iOS 14.0, *)) {
+        [self applyFontPatternToMenu:menu];
         button.menu = menu;
         button.showsMenuAsPrimaryAction = YES;
 
@@ -293,11 +373,13 @@ static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIC
         anchor.alpha = 1.0;
         anchor.backgroundColor = UIColor.clearColor;
         anchor.showsMenuAsPrimaryAction = YES;
-        anchor.menu = [UIMenu menuWithTitle:@""
+        UIMenu *menu = [UIMenu menuWithTitle:@""
                                     children:[self makeActionsFromTitles:titles
                                                                    images:images
                                                              destructive:destructiveIndexes
                                                                  handler:handler]];
+        [self applyFontPatternToMenu:menu];
+        anchor.menu = menu;
 
         [hostView addSubview:anchor];
 

@@ -2,14 +2,16 @@
 //  PPPetCareVetViewrVC.m
 //  Pure Pets
 //
-//  Reinvented from absolute first principles for NextGen V6 Flagship.
-//  Category-defining clinical sanctuary details controller hosted in SwiftUI.
+//  UIKit navigation and action owner for the SwiftUI care introductions.
 //
 
 #import "PPPetCareVetViewrVC.h"
 #import "VetModel.h"
 #import "GM.h"
 #import "Language.h"
+#import "MainKindsModel.h"
+#import "MainKindsArrayManager.h"
+#import "PPAlertHelper.h"
 #import <Pure_Pets-Swift.h>
 
 @interface PPPetCareVetViewrVC ()
@@ -17,6 +19,7 @@
 @property (nonatomic, copy, nullable) NSString *mainKindName;
 @property (nonatomic, strong) PPVetViewerHostingController *hostingController;
 @property (nonatomic, assign) BOOL previousNavBarHidden;
+@property (nonatomic, assign) BOOL openingContact;
 @end
 
 @implementation PPPetCareVetViewrVC
@@ -35,7 +38,12 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.view.backgroundColor = UIColor.systemBackgroundColor;
+    self.view.backgroundColor = UIColor.ppBackground;
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(pp_presentationDidChange:)
+                                              name:PPLanguageDidChangeNotification object:nil];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(pp_presentationDidChange:)
+                                              name:PPMainKindsUpdatedNotification object:nil];
 
     PPVetViewerContent *content = [self pp_buildPresentationContent];
 
@@ -57,8 +65,8 @@
 
     [NSLayoutConstraint activateConstraints:@[
         [_hostingController.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [_hostingController.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [_hostingController.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [_hostingController.view.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
+        [_hostingController.view.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
         [_hostingController.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
 
@@ -68,6 +76,7 @@
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_refreshPresentation];
     if (self.navigationController) {
         self.previousNavBarHidden = self.navigationController.navigationBarHidden;
         [self.navigationController setNavigationBarHidden:YES animated:animated];
@@ -80,6 +89,27 @@
     if (self.navigationController) {
         [self.navigationController setNavigationBarHidden:self.previousNavBarHidden animated:animated];
     }
+}
+
+- (void)dealloc
+{
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (void)pp_presentationDidChange:(NSNotification *)notification
+{
+    if (NSThread.isMainThread) {
+        [self pp_refreshPresentation];
+    } else {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf pp_refreshPresentation]; });
+    }
+}
+
+- (void)pp_refreshPresentation
+{
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.hostingController updateWithContent:[self pp_buildPresentationContent]];
 }
 
 #pragma mark - Content Builder
@@ -96,27 +126,61 @@
     content.whatsapp = self.vet.whatsapp ?: @"";
     content.vetCost = self.vet.vetCost;
     content.readyToContact = self.vet.readyToContact;
+    content.isDisabled = self.vet.isDisabled;
     content.verificationStatus = self.vet.verificationStatus ?: @"";
     content.subscriptionActive = self.vet.subscriptionActive;
     content.subscriptionTier = self.vet.subscriptionTier;
-    content.mainKindName = self.mainKindName ?: @"";
+    content.availableDate = self.vet.availableDate;
 
-    if (self.vet.availableDate) {
-        content.availableDateText = [GM formattedDate:self.vet.availableDate] ?: @"";
+    NSArray<MainKindsModel *> *kinds = [[MainKindsArrayManager shared] visibleMainKindsSnapshot];
+    content.mainKindName = @"";
+    for (MainKindsModel *kind in kinds) {
+        if (kind.ID == self.vet.petMainKindID && kind.ID > 0) {
+            content.mainKindName = [self pp_nameForKind:kind];
+            break;
+        }
+    }
+    if (content.mainKindName.length == 0 && self.vet.petMainKindID > 0) {
+        content.mainKindName = self.mainKindName ?: @"";
     }
 
     NSMutableArray<NSString *> *species = [NSMutableArray array];
-    for (id val in self.vet.animalTypes) {
-        if ([val isKindOfClass:NSString.class]) {
-            NSString *clean = [(NSString *)val stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-            if (clean.length > 0 && ![species containsObject:clean]) {
-                [species addObject:clean];
+    for (id value in self.vet.animalTypes) {
+        NSString *raw = [value isKindOfClass:NSString.class] ? value :
+            ([value isKindOfClass:NSNumber.class] ? [value stringValue] : @"");
+        NSString *name = [raw stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (name.length == 0) continue;
+        BOOL isIdentifier = [name rangeOfCharacterFromSet:NSCharacterSet.decimalDigitCharacterSet.invertedSet].location == NSNotFound;
+        NSString *resolved = isIdentifier ? @"" : name;
+        for (MainKindsModel *kind in kinds) {
+            if ((isIdentifier && kind.ID == name.integerValue) ||
+                (kind.KindNameAr.length > 0 && [kind.KindNameAr caseInsensitiveCompare:name] == NSOrderedSame) ||
+                (kind.KindNameEn.length > 0 && [kind.KindNameEn caseInsensitiveCompare:name] == NSOrderedSame)) {
+                resolved = [self pp_nameForKind:kind];
+                break;
             }
         }
+        if (resolved.length > 0 && ![species containsObject:resolved]) [species addObject:resolved];
     }
     content.animalTypes = species;
+    content.cityID = self.vet.cityID ?: @"";
+    content.cityName = self.vet.cityName ?: @"";
+    content.workingAreas = self.vet.workingAreas ?: @[];
+    content.address = self.vet.address ?: @"";
+    content.licenseNumber = self.vet.licenseNumber ?: @"";
+    content.workingHours = self.vet.workingHours ?: @"";
+    content.emergency247 = self.vet.emergency247;
+    content.homeVisitAvailable = self.vet.homeVisitAvailable;
 
     return content;
+}
+
+
+- (NSString *)pp_nameForKind:(MainKindsModel *)kind
+{
+    NSString *preferred = [Language isRTL] ? kind.KindNameAr : kind.KindNameEn;
+    NSString *fallback = [Language isRTL] ? kind.KindNameEn : kind.KindNameAr;
+    return preferred.length > 0 ? preferred : (fallback ?: @"");
 }
 
 #pragma mark - Actions
@@ -130,69 +194,78 @@
     }
 }
 
+- (BOOL)pp_canContact
+{
+    return [PPVetContactRouting isContactAllowedWithStatus:self.vet.verificationStatus ?: @""
+                                                disabled:self.vet.isDisabled];
+}
+
 - (void)pp_callTapped
 {
-    NSString *raw = self.vet.phone.length > 0 ? self.vet.phone : self.vet.whatsapp;
-    NSString *clean = [self pp_digitsAndPlusFromString:raw];
-    if (clean.length == 0) {
-        return;
-    }
-    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"telprompt:%@", clean]];
-    if (url && [UIApplication.sharedApplication canOpenURL:url]) {
-        [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
-    }
+    if (![self pp_canContact]) return;
+    [self pp_openContactURL:[PPVetContactRouting callURLWithPhone:self.vet.phone ?: @""
+                                                       whatsapp:self.vet.whatsapp ?: @""]];
 }
 
 - (void)pp_whatsappTapped
 {
-    NSString *raw = self.vet.whatsapp.length > 0 ? self.vet.whatsapp : self.vet.phone;
-    NSString *clean = [self pp_digitsAndPlusFromString:raw];
-    if (clean.length == 0) {
+    if (![self pp_canContact]) return;
+    [self pp_openContactURL:[PPVetContactRouting whatsAppURLWithPhone:self.vet.phone ?: @""
+                                                           whatsapp:self.vet.whatsapp ?: @""]];
+}
+
+- (void)pp_openContactURL:(NSURL *)url
+{
+    if (self.openingContact || self.presentedViewController) return;
+    if (!url || ![UIApplication.sharedApplication canOpenURL:url]) {
+        [self pp_showContactError];
         return;
     }
-    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://wa.me/%@", clean]];
-    if (url && [UIApplication.sharedApplication canOpenURL:url]) {
-        [UIApplication.sharedApplication openURL:url options:@{} completionHandler:nil];
-    }
+    self.openingContact = YES;
+    __weak typeof(self) weakSelf = self;
+    [UIApplication.sharedApplication openURL:url options:@{} completionHandler:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            self.openingContact = NO;
+            if (!success && self.viewIfLoaded.window) [self pp_showContactError];
+        });
+    }];
+}
+
+- (void)pp_showContactError
+{
+    if (self.presentedViewController) return;
+    [PPAlertHelper showWarningIn:self
+                          title:[PPVetDetailLocalization textForKey:@"vet_detail_contact_error_title"]
+                       subtitle:[PPVetDetailLocalization textForKey:@"vet_detail_contact_error_body"]];
 }
 
 - (void)pp_shareTapped
 {
+    if (self.presentedViewController || ![self pp_canContact]) return;
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    if (self.vet.title.length > 0) {
-        [parts addObject:self.vet.title];
+    PPVetViewerContent *content = [self pp_buildPresentationContent];
+    NSString *title = content.title.length > 0 ? content.title :
+        [PPVetDetailLocalization textForKey:content.isCompany ? @"vet_detail_clinic" : @"vet_detail_doctor"];
+    if (title.length > 0) [parts addObject:title];
+    if (content.descriptionText.length > 0) [parts addObject:content.descriptionText];
+    NSString *phone = [PPVetContactRouting normalizedPhone:content.phone];
+    NSString *whatsapp = [PPVetContactRouting normalizedPhone:content.whatsapp];
+    if (phone.length > 0) {
+        [parts addObject:[NSString stringWithFormat:[PPVetDetailLocalization textForKey:@"vet_detail_share_phone"], phone]];
     }
-    if (self.vet.descriptionText.length > 0) {
-        [parts addObject:self.vet.descriptionText];
+    if (whatsapp.length > 0 && ![whatsapp isEqualToString:phone]) {
+        [parts addObject:[NSString stringWithFormat:[PPVetDetailLocalization textForKey:@"vet_detail_share_whatsapp"], whatsapp]];
     }
-    if (self.vet.phone.length > 0) {
-        [parts addObject:[NSString stringWithFormat:@"Phone: %@", self.vet.phone]];
-    }
-
     NSString *shareText = [parts componentsJoinedByString:@"\n\n"];
+    if (shareText.length == 0) return;
     UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[shareText]
                                                                            applicationActivities:nil];
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        activity.popoverPresentationController.sourceView = self.view;
-        activity.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), 60.0, 1.0, 1.0);
-    }
+    activity.popoverPresentationController.sourceView = self.view;
+    CGFloat x = [Language isRTL] ? 44.0 : MAX(44.0, CGRectGetWidth(self.view.bounds) - 44.0);
+    activity.popoverPresentationController.sourceRect = CGRectMake(x, self.view.safeAreaInsets.top + 28.0, 1.0, 1.0);
     [self presentViewController:activity animated:YES completion:nil];
-}
-
-- (NSString *)pp_digitsAndPlusFromString:(NSString *)rawNumber
-{
-    if (rawNumber.length == 0) {
-        return @"";
-    }
-    NSMutableString *clean = [NSMutableString string];
-    NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"+0123456789"];
-    for (NSUInteger idx = 0; idx < rawNumber.length; idx++) {
-        unichar ch = [rawNumber characterAtIndex:idx];
-        if ([allowed characterIsMember:ch]) {
-            [clean appendFormat:@"%C", ch];
-        }
-    }
-    return clean.copy;
 }
 
 @end

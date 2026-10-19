@@ -370,7 +370,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     [self pp_fetchAccessoriesForMainCategoryID:mainCategoryID
                                  subCategoryID:subCategoryID
                                           kind:AccessTypeAccessory
-                                  filterByKind:NO
+                                  filterByKind:YES
                    requiresAppMarketVisibility:YES
                                          limit:limit
                                     completion:^(NSArray<PetAccessory *> *items, NSError *error) {
@@ -567,6 +567,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
 
     FIRQuery *query = PPAccessoryRequirePublicMarketVisibility([db collectionWithPath:@"petAccessories"]);
+    query = [query queryWhereField:@"accessKindType" isEqualTo:@(AccessTypeAccessory)];
     query = [query queryOrderedByField:@"createdAt" descending:YES];
 
     if (limit > 0) {

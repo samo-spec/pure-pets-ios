@@ -382,8 +382,8 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
             ? (MainKindsModel *)object
             : nil;
     PPPetCareInitialSection initialSection =
-        section == PPPetCareInitialSectionVeterinarians
-            ? PPPetCareInitialSectionVeterinarians
+        (section == PPPetCareInitialSectionVeterinarians || section == PPPetCareInitialSectionClinics)
+            ? (PPPetCareInitialSection)section
             : PPPetCareInitialSectionMedicines;
     PPPetCareViewController *destination =
         [[PPPetCareViewController alloc]

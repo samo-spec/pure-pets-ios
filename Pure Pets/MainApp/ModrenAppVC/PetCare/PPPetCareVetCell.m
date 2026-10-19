@@ -2,8 +2,7 @@
 //  PPPetCareVetCell.m
 //  Pure Pets
 //
-//  Reinvented from absolute first principles for NextGen V6 Flagship.
-//  Category-defining clinical specialist card hosted via PPVetCardBridge (SwiftUI).
+//  Hosts distinct veterinarian and clinic discovery compositions.
 //
 
 #import "PPPetCareVetCell.h"
@@ -13,6 +12,7 @@
 @interface PPPetCareVetCell ()
 @property (nonatomic, strong, nullable) VetModel *vet;
 @property (nonatomic, copy, nullable) NSString *mainKindName;
+@property (nonatomic, assign) CGFloat hostedWidth;
 @end
 
 @implementation PPPetCareVetCell
@@ -27,14 +27,11 @@
                            width:(CGFloat)width
                  traitCollection:(UITraitCollection *)traitCollection
 {
-    BOOL isAccessibility = NO;
-    if (traitCollection) {
-        isAccessibility = UIContentSizeCategoryIsAccessibilityCategory(traitCollection.preferredContentSizeCategory);
-    }
     return [PPVetCardBridge preferredHeightWithVet:vet
                                       mainKindName:mainKindName
                                              width:width
-                                   isAccessibility:isAccessibility];
+                               contentSizeCategory:traitCollection.preferredContentSizeCategory ?: UIContentSizeCategoryLarge
+                                  legibilityWeight:traitCollection.legibilityWeight];
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -57,19 +54,16 @@
 - (void)setOnDetailsTap:(void (^)(void))onDetailsTap
 {
     _onDetailsTap = [onDetailsTap copy];
-    [self pp_rebindContent];
 }
 
 - (void)setOnCallTap:(void (^)(void))onCallTap
 {
     _onCallTap = [onCallTap copy];
-    [self pp_rebindContent];
 }
 
 - (void)setOnWhatsAppTap:(void (^)(void))onWhatsAppTap
 {
     _onWhatsAppTap = [onWhatsAppTap copy];
-    [self pp_rebindContent];
 }
 
 - (void)pp_rebindContent
@@ -77,6 +71,9 @@
     if (!_vet) {
         return;
     }
+    self.hostedWidth = CGRectGetWidth(self.bounds);
+    // These closures read the current callbacks. Setting each callback does not
+    // need to rebuild the SwiftUI host or restart image loading.
     __weak typeof(self) weakSelf = self;
     [PPVetCardBridge configureWithCell:self
                                    vet:_vet
@@ -98,6 +95,30 @@
                           }];
 }
 
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    CGFloat width = CGRectGetWidth(self.bounds);
+    if (_vet && width > 0 && fabs(width - self.hostedWidth) > 0.5) {
+        [self pp_rebindContent];
+    }
+}
+
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    [PPVetCardBridge cellDidMoveToWindow:self];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (![previousTraitCollection.preferredContentSizeCategory isEqualToString:self.traitCollection.preferredContentSizeCategory] ||
+        previousTraitCollection.legibilityWeight != self.traitCollection.legibilityWeight) {
+        [self pp_rebindContent];
+    }
+}
+
 - (void)prepareForReuse
 {
     [super prepareForReuse];
@@ -106,6 +127,8 @@
     _onDetailsTap = nil;
     _onCallTap = nil;
     _onWhatsAppTap = nil;
+    _hostedWidth = 0;
+    [PPVetCardBridge clearCell:self];
 }
 
 @end

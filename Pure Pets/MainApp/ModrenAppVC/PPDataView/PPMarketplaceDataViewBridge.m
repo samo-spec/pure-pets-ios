@@ -362,6 +362,11 @@ static NSString *PPMarketplaceTrimmedString(id value)
     return self.viewModel.isLoading;
 }
 
+- (BOOL)hasLoadedEmptyAds
+{
+    return self.viewModel.hasLoadedEmptyAds;
+}
+
 - (BOOL)isNetworkAvailable
 {
     return [PPNetworkRetryHelper isNetworkAvailable];
@@ -1056,6 +1061,8 @@ static NSString *PPMarketplaceTrimmedString(id value)
 {
     PPFilterState *state = [self filterStateForSection:section];
     NSArray<NSString *> *priority = @[
+        PPFilterIDMedicineGroup,
+        PPFilterIDMedicineCategory,
         PPFilterIDAccessoryCategory,
         PPFilterIDServiceType,
         PPFilterIDPrice,
@@ -1210,6 +1217,12 @@ static NSString *PPMarketplaceTrimmedString(id value)
         return @"storefront.fill";
     }
     PPFilterGroup *group = [self pp_navigationStrongestActiveFilterForSection:section];
+    if ([group.filterID isEqualToString:PPFilterIDMedicineGroup]) {
+        return @"cross.case.fill";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDMedicineCategory]) {
+        return @"square.grid.2x2.fill";
+    }
     if ([group.filterID isEqualToString:PPFilterIDAccessoryCategory]) {
         return @"square.grid.2x2.fill";
     }

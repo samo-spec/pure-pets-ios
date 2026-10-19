@@ -19,12 +19,17 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *userId;
 @property (nonatomic, copy) NSArray<NSString *> *animalTypes;
 @property (nonatomic, copy) NSString *category;
+@property (nonatomic, copy, nullable) NSString *accessoryCategoryID;
+@property (nonatomic, copy, nullable) NSString *productType;
+- (BOOL)isCareProduct;
+- (BOOL)isMedicine;
 @property (nonatomic, assign) double price;
 @property (nonatomic, copy) NSString *currency;
 @property (nonatomic, assign) NSInteger stockQuantity;
 @property (nonatomic, assign) BOOL isAvailable;
 @property (nonatomic, assign) BOOL isPublished;
 @property (nonatomic, assign) BOOL isDisabled;
+@property (nonatomic, assign) BOOL isNew;
 @property (nonatomic, strong, nullable) NSDate *createdAt;
 @property (nonatomic, strong, nullable) NSDate *updatedAt;
 - (NSDictionary *)toDictionary;

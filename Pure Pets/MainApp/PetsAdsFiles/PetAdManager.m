@@ -401,8 +401,21 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
                  subKindID:(NSInteger)subKindID
                 completion:(void (^)(NSArray<PetAd *> *ads))completion
 {
+    [self fetchAdsForMainKind:mainKind
+                   subKindID:subKindID
+            resultCompletion:^(NSArray<PetAd *> *ads, NSError *error) {
+        if (completion) completion(ads ?: @[]);
+    }];
+}
+
+- (void)fetchAdsForMainKind:(MainKindsModel *)mainKind
+                 subKindID:(NSInteger)subKindID
+          resultCompletion:(PetAdListCompletion)completion
+{
     if (!mainKind) {
-        if (completion) completion(@[]);
+        if (completion) completion(nil, [NSError errorWithDomain:PPAdManagerErrorDomain
+                                                          code:-51
+                                                      userInfo:nil]);
         return;
     }
 
@@ -427,8 +440,11 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
         if (error || !snapshot) {
             NSLog(@"❌ fetchAdsForMainKind:subKindID error: %@",
                   error.localizedDescription);
+            NSError *resolvedError = error ?: [NSError errorWithDomain:PPAdManagerErrorDomain
+                                                                  code:-52
+                                                              userInfo:nil];
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(@[]);
+                if (completion) completion(nil, resolvedError);
             });
             return;
         }
@@ -446,7 +462,14 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(PPSortedAdsNewestFirst(PPFilterAdsByVisibleCategories(ads)));
+                NSArray<PetAd *> *visibleAds = PPSortedAdsNewestFirst(PPFilterAdsByVisibleCategories(ads));
+                // An empty cache cannot establish that the category has no ads.
+                NSError *cacheError = visibleAds.count == 0 && snapshot.metadata.isFromCache
+                    ? [NSError errorWithDomain:NSURLErrorDomain
+                                          code:NSURLErrorNotConnectedToInternet
+                                      userInfo:nil]
+                    : nil;
+                if (completion) completion(visibleAds, cacheError);
             });
         });
     }];
@@ -455,14 +478,24 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
 
 - (void)fetchAdsForAllMainKinds:(void (^)(NSArray<PetAd *> *ads))completion
 {
+    [self fetchAdsForAllMainKindsWithCompletion:^(NSArray<PetAd *> *ads, NSError *error) {
+        if (completion) completion(ads ?: @[]);
+    }];
+}
+
+- (void)fetchAdsForAllMainKindsWithCompletion:(PetAdListCompletion)completion
+{
     FIRQuery *query = [[PPPublicPetAdsQuery([self.db collectionWithPath:kPetAdsCollection]) queryOrderedByField:@"createdAt" descending:YES] queryLimitedTo:50];
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error || !snapshot) {
             NSLog(@"❌ fetchAdsForAllMainKinds error: %@", error.localizedDescription);
+            NSError *resolvedError = error ?: [NSError errorWithDomain:PPAdManagerErrorDomain
+                                                                  code:-52
+                                                              userInfo:nil];
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(@[]);
+                if (completion) completion(nil, resolvedError);
             });
             return;
         }
@@ -480,7 +513,13 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(PPSortedAdsNewestFirst(PPFilterAdsByVisibleCategories(ads)));
+                NSArray<PetAd *> *visibleAds = PPSortedAdsNewestFirst(PPFilterAdsByVisibleCategories(ads));
+                NSError *cacheError = visibleAds.count == 0 && snapshot.metadata.isFromCache
+                    ? [NSError errorWithDomain:NSURLErrorDomain
+                                          code:NSURLErrorNotConnectedToInternet
+                                      userInfo:nil]
+                    : nil;
+                if (completion) completion(visibleAds, cacheError);
             });
         });
     }];

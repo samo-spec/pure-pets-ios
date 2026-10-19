@@ -9,6 +9,7 @@
 #import "PPCageCell.h"
 #import "CageModel.h"
 #import "PPBirdCardView.h"
+#import "PPMenuHelper.h"
 
 
 @interface PPCageCell () <UIGestureRecognizerDelegate>
@@ -582,48 +583,44 @@
 {
     __weak typeof(self) weakSelf = self;
 
+    NSArray *titles = @[kLang(@"archive"), kLang(@"sale")];
+    NSArray *images = @[
+        [UIImage imageNamed:@"archiveCus"] ?: [UIImage systemImageNamed:@"archivebox"],
+        [UIImage imageNamed:@"hotSaleee"] ?: [UIImage systemImageNamed:@"tag"]
+    ];
+
     // Father menu
-    self.fatherView.menuButton.menu =
-    [UIMenu menuWithChildren:@[
-        [UIAction actionWithTitle:kLang(@"archive")
-                            image:[UIImage systemImageNamed:@"archivebox"]
-                       identifier:nil
-                          handler:^(__kindof UIAction * _Nonnull action) {
-            if (!weakSelf.cage) return;
+    NSArray<UIAction *> *fatherActions = [PPMenuHelper makeActionsFromTitles:titles
+                                                                      images:images
+                                                                destructive:nil
+                                                                    handler:^(NSInteger index, NSString * _Nonnull title) {
+        if (!weakSelf.cage) return;
+        if (index == 0) {
             [weakSelf.delegate cageCellDidArchiveParent:weakSelf.cage isFather:YES];
-        }],
-
-        [UIAction actionWithTitle:kLang(@"sale")
-                            image:[UIImage systemImageNamed:@"tag"]
-                       identifier:nil
-                          handler:^(__kindof UIAction * _Nonnull action) {
-            if (!weakSelf.cage) return;
+        } else if (index == 1) {
             [weakSelf.delegate cageCellDidSellParent:weakSelf.cage isFather:YES];
-        }]
-    ]];
-
+        }
+    }];
+    UIMenu *fatherMenu = [UIMenu menuWithTitle:@"" children:fatherActions];
+    [PPMenuHelper applyFontPatternToMenu:fatherMenu];
+    self.fatherView.menuButton.menu = fatherMenu;
     self.fatherView.menuButton.showsMenuAsPrimaryAction = YES;
 
     // Mother menu
-    self.motherView.menuButton.menu =
-    [UIMenu menuWithChildren:@[
-        [UIAction actionWithTitle:kLang(@"archive")
-                            image:[UIImage systemImageNamed:@"archivebox"]
-                       identifier:nil
-                          handler:^(__kindof UIAction * _Nonnull action) {
-            if (!weakSelf.cage) return;
+    NSArray<UIAction *> *motherActions = [PPMenuHelper makeActionsFromTitles:titles
+                                                                      images:images
+                                                                destructive:nil
+                                                                    handler:^(NSInteger index, NSString * _Nonnull title) {
+        if (!weakSelf.cage) return;
+        if (index == 0) {
             [weakSelf.delegate cageCellDidArchiveParent:weakSelf.cage isFather:NO];
-        }],
-
-        [UIAction actionWithTitle:kLang(@"sale")
-                            image:[UIImage systemImageNamed:@"tag"]
-                       identifier:nil
-                          handler:^(__kindof UIAction * _Nonnull action) {
-            if (!weakSelf.cage) return;
+        } else if (index == 1) {
             [weakSelf.delegate cageCellDidSellParent:weakSelf.cage isFather:NO];
-        }]
-    ]];
-
+        }
+    }];
+    UIMenu *motherMenu = [UIMenu menuWithTitle:@"" children:motherActions];
+    [PPMenuHelper applyFontPatternToMenu:motherMenu];
+    self.motherView.menuButton.menu = motherMenu;
     self.motherView.menuButton.showsMenuAsPrimaryAction = YES;
 }
 

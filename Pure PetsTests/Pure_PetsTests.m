@@ -10,8 +10,208 @@
 #import "PPOrder.h"
 #import "PPOrderManager.h"
 #import "PPPaymentManager.h"
+#import "PPPetCareViewController.h"
+#import "PPPetCareDiscoveryView.h"
+#import "VetModel.h"
+#import "MainKindsModel.h"
+
+@interface PPPetCareViewController (ClinicDiscoveryTests)
+- (void)pp_applyFiltersAndReload;
+- (void)pp_selectSection:(PPPetCareInitialSection)section;
+- (void)pp_recoverDiscovery;
+- (void)pp_updateDiscoveryAnimated:(BOOL)animated;
+@end
 
 @interface Pure_PetsTests : XCTestCase
+
+@end
+
+@interface PPPetCareClinicDiscoveryTests : XCTestCase
+@end
+
+@implementation PPPetCareClinicDiscoveryTests
+
+- (VetModel *)clinicWithID:(NSString *)identifier type:(id)type overrides:(NSDictionary *)overrides
+{
+    NSMutableDictionary *data = [@{@"type": type, @"title": identifier,
+                                  @"verificationStatus": @"approved"} mutableCopy];
+    [data addEntriesFromDictionary:overrides];
+    return [VetModel fromDictionary:data withID:identifier];
+}
+
+- (PPPetCareViewController *)controllerWithVets:(NSArray<VetModel *> *)vets
+{
+    // Do not load the view: these directory/state tests must never start Firebase reads.
+    PPPetCareViewController *controller = [[PPPetCareViewController alloc]
+        initWithInitialSection:PPPetCareInitialSectionClinics mainKind:nil];
+    [controller setValue:vets forKey:@"allVets"];
+    return controller;
+}
+
+- (NSArray<NSString *> *)visibleIDs:(PPPetCareViewController *)controller
+{
+    return [[controller valueForKey:@"visibleVets"] valueForKey:@"vetID"];
+}
+
+- (void)testClinicTabAcceptsCanonicalAndLegacyTypesAndExcludesDoctors
+{
+    NSMutableArray<VetModel *> *vets = [NSMutableArray array];
+    NSArray *clinicTypes = @[@"clinic", @"company", @1, @"1", @" CLINIC "];
+    for (NSUInteger index = 0; index < clinicTypes.count; index++) {
+        [vets addObject:[self clinicWithID:[NSString stringWithFormat:@"clinic_%lu", (unsigned long)index]
+                                     type:clinicTypes[index] overrides:@{}]];
+    }
+    [vets addObject:[self clinicWithID:@"doctor" type:@"doctor" overrides:@{}]];
+    PPPetCareViewController *controller = [self controllerWithVets:vets];
+    [controller pp_applyFiltersAndReload];
+
+    XCTAssertEqual([self visibleIDs:controller].count, clinicTypes.count);
+    XCTAssertFalse([[self visibleIDs:controller] containsObject:@"doctor"]);
+    [controller pp_selectSection:PPPetCareInitialSectionVeterinarians];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"doctor"]), @"Doctors and Clinics are exclusive tabs");
+    XCTAssertFalse(controller.isViewLoaded);
+}
+
+- (void)testClinicTabExcludesModeratedAndUnapprovedProfiles
+{
+    NSArray<NSDictionary *> *hiddenStates = @[
+        @{@"isDisabled": @YES}, @{@"isBlocked": @YES}, @{@"isDeleted": @YES},
+        @{@"verificationStatus": @"pending"}, @{@"verificationStatus": @"rejected"}
+    ];
+    NSMutableArray<VetModel *> *vets = [NSMutableArray arrayWithObject:
+        [self clinicWithID:@"visible" type:@"clinic" overrides:@{}]];
+    for (NSDictionary *state in hiddenStates) {
+        [vets addObject:[self clinicWithID:@"hidden" type:@"clinic" overrides:state]];
+    }
+    PPPetCareViewController *controller = [self controllerWithVets:vets];
+    [controller pp_applyFiltersAndReload];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"visible"]));
+    [controller pp_selectSection:PPPetCareInitialSectionVeterinarians];
+    XCTAssertEqualObjects([self visibleIDs:controller], @[]);
+}
+
+- (void)testLegacyClinicWithoutModerationFieldsRemainsVisible
+{
+    VetModel *legacy = [VetModel fromDictionary:@{@"type": @1, @"title": @"Legacy clinic",
+                                                 @"isBlocked": NSNull.null, @"isDeleted": NSNull.null}
+                                         withID:@"legacy"];
+    PPPetCareViewController *controller = [self controllerWithVets:@[legacy]];
+    [controller pp_applyFiltersAndReload];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"legacy"]));
+}
+
+- (void)testClinicQueryAndContactFilterDoNotChangeTheDoctorsTab
+{
+    PPPetCareViewController *controller = [self controllerWithVets:@[
+        [self clinicWithID:@"Alpha clinic" type:@"clinic" overrides:@{@"phone": @"+97400000000"}],
+        [self clinicWithID:@"Beta clinic" type:@1 overrides:@{}],
+        [self clinicWithID:@"Doctor" type:@0 overrides:@{}]
+    ]];
+    [controller setValue:@"alpha" forKey:@"clinicQuery"];
+    [controller setValue:@"doctor" forKey:@"vetQuery"];
+    [controller setValue:@1 forKey:@"clinicFilter"];
+    [controller pp_applyFiltersAndReload];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"Alpha clinic"]));
+    [controller pp_selectSection:PPPetCareInitialSectionVeterinarians];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"Doctor"]));
+    [controller pp_selectSection:PPPetCareInitialSectionClinics];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"Alpha clinic"]));
+}
+
+- (void)testDoctorsTabAcceptsLegacyPersonalTypesAndNeverIncludesClinics
+{
+    NSArray *types = @[@"doctor", @"personal", @0, @"0", @" DOCTOR "];
+    NSMutableArray<VetModel *> *vets = [NSMutableArray array];
+    for (NSUInteger index = 0; index < types.count; index++) {
+        [vets addObject:[self clinicWithID:[NSString stringWithFormat:@"doctor_%lu", (unsigned long)index]
+                                     type:types[index] overrides:@{}]];
+    }
+    [vets addObject:[self clinicWithID:@"clinic" type:@1 overrides:@{}]];
+    [vets addObject:[self clinicWithID:@"blocked_doctor" type:@0 overrides:@{@"isBlocked": @YES}]];
+    [vets addObject:[self clinicWithID:@"pending_doctor" type:@0 overrides:@{@"verificationStatus": @"pending"}]];
+    PPPetCareViewController *controller = [self controllerWithVets:vets];
+    [controller pp_selectSection:PPPetCareInitialSectionVeterinarians];
+    XCTAssertEqual([self visibleIDs:controller].count, types.count);
+    XCTAssertFalse([[self visibleIDs:controller] containsObject:@"clinic"]);
+    XCTAssertFalse([[self visibleIDs:controller] containsObject:@"blocked_doctor"]);
+    XCTAssertFalse([[self visibleIDs:controller] containsObject:@"pending_doctor"]);
+    [controller pp_selectSection:PPPetCareInitialSectionClinics];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"clinic"]));
+}
+
+- (void)testContactFilterRequiresAUsableNumberRatherThanAReadinessFlag
+{
+    PPPetCareViewController *controller = [self controllerWithVets:@[
+        [self clinicWithID:@"flag_only" type:@0 overrides:@{@"readyToContact": @YES}],
+        [self clinicWithID:@"invalid" type:@0 overrides:@{@"phone": @"please call"}],
+        [self clinicWithID:@"arabic_number" type:@0 overrides:@{@"phone": @"+٩٧٤٣٣١٢٤٥٦٧"}]
+    ]];
+    [controller setValue:@1 forKey:@"vetFilter"];
+    [controller pp_selectSection:PPPetCareInitialSectionVeterinarians];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"arabic_number"]));
+}
+
+- (void)testClinicPetKindFilterUsesTheExistingModelContract
+{
+    PPPetCareViewController *controller = [self controllerWithVets:@[
+        [self clinicWithID:@"matching" type:@"clinic" overrides:@{@"petMainKindID": @7}],
+        [self clinicWithID:@"other" type:@"clinic" overrides:@{@"petMainKindID": @8}],
+        [self clinicWithID:@"multiSpecies" type:@1 overrides:@{@"animalTypes": @[@"7", @"8"]}]
+    ]];
+    MainKindsModel *kind = [MainKindsModel new];
+    kind.ID = 7;
+    [controller setValue:kind forKey:@"selectedMainKind"];
+    [controller pp_applyFiltersAndReload];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"matching", @"multiSpecies"]));
+}
+
+- (void)testClearingClinicSearchKeepsClinicIdentityAndOtherSectionQueries
+{
+    PPPetCareViewController *controller = [self controllerWithVets:@[
+        [self clinicWithID:@"clinic" type:@1 overrides:@{}],
+        [self clinicWithID:@"doctor" type:@0 overrides:@{}]
+    ]];
+    PPPetCareDiscoveryView *discovery = [PPPetCareDiscoveryView new];
+    [controller setValue:discovery forKey:@"discoveryView"];
+    [controller setValue:discovery.searchField forKey:@"searchField"];
+    discovery.searchField.text = @"no match";
+    [controller setValue:@"no match" forKey:@"clinicQuery"];
+    [controller setValue:@"doctor" forKey:@"vetQuery"];
+    [controller setValue:@"medicine" forKey:@"medicineQuery"];
+    [controller pp_applyFiltersAndReload];
+    XCTAssertEqual([self visibleIDs:controller].count, 0U);
+    [controller pp_recoverDiscovery];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"clinic"]));
+    XCTAssertEqualObjects([controller valueForKey:@"clinicQuery"], @"");
+    XCTAssertEqualObjects([controller valueForKey:@"vetQuery"], @"doctor");
+    XCTAssertEqualObjects([controller valueForKey:@"medicineQuery"], @"medicine");
+    XCTAssertTrue(discovery.clinicsButton.isSelected);
+    XCTAssertFalse(controller.isViewLoaded);
+}
+
+- (void)testClinicDiscoveryRetainsResultsAndExposesRecoveryOnSharedLoadFailure
+{
+    PPPetCareViewController *controller = [self controllerWithVets:@[
+        [self clinicWithID:@"clinic" type:@1 overrides:@{}]
+    ]];
+    PPPetCareDiscoveryView *discovery = [PPPetCareDiscoveryView new];
+    [controller setValue:discovery forKey:@"discoveryView"];
+    [controller setValue:[NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorNotConnectedToInternet userInfo:nil]
+                  forKey:@"vetLoadError"];
+    [controller pp_applyFiltersAndReload];
+    XCTAssertEqualObjects([self visibleIDs:controller], (@[@"clinic"]));
+    XCTAssertEqual([[discovery valueForKey:@"state"] integerValue], PPPetCareDiscoveryStateRetainedError);
+
+    [controller setValue:@[] forKey:@"allVets"];
+    [controller pp_applyFiltersAndReload];
+    XCTAssertEqual([[discovery valueForKey:@"state"] integerValue], PPPetCareDiscoveryStateError);
+    XCTAssertFalse(discovery.primaryButton.isHidden);
+    [controller setValue:nil forKey:@"vetLoadError"];
+    [controller setValue:@YES forKey:@"loadingVets"];
+    [controller pp_updateDiscoveryAnimated:NO];
+    XCTAssertEqual([[discovery valueForKey:@"state"] integerValue], PPPetCareDiscoveryStateLoading);
+    XCTAssertTrue(discovery.primaryButton.isHidden);
+}
 
 @end
 

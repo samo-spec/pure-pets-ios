@@ -86,45 +86,47 @@
                          subKind:self.cardModel.subKindString
                           cardID:self.cardModel.ID];
     }];
-    // NOTE: Do NOT use UIMenuElementAttributesKeepsMenuPresented here.
-    // It keeps the context menu presented while the share handler fires,
-    // causing "already presenting" crash when UIActivityViewController is shown.
-    
+    [PPMenuHelper applyFontPatternToAction:shareAction];
     
     // ========= Share submenu =========
+    UIAction *archiveAction =
+    [UIAction actionWithTitle:kLang(@"archive")
+                        image:[UIImage imageNamed:@"archiveCus"] ?: [UIImage systemImageNamed:@"archivebox"]
+                   identifier:nil
+                      handler:^(__kindof UIAction * _Nonnull action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        [self.delegate archiveCardData:self.cardModel
+                         cellIndexPath:self.cellIndexPath];
+    }];
+    [PPMenuHelper applyFontPatternToAction:archiveAction];
+
+    UIAction *sellAction =
+    [UIAction actionWithTitle:kLang(@"sale")
+                        image:[UIImage imageNamed:@"hotSaleee"] ?: [UIImage systemImageNamed:@"tag"]
+                   identifier:nil
+                      handler:^(__kindof UIAction * _Nonnull action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        [self.delegate sellThisCard:self.cardModel
+                       lastLocation:CardSectionCards
+                          cageIndex:0];
+    }];
+    [PPMenuHelper applyFontPatternToAction:sellAction];
+
     _shareOptionsMenu =
     [UIMenu menuWithTitle:@""
                     image:[UIImage systemImageNamed:@"square.and.arrow.up"]
                identifier:nil
                   options:UIMenuOptionsDisplayInline
-                 children:@[
-        [UIAction actionWithTitle:kLang(@"archive")
-                            image:[UIImage systemImageNamed:@"archivebox"]
-                       identifier:nil
-                          handler:^(__kindof UIAction * _Nonnull action) {
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self) return;
-
-            [self.delegate archiveCardData:self.cardModel
-                             cellIndexPath:self.cellIndexPath];
-        }],
-        [UIAction actionWithTitle:kLang(@"sale")
-                            image:[UIImage systemImageNamed:@"tag"]
-                       identifier:nil
-                          handler:^(__kindof UIAction * _Nonnull action) {
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self) return;
-
-            [self.delegate sellThisCard:self.cardModel
-                           lastLocation:CardSectionCards
-                              cageIndex:0];
-        }],shareAction
-    ]];
+                 children:@[archiveAction, sellAction, shareAction]];
+    [PPMenuHelper applyFontPatternToMenu:_shareOptionsMenu];
  
     
     // ===== Edit action =====
     UIAction *editAction =
-    
     [UIAction actionWithTitle:kLang(@"editCard")
                         image:[UIImage systemImageNamed:@"pencil"]
                    identifier:nil
@@ -134,12 +136,8 @@
 
         [self.delegate deleteEditOptions:0 CardData:self.cardModel];
     }];
-    if (@available(iOS 16.0, *)) {
-        editAction.state =  UIMenuElementStateOff;
-        
-    } else {
-        // Fallback on earlier versions
-    }
+    [PPMenuHelper applyFontPatternToAction:editAction];
+
     // ===== Delete action (destructive) =====
     UIAction *deleteAction =
     [UIAction actionWithTitle:kLang(@"deleteCard")
@@ -152,6 +150,8 @@
         [self.delegate deleteEditOptions:1 CardData:self.cardModel];
     }];
     deleteAction.attributes = UIMenuElementAttributesDestructive;
+    [PPMenuHelper applyFontPatternToAction:deleteAction];
+
     // ===== QR Code action =====
     UIAction *qrAction =
     [UIAction actionWithTitle:kLang(@"craeteQrCode")
@@ -163,17 +163,17 @@
 
         [self.delegate deleteEditOptions:2 CardData:self.cardModel];
     }];
+    [PPMenuHelper applyFontPatternToAction:qrAction];
  
     _moreOptionsMenu =
     [UIMenu menuWithTitle:kLang(@"more")
                     image:[UIImage systemImageNamed:@"wand.and.outline.inverse"]
                identifier:nil
-                  options:UIMenuOptionsSingleSelection
-                 children:@[editAction,qrAction,deleteAction ]];
+                  options:0
+                 children:@[editAction, qrAction, deleteAction]];
+    [PPMenuHelper applyFontPatternToMenu:_moreOptionsMenu];
     if (@available(iOS 16.0, *)) {
-        _moreOptionsMenu.preferredElementSize =  UIMenuElementSizeLarge;
-    } else {
-        // Fallback on earlier versions
+        _moreOptionsMenu.preferredElementSize = UIMenuElementSizeLarge;
     }
     
  }
@@ -570,6 +570,7 @@ static inline BOOL PPHasValidTitle(NSString *title) {
               identifier:nil
                  options:UIMenuOptionsDisplayInline
                  children:@[_shareOptionsMenu, _moreOptionsMenu]];
+    [PPMenuHelper applyFontPatternToMenu:self.transactionMenu];
     _TransactionBTN.menu = self.transactionMenu;
     _TransactionBTN.showsMenuAsPrimaryAction = YES;
     

@@ -1321,30 +1321,34 @@ struct PPMarketplaceCurrentDock: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: PPSpace.xs) {
                     ForEach(store.currentFilterState.groups, id: \.filterID) { group in
-                        Menu {
-                            ForEach(group.options, id: \.value) { option in
-                                Button {
-                                    store.applyQuickFilter(groupID: group.filterID, value: option.value)
-                                } label: {
-                                    if option.value == group.selectedValue {
-                                        Label(option.title, systemImage: "checkmark")
-                                    } else {
-                                        Text(option.title)
+                        if group.filterID == PPFilterIDMedicineCategory {
+                            medicineCategoryMenu(group: group)
+                        } else {
+                            Menu {
+                                ForEach(group.options, id: \.value) { option in
+                                    Button {
+                                        store.applyQuickFilter(groupID: group.filterID, value: option.value)
+                                    } label: {
+                                        if option.value == group.selectedValue {
+                                            Label(option.title, systemImage: "checkmark")
+                                        } else {
+                                            Text(option.title)
+                                        }
                                     }
                                 }
+                            } label: {
+                                PPMarketplaceRefinementLabel(
+                                    icon: activeIconName(for: group),
+                                    title: filterChipTitle(group),
+                                    selected: group.isActive(),
+                                    accent: Color(uiColor: store.accentColor)
+                                )
                             }
-                        } label: {
-                            PPMarketplaceRefinementLabel(
-                                icon: group.chipIconName ?? "slider.horizontal.3",
-                                title: filterChipTitle(group),
-                                selected: group.isActive(),
-                                accent: Color(uiColor: store.accentColor)
-                            )
+                            .disabled(store.isReplacingContext)
+                            .accessibilityLabel(group.title)
+                            .accessibilityValue(filterChipTitle(group))
+                            .accessibilityIdentifier("pp.marketplace.filter.\(group.filterID)")
                         }
-                        .disabled(store.isReplacingContext)
-                        .accessibilityLabel(group.title)
-                        .accessibilityValue(filterChipTitle(group))
-                        .accessibilityIdentifier("pp.marketplace.filter.\(group.filterID)")
                     }
 
                     if store.bridge.sectionSupportsProviderFilter(store.currentSection),
@@ -1475,6 +1479,95 @@ struct PPMarketplaceCurrentDock: View {
             return group.title
         }
         return selected.title
+    }
+
+    private func activeIconName(for group: PPFilterGroup) -> String {
+        if group.isActive(),
+           let selected = group.options.first(where: { $0.value == group.selectedValue }),
+           let icon = selected.iconName, !icon.isEmpty {
+            return icon
+        }
+        return group.chipIconName ?? "slider.horizontal.3"
+    }
+
+    @ViewBuilder
+    private func medicineCategoryMenu(group: PPFilterGroup) -> some View {
+        let currentGroupValue = store.currentFilterState.value(forFilterID: PPFilterIDMedicineGroup)
+        let visibleOptions: [PPFilterOption] = {
+            if currentGroupValue == PPFilterMedicineGroup.veterinaryMedicines.rawValue {
+                return group.options.filter { $0.value == 0 || ($0.value >= 1 && $0.value <= 12) }
+            } else if currentGroupValue == PPFilterMedicineGroup.petCare.rawValue {
+                return group.options.filter { $0.value == 0 || ($0.value >= 13 && $0.value <= 22) }
+            }
+            return group.options
+        }()
+
+        Menu {
+            if currentGroupValue == PPFilterMedicineGroup.all.rawValue {
+                if let allOption = group.options.first(where: { $0.value == 0 }) {
+                    Button {
+                        store.applyQuickFilter(groupID: group.filterID, value: 0)
+                    } label: {
+                        if group.selectedValue == 0 {
+                            Label(allOption.title, systemImage: "checkmark")
+                        } else {
+                            Text(allOption.title)
+                        }
+                    }
+                }
+
+                Section(PPMarketplaceText.localized("MedicineCare_Group_Medicines")) {
+                    ForEach(group.options.filter { $0.value >= 1 && $0.value <= 12 }, id: \.value) { option in
+                        Button {
+                            store.applyQuickFilter(groupID: group.filterID, value: option.value)
+                        } label: {
+                            if option.value == group.selectedValue {
+                                Label(option.title, systemImage: "checkmark")
+                            } else {
+                                Text(option.title)
+                            }
+                        }
+                    }
+                }
+
+                Section(PPMarketplaceText.localized("MedicineCare_Group_Care")) {
+                    ForEach(group.options.filter { $0.value >= 13 && $0.value <= 22 }, id: \.value) { option in
+                        Button {
+                            store.applyQuickFilter(groupID: group.filterID, value: option.value)
+                        } label: {
+                            if option.value == group.selectedValue {
+                                Label(option.title, systemImage: "checkmark")
+                            } else {
+                                Text(option.title)
+                            }
+                        }
+                    }
+                }
+            } else {
+                ForEach(visibleOptions, id: \.value) { option in
+                    Button {
+                        store.applyQuickFilter(groupID: group.filterID, value: option.value)
+                    } label: {
+                        if option.value == group.selectedValue {
+                            Label(option.title, systemImage: "checkmark")
+                        } else {
+                            Text(option.title)
+                        }
+                    }
+                }
+            }
+        } label: {
+            PPMarketplaceRefinementLabel(
+                icon: activeIconName(for: group),
+                title: filterChipTitle(group),
+                selected: group.isActive(),
+                accent: Color(uiColor: store.accentColor)
+            )
+        }
+        .disabled(store.isReplacingContext)
+        .accessibilityLabel(group.title)
+        .accessibilityValue(filterChipTitle(group))
+        .accessibilityIdentifier("pp.marketplace.filter.\(group.filterID)")
     }
 
     private var selectedProviderTitle: String {

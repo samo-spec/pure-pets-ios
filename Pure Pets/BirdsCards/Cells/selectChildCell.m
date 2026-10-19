@@ -324,38 +324,40 @@
  }
 
  - (IBAction)moreBTN:(id)sender {
-     
-   
-     FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-     configuration.menuRowHeight = 32;
-     configuration.backgroundColor = [UIColor colorWithHexString:@"#353535"];
-     configuration.menuWidth = 100;
-     configuration.textColor = [UIColor whiteColor];
-     configuration.textFont = [GM MidFontWithSize:12];
-     configuration.borderColor = [UIColor darkGrayColor];
-     configuration.borderWidth = 0.1;
-     configuration.textAlignment = NSTextAlignmentCenter;
-     configuration.ignoreImageOriginalColor = YES;
-     // set 'ignoreImageOriginalColor' to YES, images color will be same as textColor
-     configuration.allowRoundedArrow = YES;
-     
-     [FTPopOverMenu showForSender:sender withMenuArray:@[self.showCardTitle,self.archiveCardTitle,self.deleteCardTitle,self.transferTitle,self.sellTitle] imageArray:nil configuration:configuration doneBlock:^(NSInteger selectedIndex) {
-         
-             if(selectedIndex == 0){
-                 [self showCard];
-             } else if(selectedIndex == 1){
-                 [self archiveCard];
-             } else if(selectedIndex == 2){
-                 [self deleteChild];
-             }else if(selectedIndex == 3){
-                 [self.delegate cellClickTransfer:self.childIndex];
-             }else if(selectedIndex == 4){
-                 [self.delegate cellClickSell:self.childIndex childCard:self.cardModel];
-             }
-         
-       
-         
-     } dismissBlock:^{  NSLog(@"user canceled. do nothing.");  }];
+     NSArray *titles = @[
+         self.showCardTitle ?: @"",
+         self.archiveCardTitle ?: @"",
+         self.deleteCardTitle ?: @"",
+         self.transferTitle ?: @"",
+         self.sellTitle ?: @""
+     ];
+     NSArray *icons = @[
+         [UIImage systemImageNamed:@"rectangle.portrait.on.rectangle.portrait"] ?: [UIImage systemImageNamed:@"doc.text"] ?: [UIImage new],
+         [UIImage imageNamed:@"archiveCus"] ?: [UIImage systemImageNamed:@"archivebox"] ?: [UIImage new],
+         [UIImage systemImageNamed:@"trash"] ?: [UIImage new],
+         [UIImage systemImageNamed:@"arrow.right.arrow.left"] ?: [UIImage new],
+         [UIImage imageNamed:@"hotSaleee"] ?: [UIImage systemImageNamed:@"tag"] ?: [UIImage new]
+     ];
+     NSIndexSet *destructive = [NSIndexSet indexSetWithIndex:2];
+
+     UIButton *btn = [sender isKindOfClass:[UIButton class]] ? (UIButton *)sender : self.optionsBTN;
+     [PPMenuHelper presentMenuFromButton:btn
+                                  titles:titles
+                                  images:icons
+                            destructive:destructive
+                                handler:^(NSInteger selectedIndex, NSString *title) {
+         if (selectedIndex == 0) {
+             [self showCard];
+         } else if (selectedIndex == 1) {
+             [self archiveCard];
+         } else if (selectedIndex == 2) {
+             [self deleteChild];
+         } else if (selectedIndex == 3) {
+             [self.delegate cellClickTransfer:self.childIndex];
+         } else if (selectedIndex == 4) {
+             [self.delegate cellClickSell:self.childIndex childCard:self.cardModel];
+         }
+     }];
  }
  //012
  -(void)archiveCard {

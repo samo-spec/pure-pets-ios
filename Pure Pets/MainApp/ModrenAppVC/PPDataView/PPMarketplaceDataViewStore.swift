@@ -302,6 +302,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     private var presentationStateRefreshScheduled = false
     private var awaitsBridgeContentTransition = false
     private var bridgeContextCommitPending = false
+    private var allowsEmptyAdsFallback = true
 
     init(
         bridge: PPMarketplaceDataViewBridge,
@@ -530,8 +531,17 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     }
 
     func selectSection(_ descriptor: PPMarketplaceSectionDescriptor) {
-        guard !isReplacingContext,
-              descriptor.rawValue != currentSection.rawValue else { return }
+        guard !isReplacingContext else { return }
+        // A deliberate tab choice wins, including returning to empty Ads.
+        allowsEmptyAdsFallback = false
+        switchSection(descriptor, userInitiated: true)
+    }
+
+    private func switchSection(
+        _ descriptor: PPMarketplaceSectionDescriptor,
+        userInitiated: Bool
+    ) {
+        guard descriptor.rawValue != currentSection.rawValue else { return }
         let direction = descriptor.rawValue > currentSection.rawValue ? 1 : -1
         prepareBridgeContentTransition(.sectionChange(direction: direction))
         currentSection = descriptor.section
@@ -541,16 +551,34 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         records = []
         loadState = .loading
         updateErrorMessage = nil
-        UISelectionFeedbackGenerator().selectionChanged()
+        if userInitiated {
+            UISelectionFeedbackGenerator().selectionChanged()
+        }
 
         layout = PPMarketplaceLayout.resolved(sectionRawValue: descriptor.rawValue)
+        contentRevision &+= 1
         refreshPresentationState(includeContext: true)
+
+        // Reset scroll position immediately on section switch so a collapsed
+        // top deck never strands the new section below/outside the visible viewport.
+        scrollToTop(animated: false)
+        DispatchQueue.main.async { [weak self] in
+            self?.scrollToTop(animated: false)
+        }
+
         bridge.switchSection(descriptor.section)
+    }
+
+    func scrollToTop(animated: Bool = false) {
+        if let controller = bridge.presentingViewController as? PPMarketplaceDataViewController {
+            controller.scrollToTop(animated: animated)
+        }
     }
 
     func selectMainKind(_ choice: PPMarketplaceMainKindChoice) {
         guard !isReplacingContext,
               choice.id != currentMainKindID else { return }
+        allowsEmptyAdsFallback = true
         prepareBridgeContentTransition(.refinement)
         selectedProviderIDs.removeAll()
         selectedProviderID = nil
@@ -562,6 +590,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     func selectSubKind(_ choice: PPMarketplaceSubKindChoice) {
         guard !isReplacingContext,
               choice.id != currentSubKindID else { return }
+        allowsEmptyAdsFallback = true
         prepareBridgeContentTransition(
             .navigation(direction: choice.id > currentSubKindID ? 1 : -1)
         )
@@ -681,6 +710,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
             return
         }
 
+        allowsEmptyAdsFallback = true
         selectedProviderIDs.removeAll()
         selectedProviderID = nil
         providerOptions = []
@@ -695,6 +725,27 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         activeSheet = nil
     }
 
+    private func synchronizeMedicineFilters(in state: PPFilterState, changedGroupID: String, newValue: Int) {
+        if changedGroupID == PPFilterIDMedicineGroup {
+            if let catGroup = state.group(forID: PPFilterIDMedicineCategory) {
+                let catVal = catGroup.selectedValue
+                if newValue == PPFilterMedicineGroup.veterinaryMedicines.rawValue && (catVal >= 13 && catVal <= 22) {
+                    catGroup.selectedValue = 0
+                } else if newValue == PPFilterMedicineGroup.petCare.rawValue && (catVal >= 1 && catVal <= 12) {
+                    catGroup.selectedValue = 0
+                }
+            }
+        } else if changedGroupID == PPFilterIDMedicineCategory {
+            if let medGroup = state.group(forID: PPFilterIDMedicineGroup) {
+                if newValue >= 1 && newValue <= 12 && medGroup.selectedValue == PPFilterMedicineGroup.petCare.rawValue {
+                    medGroup.selectedValue = PPFilterMedicineGroup.veterinaryMedicines.rawValue
+                } else if newValue >= 13 && newValue <= 22 && medGroup.selectedValue == PPFilterMedicineGroup.veterinaryMedicines.rawValue {
+                    medGroup.selectedValue = PPFilterMedicineGroup.petCare.rawValue
+                }
+            }
+        }
+    }
+
     func selectFilterOption(groupID: String, value: Int) {
         guard let draft = filterDraft,
               let group = draft.groups.first(where: { $0.filterID == groupID }),
@@ -703,6 +754,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         }
         objectWillChange.send()
         group.selectedValue = value
+        synchronizeMedicineFilters(in: draft, changedGroupID: groupID, newValue: value)
         UISelectionFeedbackGenerator().selectionChanged()
         updateFilterPreview()
     }
@@ -715,6 +767,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
             return
         }
         group.selectedValue = value
+        synchronizeMedicineFilters(in: state, changedGroupID: groupID, newValue: value)
         contentTransitionIntent = .refinement
         contentRevision &+= 1
         UISelectionFeedbackGenerator().selectionChanged()
@@ -957,6 +1010,10 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         }
         refreshPresentationState(includeContext: true)
 
+        if switchFromEmptyAdsIfNeeded() {
+            return
+        }
+
         rawItems = incomingItems
         rebuildProviderOptions()
         rebuildPresentedRecords()
@@ -990,6 +1047,23 @@ final class PPMarketplaceDataViewStore: ObservableObject {
             isReplacingContext = false
             contentTransitionIntent = .initial
         }
+    }
+
+    private func switchFromEmptyAdsIfNeeded() -> Bool {
+        guard allowsEmptyAdsFallback,
+              bridge.hasLoadedEmptyAds,
+              let accessories = PPMarketplaceSectionDescriptor.all.first(where: {
+                  $0.section == .accessories
+              }) else { return false }
+
+        allowsEmptyAdsFallback = false
+        activeSheet = nil
+        filterDraft = nil
+        isRefreshing = false
+        // Reuse the normal section transition before publishing an Ads empty
+        // state. The bridge retains category/breed and restores section filters.
+        switchSection(accessories, userInitiated: false)
+        return true
     }
 
     private func consume(error: Error) {

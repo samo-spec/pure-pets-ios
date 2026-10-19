@@ -224,38 +224,21 @@
 
 
 - (IBAction)delBTN:(id)sender {
-    
-    FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-    configuration.menuRowHeight = 30;
-    configuration.backgroundColor =[GM appPrimaryColor];
-    configuration.menuWidth = 120;
-    configuration.textColor = [UIColor whiteColor];
-    configuration.textFont = [GM MidFontWithSize:14];
-    configuration.borderColor = [UIColor blackColor];
-    configuration.borderWidth = 0.1;
-    configuration.textAlignment = NSTextAlignmentCenter;
-    configuration.ignoreImageOriginalColor = YES;// set 'ignoreImageOriginalColor' to YES, images color will be same as textColor
-    configuration.allowRoundedArrow = YES;
+    NSArray *titles = @[kLang(@"editBox"), kLang(@"deleteBox")];
+    NSArray *icons = @[
+        [UIImage systemImageNamed:@"pencil"] ?: [UIImage new],
+        [UIImage systemImageNamed:@"trash"] ?: [UIImage new]
+    ];
+    NSIndexSet *destructive = [NSIndexSet indexSetWithIndex:1];
 
-
-//@[[UIImage imageNamed:@"eye"],[UIImage imageNamed:@"giving"],[UIImage imageNamed:@"bribery"]]
-[FTPopOverMenu showForSender:sender
-               withMenuArray:@[@"تعديل الصندوق", @"حذف الصندوق"]
-                  imageArray:nil
-               configuration:configuration
-                   doneBlock:^(NSInteger selectedIndex) {
-                       // // NSLog(@"done block. do something. selectedIndex : %ld", (long)selectedIndex);
-  
-    [self.delegate deleteEditCageOptions:selectedIndex CageData:self.CageData cellView:self.contentView cellIndexPath:self.indexPath];
-                   } dismissBlock:^{
-                       
-                       // // NSLog(@"user canceled. do nothing.");
-                       
-//                           FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-//                           configuration.allowRoundedArrow = !configuration.allowRoundedArrow;
-                       
-                   }];
-    
+    UIButton *btn = [sender isKindOfClass:[UIButton class]] ? (UIButton *)sender : nil;
+    [PPMenuHelper presentMenuFromButton:btn
+                                 titles:titles
+                                 images:icons
+                            destructive:destructive
+                                handler:^(NSInteger selectedIndex, NSString *title) {
+        [self.delegate deleteEditCageOptions:selectedIndex CageData:self.CageData cellView:self.contentView cellIndexPath:self.indexPath];
+    }];
 }
 
 

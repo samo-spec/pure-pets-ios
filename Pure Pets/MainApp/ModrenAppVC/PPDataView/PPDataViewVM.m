@@ -264,6 +264,14 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     return self.mutableItems.count;
 }
 
+- (BOOL)hasLoadedEmptyAds
+{
+    return self.currentSection == PPDataSectionAds &&
+        !self.isLoading &&
+        self.latestRawResults != nil &&
+        self.latestRawResults.count == 0;
+}
+
 - (PPUniversalCellViewModel *)viewModelAtIndex:(NSInteger)index
 {
     if (index < 0 || index >= self.mutableItems.count) return nil;
@@ -705,25 +713,17 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             // All Categories → fetch ads for ALL main kinds
             if (isGlobal) {
                 [[PetAdManager sharedManager]
-                 fetchAdsForAllMainKinds:^(NSArray<PetAd *> * _Nonnull ads) {
-                    if (completion) completion(ads, nil);
+                 fetchAdsForAllMainKindsWithCompletion:^(NSArray<PetAd *> *ads, NSError *error) {
+                    if (completion) completion(ads, error);
                 }];
 
             } else {
-                if (breedID > 0) {
-                    [[PetAdManager sharedManager]
-                     fetchAdsForMainKind:self.mainKind
-                               subKindID:breedID
-                              completion:^(NSArray<PetAd *> * _Nonnull ads) {
-                        if (completion) completion(ads, nil);
-                    }];
-                } else {
-                    [[PetAdManager sharedManager]
-                     fetchAdsForMainKind:self.mainKind
-                              completion:^(NSArray<PetAd *> * _Nonnull ads) {
-                        if (completion) completion(ads, nil);
-                    }];
-                }
+                [[PetAdManager sharedManager]
+                 fetchAdsForMainKind:self.mainKind
+                           subKindID:breedID
+                    resultCompletion:^(NSArray<PetAd *> *ads, NSError *error) {
+                    if (completion) completion(ads, error);
+                }];
             }
 
             break;
@@ -1016,6 +1016,109 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 PetAccessory *accessory = (PetAccessory *)obj;
                 NSString *categoryID = accessory.AccessoryCategoryID ?: @"";
                 return [categoryID isEqualToString:selectedAccessoryCategoryID];
+            }]];
+    }
+
+    // ── Medicine & Care: Department / Group filter ──
+    NSInteger medGroupVal = [state valueForFilterID:PPFilterIDMedicineGroup];
+    if (isMedicinesSection && medGroupVal != PPFilterMedicineGroupAll) {
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, __unused NSDictionary *bindings) {
+                if (![obj isKindOfClass:PetAccessory.class]) {
+                    return YES;
+                }
+                PetAccessory *acc = (PetAccessory *)obj;
+                NSString *catID = (acc.AccessoryCategoryID ?: @"").lowercaseString;
+                NSString *name = (acc.name ?: @"").lowercaseString;
+
+                BOOL isCare = NO;
+                if ([catID hasPrefix:@"care_"]) {
+                    isCare = YES;
+                } else if ([catID hasPrefix:@"med_"]) {
+                    isCare = NO;
+                } else if ([catID containsString:@"shampoo"] || [catID containsString:@"clean"] ||
+                           [catID containsString:@"groom"] || [catID containsString:@"dental"] ||
+                           [catID containsString:@"hygiene"] || [catID containsString:@"deodorant"] ||
+                           [catID containsString:@"diaper"] || [catID containsString:@"pad"] ||
+                           [catID containsString:@"care"] || [name containsString:@"شامبو"] ||
+                           [name containsString:@"نظافة"] || [name containsString:@"عناية"] ||
+                           [name containsString:@"حفاض"] || [name containsString:@"معطر"]) {
+                    isCare = YES;
+                }
+
+                if (medGroupVal == PPFilterMedicineGroupPetCare) {
+                    return isCare;
+                } else if (medGroupVal == PPFilterMedicineGroupVeterinaryMedicines) {
+                    return !isCare;
+                }
+                return YES;
+            }]];
+    }
+
+    // ── Medicine & Care: Category filter ──
+    PPFilterGroup *medCategoryGroup = [state groupForID:PPFilterIDMedicineCategory];
+    NSString *selectedMedCatID = medCategoryGroup.selectedOption.identifierValue ?: @"";
+    if (isMedicinesSection && selectedMedCatID.length > 0 && medCategoryGroup.selectedValue != 0) {
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, __unused NSDictionary *bindings) {
+                if (![obj isKindOfClass:PetAccessory.class]) {
+                    return YES;
+                }
+                PetAccessory *acc = (PetAccessory *)obj;
+                NSString *catID = (acc.AccessoryCategoryID ?: @"").lowercaseString;
+                NSString *name = (acc.name ?: @"").lowercaseString;
+
+                if ([catID isEqualToString:selectedMedCatID.lowercaseString]) {
+                    return YES;
+                }
+
+                if ([selectedMedCatID isEqualToString:@"med_antibiotics"]) {
+                    return [catID containsString:@"antibiotic"] || [catID containsString:@"microbial"] || [name containsString:@"مضاد حيوي"];
+                } else if ([selectedMedCatID isEqualToString:@"med_dewormers"]) {
+                    return [catID containsString:@"deworm"] || [catID containsString:@"parasite"] || [name containsString:@"ديدان"] || [name containsString:@"طفيليات"];
+                } else if ([selectedMedCatID isEqualToString:@"med_flea_tick"]) {
+                    return [catID containsString:@"flea"] || [catID containsString:@"tick"] || [catID containsString:@"pest"] || [name containsString:@"براغيث"] || [name containsString:@"قراد"] || [name containsString:@"حشرات"];
+                } else if ([selectedMedCatID isEqualToString:@"med_vitamins"]) {
+                    return [catID containsString:@"vitamin"] || [catID containsString:@"supplement"] || [catID containsString:@"nutrition"] || [name containsString:@"فيتامين"] || [name containsString:@"مكمل"];
+                } else if ([selectedMedCatID isEqualToString:@"med_anti_inflammatory"]) {
+                    return [catID containsString:@"inflamm"] || [catID containsString:@"pain"] || [catID containsString:@"joint"] || [name containsString:@"التهاب"] || [name containsString:@"مسكن"] || [name containsString:@"مفاصل"];
+                } else if ([selectedMedCatID isEqualToString:@"med_digestive"]) {
+                    return [catID containsString:@"digest"] || [catID containsString:@"gastro"] || [catID containsString:@"probiotic"] || [name containsString:@"هضم"] || [name containsString:@"معدة"];
+                } else if ([selectedMedCatID isEqualToString:@"med_eyes_ears"]) {
+                    return [catID containsString:@"eye"] || [catID containsString:@"ear"] || [catID containsString:@"drop"] || [name containsString:@"عين"] || [name containsString:@"أذن"] || [name containsString:@"قطرة"];
+                } else if ([selectedMedCatID isEqualToString:@"med_dermatology"]) {
+                    return [catID containsString:@"derma"] || [catID containsString:@"skin"] || [catID containsString:@"fung"] || [name containsString:@"جلد"] || [name containsString:@"فطريات"] || [name containsString:@"حساسية"];
+                } else if ([selectedMedCatID isEqualToString:@"med_respiratory"]) {
+                    return [catID containsString:@"respir"] || [catID containsString:@"cough"] || [name containsString:@"تنفس"] || [name containsString:@"سعال"];
+                } else if ([selectedMedCatID isEqualToString:@"med_antiseptic"]) {
+                    return [catID containsString:@"antiseptic"] || [catID containsString:@"wound"] || [name containsString:@"مطهر"] || [name containsString:@"جروح"] || [name containsString:@"إسعاف"];
+                } else if ([selectedMedCatID isEqualToString:@"med_calming"]) {
+                    return [catID containsString:@"calm"] || [catID containsString:@"stress"] || [name containsString:@"مهدئ"] || [name containsString:@"توتر"];
+                } else if ([selectedMedCatID isEqualToString:@"med_general"]) {
+                    return [catID hasPrefix:@"med_"] || [catID containsString:@"general"] || [catID containsString:@"medicine"] || [name containsString:@"بيطري"];
+                } else if ([selectedMedCatID isEqualToString:@"care_shampoo"]) {
+                    return [catID containsString:@"shampoo"] || [catID containsString:@"wash"] || [name containsString:@"شامبو"] || [name containsString:@"استحمام"];
+                } else if ([selectedMedCatID isEqualToString:@"care_dental"]) {
+                    return [catID containsString:@"dental"] || [catID containsString:@"tooth"] || [catID containsString:@"teeth"] || [catID containsString:@"oral"] || [name containsString:@"أسنان"] || [name containsString:@"معجون"];
+                } else if ([selectedMedCatID isEqualToString:@"care_paw_nail"]) {
+                    return [catID containsString:@"nail"] || [catID containsString:@"paw"] || [name containsString:@"أظافر"] || [name containsString:@"مخالب"];
+                } else if ([selectedMedCatID isEqualToString:@"care_grooming"]) {
+                    return [catID containsString:@"groom"] || [catID containsString:@"brush"] || [catID containsString:@"comb"] || [name containsString:@"فراء"] || [name containsString:@"تمشيط"] || [name containsString:@"فرشاة"];
+                } else if ([selectedMedCatID isEqualToString:@"care_ear_eye"]) {
+                    return [catID containsString:@"wipe"] || [catID containsString:@"cleanser"] || [name containsString:@"مناديل"] || [name containsString:@"تنظيف"];
+                } else if ([selectedMedCatID isEqualToString:@"care_deodorant"]) {
+                    return [catID containsString:@"deodorant"] || [catID containsString:@"perfume"] || [catID containsString:@"spray"] || [name containsString:@"معطر"] || [name containsString:@"رائحة"];
+                } else if ([selectedMedCatID isEqualToString:@"care_pads_diapers"]) {
+                    return [catID containsString:@"pad"] || [catID containsString:@"diaper"] || [name containsString:@"حفاض"] || [name containsString:@"مفرش"] || [name containsString:@"مفارش"];
+                } else if ([selectedMedCatID isEqualToString:@"care_habitat_clean"]) {
+                    return [catID containsString:@"cage"] || [catID containsString:@"habitat"] || [catID containsString:@"sanit"] || [catID containsString:@"clean"] || [name containsString:@"تعقيم"] || [name containsString:@"أقفاص"];
+                } else if ([selectedMedCatID isEqualToString:@"care_nursing"]) {
+                    return [catID containsString:@"nurs"] || [catID containsString:@"feed"] || [name containsString:@"رضاعة"] || [name containsString:@"تغذية"];
+                } else if ([selectedMedCatID isEqualToString:@"care_general"]) {
+                    return [catID hasPrefix:@"care_"] || [catID containsString:@"care"] || [catID containsString:@"hygiene"] || [name containsString:@"عناية"] || [name containsString:@"نظافة"];
+                }
+
+                return NO;
             }]];
     }
 

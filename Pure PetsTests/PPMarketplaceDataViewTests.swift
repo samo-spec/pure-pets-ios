@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 @testable import Pure_Pets
 
@@ -109,6 +110,157 @@ final class PPMarketplaceDataViewTests: XCTestCase {
 
         XCTAssertFalse(gate.isCurrentRequest(obsolete))
         XCTAssertTrue(gate.isCurrentRequest(latest))
+    }
+
+    func testEmptyAdsRequiresACompletedUnfilteredSnapshot() {
+        let fixture = makeFixture()
+        fixture.viewModel.currentSection = .ads
+        XCTAssertFalse(fixture.bridge.hasLoadedEmptyAds)
+
+        fixture.viewModel.setValue([], forKey: "latestRawResults")
+        fixture.viewModel.setValue(true, forKey: "isLoading")
+        XCTAssertFalse(fixture.bridge.hasLoadedEmptyAds)
+
+        fixture.viewModel.setValue(false, forKey: "isLoading")
+        XCTAssertTrue(fixture.bridge.hasLoadedEmptyAds)
+
+        // Zero displayed cards after filtering does not mean there are no ads.
+        fixture.viewModel.setValue([PetAd()], forKey: "latestRawResults")
+        XCTAssertEqual(fixture.viewModel.itemCount, 0)
+        XCTAssertFalse(fixture.bridge.hasLoadedEmptyAds)
+
+        fixture.viewModel.setValue([], forKey: "latestRawResults")
+        fixture.viewModel.currentSection = .accessories
+        XCTAssertFalse(fixture.bridge.hasLoadedEmptyAds)
+    }
+
+    func testEmptyAdsSwitchesToAccessoriesAndKeepsCategoryAndBreed() async {
+        let (bridge, store) = makeEmptyAdsFixture()
+        bridge.testViewModel.currentSubKindID = 101
+        let switched = expectation(description: "Empty Ads selects Accessories")
+        let observation = store.$currentSection
+            .first(where: { $0 == .accessories })
+            .sink { _ in switched.fulfill() }
+
+        bridge.completeLoad(section: .ads, rawResults: [])
+        await fulfillment(of: [switched], timeout: 1)
+
+        XCTAssertEqual(bridge.switchedSections, [.accessories])
+        XCTAssertEqual(bridge.currentMainKindID, 1)
+        XCTAssertEqual(bridge.currentSubKindID, 101)
+        XCTAssertEqual(store.loadState, .loading)
+        withExtendedLifetime(observation) {}
+    }
+
+    func testFilterOnlyEmptyAdsDoesNotSwitchSections() async {
+        let (bridge, store) = makeEmptyAdsFixture()
+        let empty = expectation(description: "Filtered Ads stays empty")
+        let observation = store.$loadState
+            .first(where: { $0 == .empty })
+            .sink { _ in empty.fulfill() }
+
+        bridge.completeLoad(section: .ads, rawResults: [PetAd()])
+        await fulfillment(of: [empty], timeout: 1)
+
+        XCTAssertEqual(store.currentSection, .ads)
+        XCTAssertTrue(bridge.switchedSections.isEmpty)
+        withExtendedLifetime(observation) {}
+    }
+
+    func testFailedAdsLoadStaysOnAdsAndSuccessfulRetryCanFallBack() async {
+        let (bridge, store) = makeEmptyAdsFixture()
+        let failed = expectation(description: "Ads failure stays visible")
+        let failureObservation = store.$loadState
+            .first(where: {
+                if case .failed = $0 { return true }
+                if case .offline = $0 { return true }
+                return false
+            })
+            .sink { _ in failed.fulfill() }
+
+        bridge.testViewModel.setValue(false, forKey: "isLoading")
+        bridge.loadingDidFail?(NSError(domain: NSURLErrorDomain, code: NSURLErrorTimedOut))
+        await fulfillment(of: [failed], timeout: 1)
+        XCTAssertEqual(store.currentSection, .ads)
+        XCTAssertTrue(bridge.switchedSections.isEmpty)
+
+        let switched = expectation(description: "Successful empty retry can switch")
+        let retryObservation = store.$currentSection
+            .first(where: { $0 == .accessories })
+            .sink { _ in switched.fulfill() }
+        bridge.completeLoad(section: .ads, rawResults: [])
+        await fulfillment(of: [switched], timeout: 1)
+        XCTAssertEqual(bridge.switchedSections, [.accessories])
+        withExtendedLifetime((failureObservation, retryObservation)) {}
+    }
+
+    func testReturningToAdsAfterFallbackDoesNotSwitchAgain() async {
+        let (bridge, store) = makeEmptyAdsFixture()
+        let switched = expectation(description: "Initial fallback")
+        let sectionObservation = store.$currentSection
+            .first(where: { $0 == .accessories })
+            .sink { _ in switched.fulfill() }
+        bridge.completeLoad(section: .ads, rawResults: [])
+        await fulfillment(of: [switched], timeout: 1)
+
+        let accessoriesLoaded = expectation(description: "Empty Accessories finishes normally")
+        let accessoryObservation = store.$isReplacingContext
+            .first(where: { !$0 })
+            .sink { _ in accessoriesLoaded.fulfill() }
+        bridge.completeLoad(section: .accessories, rawResults: [])
+        await fulfillment(of: [accessoriesLoaded], timeout: 1)
+        XCTAssertEqual(store.loadState, .empty)
+        XCTAssertEqual(bridge.switchedSections, [.accessories])
+
+        store.selectSection(tryUnwrap(PPMarketplaceSectionDescriptor.all.first(where: {
+            $0.section == .ads
+        })))
+        let adsLoaded = expectation(description: "Manual Ads selection stays selected")
+        let adsObservation = store.$isReplacingContext
+            .first(where: { !$0 })
+            .sink { _ in adsLoaded.fulfill() }
+        bridge.completeLoad(section: .ads, rawResults: [])
+        bridge.itemsDidChange?() // Duplicate delivery must not restart the fallback.
+        await fulfillment(of: [adsLoaded], timeout: 1)
+
+        XCTAssertEqual(store.currentSection, .ads)
+        XCTAssertEqual(store.loadState, .empty)
+        XCTAssertEqual(bridge.switchedSections, [.accessories, .ads])
+        withExtendedLifetime((sectionObservation, accessoryObservation, adsObservation)) {}
+    }
+
+    func testNewBreedAllowsEmptyAdsFallbackAfterManualTabChoice() async {
+        let (bridge, store) = makeEmptyAdsFixture()
+        store.selectSection(tryUnwrap(PPMarketplaceSectionDescriptor.all.first(where: {
+            $0.section == .ads
+        })))
+        store.selectSubKind(PPMarketplaceSubKindChoice(id: 101, title: "Retriever"))
+        let switched = expectation(description: "New breed can fall back")
+        let observation = store.$currentSection
+            .first(where: { $0 == .accessories })
+            .sink { _ in switched.fulfill() }
+
+        bridge.completeLoad(section: .ads, rawResults: [])
+        await fulfillment(of: [switched], timeout: 1)
+
+        XCTAssertEqual(bridge.switchedSections, [.accessories])
+        XCTAssertEqual(bridge.currentSubKindID, 101)
+        withExtendedLifetime(observation) {}
+    }
+
+    func testCallbackForAnotherCurrentSectionDoesNotTriggerAdsFallback() async {
+        let (bridge, store) = makeEmptyAdsFixture()
+        let empty = expectation(description: "Current Food result is retained")
+        let observation = store.$loadState
+            .first(where: { $0 == .empty })
+            .sink { _ in empty.fulfill() }
+
+        bridge.completeLoad(section: .food, rawResults: [])
+        await fulfillment(of: [empty], timeout: 1)
+
+        XCTAssertEqual(store.currentSection, .food)
+        XCTAssertTrue(bridge.switchedSections.isEmpty)
+        withExtendedLifetime(observation) {}
     }
 
     func testSearchPresentationPreservesCommittedCategory() {
@@ -461,6 +613,52 @@ final class PPMarketplaceDataViewTests: XCTestCase {
         XCTAssertEqual(domeLinePath.boundingRect.maxY, 100, accuracy: 0.1)
     }
 
+    func testMedicinesFilterStateContainsDepartmentAndCategoryGroups() {
+        let state = PPFilterConfigProvider.medicinesFilterState()
+        XCTAssertEqual(state.groups.count, 5)
+
+        let groupFilter = tryUnwrap(state.group(forID: PPFilterIDMedicineGroup))
+        XCTAssertEqual(groupFilter.options.count, 3)
+        XCTAssertEqual(groupFilter.options[0].value, PPFilterMedicineGroup.all.rawValue)
+        XCTAssertEqual(groupFilter.options[1].value, PPFilterMedicineGroup.veterinaryMedicines.rawValue)
+        XCTAssertEqual(groupFilter.options[2].value, PPFilterMedicineGroup.petCare.rawValue)
+
+        let catFilter = tryUnwrap(state.group(forID: PPFilterIDMedicineCategory))
+        XCTAssertEqual(catFilter.options.count, 23)
+        XCTAssertEqual(catFilter.options[0].value, 0)
+        XCTAssertEqual(catFilter.options[1].identifierValue, "med_antibiotics")
+        XCTAssertEqual(catFilter.options[13].identifierValue, "care_shampoo")
+    }
+
+    func testOtherSectionsDoNotContainMedicineFilters() {
+        let ads = PPFilterConfigProvider.defaultFilterState(for: .ads)
+        XCTAssertNil(ads.group(forID: PPFilterIDMedicineGroup))
+        XCTAssertNil(ads.group(forID: PPFilterIDMedicineCategory))
+
+        let accessories = PPFilterConfigProvider.defaultFilterState(for: .accessories)
+        XCTAssertNil(accessories.group(forID: PPFilterIDMedicineGroup))
+        XCTAssertNil(accessories.group(forID: PPFilterIDMedicineCategory))
+
+        let food = PPFilterConfigProvider.defaultFilterState(for: .food)
+        XCTAssertNil(food.group(forID: PPFilterIDMedicineGroup))
+        XCTAssertNil(food.group(forID: PPFilterIDMedicineCategory))
+
+        let services = PPFilterConfigProvider.defaultFilterState(for: .services)
+        XCTAssertNil(services.group(forID: PPFilterIDMedicineGroup))
+        XCTAssertNil(services.group(forID: PPFilterIDMedicineCategory))
+    }
+
+    private func makeEmptyAdsFixture() -> (
+        PPMarketplaceEmptyAdsTestBridge,
+        PPMarketplaceDataViewStore
+    ) {
+        let fixture = makeFixture()
+        let input = tryUnwrap(fixture.bridge.value(forKey: "input") as? PPDataViewInput)
+        let bridge = PPMarketplaceEmptyAdsTestBridge(input: input)
+        bridge.testViewModel.currentSection = .ads
+        return (bridge, PPMarketplaceDataViewStore(bridge: bridge))
+    }
+
     private func makeFixture() -> (
         bridge: PPMarketplaceDataViewBridge,
         viewModel: PPDataViewVM
@@ -526,5 +724,39 @@ final class PPMarketplaceDataViewTests: XCTestCase {
             fatalError("Missing test fixture value")
         }
         return value
+    }
+}
+
+/// Drives bridge callbacks without starting Firebase reads or persisting a
+/// section preference. The production VM still supplies the emptiness signal.
+private final class PPMarketplaceEmptyAdsTestBridge: PPMarketplaceDataViewBridge {
+    private(set) var switchedSections: [PPDataSection] = []
+
+    var testViewModel: PPDataViewVM {
+        value(forKey: "viewModel") as! PPDataViewVM
+    }
+
+    override func switchSection(_ section: PPDataSection) {
+        switchedSections.append(section)
+        testViewModel.currentSection = section
+        beginLoad()
+    }
+
+    override func switchSubKind(identifier: Int) {
+        testViewModel.currentSubKindID = identifier
+        beginLoad()
+    }
+
+    func completeLoad(section: PPDataSection, rawResults: [PetAd]) {
+        testViewModel.currentSection = section
+        testViewModel.setValue(rawResults, forKey: "latestRawResults")
+        testViewModel.setValue(false, forKey: "isLoading")
+        itemsDidChange?()
+    }
+
+    private func beginLoad() {
+        testViewModel.setValue(nil, forKey: "latestRawResults")
+        testViewModel.setValue(true, forKey: "isLoading")
+        itemsDidChange?()
     }
 }

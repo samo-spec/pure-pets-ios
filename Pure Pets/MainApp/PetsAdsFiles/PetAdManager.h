@@ -103,6 +103,11 @@ typedef NS_ENUM(NSInteger, PPItemInteractionType) {
 - (void)fetchAdsForMainKind:(MainKindsModel *)mainKind
                  subKindID:(NSInteger)subKindID
                  completion:(void (^)(NSArray<PetAd *> *ads))completion;
+/// Marketplace reads must distinguish an empty result from a failed read.
+/// Legacy array-only callers retain their existing empty-on-error behavior.
+- (void)fetchAdsForMainKind:(MainKindsModel *)mainKind
+                 subKindID:(NSInteger)subKindID
+          resultCompletion:(PetAdListCompletion)completion;
 - (void)uploadImagesFromUIImageArray:(NSArray<UIImage *> *)images
                                forAd:(PetAd *)ad
                           completion:(void (^)(PetAd *_Nullable updatedAd, NSError *_Nullable error))completion;
@@ -122,6 +127,7 @@ typedef NS_ENUM(NSInteger, PPItemInteractionType) {
                completion:(void (^)(NSArray<PetAd *> *ads))completion;
 
 - (void)fetchAdsForAllMainKinds:(void (^)(NSArray<PetAd *> *ads))completion;
+- (void)fetchAdsForAllMainKindsWithCompletion:(PetAdListCompletion)completion;
 - (void)populateMissingSearchTitleForExistingAds;
 @end
 

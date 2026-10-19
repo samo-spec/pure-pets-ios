@@ -24,6 +24,7 @@
 #import "PPHUD.h"
 #import "PPFunc.h"
 #import "PPPetCareVetCell.h"
+#import "PPMenuHelper.h"
  
 #import "PPPetCareViewerVC.h"
 #import "PPPetCareVetViewrVC.h"
@@ -37,9 +38,7 @@ typedef NS_ENUM(NSInteger, PPPetCareMedicineFilter) {
 
 typedef NS_ENUM(NSInteger, PPPetCareVetFilter) {
     PPPetCareVetFilterAll = 0,
-    PPPetCareVetFilterWithPhone,
-    PPPetCareVetFilterCompany,
-    PPPetCareVetFilterPersonal
+    PPPetCareVetFilterWithPhone
 };
 
 
@@ -65,12 +64,15 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 @property (nonatomic, assign) PPPetCareInitialSection selectedSection;
 @property (nonatomic, assign) PPPetCareMedicineFilter medicineFilter;
 @property (nonatomic, assign) PPPetCareVetFilter vetFilter;
+@property (nonatomic, assign) PPPetCareVetFilter clinicFilter;
 @property (nonatomic, strong, nullable) MainKindsModel *selectedMainKind;
 @property (nonatomic, copy) NSArray<MainKindsModel *> *mainKinds;
 @property (nonatomic, copy) NSArray<VetMedicineModel *> *allMedicines;
 @property (nonatomic, copy) NSArray<VetMedicineModel *> *filteredMedicines;
 @property (nonatomic, copy) NSArray<VetModel *> *allVets;
 @property (nonatomic, copy) NSArray<VetModel *> *filteredVets;
+@property (nonatomic, copy) NSArray<VetModel *> *filteredClinics;
+@property (nonatomic, copy, readonly) NSArray<VetModel *> *visibleVets;
 @property (nonatomic, strong) PPPetCareDiscoveryView *discoveryView;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UITextField *searchField;
@@ -79,6 +81,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 @property (nonatomic, copy) NSString *selectedMedicineID;
 @property (nonatomic, copy) NSString *medicineQuery;
 @property (nonatomic, copy) NSString *vetQuery;
+@property (nonatomic, copy) NSString *clinicQuery;
 @property (nonatomic, strong, nullable) NSError *medicineLoadError;
 @property (nonatomic, strong, nullable) NSError *vetLoadError;
 @property (nonatomic, assign) BOOL loadingMedicines;
@@ -88,10 +91,13 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 @property (nonatomic, assign) BOOL isOverridingIQKeyboardManager;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, assign) CGFloat lastLayoutWidth;
+@property (nonatomic, assign) BOOL openingProviderContact;
 - (void)pp_applyFiltersAndReload;
 - (void)pp_updateDiscoveryAnimated:(BOOL)animated;
 - (void)pp_layoutDiscovery;
 - (void)pp_loadSection:(PPPetCareInitialSection)section;
+- (PPPetCareVetFilter)pp_selectedProviderFilter;
+- (BOOL)pp_vet:(VetModel *)vet matchesQuery:(NSString *)query;
 - (void)pp_presentMedicineDetails:(VetMedicineModel *)medicine;
 - (void)pp_presentVetDetails:(VetModel *)vet;
 - (void)pp_openPetCareViewer:(UIViewController *)viewer;
@@ -108,15 +114,18 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 {
     self = [super initWithNibName:nil bundle:nil];
     if (!self) return nil;
-    _selectedSection = section;
+    _selectedSection = (section == PPPetCareInitialSectionVeterinarians || section == PPPetCareInitialSectionClinics)
+        ? section : PPPetCareInitialSectionMedicines;
     _selectedMainKind = mainKind;
     _mainKinds = @[];
     _allMedicines = @[];
     _filteredMedicines = @[];
     _allVets = @[];
     _filteredVets = @[];
+    _filteredClinics = @[];
     _medicineQuery = @"";
     _vetQuery = @"";
+    _clinicQuery = @"";
     return self;
 }
 
@@ -131,6 +140,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_appWillEnterForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_handleCartUpdated:) name:kCartUpdatedNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_reduceMotionStatusDidChange) name:UIAccessibilityReduceMotionStatusDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_languageDidChange) name:PPLanguageDidChangeNotification object:nil];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -144,11 +154,13 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     [self pp_setupNavigation];
     [self pp_updateLocalizedText];
     [self pp_updateCartBadge];
+    [self.discoveryView resumeCareAnimationIfNeeded];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    [self.discoveryView resumeCareAnimationIfNeeded];
     if (self.didAnimateEntrance) return;
     self.didAnimateEntrance = YES;
     if (UIAccessibilityIsReduceMotionEnabled()) return;
@@ -182,6 +194,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 {
     [super traitCollectionDidChange:previousTraitCollection];
     if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory] ||
+        self.traitCollection.legibilityWeight != previousTraitCollection.legibilityWeight ||
         [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         [self pp_updateLocalizedText];
         [self.collectionView.collectionViewLayout invalidateLayout];
@@ -189,10 +202,23 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     }
 }
 
+- (void)pp_languageDidChange
+{
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_updateLocalizedText];
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView reloadData];
+    });
+}
+
 - (void)pp_appWillEnterForeground
 {
     [self pp_loadFilters];
     [self pp_updateLocalizedText];
+    [self.discoveryView resumeCareAnimationIfNeeded];
 }
 
 - (void)pp_reduceMotionStatusDidChange
@@ -245,6 +271,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     [self.searchField addTarget:self action:@selector(pp_searchTextChanged:) forControlEvents:UIControlEventEditingChanged];
     [self.discoveryView.medicineButton addTarget:self action:@selector(pp_sectionTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self.discoveryView.vetsButton addTarget:self action:@selector(pp_sectionTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [self.discoveryView.clinicsButton addTarget:self action:@selector(pp_sectionTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self.discoveryView.primaryButton addTarget:self action:@selector(pp_recoverDiscovery) forControlEvents:UIControlEventTouchUpInside];
     [self.discoveryView.alternateButton addTarget:self action:@selector(pp_exploreOtherSection) forControlEvents:UIControlEventTouchUpInside];
     [self.discoveryView.refreshButton addTarget:self action:@selector(pp_refreshSelectedSection) forControlEvents:UIControlEventTouchUpInside];
@@ -299,7 +326,17 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 {
     BOOL medicine = self.selectedSection == PPPetCareInitialSectionMedicines;
     return self.selectedMainKind != nil || PPPetCareNormalizedText(self.searchField.text).length > 0 ||
-        (medicine ? self.medicineFilter != PPPetCareMedicineFilterAll : self.vetFilter != PPPetCareVetFilterAll);
+        (medicine ? self.medicineFilter != PPPetCareMedicineFilterAll : [self pp_selectedProviderFilter] != PPPetCareVetFilterAll);
+}
+
+- (NSArray<VetModel *> *)visibleVets
+{
+    return self.selectedSection == PPPetCareInitialSectionClinics ? self.filteredClinics : self.filteredVets;
+}
+
+- (PPPetCareVetFilter)pp_selectedProviderFilter
+{
+    return self.selectedSection == PPPetCareInitialSectionClinics ? self.clinicFilter : self.vetFilter;
 }
 
 - (void)pp_updateDiscoveryAnimated:(BOOL)animated
@@ -307,7 +344,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     BOOL medicine = self.selectedSection == PPPetCareInitialSectionMedicines;
     BOOL loading = medicine ? self.loadingMedicines : self.loadingVets;
     NSError *error = medicine ? self.medicineLoadError : self.vetLoadError;
-    NSUInteger count = medicine ? self.filteredMedicines.count : self.filteredVets.count;
+    NSUInteger count = medicine ? self.filteredMedicines.count : self.visibleVets.count;
     PPPetCareDiscoveryState state = PPPetCareDiscoveryStateResults;
     if (count > 0 && error) state = PPPetCareDiscoveryStateRetainedError;
     else if (count == 0 && loading) state = PPPetCareDiscoveryStateLoading;
@@ -315,11 +352,11 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     else if (count == 0) state = [self pp_hasSearchCriteria] ? PPPetCareDiscoveryStateNoMatches : PPPetCareDiscoveryStateEmpty;
     NSArray<NSString *> *filterKeys = medicine
         ? @[@"pet_care_filter_all", @"pet_care_filter_available", @"pet_care_filter_in_stock", @"pet_care_filter_new"]
-        : @[@"pet_care_filter_all", @"pet_care_filter_with_phone", @"pet_care_filter_clinics", @"pet_care_filter_doctors"];
-    NSInteger filter = medicine ? (NSInteger)self.medicineFilter : (NSInteger)self.vetFilter;
+        : @[@"pet_care_filter_all", @"pet_care_filter_with_phone"];
+    NSInteger filter = medicine ? (NSInteger)self.medicineFilter : (NSInteger)[self pp_selectedProviderFilter];
     NSString *filterName = filter > 0 && filter < filterKeys.count ? kLang(filterKeys[filter]) : nil;
     NSString *kindName = self.selectedMainKind ? [self pp_mainKindNameForID:self.selectedMainKind.ID] : nil;
-    [self.discoveryView configureForVeterinarians:!medicine kindName:kindName filterName:filterName count:count state:state loading:loading animated:animated];
+    [self.discoveryView configureForSection:self.selectedSection kindName:kindName filterName:filterName count:count state:state loading:loading animated:animated];
     [self pp_layoutDiscovery];
 }
 
@@ -365,26 +402,42 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 
 - (void)pp_installCartNavigationButton
 {
-    if (self.navCartButton && self.navigationItem.rightBarButtonItem.customView == self.navCartButton) {
+    if (self.navCartButton && (self.navigationItem.rightBarButtonItem.customView == self.navCartButton ||
+                               self.navigationItem.rightBarButtonItem.customView.subviews.firstObject == self.navCartButton)) {
         return;
     }
 
+    CGFloat buttonDimension = PPTouchTargetMin;
+    UIView *cartContainer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, buttonDimension, buttonDimension)];
+    cartContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    cartContainer.clipsToBounds = NO;
+    [cartContainer.widthAnchor constraintEqualToConstant:buttonDimension].active = YES;
+    [cartContainer.heightAnchor constraintEqualToConstant:buttonDimension].active = YES;
+
     UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    cartNavBtn.translatesAutoresizingMaskIntoConstraints = NO;
     [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
     [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
     cartNavBtn.accessibilityLabel = PPPetCareLocalized(@"Cart", @"Cart");
     cartNavBtn.accessibilityIdentifier = @"petCare.cart";
-    [cartNavBtn.widthAnchor constraintEqualToConstant:PPTouchTargetMin].active = YES;
-    [cartNavBtn.heightAnchor constraintEqualToConstant:PPTouchTargetMin].active = YES;
+    cartNavBtn.backgroundColor = AppForgroundColr;
+    cartNavBtn.tintColor = AppPrimaryClr;
+    cartNavBtn.layer.cornerRadius = buttonDimension / 2.0;
+    cartNavBtn.clipsToBounds = NO;
 
-    if (!PPIOS26()) {
-        cartNavBtn.backgroundColor = AppForgroundColr;
-        cartNavBtn.layer.cornerRadius = 22.0;
-        cartNavBtn.clipsToBounds = NO;
-    }
+    [cartContainer addSubview:cartNavBtn];
+    [NSLayoutConstraint activateConstraints:@[
+        [cartNavBtn.leadingAnchor constraintEqualToAnchor:cartContainer.leadingAnchor],
+        [cartNavBtn.trailingAnchor constraintEqualToAnchor:cartContainer.trailingAnchor],
+        [cartNavBtn.topAnchor constraintEqualToAnchor:cartContainer.topAnchor],
+        [cartNavBtn.bottomAnchor constraintEqualToAnchor:cartContainer.bottomAnchor],
+        [cartNavBtn.widthAnchor constraintEqualToConstant:buttonDimension],
+        [cartNavBtn.heightAnchor constraintEqualToConstant:buttonDimension],
+        [cartNavBtn.widthAnchor constraintEqualToAnchor:cartNavBtn.heightAnchor]
+    ]];
 
     self.navCartButton = cartNavBtn;
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartNavBtn];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartContainer];
     [self pp_updateCartBadge];
 }
 
@@ -487,6 +540,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
             [weakSelf pp_updateFilterMenu];
         }];
         allKindAction.state = self.selectedMainKind == nil ? UIMenuElementStateOn : UIMenuElementStateOff;
+        [PPMenuHelper applyFontPatternToAction:allKindAction];
         [kindActions addObject:allKindAction];
 
         for (MainKindsModel *kind in self.mainKinds) {
@@ -497,6 +551,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
                 [weakSelf pp_updateFilterMenu];
             }];
             action.state = (self.selectedMainKind && self.selectedMainKind.ID == kind.ID) ? UIMenuElementStateOn : UIMenuElementStateOff;
+            [PPMenuHelper applyFontPatternToAction:action];
             [kindActions addObject:action];
         }
 
@@ -512,20 +567,22 @@ static NSString *PPPetCareNormalizedText(NSString *value)
             ]
             : @[
                 @{@"title": PPPetCareLocalized(@"pet_care_filter_all", @"All"), @"tag": @(PPPetCareVetFilterAll)},
-                @{@"title": PPPetCareLocalized(@"pet_care_filter_with_phone", @"Contact ready"), @"tag": @(PPPetCareVetFilterWithPhone)},
-                @{@"title": PPPetCareLocalized(@"pet_care_filter_clinics", @"Clinics"), @"tag": @(PPPetCareVetFilterCompany)},
-                @{@"title": PPPetCareLocalized(@"pet_care_filter_doctors", @"Doctors"), @"tag": @(PPPetCareVetFilterPersonal)}
+                @{@"title": PPPetCareLocalized(@"pet_care_filter_with_phone", @"Contact ready"), @"tag": @(PPPetCareVetFilterWithPhone)}
             ];
 
+        PPPetCareInitialSection menuSection = self.selectedSection;
         for (NSDictionary *item in items) {
             NSInteger tag = [item[@"tag"] integerValue];
             BOOL isSelected = self.selectedSection == PPPetCareInitialSectionMedicines
                 ? tag == self.medicineFilter
-                : tag == self.vetFilter;
+                : tag == [self pp_selectedProviderFilter];
 
             UIAction *action = [UIAction actionWithTitle:item[@"title"] image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
+                if (!weakSelf || weakSelf.selectedSection != menuSection) return;
                 if (weakSelf.selectedSection == PPPetCareInitialSectionMedicines) {
                     weakSelf.medicineFilter = (PPPetCareMedicineFilter)tag;
+                } else if (weakSelf.selectedSection == PPPetCareInitialSectionClinics) {
+                    weakSelf.clinicFilter = (PPPetCareVetFilter)tag;
                 } else {
                     weakSelf.vetFilter = (PPPetCareVetFilter)tag;
                 }
@@ -533,14 +590,20 @@ static NSString *PPPetCareNormalizedText(NSString *value)
                 [weakSelf pp_updateFilterMenu];
             }];
             action.state = isSelected ? UIMenuElementStateOn : UIMenuElementStateOff;
+            [PPMenuHelper applyFontPatternToAction:action];
             [modeActions addObject:action];
         }
 
         UIMenu *modeMenu = [UIMenu menuWithTitle:PPPetCareLocalized(@"pet_care_filter_by", @"Filter By") image:[UIImage systemImageNamed:@"line.3.horizontal.decrease"] identifier:nil options:0 children:modeActions];
 
         UIMenu *mainMenu = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[kindMenu, modeMenu]];
+        [PPMenuHelper applyFontPatternToMenu:kindMenu];
+        [PPMenuHelper applyFontPatternToMenu:modeMenu];
+        [PPMenuHelper applyFontPatternToMenu:mainMenu];
+
         self.filterButton.menu = mainMenu;
         self.discoveryView.kindButton.menu = kindMenu;
+        self.discoveryView.filterButton.menu = modeMenu;
     }
 }
 
@@ -555,7 +618,8 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 - (void)pp_loadSection:(PPPetCareInitialSection)section
 {
     BOOL medicines = section == PPPetCareInitialSectionMedicines;
-    // Refresh and retry share one request per section; switching tabs never starts duplicates.
+    // Doctors and clinics share the veterinarian directory, request, and recovery state.
+    // Refresh and retry coalesce; switching tabs never starts duplicate requests.
     if (medicines ? self.loadingMedicines : self.loadingVets) return;
     if (medicines) {
         self.loadingMedicines = YES;
@@ -575,7 +639,13 @@ static NSString *PPPetCareNormalizedText(NSString *value)
                 self.medicineLoadError = error;
                 // A refresh failure preserves the last successful result and explains its state.
                 if (!error) {
-                    self.allMedicines = [(items ?: @[]) sortedArrayUsingComparator:^NSComparisonResult(VetMedicineModel *a, VetMedicineModel *b) {
+                    NSMutableArray<VetMedicineModel *> *onlyMedicines = [NSMutableArray array];
+                    for (VetMedicineModel *m in (items ?: @[])) {
+                        if (![m isCareProduct]) {
+                            [onlyMedicines addObject:m];
+                        }
+                    }
+                    self.allMedicines = [onlyMedicines sortedArrayUsingComparator:^NSComparisonResult(VetMedicineModel *a, VetMedicineModel *b) {
                         return [PPPetCareSafeString(a.title) localizedCaseInsensitiveCompare:PPPetCareSafeString(b.title)];
                     }];
                 }
@@ -621,6 +691,9 @@ static NSString *PPPetCareNormalizedText(NSString *value)
         if (self.selectedSection == PPPetCareInitialSectionMedicines) {
             self.medicineQuery = @"";
             self.medicineFilter = PPPetCareMedicineFilterAll;
+        } else if (self.selectedSection == PPPetCareInitialSectionClinics) {
+            self.clinicQuery = @"";
+            self.clinicFilter = PPPetCareVetFilterAll;
         } else {
             self.vetQuery = @"";
             self.vetFilter = PPPetCareVetFilterAll;
@@ -636,21 +709,26 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 
 - (void)pp_exploreOtherSection
 {
-    [self pp_selectSection:self.selectedSection == PPPetCareInitialSectionMedicines ? PPPetCareInitialSectionVeterinarians : PPPetCareInitialSectionMedicines];
+    PPPetCareInitialSection destination = self.selectedSection == PPPetCareInitialSectionVeterinarians
+        ? PPPetCareInitialSectionMedicines : PPPetCareInitialSectionVeterinarians;
+    [self pp_selectSection:destination];
     UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, self.selectedSection == PPPetCareInitialSectionMedicines ? self.discoveryView.medicineButton : self.discoveryView.vetsButton);
 }
 
 - (void)pp_sectionTapped:(UIButton *)sender
 {
-    [self pp_selectSection:sender.tag == 1 ? PPPetCareInitialSectionVeterinarians : PPPetCareInitialSectionMedicines];
+    if (sender.tag < PPPetCareInitialSectionMedicines || sender.tag > PPPetCareInitialSectionClinics) return;
+    [self pp_selectSection:(PPPetCareInitialSection)sender.tag];
 }
 
 - (void)pp_selectSection:(PPPetCareInitialSection)section
 {
+    if (section < PPPetCareInitialSectionMedicines || section > PPPetCareInitialSectionClinics) return;
     if (section == self.selectedSection) return;
     [self.searchField resignFirstResponder];
     self.selectedSection = section;
-    self.searchField.text = section == PPPetCareInitialSectionMedicines ? self.medicineQuery : self.vetQuery;
+    self.searchField.text = section == PPPetCareInitialSectionMedicines
+        ? self.medicineQuery : (section == PPPetCareInitialSectionClinics ? self.clinicQuery : self.vetQuery);
     [self.collectionView.refreshControl endRefreshing];
     // Update selection before reloading; the persistent header owns the only tab animation.
     [self pp_updateDiscoveryAnimated:YES];
@@ -664,6 +742,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 - (void)pp_searchTextChanged:(UITextField *)textField
 {
     if (self.selectedSection == PPPetCareInitialSectionMedicines) self.medicineQuery = textField.text ?: @"";
+    else if (self.selectedSection == PPPetCareInitialSectionClinics) self.clinicQuery = textField.text ?: @"";
     else self.vetQuery = textField.text ?: @"";
     [self pp_applyFiltersAndReload];
 }
@@ -684,10 +763,14 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 {
     NSString *medicineQuery = PPPetCareNormalizedText(self.medicineQuery);
     NSString *vetQuery = PPPetCareNormalizedText(self.vetQuery);
+    NSString *clinicQuery = PPPetCareNormalizedText(self.clinicQuery);
     NSInteger kindID = self.selectedMainKind ? self.selectedMainKind.ID : 0;
 
     NSMutableArray<VetMedicineModel *> *medicines = [NSMutableArray array];
     for (VetMedicineModel *item in self.allMedicines) {
+        if ([item isCareProduct]) {
+            continue;
+        }
         if (kindID > 0 && ![self pp_animalTypes:item.animalTypes matchMainKind:self.selectedMainKind]) {
             continue;
         }
@@ -707,27 +790,42 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     self.filteredMedicines = medicines.copy;
 
     NSMutableArray<VetModel *> *vets = [NSMutableArray array];
+    NSMutableArray<VetModel *> *clinics = [NSMutableArray array];
     for (VetModel *vet in self.allVets) {
         if (kindID > 0 && ![self pp_vet:vet matchesMainKind:self.selectedMainKind]) {
             continue;
         }
-        if (![self pp_vet:vet matchesFilter:self.vetFilter]) {
-            continue;
+        // Provider identity belongs to the tab and cannot be cleared by a filter.
+        if (vet.type == VetTypePersonal && [self pp_vet:vet matchesFilter:self.vetFilter] &&
+            [self pp_vet:vet matchesQuery:vetQuery]) {
+            [vets addObject:vet];
         }
-        if (vetQuery.length > 0) {
-            NSString *haystack = PPPetCareNormalizedText([@[PPPetCareSafeString(vet.title),
-                                                           PPPetCareSafeString(vet.name_lowercase)]
-                                                         componentsJoinedByString:@" "]);
-            if (![haystack containsString:vetQuery]) {
-                continue;
-            }
+        if (vet.type == VetTypeCompany && [self pp_vet:vet matchesFilter:self.clinicFilter] &&
+            [self pp_vet:vet matchesQuery:clinicQuery]) {
+            [clinics addObject:vet];
         }
-        [vets addObject:vet];
     }
     self.filteredVets = vets.copy;
+    self.filteredClinics = clinics.copy;
 
     [self.collectionView reloadData];
     [self pp_updateDiscoveryAnimated:NO];
+}
+
+- (BOOL)pp_vet:(VetModel *)vet matchesQuery:(NSString *)query
+{
+    if (query.length == 0) return YES;
+    NSMutableArray<NSString *> *searchParts = [NSMutableArray array];
+    if (vet.title.length > 0) [searchParts addObject:vet.title];
+    if (vet.name_lowercase.length > 0) [searchParts addObject:vet.name_lowercase];
+    if (vet.cityName.length > 0) [searchParts addObject:vet.cityName];
+    if (vet.address.length > 0) [searchParts addObject:vet.address];
+    if (vet.licenseNumber.length > 0) [searchParts addObject:vet.licenseNumber];
+    if (vet.workingHours.length > 0) [searchParts addObject:vet.workingHours];
+    if (vet.workingAreas.count > 0) [searchParts addObjectsFromArray:vet.workingAreas];
+    if (vet.animalTypes.count > 0) [searchParts addObjectsFromArray:vet.animalTypes];
+    NSString *haystack = PPPetCareNormalizedText([searchParts componentsJoinedByString:@" "]);
+    return [haystack containsString:query];
 }
 
 - (BOOL)pp_medicine:(VetMedicineModel *)medicine matchesFilter:(PPPetCareMedicineFilter)filter
@@ -741,10 +839,13 @@ static NSString *PPPetCareNormalizedText(NSString *value)
         case PPPetCareMedicineFilterInStock:
             return medicine.stockQuantity > 0;
         case PPPetCareMedicineFilterNew:
+            if (medicine.isNew) {
+                return YES;
+            }
             if (!medicine.createdAt) {
                 return YES;
             }
-            return [medicine.createdAt timeIntervalSinceNow] >= -(14.0 * 24.0 * 60.0 * 60.0);
+            return [medicine.createdAt timeIntervalSinceNow] >= -(30.0 * 24.0 * 60.0 * 60.0);
         case PPPetCareMedicineFilterAll:
         default:
             return YES;
@@ -761,11 +862,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     }
     switch (filter) {
         case PPPetCareVetFilterWithPhone:
-            return vet.readyToContact || vet.phone.length > 0 || vet.whatsapp.length > 0;
-        case PPPetCareVetFilterCompany:
-            return vet.type == VetTypeCompany;
-        case PPPetCareVetFilterPersonal:
-            return vet.type == VetTypePersonal;
+            return [PPVetContactRouting callURLWithPhone:vet.phone ?: @"" whatsapp:vet.whatsapp ?: @""] != nil;
         case PPPetCareVetFilterAll:
         default:
             return YES;
@@ -824,11 +921,19 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     if (!mainKind) {
         return YES;
     }
+    if (vet.supportedKindIDs.count > 0) {
+        for (NSNumber *kindID in vet.supportedKindIDs) {
+            if (kindID.integerValue == mainKind.ID) {
+                return YES;
+            }
+        }
+    }
     if (vet.animalTypes.count > 0) {
         return [self pp_animalTypes:vet.animalTypes matchMainKind:mainKind];
     }
     return vet.petMainKindID == mainKind.ID;
 }
+
 
 #pragma mark - Collection
 
@@ -837,7 +942,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     if (self.selectedSection == PPPetCareInitialSectionMedicines) {
         return self.filteredMedicines.count;
     }
-    return self.filteredVets.count;
+    return self.visibleVets.count;
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
@@ -880,8 +985,8 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 
     PPPetCareVetCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPPetCareVetCell.reuseIdentifier
                                                                        forIndexPath:indexPath];
-    if (indexPath.item < self.filteredVets.count) {
-        VetModel *vet = self.filteredVets[indexPath.item];
+    if (indexPath.item < self.visibleVets.count) {
+        VetModel *vet = self.visibleVets[indexPath.item];
         [cell configureWithVet:vet mainKindName:[self pp_mainKindNameForID:vet.petMainKindID]];
         __weak typeof(self) weakSelf = self;
         cell.onDetailsTap = ^{
@@ -934,18 +1039,27 @@ static NSString *PPPetCareNormalizedText(NSString *value)
         CGFloat imageHeight = MIN(220, MAX(128, itemWidth * 0.72));
         return CGSizeMake(itemWidth, ceil(imageHeight + informationHeight));
     }
-    if (PPPetCareUsesAccessibilityLayout(self.traitCollection)) {
-        if (indexPath.item < self.filteredVets.count) {
-            VetModel *vet = self.filteredVets[indexPath.item];
-            CGFloat measuredHeight = [PPPetCareVetCell preferredHeightForVet:vet
-                                                                 mainKindName:[self pp_mainKindNameForID:vet.petMainKindID]
-                                                                        width:available
-                                                              traitCollection:self.traitCollection];
-            return CGSizeMake(available, measuredHeight);
-        }
-        return CGSizeMake(available, 420.0);
+    if (indexPath.item < self.visibleVets.count) {
+        VetModel *vet = self.visibleVets[indexPath.item];
+        CGFloat measuredHeight = [PPPetCareVetCell preferredHeightForVet:vet
+                                                             mainKindName:[self pp_mainKindNameForID:vet.petMainKindID]
+                                                                    width:available
+                                                          traitCollection:self.traitCollection];
+        return CGSizeMake(available, measuredHeight);
     }
-    return CGSizeMake(available, 208.0);
+    return CGSizeMake(available, 400.0);
+}
+
+- (BOOL)collectionView:(UICollectionView *)collectionView shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    // Provider information and actions have their own SwiftUI hit regions.
+    // UIKit selection must never open Details while a contact button is used.
+    return self.selectedSection == PPPetCareInitialSectionMedicines;
+}
+
+- (BOOL)collectionView:(UICollectionView *)collectionView shouldHighlightItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    return self.selectedSection == PPPetCareInitialSectionMedicines;
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
@@ -956,8 +1070,8 @@ static NSString *PPPetCareNormalizedText(NSString *value)
         }
         return;
     } else {
-        if (indexPath.item < self.filteredVets.count) {
-            [self pp_openObject:self.filteredVets[indexPath.item]];
+        if (indexPath.item < self.visibleVets.count) {
+            [self pp_openObject:self.visibleVets[indexPath.item]];
         }
     }
 }
@@ -1323,60 +1437,43 @@ presentingViewController:self
 
 - (void)pp_callVet:(VetModel *)vet
 {
-    NSString *rawPhone = vet.phone.length > 0 ? vet.phone : vet.whatsapp;
-    if (rawPhone.length == 0) {
-        return;
-    }
-
-    NSMutableString *clean = [NSMutableString string];
-    NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"+0123456789"];
-    for (NSUInteger idx = 0; idx < rawPhone.length; idx++) {
-        unichar ch = [rawPhone characterAtIndex:idx];
-        if ([allowed characterIsMember:ch]) {
-            [clean appendFormat:@"%C", ch];
-        }
-    }
-    if (clean.length == 0) {
-        return;
-    }
-
-    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"telprompt:%@", clean]];
-    if (!url) {
-        return;
-    }
-    UIApplication *application = UIApplication.sharedApplication;
-    if ([application canOpenURL:url]) {
-        [application openURL:url options:@{} completionHandler:nil];
-    }
+    if (![PPVetContactRouting isContactAllowedWithStatus:vet.verificationStatus ?: @"" disabled:vet.isDisabled]) return;
+    [self pp_openProviderContactURL:[PPVetContactRouting callURLWithPhone:vet.phone ?: @""
+                                                                whatsapp:vet.whatsapp ?: @""]];
 }
 
 - (void)pp_openWhatsAppForVet:(VetModel *)vet
 {
-    NSString *rawPhone = vet.whatsapp.length > 0 ? vet.whatsapp : vet.phone;
-    if (rawPhone.length == 0) {
-        return;
-    }
+    if (![PPVetContactRouting isContactAllowedWithStatus:vet.verificationStatus ?: @"" disabled:vet.isDisabled]) return;
+    [self pp_openProviderContactURL:[PPVetContactRouting whatsAppURLWithPhone:vet.phone ?: @""
+                                                                    whatsapp:vet.whatsapp ?: @""]];
+}
 
-    NSMutableString *clean = [NSMutableString string];
-    NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"0123456789"];
-    for (NSUInteger idx = 0; idx < rawPhone.length; idx++) {
-        unichar ch = [rawPhone characterAtIndex:idx];
-        if ([allowed characterIsMember:ch]) {
-            [clean appendFormat:@"%C", ch];
-        }
-    }
-    if (clean.length == 0) {
+- (void)pp_openProviderContactURL:(NSURL *)url
+{
+    if (self.openingProviderContact || self.presentedViewController) return;
+    if (!url || ![UIApplication.sharedApplication canOpenURL:url]) {
+        [self pp_showProviderContactError];
         return;
     }
+    self.openingProviderContact = YES;
+    __weak typeof(self) weakSelf = self;
+    [UIApplication.sharedApplication openURL:url options:@{} completionHandler:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            self.openingProviderContact = NO;
+            if (!success && self.viewIfLoaded.window) [self pp_showProviderContactError];
+        });
+    }];
+}
 
-    NSURL *url = [NSURL URLWithString:[NSString stringWithFormat:@"https://wa.me/%@", clean]];
-    if (!url) {
-        return;
-    }
-    UIApplication *application = UIApplication.sharedApplication;
-    if ([application canOpenURL:url]) {
-        [application openURL:url options:@{} completionHandler:nil];
-    }
+- (void)pp_showProviderContactError
+{
+    if (self.presentedViewController) return;
+    [PPAlertHelper showWarningIn:self
+                          title:[PPVetDetailLocalization textForKey:@"vet_detail_contact_error_title"]
+                       subtitle:[PPVetDetailLocalization textForKey:@"vet_card_contact_error_body"]];
 }
 
 - (NSString *)pp_mainKindNameForID:(NSInteger)kindID

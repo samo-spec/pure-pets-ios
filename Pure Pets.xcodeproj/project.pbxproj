@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D70719100000000000000001 /* VetDetails.strings in Resources */ = {isa = PBXBuildFile; fileRef = D70719100000000000000002 /* VetDetails.strings */; };
+		D70719000000000000000002 /* PPVetViewerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70719000000000000000001 /* PPVetViewerTests.swift */; };
 		020973329FED4C5E282FFD6C /* NovaSpeechSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */; };
 		084CF1F2B02DD8B39A84295C /* NovaVoicePermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */; };
 		1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A83DC70A7020B60DBD910AC /* ChatBarView.swift */; };
@@ -901,6 +903,7 @@
 		F33000000000000000000001 /* HomePetPulse.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000001 /* HomePetPulse.json */; };
 		F33000000000000000000002 /* HomeCareReminder.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000002 /* HomeCareReminder.json */; };
 		F33000000000000000000003 /* HomePromotionSpark.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000003 /* HomePromotionSpark.json */; };
+		F33000000000000000000004 /* ecg1.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000004 /* ecg1.json */; };
 		F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
 		FA11E7C0A1B2C3D4E5F60002 /* HomeHeroV2View.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA11E7C0A1B2C3D4E5F60001 /* HomeHeroV2View.swift */; };
@@ -948,6 +951,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		D70719100000000000000003 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/VetDetails.strings; sourceTree = "<group>"; };
+		D70719100000000000000004 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/VetDetails.strings; sourceTree = "<group>"; };
+		D70719000000000000000001 /* PPVetViewerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPVetViewerTests.swift; sourceTree = "<group>"; };
 		0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileManager.m; sourceTree = "<group>"; };
 		05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
@@ -2440,6 +2446,7 @@
 		F34000000000000000000001 /* HomePetPulse.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomePetPulse.json; sourceTree = "<group>"; };
 		F34000000000000000000002 /* HomeCareReminder.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomeCareReminder.json; sourceTree = "<group>"; };
 		F34000000000000000000003 /* HomePromotionSpark.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomePromotionSpark.json; sourceTree = "<group>"; };
+		F34000000000000000000004 /* ecg1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ecg1.json; sourceTree = "<group>"; };
 		F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeSwiftUIMigrationTests.swift; sourceTree = "<group>"; };
 		F56AEC9C060B7F98E8DD47E0 /* Speech.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoicePermissionManager.swift; sourceTree = "<group>"; };
@@ -4841,6 +4848,7 @@
 				F24C02712D2AD59100A9F61F /* GM.h */,
 				F24C02722D2AD59100A9F61F /* GM.m */,
 				F2EC65622D32432B004A58BD /* Localizable.strings */,
+				D70719100000000000000002 /* VetDetails.strings */,
 				F20D112A2D376E4D00F8F0A5 /* ColorsAssets.xcassets */,
 				F2C2FE082D44535E00BB8828 /* PrefixHeader.pch */,
 				F2C223C22F061B75006DB76A /* EnumValues.h */,
@@ -4853,6 +4861,7 @@
 			isa = PBXGroup;
 			children = (
 				F2D0C5F42C4BE1BB0023CE53 /* Pure_PetsTests.m */,
+				D70719000000000000000001 /* PPVetViewerTests.swift */,
 				A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */,
 				F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */,
 				C1A0000000000000000000C1 /* PPHomePresentationResolverTests.swift */,
@@ -5294,6 +5303,7 @@
 				F34000000000000000000001 /* HomePetPulse.json */,
 				F34000000000000000000002 /* HomeCareReminder.json */,
 				F34000000000000000000003 /* HomePromotionSpark.json */,
+				F34000000000000000000004 /* ecg1.json */,
 				A11CE0012FEA000000000001 /* Profile.lottie */,
 				F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */,
 				F2F25BD52FC146070006BDF7 /* NovaTyping.json */,
@@ -5450,6 +5460,7 @@
 				F33000000000000000000001 /* HomePetPulse.json in Resources */,
 				F33000000000000000000002 /* HomeCareReminder.json in Resources */,
 				F33000000000000000000003 /* HomePromotionSpark.json in Resources */,
+				F33000000000000000000004 /* ecg1.json in Resources */,
 				F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */,
 				F2ACA9F8301A93C000F55032 /* PetMedicine.json in Resources */,
 				F2ACA9FA301A93C000F55032 /* thinking.json in Resources */,
@@ -5480,6 +5491,7 @@
 				F2A7E6BA2FF722F800BDC981 /* README.md in Resources */,
 				F20D112B2D376E4D00F8F0A5 /* ColorsAssets.xcassets in Resources */,
 				F2EC65642D32432B004A58BD /* Localizable.strings in Resources */,
+				D70719100000000000000001 /* VetDetails.strings in Resources */,
 				F2CDB0A92DCCB0AA0009E210 /* AppAssets.xcassets in Resources */,
 				F24C035E2D2C2D6E00A9F61F /* PYSearch.bundle in Resources */,
 				F2AEC14E2D6E821200B55427 /* CardsCell.xib in Resources */,
@@ -6414,6 +6426,7 @@
 				F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */,
 				F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */,
 				F2D0C5F52C4BE1BB0023CE53 /* Pure_PetsTests.m in Sources */,
+				D70719000000000000000002 /* PPVetViewerTests.swift in Sources */,
 				A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */,
 				F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */,
 				C1A0000000000000000000C2 /* PPHomePresentationResolverTests.swift in Sources */,
@@ -6446,6 +6459,15 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		D70719100000000000000002 /* VetDetails.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				D70719100000000000000003 /* en */,
+				D70719100000000000000004 /* ar */,
+			);
+			name = VetDetails.strings;
+			sourceTree = "<group>";
+		};
 		F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -6612,7 +6634,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 242;
+				CURRENT_PROJECT_VERSION = 243;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6665,7 +6687,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.2.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -6721,7 +6743,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets Release.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 242;
+				CURRENT_PROJECT_VERSION = 243;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6777,7 +6799,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.1;
+				MARKETING_VERSION = 1.2.0;
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -6827,7 +6849,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 242;
+				CURRENT_PROJECT_VERSION = 243;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
@@ -6845,7 +6867,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 242;
+				CURRENT_PROJECT_VERSION = 243;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
@@ -6862,7 +6884,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 242;
+				CURRENT_PROJECT_VERSION = 243;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";
@@ -6879,7 +6901,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 242;
+				CURRENT_PROJECT_VERSION = 243;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = "$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)";

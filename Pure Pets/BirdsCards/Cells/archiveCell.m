@@ -22,41 +22,22 @@
 }
 
 - (IBAction)DelBTN:(id)sender {
-    
-    
-    FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-    configuration.menuRowHeight = 30;
-    configuration.backgroundColor =[GM appPrimaryColor];
-    configuration.menuWidth = 120;
-    configuration.textColor = [UIColor whiteColor];
-    configuration.textFont =[GM MidFontWithSize:14];
-    configuration.borderColor = [UIColor blackColor];
-    configuration.borderWidth = 0.1;
-    configuration.textAlignment = NSTextAlignmentCenter;
-    configuration.ignoreImageOriginalColor = YES;// set 'ignoreImageOriginalColor' to YES, images color will be same as textColor
-    configuration.allowRoundedArrow = YES;
+    NSArray *titles = @[kLang(@"editarchive"), kLang(@"deletearchive"), kLang(@"craeteQrCode")];
+    NSArray *icons = @[
+        [UIImage systemImageNamed:@"pencil"] ?: [UIImage new],
+        [UIImage systemImageNamed:@"trash"] ?: [UIImage new],
+        [UIImage systemImageNamed:@"barcode.viewfinder"] ?: [UIImage new]
+    ];
+    NSIndexSet *destructive = [NSIndexSet indexSetWithIndex:1];
 
-
-//@[[UIImage imageNamed:@"eye"],[UIImage imageNamed:@"giving"],[UIImage imageNamed:@"bribery"]]
-[FTPopOverMenu showForSender:sender
-               withMenuArray:@[@"تعديل اسم الارشيف", @"حذف الارشيف"]
-                  imageArray:nil
-               configuration:configuration
-                   doneBlock:^(NSInteger selectedIndex) {
-                       // // NSLog(@"done block. do something. selectedIndex : %ld", (long)selectedIndex);
-  
-    [self.delegate deleteEditArchiveOptions:selectedIndex ArchiveData:self.archiveData cellView:self.contentView cellIndexPath:self.cellIndexPath];
-                   } dismissBlock:^{
-                       
-                       // // NSLog(@"user canceled. do nothing.");
-                       
-//                           FTPopOverMenuConfiguration *configuration = [FTPopOverMenuConfiguration defaultConfiguration];
-//                           configuration.allowRoundedArrow = !configuration.allowRoundedArrow;
-                       
-                   }];
-    
-    
-    
+    UIButton *btn = [sender isKindOfClass:[UIButton class]] ? (UIButton *)sender : self.delBTN;
+    [PPMenuHelper presentMenuFromButton:btn
+                                 titles:titles
+                                 images:icons
+                           destructive:destructive
+                               handler:^(NSInteger index, NSString *title) {
+        [self.delegate deleteEditArchiveOptions:index ArchiveData:self.archiveData cellView:self.contentView cellIndexPath:self.cellIndexPath];
+    }];
 }
 
 - (IBAction)delChildBTN:(id)sender {

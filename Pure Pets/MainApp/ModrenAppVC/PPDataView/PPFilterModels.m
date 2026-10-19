@@ -17,6 +17,8 @@ NSString * const PPFilterIDPrice       = @"price";
 NSString * const PPFilterIDSort        = @"sort";
 NSString * const PPFilterIDHasOffer    = @"hasOffer";
 NSString * const PPFilterIDAvailability = @"availability";
+NSString * const PPFilterIDMedicineGroup = @"medicineGroup";
+NSString * const PPFilterIDMedicineCategory = @"medicineCategory";
 
 static NSString *PPFilterL(NSString *english, NSString *arabic) {
     return Language.isRTL ? arabic : english;
@@ -378,6 +380,57 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 
 + (PPFilterState *)pp_medicinesFilterState
 {
+    PPFilterGroup *group = [PPFilterGroup
+        groupWithID:PPFilterIDMedicineGroup
+              title:PPFilterL(@"Department", @"القسم")
+           chipIcon:@"cross.case.fill"
+            options:@[
+                [PPFilterOption optionWithTitle:PPFilterL(@"All Products", @"جميع المنتجات")
+                                          value:PPFilterMedicineGroupAll
+                                identifierValue:@"all"
+                                           icon:@"square.grid.2x2"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Veterinary Medicines", @"أدوية بيطرية")
+                                          value:PPFilterMedicineGroupVeterinaryMedicines
+                                identifierValue:@"medicines"
+                                           icon:@"cross.vial.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Pet Care & Hygiene", @"عناية ونظافة")
+                                          value:PPFilterMedicineGroupPetCare
+                                identifierValue:@"care"
+                                           icon:@"sparkles"],
+            ]];
+
+    PPFilterGroup *category = [PPFilterGroup
+        groupWithID:PPFilterIDMedicineCategory
+              title:PPFilterL(@"Category", @"التصنيف")
+           chipIcon:@"square.grid.2x2"
+            options:@[
+                [PPFilterOption optionWithTitle:PPFilterL(@"All Categories", @"كل التصنيفات") value:0 identifierValue:@"" icon:@"square.grid.2x2"],
+                // 12 Canonical Veterinary Medicines
+                [PPFilterOption optionWithTitle:PPFilterL(@"Antibiotics & Antimicrobial", @"مضادات حيوية وميكروبية") value:1 identifierValue:@"med_antibiotics" icon:@"cross.vial.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Parasiticides & Dewormers", @"مضادات الطفيليات والديدان") value:2 identifierValue:@"med_dewormers" icon:@"shield.lefthalf.filled"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Flea, Tick & Pest Control", @"علاجات القراد والبراغيث والحشرات") value:3 identifierValue:@"med_flea_tick" icon:@"ant.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Vitamins & Supplements", @"فيتامينات ومكملات غذائية بيطرية") value:4 identifierValue:@"med_vitamins" icon:@"leaf.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Pain Relief & Anti-Inflammatory", @"مسكنات ومضادات التهاب ومفاصل") value:5 identifierValue:@"med_anti_inflammatory" icon:@"bandage.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Digestive & Gastrointestinal Care", @"علاجات الجهاز الهضمي والديدان") value:6 identifierValue:@"med_digestive" icon:@"heart.text.square.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Eye & Ear Medical Drops", @"قطرات ومراهم العيون والأذن") value:7 identifierValue:@"med_eyes_ears" icon:@"eye.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Dermatology & Antifungal Care", @"علاجات الجلد والفطريات والحساسية") value:8 identifierValue:@"med_dermatology" icon:@"hand.raised.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Respiratory Treatments", @"علاجات تنفسية ورئوية") value:9 identifierValue:@"med_respiratory" icon:@"wind"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Antiseptics & First Aid", @"مطهرات وجروح وإسعافات أولية") value:10 identifierValue:@"med_antiseptic" icon:@"cross.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Calming & Stress Relief", @"مهدئات وتخفيف التوتر والسفر") value:11 identifierValue:@"med_calming" icon:@"moon.stars.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"General Medicines", @"أدوية ومستحضرات بيطرية عامة") value:12 identifierValue:@"med_general" icon:@"pills.fill"],
+                // 10 Canonical Pet Care & Hygiene
+                [PPFilterOption optionWithTitle:PPFilterL(@"Shampoo, Conditioners & Washes", @"شامبو وبلسم واستحمام") value:13 identifierValue:@"care_shampoo" icon:@"drop.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Oral Care & Dental Hygiene", @"نظافة الفم والأسنان") value:14 identifierValue:@"care_dental" icon:@"mouth.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Paws & Nail Care", @"عناية بالمخالب والأقدام") value:15 identifierValue:@"care_paw_nail" icon:@"scissors"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Brushes & Grooming Tools", @"أدوات العناية بالفراء والتمشيط") value:16 identifierValue:@"care_grooming" icon:@"comb.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Ear & Eye Cleansers", @"منظفات ومناديل العيون والأذن اليومية") value:17 identifierValue:@"care_ear_eye" icon:@"eye.circle.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Deodorizing Sprays & Perfumes", @"معطرات ورذاذ إزالة الروائح") value:18 identifierValue:@"care_deodorant" icon:@"sparkles"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Pads, Diapers & Liners", @"حفاضات ومفارش تدريب ونظافة") value:19 identifierValue:@"care_pads_diapers" icon:@"square.stack.3d.down.right.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Cage & Surface Sanitisers", @"تعقيم وتطهير البيئة والأقفاص") value:20 identifierValue:@"care_habitat_clean" icon:@"house.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Nursing & Feeding Kits", @"أدوات الرضاعة والتغذية اليدوية") value:21 identifierValue:@"care_nursing" icon:@"cup.and.saucer.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"General Pet Care Products", @"مستلزمات رعاية وعناية عامة") value:22 identifierValue:@"care_general" icon:@"cross.case.fill"]
+            ]];
+
     PPFilterGroup *offer = [PPFilterGroup
         groupWithID:PPFilterIDHasOffer
               title:PPFilterL(@"Offers", @"العروض")
@@ -409,7 +462,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
                 [PPFilterOption optionWithTitle:PPFilterL(@"Name A-Z", @"من الالف للياء") value:PPFilterSortNameAZ],
             ]];
 
-    return [PPFilterState stateWithGroups:@[offer, price, sort]];
+    return [PPFilterState stateWithGroups:@[group, category, offer, price, sort]];
 }
 
 #pragma mark — Services

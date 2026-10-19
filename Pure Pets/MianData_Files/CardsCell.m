@@ -193,7 +193,7 @@
     configuration.backgroundColor = [GM appPrimaryColor];
     configuration.menuWidth = 100;
     configuration.textColor = [UIColor whiteColor];
-    configuration.textFont = [GM MidFontWithSize:12];
+    configuration.textFont = MenuActionTitleFont;
     configuration.borderColor = [UIColor blackColor];
     configuration.borderWidth = 0.1;
     configuration.textAlignment = NSTextAlignmentCenter;
@@ -266,7 +266,7 @@
     configuration.backgroundColor = [UIColor whiteColor];
     configuration.menuWidth = 100;
     configuration.textColor = [GM appPrimaryColor];
-    configuration.textFont = [GM MidFontWithSize:12];
+    configuration.textFont = MenuActionTitleFont;
     configuration.borderColor = [UIColor blackColor];
         configuration.borderWidth = 0.1;
         configuration.textAlignment = NSTextAlignmentCenter;
@@ -322,7 +322,7 @@
     configuration.backgroundColor =[GM appPrimaryColor];
     configuration.menuWidth = 70;
     configuration.textColor = [UIColor whiteColor];
-    configuration.textFont =[GM MidFontWithSize:12];
+    configuration.textFont = MenuActionTitleFont;
     configuration.borderColor = [UIColor blackColor];
     configuration.borderWidth = 0.1;
     configuration.textAlignment = NSTextAlignmentCenter;

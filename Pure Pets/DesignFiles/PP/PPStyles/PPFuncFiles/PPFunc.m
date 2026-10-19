@@ -10,6 +10,7 @@
 #import "UserManager.h"
 #import "PPUserKitCompatibility.h"
 #import "PPAlertHelper.h"
+#import "PPMenuHelper.h"
 @import FirebaseStorage;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -5145,6 +5146,7 @@ static const void *kPPTwoToneMaskKey  = &kPPTwoToneMaskKey;
         }
 
         UIMenu *menu = [UIMenu menuWithTitle:@"" children:actions];
+        [PPMenuHelper applyFontPatternToMenu:menu];
         //NSLog(@"✅ [PPMenuButtonFactory] Created menu with %lu actions", (unsigned long)actions.count);
         return menu;
     }

@@ -30,6 +30,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) PPDataSection pendingRestoreSection;
 @property (nonatomic, assign) PPDeepLinkTarget currentDeepLinkTarget;
 @property (nonatomic, assign, readonly) BOOL isLoading;
+/// True only after a successful, unfiltered Ads snapshot contains no items.
+@property (nonatomic, assign, readonly) BOOL hasLoadedEmptyAds;
 
 // Data access
 @property (nonatomic, strong, readonly) NSArray<PPUniversalCellViewModel *> *items;

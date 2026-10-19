@@ -392,6 +392,7 @@
 "delete" = "حذف";
 "deleteBoxAlertDesc" = "سيتم حذف جميع بيانات الصندوق وكل الفروخ التابعة للصندوق ، تأكيد ؟";
 "deleteBoxAlertTitle" = "حذف بيانات الصندوق";
+"deleteBox" = "حذف الصندوق";
 "deleteCard" = "حذف";
 "deleteCardSucsses" = "تم حذف البطاقة بنجاح";
 "deleteCardTitle" = "سيتم حذف البطاقة ، تأكيد ؟";
@@ -3023,7 +3024,7 @@
 "pet_care_medicine_title" = "أدوية الحيوانات";
 "pet_care_medicine_subtitle" = "أدوية ومستلزمات عناية طبية للحيوانات الأليفة، مختارة لتمنحها حياة افضل  .";
 "pet_care_vets_title" = "الأطباء البيطريون";
-"pet_care_vets_subtitle" = "اعثر على أطباء حسب نوع الحيوان، جاهزية التواصل، ونوع العيادة.";
+"pet_care_vets_subtitle" = "اعثر على الأطباء حسب الحيوانات التي يعتنون بها وبيانات التواصل.";
 "pet_care_search_medicines" = "ابحث في الأدوية";
 "pet_care_search_vets" = "ابحث عن طبيب بيطري";
 "pet_care_all_pets" = "كل الحيوانات";
@@ -5583,7 +5584,7 @@
 /* Pet Care — discovery and recovery */
 "pet_care_discovery_title" = "العناية تبدأ من هنا";
 "pet_care_discovery_medicines" = "أدوية ومستلزمات عناية، حسب نوع حيوانك.";
-"pet_care_discovery_vets" = "اعثر على طبيب أو عيادة وتواصل مباشرة.";
+"pet_care_discovery_vets" = "اعثر على طبيب بيطري وتواصل مباشرة.";
 "pet_care_refresh" = "تحديث القائمة";
 "pet_care_retry" = "إعادة المحاولة";
 "pet_care_refreshing" = "جارٍ تحديث القائمة…";
@@ -5593,7 +5594,7 @@
 "pet_care_directory_empty_medicines" = "لا توجد أدوية مدرجة بعد";
 "pet_care_directory_empty_medicines_body" = "ستظهر الأدوية المنشورة هنا عند توفرها. يمكنك تحديث القائمة أو استكشاف الأطباء البيطريين.";
 "pet_care_directory_empty_vets" = "لا يوجد أطباء مدرجون بعد";
-"pet_care_directory_empty_vets_body" = "ستظهر ملفات الأطباء والعيادات هنا عند توفرها. يمكنك تحديث القائمة أو استكشاف الأدوية.";
+"pet_care_directory_empty_vets_body" = "ستظهر ملفات الأطباء هنا عند توفرها. يمكنك تحديث القائمة أو استكشاف الأدوية.";
 "pet_care_loading_title" = "نحمّل خيارات العناية";
 "pet_care_loading_body" = "نجلب القائمة لتختار ما يناسب رفيقك.";
 "pet_care_load_error" = "تعذّر تحميل القائمة";
@@ -5602,9 +5603,17 @@
 "pet_care_no_matches_body" = "وسّع البحث بإزالة الفلاتر وكلمة البحث، ثم اختر ما يناسبك من القائمة.";
 "pet_care_clear_search_filters" = "مسح البحث والفلاتر";
 "pet_care_explore_medicines" = "استكشف الأدوية ومستلزمات العناية";
-"pet_care_explore_vets" = "استكشف الأطباء والعيادات";
+"pet_care_explore_vets" = "استكشف الأطباء";
 "pet_care_cart_count_format" = "عدد القطع في السلة: %@";
 "pet_care_count_over_99" = "٩٩+";
+
+/* Pet Care: dedicated clinic discovery */
+"pet_care_clinics" = "العيادات";
+"pet_care_clinics_title" = "العيادات البيطرية";
+"pet_care_search_clinics" = "ابحث عن عيادة";
+"pet_care_discovery_clinics" = "اعثر على عيادة بيطرية لحيوانك وتواصل مباشرة.";
+"pet_care_directory_empty_clinics" = "لا توجد عيادات مدرجة بعد";
+"pet_care_directory_empty_clinics_body" = "ستظهر ملفات العيادات هنا عند توفرها. يمكنك تحديث القائمة أو استكشاف الأطباء البيطريين.";
 
 // Pet profile editor — portrait and care
 "pet_editor_add_photo" = "أضف صورة";
@@ -5783,3 +5792,43 @@
 "medicine_record_share_price_format" = "السعر: %@";
 "medicine_record_partial_add_format" = "أُضيفت الكمية المتاحة المتبقية: %@.";
 "medicine_record_list_separator" = "، ";
+
+/* Floating cart: quantity context, total readout and accessible summary. */
+"floating_cart_count_zero" = "لا عناصر";
+"floating_cart_count_one" = "عنصر واحد";
+"floating_cart_count_two" = "عنصران";
+"floating_cart_count_few" = "%@ عناصر";
+"floating_cart_count_many" = "%@ عنصرًا";
+"floating_cart_count_other" = "%@ عنصر";
+"floating_cart_review_total" = "عرض الإجمالي في السلة";
+"floating_cart_accessibility_value" = "%1$@. الإجمالي: %2$@.";
+
+/* Medicine & Care filter rail & taxonomy */
+"MedicineCare_Department" = "القسم";
+"MedicineCare_Group_All" = "جميع المنتجات";
+"MedicineCare_Group_Medicines" = "أدوية بيطرية";
+"MedicineCare_Group_Care" = "عناية ونظافة";
+"MedicineCare_Category" = "التصنيف";
+"MedicineCare_Category_All" = "كل التصنيفات";
+"MedicineCare_Cat_med_antibiotics" = "مضادات حيوية وميكروبية";
+"MedicineCare_Cat_med_dewormers" = "مضادات الطفيليات والديدان";
+"MedicineCare_Cat_med_flea_tick" = "علاجات القراد والبراغيث والحشرات";
+"MedicineCare_Cat_med_vitamins" = "فيتامينات ومكملات غذائية بيطرية";
+"MedicineCare_Cat_med_anti_inflammatory" = "مسكنات ومضادات التهاب ومفاصل";
+"MedicineCare_Cat_med_digestive" = "علاجات الجهاز الهضمي والديدان";
+"MedicineCare_Cat_med_eyes_ears" = "قطرات ومراهم العيون والأذن";
+"MedicineCare_Cat_med_dermatology" = "علاجات الجلد والفطريات والحساسية";
+"MedicineCare_Cat_med_respiratory" = "علاجات تنفسية ورئوية";
+"MedicineCare_Cat_med_antiseptic" = "مطهرات وجروح وإسعافات أولية";
+"MedicineCare_Cat_med_calming" = "مهدئات وتخفيف التوتر والسفر";
+"MedicineCare_Cat_med_general" = "أدوية ومستحضرات بيطرية عامة";
+"MedicineCare_Cat_care_shampoo" = "شامبو وبلسم واستحمام";
+"MedicineCare_Cat_care_dental" = "نظافة الفم والأسنان";
+"MedicineCare_Cat_care_paw_nail" = "عناية بالمخالب والأقدام";
+"MedicineCare_Cat_care_grooming" = "أدوات العناية بالفراء والتمشيط";
+"MedicineCare_Cat_care_ear_eye" = "منظفات ومناديل العيون والأذن اليومية";
+"MedicineCare_Cat_care_deodorant" = "معطرات ورذاذ إزالة الروائح";
+"MedicineCare_Cat_care_pads_diapers" = "حفاضات ومفارش تدريب ونظافة";
+"MedicineCare_Cat_care_habitat_clean" = "تعقيم وتطهير البيئة والأقفاص";
+"MedicineCare_Cat_care_nursing" = "أدوات الرضاعة والتغذية اليدوية";
+"MedicineCare_Cat_care_general" = "مستلزمات رعاية وعناية عامة";

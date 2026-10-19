@@ -2,128 +2,132 @@
 //  PPVetViewerScreen.swift
 //  Pure Pets
 //
-//  Reinvented from absolute first principles for NextGen V6 Flagship.
-//  Category-defining clinical sanctuary details screen in SwiftUI.
+//  Care introductions: a person-led vet profile and a place-led clinic profile.
+//  Presentation only. Navigation and external contact remain UIKit-owned.
 //
 
 import SwiftUI
 
-// MARK: - Viewer Snapshot
 struct PPVetViewerSnapshot: Equatable {
     let id: String
     let title: String
     let isCompany: Bool
-    let typeTitle: String
-    let logoURL: String
+    let logoURL: String?
     let bio: String
+    let consultationAmountText: String?
     let consultationCostText: String
-    let isFreeConsult: Bool
+    let hasPublishedFee: Bool
     let isReadyToContact: Bool
-    let statusTitle: String
-    let readinessDetail: String
     let phone: String
     let whatsapp: String
     let canCall: Bool
     let canWhatsApp: Bool
+    let isListed: Bool
     let isVerified: Bool
-    let membershipText: String
+    let membershipText: String?
     let availableDateText: String
-    let speciesList: [PPVetSpeciesItem]
+    let speciesNames: [String]
+    let speciesSummary: String
     let languageCode: String
     let isRTL: Bool
 
+    let cityName: String?
+    let workingAreas: [String]
+    let address: String?
+    let licenseNumber: String?
+    let workingHours: String?
+    let emergency247: Bool
+    let homeVisitAvailable: Bool
+
     init(content: PPVetViewerContent) {
-        let isRTL = Language.isRTL()
-        self.isRTL = isRTL
-        self.languageCode = Language.currentLanguageCode()
-
-        self.id = content.vetID.isEmpty ? UUID().uuidString : content.vetID
-        let rawTitle = content.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.title = rawTitle.isEmpty
-            ? (Language.get("pet_care_vet_untitled", alter: nil) ?? (isRTL ? "طبيب بيطري" : "Veterinarian"))
-            : rawTitle
-
-        self.isCompany = content.isCompany
-        if content.isCompany {
-            self.typeTitle = Language.get("pet_care_vet_verified_clinic", alter: nil) ?? (isRTL ? "منشأة بيطرية معتمدة" : "Accredited Clinic")
+        isRTL = Language.isRTL()
+        languageCode = Language.currentLanguageCode()
+        let locale = Locale(identifier: isRTL ? "ar_QA" : "en_QA")
+        func clean(_ value: String) -> String { value.trimmingCharacters(in: .whitespacesAndNewlines) }
+        isCompany = content.isCompany
+        title = clean(content.title).isEmpty
+            ? PPVetDetailLocalization.text(content.isCompany ? "vet_detail_clinic" : "vet_detail_doctor")
+            : clean(content.title)
+        id = content.vetID.isEmpty ? "\(content.isCompany ? "clinic" : "vet"):\(title)" : content.vetID
+        let candidate = URL(string: clean(content.logoURL))
+        logoURL = candidate.flatMap { url in
+            guard ["https", "http"].contains(url.scheme?.lowercased() ?? ""),
+                  url.host?.isEmpty == false else { return nil }
+            return url.absoluteString
+        }
+        bio = clean(content.descriptionText)
+        isListed = PPVetContactRouting.isContactAllowed(status: content.verificationStatus, disabled: content.isDisabled)
+        isReadyToContact = content.readyToContact
+        phone = PPVetContactRouting.normalizedPhone(content.phone) ?? ""
+        whatsapp = PPVetContactRouting.normalizedPhone(content.whatsapp) ?? ""
+        canCall = isListed && PPVetContactRouting.callURL(phone: content.phone, whatsapp: content.whatsapp) != nil
+        canWhatsApp = isListed && PPVetContactRouting.whatsAppURL(phone: content.phone, whatsapp: content.whatsapp) != nil
+        // Approval and a paid membership are not professional accreditation.
+        isVerified = clean(content.verificationStatus).lowercased() == "verified"
+        hasPublishedFee = content.vetCost.isFinite && content.vetCost > 0
+        let amount = NumberFormatter()
+        amount.locale = locale
+        amount.numberStyle = .decimal
+        amount.maximumFractionDigits = 2
+        consultationAmountText = hasPublishedFee ? amount.string(from: NSNumber(value: content.vetCost)) : nil
+        let currency = NumberFormatter()
+        currency.locale = locale
+        currency.numberStyle = .currency
+        currency.currencyCode = "QAR"
+        currency.minimumFractionDigits = 0
+        currency.maximumFractionDigits = 2
+        consultationCostText = hasPublishedFee
+            ? currency.string(from: NSNumber(value: content.vetCost)) ?? PPVetDetailLocalization.text("vet_detail_confirm_fee")
+            : PPVetDetailLocalization.text("vet_detail_confirm_fee")
+        if content.subscriptionActive {
+            let number = NumberFormatter()
+            number.locale = locale
+            number.numberStyle = .decimal
+            let tier = number.string(from: NSNumber(value: content.subscriptionTier)) ?? ""
+            membershipText = content.subscriptionTier > 0 && !tier.isEmpty
+                ? String(format: PPVetDetailLocalization.text("vet_detail_membership_tier"), tier)
+                : PPVetDetailLocalization.text("vet_detail_membership_active")
         } else {
-            self.typeTitle = Language.get("pet_care_vet_verified_doctor", alter: nil) ?? (isRTL ? "طبيب بيطري معتمد" : "Certified Doctor")
+            membershipText = nil
         }
-
-        self.logoURL = content.logoURL.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let rawBio = content.descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.bio = rawBio.isEmpty
-            ? (Language.get("pet_care_vet_default_subtitle", alter: nil) ?? (isRTL ? "طبيب بيطري معتمد لتقديم استشارات وتشخيصات شاملة للأليف." : "Certified care provider ready for comprehensive pet diagnosis and treatment."))
-            : rawBio
-
-        let currency = Language.get("pet_care_vet_currency", alter: nil) ?? (isRTL ? "ر.ق" : "QAR")
-        if content.vetCost <= 0.0 {
-            self.isFreeConsult = true
-            self.consultationCostText = Language.get("pet_care_vet_free_consult", alter: nil) ?? (isRTL ? "استشارة مجانية" : "Free Consultation")
+        if let date = content.availableDate {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            availableDateText = formatter.string(from: date)
         } else {
-            self.isFreeConsult = false
-            let numFormatted = PPVetViewerSnapshot.formatNumber(content.vetCost, isRTL: isRTL)
-            self.consultationCostText = "\(numFormatted) \(currency)"
+            availableDateText = clean(content.availableDateText)
         }
-
-        self.isReadyToContact = content.readyToContact
-        if content.readyToContact {
-            self.statusTitle = Language.get("pet_care_vet_immediate_consult", alter: nil) ?? (isRTL ? "متاح للاستشارة الفورية" : "Available for Instant Consultation")
-            self.readinessDetail = Language.get("pet_care_vet_response_fast", alter: nil) ?? (isRTL ? "استجابة فورية" : "Instant Response")
-        } else {
-            self.statusTitle = Language.get("pet_care_vet_scheduled_only", alter: nil) ?? (isRTL ? "حسب المواعيد المتاحة" : "By Appointment")
-            self.readinessDetail = Language.get("pet_care_vet_response_normal", alter: nil) ?? (isRTL ? "استجابة معتادة" : "Standard Response")
+        var names: [String] = []
+        for rawName in content.animalTypes + [content.mainKindName] {
+            let name = clean(rawName)
+            // Taxonomy IDs are resolved at the controller boundary, never shown as species names.
+            guard !name.isEmpty, !name.allSatisfy({ $0.isNumber }),
+                  !names.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) else { continue }
+            names.append(name)
         }
+        speciesNames = names
+        let list = ListFormatter()
+        list.locale = locale
+        speciesSummary = list.string(from: names) ?? names.joined(separator: " · ")
 
-        let phoneClean = content.phone.trimmingCharacters(in: .whitespacesAndNewlines)
-        let whatsappClean = content.whatsapp.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.phone = phoneClean
-        self.whatsapp = whatsappClean
-        self.canCall = !phoneClean.isEmpty || !whatsappClean.isEmpty
-        self.canWhatsApp = !whatsappClean.isEmpty || !phoneClean.isEmpty
-
-        let verStatus = content.verificationStatus.lowercased()
-        self.isVerified = verStatus == "verified" || verStatus == "approved" || content.subscriptionActive
-
-        if content.subscriptionTier > 0 {
-            let format = Language.get("pet_care_vet_viewer_subscription_tier_format", alter: nil) ?? (isRTL ? "باقة %ld معتمدة" : "Tier %ld Accredited")
-            self.membershipText = String(format: format, content.subscriptionTier)
-        } else if content.subscriptionActive {
-            self.membershipText = Language.get("pet_care_vet_viewer_subscription_active", alter: nil) ?? (isRTL ? "عضوية نشطة" : "Active Member")
-        } else {
-            self.membershipText = Language.get("pet_care_vet_experience_badge", alter: nil) ?? (isRTL ? "خبرة معتمدة" : "Certified Specialist")
-        }
-
-        self.availableDateText = content.availableDateText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        var species: [PPVetSpeciesItem] = []
-        for animal in content.animalTypes {
-            let item = PPVetSpeciesItem.resolve(from: animal, isRTL: isRTL)
-            if !species.contains(where: { $0.id == item.id }) {
-                species.append(item)
-            }
-        }
-        if species.isEmpty && !content.mainKindName.isEmpty {
-            species.append(PPVetSpeciesItem.resolve(from: content.mainKindName, isRTL: isRTL))
-        }
-        self.speciesList = species
-    }
-
-    private static func formatNumber(_ value: Double, isRTL: Bool) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: isRTL ? "ar" : "en")
-        formatter.numberStyle = .decimal
-        if value.truncatingRemainder(dividingBy: 1.0) == 0 {
-            formatter.maximumFractionDigits = 0
-        } else {
-            formatter.maximumFractionDigits = 2
-        }
-        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+        // Clinical Practice, Location, Emergency & Accreditation
+        let cCity = clean(content.cityName)
+        cityName = cCity.isEmpty ? nil : cCity
+        workingAreas = content.workingAreas
+        let cAddress = clean(content.address)
+        address = cAddress.isEmpty ? nil : cAddress
+        let cLicense = clean(content.licenseNumber)
+        licenseNumber = cLicense.isEmpty ? nil : cLicense
+        let cHours = clean(content.workingHours)
+        workingHours = cHours.isEmpty ? nil : cHours
+        emergency247 = content.emergency247
+        homeVisitAvailable = content.homeVisitAvailable
     }
 }
 
-// MARK: - Main Screen View
+
 struct PPVetViewerScreen: View {
     @ObservedObject var presentation: PPVetViewerPresentation
     let onCall: () -> Void
@@ -131,541 +135,526 @@ struct PPVetViewerScreen: View {
     let onShare: () -> Void
     let onDismiss: () -> Void
 
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var pulseBeacon: Bool = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showsFullBiography = false
 
-    private var isDark: Bool { colorScheme == .dark }
     private var snapshot: PPVetViewerSnapshot { presentation.snapshot }
+    private var largeText: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Background base
-            Color.ppBackground
-                .ignoresSafeArea()
-
-            // Subtle Sanctuary Atmospheric Glow at Top
-            VStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                Color.ppCareAccent.opacity(isDark ? 0.22 : 0.12),
-                                Color.clear
-                            ]),
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 240
-                        )
-                    )
-                    .frame(width: 480, height: 320)
-                    .blur(radius: 40)
-                    .offset(y: -120)
-                Spacer()
-            }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-
-            // Scrollable Content
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: PPSpace.xl) {
-                    // Top Navigation Bar
-                    topNavBar
-
-                    // Sanctuary Hero Card
-                    heroCard
-
-                    // Clinical Bento Highlights
-                    bentoGrid
-
-                    // Species Care Scope
-                    if !snapshot.speciesList.isEmpty {
-                        speciesCareSection
-                    }
-
-                    // Biography & Clinical Credentials
-                    bioSection
-
-                    // Emergency Advisory Sanctuary Card
-                    emergencyAdvisoryCard
-
-                    // Available Hours (if specified)
-                    if !snapshot.availableDateText.isEmpty {
-                        availabilityCard
-                    }
-
-                    // Bottom Breathing Space for Floating Decision Dock
-                    Spacer(minLength: 110)
-                }
-                .padding(.horizontal, PPSpace.screenMargin)
-                .padding(.top, PPSpace.sm)
-                .frame(maxWidth: 680)
-            }
-
-            // Floating Frosted Decision Dock
-            floatingActionDock
-                .padding(.horizontal, PPSpace.base)
-                .padding(.bottom, PPSpace.sm)
-        }
-        .environment(\.layoutDirection, snapshot.isRTL ? .rightToLeft : .leftToRight)
-        .environment(\.locale, Locale(identifier: snapshot.languageCode))
-        .onAppear {
-            if snapshot.isReadyToContact {
-                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-                    pulseBeacon = true
-                }
-            }
-        }
-    }
-
-    // MARK: - Navigation Bar
-    private var topNavBar: some View {
-        HStack {
-            // Dismiss / Back Button
-            Button(action: onDismiss) {
-                Image(systemName: snapshot.isRTL ? "chevron.right" : "chevron.left")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle()
-                            .fill(Color(uiColor: .ppElevatedSurface))
-                            .shadow(color: Color.black.opacity(isDark ? 0.2 : 0.05), radius: 8, x: 0, y: 3)
-                    )
-                    .overlay(
-                        Circle()
-                            .strokeBorder(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 0.8)
-                    )
-            }
-            .accessibilityLabel(snapshot.isRTL ? "رجوع" : "Back")
-
-            Spacer()
-
-            // Header Title
-            Text(snapshot.isRTL ? "الملف الطبي البيطري" : "Veterinary Profile")
-                .font(customFont(17, bold: true, relativeTo: .headline))
-                .foregroundStyle(Color.ppTextPrimary)
-
-            Spacer()
-
-            // Share Button
-            Button(action: onShare) {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .frame(width: 40, height: 40)
-                    .background(
-                        Circle()
-                            .fill(Color(uiColor: .ppElevatedSurface))
-                            .shadow(color: Color.black.opacity(isDark ? 0.2 : 0.05), radius: 8, x: 0, y: 3)
-                    )
-                    .overlay(
-                        Circle()
-                            .strokeBorder(Color.ppSurfaceBorder.opacity(0.8), lineWidth: 0.8)
-                    )
-            }
-            .accessibilityLabel(snapshot.isRTL ? "مشاركة الملف" : "Share Profile")
-        }
-        .padding(.vertical, 4)
-    }
-
-    // MARK: - Hero Card
-    private var heroCard: some View {
-        VStack(spacing: PPSpace.base) {
-            // Portrait Avatar
-            ZStack(alignment: .bottomTrailing) {
-                ZStack {
-                    if !snapshot.logoURL.isEmpty {
-                        AppRemoteImage(
-                            urlString: snapshot.logoURL,
-                            displaySize: CGSize(width: 86, height: 86),
-                            contentMode: .fill
-                        )
+        GeometryReader { geometry in
+            let wide = geometry.size.width >= 760 && !largeText
+            let inlineContact = largeText || geometry.size.height < 500
+            let width = max(1, min(980, geometry.size.width - PPSpace.screenMargin * 2))
+            ScrollView {
+                VStack(alignment: .leading, spacing: PPSpace.xl) {
+                    if snapshot.isListed {
+                        if wide {
+                            HStack(alignment: .top, spacing: PPSpace.xxl) {
+                                profileFolio(width: width * 0.46)
+                                    .frame(width: width * 0.46)
+                                profileDetails
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        } else {
+                            profileFolio(width: width)
+                            profileDetails
+                        }
+                        if inlineContact { contactActions(stacked: true) }
                     } else {
+                        unavailableProfile
+                    }
+                }
+                .frame(width: width, alignment: .leading)
+                .padding(.top, PPSpace.md)
+                .padding(.bottom, PPSpace.xl)
+                .frame(maxWidth: .infinity)
+            }
+            .safeAreaInset(edge: .top, spacing: 0) { navigationBar }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if snapshot.isListed && !inlineContact {
+                    contactActions(stacked: false)
+                        .frame(maxWidth: 640)
+                        .padding(.horizontal, PPSpace.screenMargin)
+                        .padding(.top, PPSpace.md)
+                        .padding(.bottom, PPSpace.sm)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.ppSurface)
+                        .overlay(alignment: .top) { Divider().overlay(Color.ppSurfaceBorder) }
+                }
+            }
+        }
+        .background(Color.ppBackground.ignoresSafeArea())
+        .foregroundColor(.ppTextPrimary)
+        .multilineTextAlignment(.leading)
+        .environment(\.layoutDirection, snapshot.isRTL ? .rightToLeft : .leftToRight)
+        .environment(\.locale, Locale(identifier: snapshot.isRTL ? "ar_QA" : "en_QA"))
+    }
+
+    private var navigationBar: some View {
+        HStack(spacing: PPSpace.md) {
+            navigationButton(symbol: snapshot.isRTL ? "chevron.right" : "chevron.left",
+                             label: copy("vet_detail_back"), identifier: "vetDetail.back", action: onDismiss)
+            VStack(spacing: 0) {
+                Text(copy("vet_detail_profile"))
+                    .font(font(19, bold: true, relativeTo: .headline))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+            .accessibilityAddTraits(.isHeader)
+            navigationButton(symbol: "square.and.arrow.up", label: copy("vet_detail_share"),
+                             identifier: "vetDetail.share", action: onShare)
+                .disabled(!snapshot.isListed)
+                .opacity(snapshot.isListed ? 1 : 0.4)
+        }
+        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.vertical, PPSpace.xs)
+        .frame(maxWidth: 1020)
+        .frame(maxWidth: .infinity)
+        .background(Color.ppBackground)
+    }
+
+    private func navigationButton(symbol: String, label: String, identifier: String,
+                                  action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .medium))
+                .frame(width: 44, height: 44)
+                .background(Color.ppSurface, in: Circle())
+                .contentShape(Circle())
+        }
+        .buttonStyle(PPVetDetailPressStyle())
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
+    }
+
+    // The image, identity, care scope and fee are one reading surface, not four competing cards.
+    private func profileFolio(width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let url = snapshot.logoURL {
+                portrait(url: url, size: CGSize(width: width, height: min(260, width * 0.64)))
+            }
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+                    Image(systemName: snapshot.isCompany ? "cross.case" : "stethoscope")
+                        .font(.system(size: 15, weight: .medium))
+                        .accessibilityHidden(true)
+                    Text(copy(snapshot.isCompany ? "vet_detail_clinic" : "vet_detail_doctor"))
+                        .font(font(17, bold: true, relativeTo: .subheadline))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    if snapshot.isVerified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 18))
+                            .accessibilityLabel(copy("vet_detail_profile_verified"))
+                    }
+                }
+                .foregroundColor(.ppPrimary)
+                Text(verbatim: snapshot.title)
+                    .font(font(34, bold: true, relativeTo: .largeTitle))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("vetDetail.name")
+                if !snapshot.speciesSummary.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+                        Image(systemName: "pawprint")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.ppPrimary)
+                            .accessibilityHidden(true)
+                        Text(verbatim: snapshot.speciesSummary)
+                            .font(font(19, relativeTo: .body))
+                            .foregroundColor(.ppTextSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(copy("vet_detail_scope") + ": " + snapshot.speciesSummary)
+                }
+            }
+            .padding(PPSpace.lg)
+            consultationSeam(stacked: largeText || width < 330)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.ppSurface)
+        .clipShape(RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+                .strokeBorder(Color.ppSurfaceBorder, lineWidth: 1)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func portrait(url: String, size: CGSize) -> some View {
+        AppRemoteImage(urlString: url, displaySize: size,
+                       contentMode: snapshot.isCompany ? .fit : .fill) {
+            imagePlaceholder(size: size, loading: true)
+        } failurePlaceholder: {
+            imagePlaceholder(size: size, loading: false)
+        }
+        .frame(width: size.width, height: size.height)
+        .background(snapshot.isCompany ? Color.ppSurface : Color.ppQuietLilac)
+        .clipped()
+        .accessibilityLabel(String(format: copy("vet_detail_image_label"), snapshot.title))
+        .accessibilityElement(children: .contain)
+    }
+
+    private func imagePlaceholder(size: CGSize, loading: Bool) -> some View {
+        VStack(spacing: PPSpace.md) {
+            Image(systemName: snapshot.isCompany ? "cross.case" : "person.crop.rectangle")
+                .font(.system(size: 36, weight: .light))
+                .foregroundColor(.ppPrimary)
+                .accessibilityHidden(true)
+            if loading {
+                ProgressView().tint(.ppPrimary)
+                    .accessibilityLabel(copy("vet_detail_image_loading"))
+            } else {
+                Text(copy("vet_detail_image_missing"))
+                    .font(font(17, relativeTo: .subheadline))
+                    .foregroundColor(.ppTextSecondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .background(Color.ppQuietLilac)
+    }
+
+    private func consultationSeam(stacked: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Divider().overlay(Color.ppSurfaceBorder)
+            Group {
+                if stacked {
+                    VStack(alignment: .leading, spacing: PPSpace.sm) {
+                        feeLabel
+                        feeValue
+                    }
+                } else {
+                    HStack(alignment: .center, spacing: PPSpace.lg) {
+                        feeLabel.frame(maxWidth: .infinity, alignment: .leading)
+                        feeValue.layoutPriority(1)
+                    }
+                }
+            }
+            .padding(.horizontal, PPSpace.lg)
+            .padding(.vertical, PPSpace.base)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.ppSoftRose.opacity(0.45))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(copy("vet_detail_consultation_fee"))
+        .accessibilityValue(snapshot.consultationCostText)
+    }
+
+    private var feeLabel: some View {
+        Text(copy("vet_detail_consultation_fee"))
+            .font(font(18, relativeTo: .body))
+            .foregroundColor(.ppTextSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder private var feeValue: some View {
+        if let amount = snapshot.consultationAmountText {
+            // Keep digits and currency in separate semantic runs so Arabic bidi cannot reorder the amount.
+            VStack(alignment: .leading, spacing: 0) {
+                Text(verbatim: amount)
+                    .font(font(32, bold: true, relativeTo: .title))
+                    .environment(\.layoutDirection, .leftToRight)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(copy("vet_detail_currency"))
+                    .font(font(15, relativeTo: .caption))
+                    .foregroundColor(.ppTextSecondary)
+            }
+        } else {
+            Text(copy("vet_detail_confirm_fee"))
+                .font(font(19, bold: true, relativeTo: .body))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var profileDetails: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xl) {
+            clinicalHighlights
+            locationAndFacility
+            biography
+            preparation
+            contactDetails
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var clinicalHighlights: some View {
+        if snapshot.emergency247 || snapshot.homeVisitAvailable {
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                if snapshot.emergency247 {
+                    HStack(alignment: .top, spacing: PPSpace.sm) {
                         ZStack {
-                            Color.ppCareAccent.opacity(isDark ? 0.18 : 0.10)
-                            Image(systemName: snapshot.isCompany ? "cross.case.fill" : "stethoscope")
-                                .font(.system(size: 36, weight: .light))
-                                .foregroundStyle(Color.ppCareAccent)
+                            Circle()
+                                .fill(Color(red: 0.92, green: 0.35, blue: 0.28).opacity(0.14))
+                                .frame(width: 36, height: 36)
+                            Image(systemName: "cross.case.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(Color(red: 0.92, green: 0.35, blue: 0.28))
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(copy("vet_detail_emergency_badge"))
+                                .font(font(17, bold: true, relativeTo: .headline))
+                                .foregroundColor(Color(red: 0.92, green: 0.35, blue: 0.28))
+                            Text(copy("vet_detail_emergency_desc"))
+                                .font(font(14, relativeTo: .subheadline))
+                                .foregroundColor(.ppTextSecondary)
                         }
                     }
+                    .padding(PPSpace.base)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(red: 0.92, green: 0.35, blue: 0.28).opacity(0.06), in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                            .strokeBorder(Color(red: 0.92, green: 0.35, blue: 0.28).opacity(0.20), lineWidth: 0.8)
+                    )
                 }
-                .frame(width: 86, height: 86)
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(Color.ppSurfaceBorder, lineWidth: 1.2)
-                )
-                .shadow(color: Color.black.opacity(isDark ? 0.25 : 0.08), radius: 16, x: 0, y: 6)
 
-                // Verification Shield Badge
-                if snapshot.isVerified {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 22))
-                        .foregroundStyle(Color(red: 0.15, green: 0.68, blue: 0.38))
-                        .background(
+                if snapshot.homeVisitAvailable {
+                    HStack(alignment: .top, spacing: PPSpace.sm) {
+                        ZStack {
                             Circle()
-                                .fill(Color(uiColor: .ppElevatedSurface))
-                                .frame(width: 24, height: 24)
-                        )
-                        .offset(x: snapshot.isRTL ? -4 : 4, y: 4)
-                }
-            }
-            .padding(.top, 4)
-
-            // Titles
-            VStack(spacing: 6) {
-                Text(snapshot.title)
-                    .font(customFont(25, bold: true, relativeTo: .title2))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .multilineTextAlignment(.center)
-
-                Text(snapshot.typeTitle)
-                    .font(customFont(14.5, bold: false, relativeTo: .subheadline))
-                    .foregroundStyle(Color.ppCareAccent)
-            }
-
-            // Live On-Duty Pill
-            HStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            (snapshot.isReadyToContact
-                             ? Color(red: 0.13, green: 0.80, blue: 0.45)
-                             : Color.orange).opacity(pulseBeacon ? 0.35 : 0.12)
-                        )
-                        .frame(width: 16, height: 16)
-                        .scaleEffect(pulseBeacon ? 1.35 : 0.9)
-
-                    Circle()
-                        .fill(snapshot.isReadyToContact ? Color(red: 0.13, green: 0.80, blue: 0.45) : Color.orange)
-                        .frame(width: 8, height: 8)
-                }
-
-                Text(snapshot.statusTitle)
-                    .font(customFont(13, bold: true, relativeTo: .footnote))
-                    .foregroundStyle(snapshot.isReadyToContact ? Color(red: 0.13, green: 0.80, blue: 0.45) : Color.orange)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .background(
-                Capsule()
-                    .fill((snapshot.isReadyToContact ? Color(red: 0.13, green: 0.80, blue: 0.45) : Color.orange).opacity(isDark ? 0.18 : 0.08))
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(
-                        (snapshot.isReadyToContact ? Color(red: 0.13, green: 0.80, blue: 0.45) : Color.orange).opacity(0.24),
-                        lineWidth: 0.8
-                    )
-            )
-        }
-        .padding(.vertical, PPSpace.lg)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .fill(Color(uiColor: .ppElevatedSurface))
-                .shadow(color: Color.black.opacity(isDark ? 0.2 : 0.04), radius: 16, x: 0, y: 6)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .strokeBorder(Color.ppSurfaceBorder.opacity(isDark ? 0.4 : 0.8), lineWidth: 0.8)
-        )
-    }
-
-    // MARK: - Bento Grid (3-pillar insights)
-    private var bentoGrid: some View {
-        HStack(spacing: PPSpace.md) {
-            // Card 1: Fee
-            bentoCard(
-                icon: "creditcard.fill",
-                title: snapshot.isRTL ? "رسوم الكشف" : "Consult Fee",
-                value: snapshot.consultationCostText,
-                tintColor: snapshot.isFreeConsult ? Color(red: 0.15, green: 0.68, blue: 0.38) : Color.ppCareAccent
-            )
-
-            // Card 2: Readiness
-            bentoCard(
-                icon: "bolt.shield.fill",
-                title: snapshot.isRTL ? "الجاهزية" : "Readiness",
-                value: snapshot.readinessDetail,
-                tintColor: Color(red: 0.18, green: 0.65, blue: 0.55)
-            )
-
-            // Card 3: Membership / Tier
-            bentoCard(
-                icon: "checkmark.shield.fill",
-                title: snapshot.isRTL ? "الاعتماد" : "Status",
-                value: snapshot.membershipText,
-                tintColor: Color(red: 0.85, green: 0.55, blue: 0.15)
-            )
-        }
-    }
-
-    private func bentoCard(icon: String, title: String, value: String, tintColor: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(tintColor)
-                .padding(7)
-                .background(
-                    Circle()
-                        .fill(tintColor.opacity(isDark ? 0.18 : 0.10))
-                )
-
-            Spacer(minLength: 4)
-
-            Text(title)
-                .font(customFont(11.5, bold: false, relativeTo: .caption2))
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(1)
-
-            Text(value)
-                .font(customFont(13.5, bold: true, relativeTo: .subheadline))
-                .foregroundStyle(Color.ppTextPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 106)
-        .background(
-            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .fill(Color(uiColor: .ppElevatedSurface))
-                .shadow(color: Color.black.opacity(isDark ? 0.15 : 0.03), radius: 8, x: 0, y: 3)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .strokeBorder(Color.ppSurfaceBorder.opacity(isDark ? 0.35 : 0.75), lineWidth: 0.8)
-        )
-    }
-
-    // MARK: - Species Scope Section
-    private var speciesCareSection: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(spacing: 6) {
-                Image(systemName: "pawprint.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.ppCareAccent)
-
-                Text(snapshot.isRTL ? "الحيوانات المشمولة بالرعاية" : "Specialized Care Scope")
-                    .font(customFont(16, bold: true, relativeTo: .headline))
-                    .foregroundStyle(Color.ppTextPrimary)
-            }
-
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 8)], spacing: 8) {
-                ForEach(snapshot.speciesList) { item in
-                    HStack(spacing: 7) {
-                        Image(systemName: item.iconName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.ppCareAccent)
-
-                        Text(item.name)
-                            .font(customFont(13, bold: false, relativeTo: .subheadline))
-                            .foregroundStyle(Color.ppTextPrimary)
-
-                        Spacer(minLength: 0)
+                                .fill(Color.blue.opacity(0.14))
+                                .frame(width: 36, height: 36)
+                            Image(systemName: "car.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(Color.blue)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(copy("vet_detail_home_visit_badge"))
+                                .font(font(17, bold: true, relativeTo: .headline))
+                                .foregroundColor(Color.blue)
+                            Text(copy("vet_detail_home_visit_desc"))
+                                .font(font(14, relativeTo: .subheadline))
+                                .foregroundColor(.ppTextSecondary)
+                        }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.ppSecondarySurface)
+                    .padding(PPSpace.base)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.blue.opacity(0.06), in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                            .strokeBorder(Color.blue.opacity(0.20), lineWidth: 0.8)
                     )
                 }
             }
         }
-        .padding(PPSpace.base)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .fill(Color(uiColor: .ppElevatedSurface))
-                .shadow(color: Color.black.opacity(isDark ? 0.15 : 0.03), radius: 8, x: 0, y: 3)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .strokeBorder(Color.ppSurfaceBorder.opacity(isDark ? 0.35 : 0.75), lineWidth: 0.8)
-        )
     }
 
-    // MARK: - Biography & Credentials
-    private var bioSection: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(spacing: 6) {
-                Image(systemName: "doc.text.magnifyingglass")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.ppCareAccent)
-
-                Text(snapshot.isCompany
-                     ? (snapshot.isRTL ? "عن المركز والخدمات الطبية" : "About Clinic & Services")
-                     : (snapshot.isRTL ? "نبذة عن الطبيب والخبرات" : "About Doctor & Experience"))
-                    .font(customFont(16, bold: true, relativeTo: .headline))
-                    .foregroundStyle(Color.ppTextPrimary)
+    @ViewBuilder private var locationAndFacility: some View {
+        if snapshot.cityName != nil || snapshot.address != nil || !snapshot.workingAreas.isEmpty {
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                sectionTitle(copy("vet_detail_location_title"))
+                if let city = snapshot.cityName, !city.isEmpty {
+                    informationRow(label: copy("vet_detail_city"), value: city, symbol: "building.columns")
+                }
+                if let addr = snapshot.address, !addr.isEmpty {
+                    informationRow(label: copy("vet_detail_address"), value: addr, symbol: "signpost.right")
+                }
+                if !snapshot.workingAreas.isEmpty {
+                    let areaNames: [String] = snapshot.workingAreas.compactMap { key in
+                        let localized = Language.get(key, alter: key)
+                        if let loc = localized, !loc.isEmpty {
+                            return loc
+                        }
+                        return key
+                    }
+                    let summary = areaNames.joined(separator: " · ")
+                    informationRow(label: copy("vet_detail_coverage_areas"), value: summary, symbol: "map")
+                }
             }
+        }
+    }
 
-            Text(snapshot.bio)
-                .font(customFont(15, bold: false, relativeTo: .body))
-                .foregroundStyle(Color.ppTextPrimary.opacity(0.88))
-                .lineSpacing(5)
+    private var biography: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            sectionTitle(copy(snapshot.isCompany ? "vet_detail_about_clinic" : "vet_detail_about_doctor"))
+            Text(verbatim: snapshot.bio.isEmpty ? copy("vet_detail_bio_missing") : snapshot.bio)
+                .font(font(21, relativeTo: .body))
+                .foregroundColor(snapshot.bio.isEmpty ? .ppTextSecondary : .ppTextPrimary)
+                .lineSpacing(3)
+                .lineLimit(snapshot.bio.count > 550 && !showsFullBiography && !largeText ? 6 : nil)
+                .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
-                .multilineTextAlignment(.leading)
-        }
-        .padding(PPSpace.base)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .fill(Color(uiColor: .ppElevatedSurface))
-                .shadow(color: Color.black.opacity(isDark ? 0.15 : 0.03), radius: 8, x: 0, y: 3)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .strokeBorder(Color.ppSurfaceBorder.opacity(isDark ? 0.35 : 0.75), lineWidth: 0.8)
-        )
-    }
-
-    // MARK: - Emergency Advisory Card
-    private var emergencyAdvisoryCard: some View {
-        HStack(alignment: .top, spacing: PPSpace.md) {
-            ZStack {
-                Circle()
-                    .fill(Color.red.opacity(isDark ? 0.22 : 0.10))
-                    .frame(width: 38, height: 38)
-
-                Image(systemName: "cross.case.fill")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Color.red)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(snapshot.isRTL ? "خدمة الطوارئ والرعاية العاجلة" : "Emergency & Critical Care")
-                    .font(customFont(15, bold: true, relativeTo: .headline))
-                    .foregroundStyle(Color.red)
-
-                Text(snapshot.isRTL
-                     ? "في الحالات الحرجة أو الإصابات المفاجئة، يُرجى الاتصال المباشر على مدار الساعة لتقديم الإسعافات وتوجيهكم للمركز الأنسب."
-                     : "In critical cases or sudden emergencies, please call directly 24/7 for immediate first-aid guidance and triage.")
-                    .font(customFont(13, bold: false, relativeTo: .footnote))
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .lineSpacing(3)
-                    .multilineTextAlignment(.leading)
-            }
-        }
-        .padding(PPSpace.base)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .fill(Color.red.opacity(isDark ? 0.09 : 0.04))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .strokeBorder(Color.red.opacity(isDark ? 0.28 : 0.16), lineWidth: 0.8)
-        )
-    }
-
-    // MARK: - Availability Card
-    private var availabilityCard: some View {
-        HStack(spacing: PPSpace.md) {
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(Color.ppCareAccent)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(snapshot.isRTL ? "مواعيد العمل المتاحة" : "Available Consultation Hours")
-                    .font(customFont(12, bold: false, relativeTo: .caption))
-                    .foregroundStyle(Color.ppTextSecondary)
-
-                Text(snapshot.availableDateText)
-                    .font(customFont(14.5, bold: true, relativeTo: .subheadline))
-                    .foregroundStyle(Color.ppTextPrimary)
-            }
-            Spacer()
-        }
-        .padding(PPSpace.base)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .fill(Color(uiColor: .ppElevatedSurface))
-                .shadow(color: Color.black.opacity(isDark ? 0.15 : 0.03), radius: 8, x: 0, y: 3)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                .strokeBorder(Color.ppSurfaceBorder.opacity(isDark ? 0.35 : 0.75), lineWidth: 0.8)
-        )
-    }
-
-    // MARK: - Floating Frosted Action Dock
-    private var floatingActionDock: some View {
-        HStack(spacing: PPSpace.sm) {
-            // Direct Phone Call Button
-            Button(action: onCall) {
-                HStack(spacing: 8) {
-                    Image(systemName: "phone.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(snapshot.isRTL ? "اتصال هاتفي" : "Direct Call")
-                        .font(customFont(15, bold: true, relativeTo: .headline))
+            if snapshot.bio.count > 550 && !largeText {
+                Button {
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { showsFullBiography.toggle() }
+                } label: {
+                    Label(copy(showsFullBiography ? "vet_detail_read_less" : "vet_detail_read_more"),
+                          systemImage: showsFullBiography ? "minus" : "plus")
+                        .font(font(18, bold: true, relativeTo: .body))
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .foregroundStyle(Color.white)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(snapshot.canCall ? Color.ppCareAccent : Color.gray)
-                        .shadow(color: snapshot.canCall ? Color.ppCareAccent.opacity(0.35) : Color.clear, radius: 10, x: 0, y: 4)
-                )
+                .foregroundColor(.ppPrimary)
+                .buttonStyle(PPVetDetailPressStyle())
+                .accessibilityIdentifier("vetDetail.biographyDisclosure")
             }
-            .buttonStyle(PPScaleButtonStyle())
-            .disabled(!snapshot.canCall)
-            .accessibilityLabel(snapshot.isRTL ? "اتصال هاتفي مباشر" : "Direct phone call")
-
-            // Direct WhatsApp Consultation Button
-            Button(action: onWhatsApp) {
-                HStack(spacing: 8) {
-                    Image(systemName: "bubble.left.and.bubble.right.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(snapshot.isRTL ? "محادثة واتساب" : "WhatsApp")
-                        .font(customFont(15, bold: true, relativeTo: .headline))
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .foregroundStyle(Color.white)
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(snapshot.canWhatsApp ? Color(red: 0.15, green: 0.68, blue: 0.38) : Color.gray)
-                        .shadow(color: snapshot.canWhatsApp ? Color(red: 0.15, green: 0.68, blue: 0.38).opacity(0.35) : Color.clear, radius: 10, x: 0, y: 4)
-                )
-            }
-            .buttonStyle(PPScaleButtonStyle())
-            .disabled(!snapshot.canWhatsApp)
-            .accessibilityLabel(snapshot.isRTL ? "محادثة واتساب فورية" : "Instant WhatsApp consultation")
         }
-        .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(uiColor: .ppElevatedSurface).opacity(isDark ? 0.92 : 0.88))
-                .background(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                )
-                .shadow(color: Color.black.opacity(isDark ? 0.35 : 0.10), radius: 20, x: 0, y: 8)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .strokeBorder(Color.ppSurfaceBorder.opacity(isDark ? 0.45 : 0.8), lineWidth: 0.8)
-        )
     }
 
-    private func customFont(_ size: CGFloat, bold: Bool = false, relativeTo style: Font.TextStyle) -> Font {
+    private var preparation: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            sectionTitle(copy("vet_detail_prepare_title"))
+            if snapshot.speciesNames.isEmpty {
+                informationRow(label: copy("vet_detail_animals"), value: copy("vet_detail_animals_missing"), symbol: "pawprint")
+            }
+            if let license = snapshot.licenseNumber, !license.isEmpty {
+                informationRow(label: copy("vet_detail_license"), value: license, symbol: "checkmark.seal")
+            }
+            if let hours = snapshot.workingHours, !hours.isEmpty {
+                informationRow(label: copy("vet_detail_working_hours"), value: hours, symbol: "clock")
+            }
+            if !snapshot.availableDateText.isEmpty {
+                informationRow(label: copy("vet_detail_listed_availability"), value: snapshot.availableDateText, symbol: "calendar")
+            }
+            if let membership = snapshot.membershipText {
+                informationRow(label: copy("vet_detail_membership"), value: membership, symbol: "pawprint.circle")
+            }
+            Text(copy(snapshot.isReadyToContact && (snapshot.canCall || snapshot.canWhatsApp)
+                      ? "vet_detail_contact_enabled" : "vet_detail_confirm_visit"))
+                .font(font(17, relativeTo: .subheadline))
+                .foregroundColor(.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+
+    @ViewBuilder private var contactDetails: some View {
+        if !snapshot.phone.isEmpty || !snapshot.whatsapp.isEmpty {
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                sectionTitle(copy("vet_detail_contact_title"))
+                if !snapshot.phone.isEmpty {
+                    informationRow(label: copy("vet_detail_phone"), value: snapshot.phone, symbol: "phone", telephone: true)
+                }
+                if !snapshot.whatsapp.isEmpty && snapshot.whatsapp != snapshot.phone {
+                    informationRow(label: copy("vet_detail_whatsapp"), value: snapshot.whatsapp, symbol: "message", telephone: true)
+                }
+                if snapshot.canCall && !snapshot.canWhatsApp {
+                    Text(copy("vet_detail_whatsapp_international"))
+                        .font(font(17, relativeTo: .subheadline))
+                        .foregroundColor(.ppTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func informationRow(label: String, value: String, symbol: String, telephone: Bool = false) -> some View {
+        VStack(spacing: PPSpace.md) {
+            Divider().overlay(Color.ppSurfaceBorder)
+            HStack(alignment: .top, spacing: PPSpace.md) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundColor(.ppPrimary)
+                    .frame(width: 24, height: 26)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: PPSpace.xs) {
+                    Text(label)
+                        .font(font(16, relativeTo: .subheadline))
+                        .foregroundColor(.ppTextSecondary)
+                    Text(verbatim: value)
+                        .font(font(21, relativeTo: .body))
+                        .environment(\.layoutDirection, telephone ? .leftToRight : (snapshot.isRTL ? .rightToLeft : .leftToRight))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private func contactActions(stacked: Bool) -> some View {
+        if snapshot.canCall || snapshot.canWhatsApp {
+            if stacked {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    sectionTitle(copy("vet_detail_get_in_touch"))
+                    contactButton(whatsApp: false)
+                    contactButton(whatsApp: true)
+                }
+            } else {
+                HStack(spacing: PPSpace.md) {
+                    contactButton(whatsApp: false)
+                    contactButton(whatsApp: true)
+                }
+            }
+        } else {
+            Label(copy("vet_detail_contact_missing"), systemImage: "phone")
+                .font(font(18, relativeTo: .body))
+                .foregroundColor(.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, PPSpace.sm)
+                .accessibilityIdentifier("vetDetail.contactUnavailable")
+        }
+    }
+
+    private func contactButton(whatsApp: Bool) -> some View {
+        let enabled = whatsApp ? snapshot.canWhatsApp : snapshot.canCall
+        let primary = !whatsApp || !snapshot.canCall
+        return Button(action: whatsApp ? onWhatsApp : onCall) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: whatsApp ? "message" : "phone.fill")
+                    .font(.system(size: 19, weight: .medium))
+                    .accessibilityHidden(true)
+                Text(copy(whatsApp ? "vet_detail_whatsapp" : "vet_detail_call"))
+                    .font(font(20, bold: true, relativeTo: .headline))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, minHeight: PPBottomDecisionBarGeometry.controlHeight)
+            .padding(.horizontal, PPSpace.md)
+            .padding(.vertical, PPSpace.xs)
+            .foregroundColor(enabled ? (primary ? .white : .ppTextPrimary) : .ppTextSecondary)
+            .background(enabled && primary ? Color.ppPrimary : Color.ppSecondarySurface,
+                        in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+        }
+        .buttonStyle(PPVetDetailPressStyle())
+        .disabled(!enabled)
+        .accessibilityHint(copy(enabled ? (whatsApp ? "vet_detail_whatsapp_hint" : "vet_detail_call_hint")
+                               : "vet_detail_channel_missing"))
+        .accessibilityIdentifier(whatsApp ? "vetDetail.whatsapp" : "vetDetail.call")
+    }
+
+    private var unavailableProfile: some View {
+        VStack(alignment: .leading, spacing: PPSpace.lg) {
+            Image(systemName: "cross.case").font(.system(size: 40, weight: .light))
+                .foregroundColor(.ppPrimary).accessibilityHidden(true)
+            sectionTitle(copy("vet_detail_unavailable_title"))
+            Text(copy("vet_detail_unavailable_body"))
+                .font(font(21, relativeTo: .body))
+                .foregroundColor(.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, PPSpace.xxl)
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(font(23, bold: true, relativeTo: .title2))
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func font(_ size: CGFloat, bold: Bool = false, relativeTo style: Font.TextStyle) -> Font {
         .custom(bold ? "Beiruti-Bold" : "Beiruti-Regular", size: size, relativeTo: style)
     }
+
+    private func copy(_ key: String) -> String { PPVetDetailLocalization.text(key) }
 }
 
-// MARK: - Scale Button Style
-private struct PPScaleButtonStyle: ButtonStyle {
+private struct PPVetDetailPressStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1.0)
-            .opacity(configuration.isPressed ? 0.88 : 1.0)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .opacity(configuration.isPressed ? 0.78 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
     }
 }

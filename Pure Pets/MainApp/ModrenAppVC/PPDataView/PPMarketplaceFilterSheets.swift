@@ -492,8 +492,21 @@ struct PPMarketplaceFilterSheet: View {
 
                         if let draft = store.filterDraft {
                             ForEach(draft.groups, id: \.filterID) { group in
+                                let customOptions: [PPFilterOption]? = {
+                                    if group.filterID == PPFilterIDMedicineCategory {
+                                        let medGroupVal = draft.value(forFilterID: PPFilterIDMedicineGroup)
+                                        if medGroupVal == PPFilterMedicineGroup.veterinaryMedicines.rawValue {
+                                            return group.options.filter { $0.value == 0 || ($0.value >= 1 && $0.value <= 12) }
+                                        } else if medGroupVal == PPFilterMedicineGroup.petCare.rawValue {
+                                            return group.options.filter { $0.value == 0 || ($0.value >= 13 && $0.value <= 22) }
+                                        }
+                                    }
+                                    return nil
+                                }()
+
                                 PPMarketplaceAdaptiveFilterGroupView(
                                     group: group,
+                                    customOptions: customOptions,
                                     accent: store.accentColor,
                                     isRightToLeft: store.isRightToLeft,
                                     select: { value in
@@ -843,6 +856,7 @@ struct PPMarketplaceFilterSheet: View {
 @available(iOS 15.0, *)
 private struct PPMarketplaceAdaptiveFilterGroupView: View {
     let group: PPFilterGroup
+    var customOptions: [PPFilterOption]? = nil
     let accent: UIColor
     let isRightToLeft: Bool
     let select: (Int) -> Void
@@ -872,6 +886,7 @@ private struct PPMarketplaceAdaptiveFilterGroupView: View {
         } else {
             PPMarketplaceGenericAdaptiveGroup(
                 group: group,
+                customOptions: customOptions,
                 accent: accent,
                 isRightToLeft: isRightToLeft,
                 select: select
@@ -1379,6 +1394,7 @@ private struct PPMarketplaceSortVectorGroup: View {
 @available(iOS 15.0, *)
 private struct PPMarketplaceGenericAdaptiveGroup: View {
     let group: PPFilterGroup
+    var customOptions: [PPFilterOption]? = nil
     let accent: UIColor
     let isRightToLeft: Bool
     let select: (Int) -> Void
@@ -1391,6 +1407,10 @@ private struct PPMarketplaceGenericAdaptiveGroup: View {
 
     private var isMotionDisabled: Bool {
         reduceMotion || switchControlEnabled || voiceOverEnabled
+    }
+
+    private var displayOptions: [PPFilterOption] {
+        customOptions ?? group.options
     }
 
     var body: some View {
@@ -1450,7 +1470,7 @@ private struct PPMarketplaceGenericAdaptiveGroup: View {
 
     @ViewBuilder
     private var optionViews: some View {
-        ForEach(group.options, id: \.value) { option in
+        ForEach(displayOptions, id: \.value) { option in
             let selected = option.value == group.selectedValue
             Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()

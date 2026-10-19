@@ -20,12 +20,18 @@ struct PPMarketplaceDataViewScreen: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .top) {
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(
-                        alignment: .leading,
-                        spacing: 0,
-                        pinnedViews: [.sectionHeaders]
-                    ) {
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(
+                            alignment: .leading,
+                            spacing: 0,
+                            pinnedViews: [.sectionHeaders]
+                        ) {
+                            Color.clear
+                                .frame(width: 1, height: 1)
+                                .id("pp.marketplace.top.anchor")
+                                .accessibilityHidden(true)
+
                             PPMarketplaceHero(
                                 store: store,
                                 availableWidth: proxy.size.width,
@@ -175,32 +181,27 @@ struct PPMarketplaceDataViewScreen: View {
                         DispatchQueue.main.async {
                             measuredScrollContentHeight = max(0, height)
                             if store.isReplacingContext {
-                                if case .refinement = store.contentTransitionIntent {
-                                    retainedScrollContentHeight = max(
-                                        retainedScrollContentHeight,
-                                        min(measuredScrollContentHeight, proxy.size.height + 300)
-                                    )
-                                } else {
-                                    retainedScrollContentHeight = 0
-                                }
+                                retainedScrollContentHeight = max(
+                                    retainedScrollContentHeight,
+                                    min(max(measuredScrollContentHeight, proxy.size.height), proxy.size.height + 300)
+                                )
                             }
                         }
                     }
                     .onChange(of: store.isReplacingContext) { isReplacing in
                         if isReplacing {
-                            if case .refinement = store.contentTransitionIntent {
-                                retainedScrollContentHeight = max(
-                                    retainedScrollContentHeight,
-                                    min(measuredScrollContentHeight, proxy.size.height + 300)
-                                )
-                            } else {
-                                retainedScrollContentHeight = 0
-                            }
+                            retainedScrollContentHeight = max(
+                                retainedScrollContentHeight,
+                                proxy.size.height
+                            )
                         } else {
                             DispatchQueue.main.async {
                                 retainedScrollContentHeight = 0
                             }
                         }
+                    }
+                    .onChange(of: store.currentSection.rawValue) { _ in
+                        scrollProxy.scrollTo("pp.marketplace.top.anchor", anchor: .top)
                     }
                     .onChange(of: dockIsPinned) { isPinned in
                         if !isPinned && !store.isReplacingContext {
@@ -219,6 +220,7 @@ struct PPMarketplaceDataViewScreen: View {
                     .onChange(of: scrollGestureIsActive) { isActive in
                         updateBridgeScrollInteraction(isActive: isActive)
                     }
+                }
             }
             .overlay(alignment: .bottom) {
                 bottomNavigationFade
@@ -509,16 +511,14 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
                     self.unlockScrollViewIfNeeded()
                     self.capture = nil
                     self.wasReplacingContext = false
-                    if self.lastHandledSectionChangeRevision != contentRevision {
-                        self.lastHandledSectionChangeRevision = contentRevision
-                        let minimumY = -scrollView.adjustedContentInset.top
-                        if abs(scrollView.contentOffset.y - minimumY) > 0.5 {
-                            UIView.performWithoutAnimation {
-                                scrollView.setContentOffset(
-                                    CGPoint(x: scrollView.contentOffset.x, y: minimumY),
-                                    animated: false
-                                )
-                            }
+                    self.lastHandledSectionChangeRevision = contentRevision
+                    let minimumY = -scrollView.adjustedContentInset.top
+                    if abs(scrollView.contentOffset.y - minimumY) > 0.5 {
+                        UIView.performWithoutAnimation {
+                            scrollView.setContentOffset(
+                                CGPoint(x: scrollView.contentOffset.x, y: minimumY),
+                                animated: false
+                            )
                         }
                     }
                     self.latestRestorationCompletion?()
@@ -762,8 +762,8 @@ private struct PPMarketplaceContent: View {
     }
 
     private var contentMinHeight: CGFloat? {
-        if store.isReplacingContext && store.contentTransitionIntent == .refinement {
-            // Retain surface height during active refinement transitions (e.g. breed/species)
+        if store.isReplacingContext {
+            // Retain surface height during active context transitions (refinement or section change)
             // to keep the pinned section header stable before new items settle.
             return max(availableHeight, 1)
         }

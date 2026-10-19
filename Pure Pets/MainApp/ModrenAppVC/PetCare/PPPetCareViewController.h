@@ -6,7 +6,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, PPPetCareInitialSection) {
     PPPetCareInitialSectionMedicines = 0,
-    PPPetCareInitialSectionVeterinarians = 1
+    PPPetCareInitialSectionVeterinarians = 1,
+    PPPetCareInitialSectionClinics = 2
 };
 
 @interface PPPetCareViewController : UIViewController

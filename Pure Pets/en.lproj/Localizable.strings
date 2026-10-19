@@ -393,6 +393,7 @@
 "delete" = "Delete";
 "deleteBoxAlertDesc" = "All data for the box and all children belonging to the box will be deleted, confirm?";
 "deleteBoxAlertTitle" = "Delete box data";
+"deleteBox" = "Delete Box";
 "deleteCard" = "Delete Card";
 "deleteCardSucsses" = "The card was deleted successfully";
 "deleteCardTitle" = "The card will be deleted, confirm?";
@@ -3046,7 +3047,7 @@
 "pet_care_medicine_title" = "Pet medicines";
 "pet_care_medicine_subtitle" = "Curated treatment, wellness, and care supplies from the shared store catalog.";
 "pet_care_vets_title" = "Veterinarians";
-"pet_care_vets_subtitle" = "Find veterinarians matched to pet kind, contact readiness, and clinic type.";
+"pet_care_vets_subtitle" = "Find veterinarians by the animals they care for and their contact details.";
 "pet_care_search_medicines" = "Search medicines";
 "pet_care_search_vets" = "Search veterinarians";
 "pet_care_all_pets" = "All pets";
@@ -5599,7 +5600,7 @@
 /* Pet Care — discovery and recovery */
 "pet_care_discovery_title" = "Care starts here";
 "pet_care_discovery_medicines" = "Medicines and care essentials, for your kind of companion.";
-"pet_care_discovery_vets" = "Find a veterinarian or clinic and get in touch.";
+"pet_care_discovery_vets" = "Find a veterinarian and get in touch.";
 "pet_care_refresh" = "Refresh list";
 "pet_care_retry" = "Try again";
 "pet_care_refreshing" = "Updating the list…";
@@ -5609,7 +5610,7 @@
 "pet_care_directory_empty_medicines" = "No medicines listed yet";
 "pet_care_directory_empty_medicines_body" = "Published medicines will appear here when available. Refresh the list or explore veterinarians.";
 "pet_care_directory_empty_vets" = "No veterinarians listed yet";
-"pet_care_directory_empty_vets_body" = "Veterinarian and clinic profiles will appear here when available. Refresh the list or explore medicines.";
+"pet_care_directory_empty_vets_body" = "Veterinarian profiles will appear here when available. Refresh the list or explore medicines.";
 "pet_care_loading_title" = "Finding care options";
 "pet_care_loading_body" = "We’re loading the list so you can explore care for your companion.";
 "pet_care_load_error" = "The list couldn’t load";
@@ -5618,9 +5619,17 @@
 "pet_care_no_matches_body" = "Clear the search and filters to see the full list, then narrow it down again.";
 "pet_care_clear_search_filters" = "Clear search and filters";
 "pet_care_explore_medicines" = "Explore medicines and care essentials";
-"pet_care_explore_vets" = "Explore veterinarians and clinics";
+"pet_care_explore_vets" = "Explore veterinarians";
 "pet_care_cart_count_format" = "Items in cart: %@";
 "pet_care_count_over_99" = "99+";
+
+/* Pet Care: dedicated clinic discovery */
+"pet_care_clinics" = "Clinics";
+"pet_care_clinics_title" = "Veterinary clinics";
+"pet_care_search_clinics" = "Search clinics";
+"pet_care_discovery_clinics" = "Find a veterinary clinic for your pet and get in touch.";
+"pet_care_directory_empty_clinics" = "No clinics listed yet";
+"pet_care_directory_empty_clinics_body" = "Clinic profiles will appear here when available. Refresh the list or explore veterinarians.";
 
 // Pet profile editor — portrait and care
 "pet_editor_add_photo" = "Add a photo";
@@ -5798,3 +5807,43 @@
 "medicine_record_share_price_format" = "Price: %@";
 "medicine_record_partial_add_format" = "Added the remaining available quantity: %@.";
 "medicine_record_list_separator" = ", ";
+
+/* Floating cart: quantity context, total readout and accessible summary. */
+"floating_cart_count_zero" = "No items";
+"floating_cart_count_one" = "One item";
+"floating_cart_count_two" = "Two items";
+"floating_cart_count_few" = "%@ items";
+"floating_cart_count_many" = "%@ items";
+"floating_cart_count_other" = "%@ items";
+"floating_cart_review_total" = "See total in cart";
+"floating_cart_accessibility_value" = "%1$@. Total: %2$@.";
+
+/* Medicine & Care filter rail & taxonomy */
+"MedicineCare_Department" = "Department";
+"MedicineCare_Group_All" = "All Products";
+"MedicineCare_Group_Medicines" = "Veterinary Medicines";
+"MedicineCare_Group_Care" = "Pet Care & Hygiene";
+"MedicineCare_Category" = "Category";
+"MedicineCare_Category_All" = "All Categories";
+"MedicineCare_Cat_med_antibiotics" = "Antibiotics & Antimicrobial";
+"MedicineCare_Cat_med_dewormers" = "Parasiticides & Dewormers";
+"MedicineCare_Cat_med_flea_tick" = "Flea, Tick & Pest Control";
+"MedicineCare_Cat_med_vitamins" = "Vitamins & Supplements";
+"MedicineCare_Cat_med_anti_inflammatory" = "Pain Relief & Anti-Inflammatory";
+"MedicineCare_Cat_med_digestive" = "Digestive & Gastrointestinal Care";
+"MedicineCare_Cat_med_eyes_ears" = "Eye & Ear Medical Drops";
+"MedicineCare_Cat_med_dermatology" = "Dermatology & Antifungal Care";
+"MedicineCare_Cat_med_respiratory" = "Respiratory Treatments";
+"MedicineCare_Cat_med_antiseptic" = "Antiseptics & First Aid";
+"MedicineCare_Cat_med_calming" = "Calming & Stress Relief";
+"MedicineCare_Cat_med_general" = "General Medicines";
+"MedicineCare_Cat_care_shampoo" = "Shampoo, Conditioners & Washes";
+"MedicineCare_Cat_care_dental" = "Oral Care & Dental Hygiene";
+"MedicineCare_Cat_care_paw_nail" = "Paws & Nail Care";
+"MedicineCare_Cat_care_grooming" = "Brushes & Grooming Tools";
+"MedicineCare_Cat_care_ear_eye" = "Ear & Eye Cleansers";
+"MedicineCare_Cat_care_deodorant" = "Deodorizing Sprays & Perfumes";
+"MedicineCare_Cat_care_pads_diapers" = "Pads, Diapers & Liners";
+"MedicineCare_Cat_care_habitat_clean" = "Cage & Surface Sanitisers";
+"MedicineCare_Cat_care_nursing" = "Nursing & Feeding Kits";
+"MedicineCare_Cat_care_general" = "General Pet Care Products";
