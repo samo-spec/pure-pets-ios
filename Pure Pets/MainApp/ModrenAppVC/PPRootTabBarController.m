@@ -3301,40 +3301,56 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [NSLayoutConstraint activateConstraints:novaConstraints];
     [self pp_updatePremiumNovaButtonVisibility];
 
-    __weak typeof(self) weakSelf = self;
-    __weak LOTAnimationView *weakAnimationView = animationView;
-    [AppClasses setAnimationNamed:@"Ncolored"
-                            ToView:animationView
-                         withSpeed:0.6
-                        completion:^(BOOL success) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            LOTAnimationView *strongAnimationView = weakAnimationView;
-            if (!strongSelf || !strongAnimationView) {
-                return;
-            }
-            if (success) {
-                [strongAnimationView play];
-                return;
-            }
-            strongAnimationView.hidden = YES;
-            UIImageSymbolConfiguration *configuration =
-                [UIImageSymbolConfiguration configurationWithPointSize:20.0
-                                                                 weight:UIImageSymbolWeightMedium];
-            UIImage *fallbackIcon =
-                [UIImage systemImageNamed:@"sparkles" withConfiguration:configuration];
-            if (@available(iOS 26.0, *)) {
-                UIButtonConfiguration *buttonConfiguration =
-                    strongSelf.premiumNovaButton.configuration;
-                buttonConfiguration.image = fallbackIcon;
-                buttonConfiguration.baseForegroundColor = accentColor;
-                strongSelf.premiumNovaButton.configuration = buttonConfiguration;
-            } else {
-                [strongSelf.premiumNovaButton setImage:fallbackIcon forState:UIControlStateNormal];
-                strongSelf.premiumNovaButton.tintColor = accentColor;
-            }
-        });
-    }];
+    UIImage *puryMascot = [UIImage imageNamed:@"PuryV1"];
+    if (puryMascot) {
+        animationView.hidden = YES;
+        UIImageView *mascotView = [[UIImageView alloc] initWithImage:[puryMascot imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal]];
+        mascotView.translatesAutoresizingMaskIntoConstraints = NO;
+        mascotView.contentMode = UIViewContentModeScaleAspectFit;
+        mascotView.clipsToBounds = YES;
+        [button addSubview:mascotView];
+        [NSLayoutConstraint activateConstraints:@[
+            [mascotView.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
+            [mascotView.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
+            [mascotView.widthAnchor constraintEqualToConstant:36.0],
+            [mascotView.heightAnchor constraintEqualToConstant:36.0]
+        ]];
+    } else {
+        __weak typeof(self) weakSelf = self;
+        __weak LOTAnimationView *weakAnimationView = animationView;
+        [AppClasses setAnimationNamed:@"Ncolored"
+                                ToView:animationView
+                             withSpeed:0.6
+                            completion:^(BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                LOTAnimationView *strongAnimationView = weakAnimationView;
+                if (!strongSelf || !strongAnimationView) {
+                    return;
+                }
+                if (success) {
+                    [strongAnimationView play];
+                    return;
+                }
+                strongAnimationView.hidden = YES;
+                UIImageSymbolConfiguration *configuration =
+                    [UIImageSymbolConfiguration configurationWithPointSize:20.0
+                                                                    weight:UIImageSymbolWeightMedium];
+                UIImage *fallbackIcon =
+                    [UIImage systemImageNamed:@"sparkles" withConfiguration:configuration];
+                if (@available(iOS 26.0, *)) {
+                    UIButtonConfiguration *buttonConfiguration =
+                        strongSelf.premiumNovaButton.configuration;
+                    buttonConfiguration.image = fallbackIcon;
+                    buttonConfiguration.baseForegroundColor = accentColor;
+                    strongSelf.premiumNovaButton.configuration = buttonConfiguration;
+                } else {
+                    [strongSelf.premiumNovaButton setImage:fallbackIcon forState:UIControlStateNormal];
+                    strongSelf.premiumNovaButton.tintColor = accentColor;
+                }
+            });
+        }];
+    }
 }
 
 - (BOOL)pp_cachedNovaFloatingVisibility

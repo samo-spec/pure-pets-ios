@@ -229,6 +229,8 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
             return [self pp_accessoriesFilterState];
         case PPDataSectionFood:
             return [self pp_foodFilterState];
+        case PPDataSectionMedicines:
+            return [self pp_medicinesFilterState];
         case PPDataSectionServices:
             return [self pp_servicesFilterState];
         default:
@@ -332,6 +334,49 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 #pragma mark — Food
 
 + (PPFilterState *)pp_foodFilterState
+{
+    PPFilterGroup *offer = [PPFilterGroup
+        groupWithID:PPFilterIDHasOffer
+              title:PPFilterL(@"Offers", @"العروض")
+           chipIcon:@"percent"
+            options:@[
+                [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterHasOfferAll],
+                [PPFilterOption optionWithTitle:PPFilterL(@"On Sale", @"عروض فقط") value:PPFilterHasOfferYes icon:@"flame.fill"],
+            ]];
+
+    PPFilterGroup *price = [PPFilterGroup
+        groupWithID:PPFilterIDPrice
+              title:PPFilterL(@"Price", @"السعر")
+           chipIcon:@"tag"
+            options:@[
+                [PPFilterOption optionWithTitle:PPFilterL(@"All prices", @"كل الاسعار") value:PPFilterPriceAll],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Under 250", @"اقل من 250") value:PPFilterPriceTier1],
+                [PPFilterOption optionWithTitle:@"250 - 750" value:PPFilterPriceTier2],
+                [PPFilterOption optionWithTitle:PPFilterL(@"750+", @"750+") value:PPFilterPriceTier3],
+            ]];
+
+    PPFilterGroup *sort = [PPFilterGroup
+        groupWithID:PPFilterIDSort
+              title:PPFilterL(@"Sort", @"الترتيب")
+           chipIcon:@"arrow.up.arrow.down"
+            options:@[
+                [PPFilterOption optionWithTitle:PPFilterL(@"Recommended", @"الافتراضي") value:PPFilterSortRecommended],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Low to high", @"الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
+                [PPFilterOption optionWithTitle:PPFilterL(@"High to low", @"الاعلى للاقل") value:PPFilterSortPriceHighToLow],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Name A-Z", @"من الالف للياء") value:PPFilterSortNameAZ],
+            ]];
+
+    return [PPFilterState stateWithGroups:@[offer, price, sort]];
+}
+
+#pragma mark — Medicines
+
++ (PPFilterState *)medicinesFilterState
+{
+    return [self pp_medicinesFilterState];
+}
+
++ (PPFilterState *)pp_medicinesFilterState
 {
     PPFilterGroup *offer = [PPFilterGroup
         groupWithID:PPFilterIDHasOffer

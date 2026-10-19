@@ -92,6 +92,19 @@ struct LensResultSheet: View {
         } message: {
             Text(store.localized("lens.results.open_failed.detail"))
         }
+        .alert(
+            store.localized("lens.privacy.consent.title"),
+            isPresented: sheetConsentPresentation
+        ) {
+            Button(store.localized("lens.cancel"), role: .cancel) {
+                store.cancelRemoteProcessing()
+            }
+            Button(store.localized("lens.privacy.consent.continue")) {
+                store.confirmRemoteProcessing()
+            }
+        } message: {
+            Text(store.remoteProcessingDisclosure)
+        }
         .accessibilityAction(.escape, scanAgain)
         .onAppear {
             revealGuidanceSignal()
@@ -855,6 +868,16 @@ struct LensResultSheet: View {
                 guidanceSignalVisible = true
             }
         }
+    }
+
+    private var sheetConsentPresentation: Binding<Bool> {
+        Binding(
+            get: { store.presentation != nil && store.showsRemoteProcessingConsent },
+            set: { newValue in
+                guard store.presentation != nil else { return }
+                store.showsRemoteProcessingConsent = newValue
+            }
+        )
     }
 
     private func scanAgain() {

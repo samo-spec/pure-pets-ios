@@ -104,6 +104,12 @@ static BOOL PPAccessoryItemPassesUsedAccessoryFlag(PetAccessory *item, AccessKin
     if (item.isDeleted || item.isBlocked || item.isDisabled) {
         return NO;
     }
+    if (item.variantIsArchived) {
+        return NO;
+    }
+    if (item.isVariant && !item.isDefaultVariant) {
+        return NO;
+    }
     if (!item.expiryDate) {
         return YES;
     }
@@ -125,6 +131,7 @@ static BOOL PPAccessoryItemPassesUsedAccessoryFlag(PetAccessory *item, AccessKin
     AccessKindType normalizedKind = PPAccessKindTypeNormalize(kind);
     NSDate *cutoff = [[NSDate date] dateByAddingTimeInterval:_pp_cachedExpiryThresholdDays * 86400.0];
     NSMutableArray<PetAccessory *> *filtered = [NSMutableArray arrayWithCapacity:items.count];
+    NSMutableDictionary<NSString *, PetAccessory *> *seenFamilies = [NSMutableDictionary dictionary];
 
     for (PetAccessory *item in items) {
         if (item.accessKindType != normalizedKind) {
@@ -133,11 +140,36 @@ static BOOL PPAccessoryItemPassesUsedAccessoryFlag(PetAccessory *item, AccessKin
         if (!PPAccessoryItemPassesUsedAccessoryFlag(item, normalizedKind)) {
             continue;
         }
-        if ([self pp_itemPassesVisibilityAndExpiry:item
+        if (![self pp_itemPassesVisibilityAndExpiry:item
                                         cutoffDate:cutoff
                          requiresAppMarketVisibility:requiresAppMarketVisibility]) {
-            [filtered addObject:item];
+            continue;
         }
+
+        // Child variants should never be top-level catalogue entries
+        if (item.isVariant && !item.isDefaultVariant) {
+            continue;
+        }
+
+        // Deduplicate multiple members of the same product family
+        NSString *familyId = item.productFamilyId;
+        if (familyId.length > 0) {
+            PetAccessory *existing = seenFamilies[familyId];
+            if (existing) {
+                // If this item is the default variant and existing wasn't, prefer this one
+                if (item.isDefaultVariant && !existing.isDefaultVariant) {
+                    NSUInteger idx = [filtered indexOfObjectIdenticalTo:existing];
+                    if (idx != NSNotFound) {
+                        filtered[idx] = item;
+                        seenFamilies[familyId] = item;
+                    }
+                }
+                continue;
+            }
+            seenFamilies[familyId] = item;
+        }
+
+        [filtered addObject:item];
     }
     return [self pp_sortItemsByCreatedAtDescending:filtered];
 }
@@ -2233,6 +2265,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
 
             NSMutableArray<PetAccessory *> *results = [NSMutableArray array];
+            NSMutableDictionary<NSString *, PetAccessory *> *seenFamilies = [NSMutableDictionary dictionary];
             for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
                 if (excludeID.length > 0 && [doc.documentID isEqualToString:excludeID]) {
                     continue;
@@ -2252,6 +2285,26 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 if (!PPAccessoryItemPassesUsedAccessoryFlag(item, item.accessKindType)) {
                     continue;
                 }
+                if (item.isVariant && !item.isDefaultVariant) {
+                    continue;
+                }
+
+                NSString *familyId = item.productFamilyId;
+                if (familyId.length > 0) {
+                    PetAccessory *existing = seenFamilies[familyId];
+                    if (existing) {
+                        if (item.isDefaultVariant && !existing.isDefaultVariant) {
+                            NSUInteger idx = [results indexOfObjectIdenticalTo:existing];
+                            if (idx != NSNotFound) {
+                                results[idx] = item;
+                                seenFamilies[familyId] = item;
+                            }
+                        }
+                        continue;
+                    }
+                    seenFamilies[familyId] = item;
+                }
+
                 [results addObject:item];
             }
 

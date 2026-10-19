@@ -491,6 +491,8 @@ static NSError *PPPureLensDiscoveryError(NSInteger code)
 - (BOOL)pp_itemIsDisplayable:(PetAccessory *)item
 {
     if (item.isLivePet || item.isBlocked || item.isDeleted || item.isDisabled) return NO;
+    if (item.variantIsArchived) return NO;
+    if (item.isVariant && !item.isDefaultVariant) return NO;
     if (item.accessKindType != AccessTypePetMedicine && !item.showInAppMarket) return NO;
     return item.accessKindType == AccessTypeAccessory ||
         item.accessKindType == AccessTypeFood ||

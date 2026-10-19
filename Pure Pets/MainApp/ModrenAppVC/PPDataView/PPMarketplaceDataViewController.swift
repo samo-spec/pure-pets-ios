@@ -111,18 +111,18 @@ final class PPMarketplaceDataViewController: UIViewController, UIGestureRecogniz
 
     @objc(sectionFromDeepLinkTarget:)
     func section(from target: PPDeepLinkTarget) -> PPDataSection {
-        let rawSection: Int
-        switch target.rawValue {
-        case 2:
-            rawSection = 1
-        case 3:
-            rawSection = 2
-        case 5, 6, 7, 8:
-            rawSection = 3
+        switch target {
+        case .accessories:
+            return .accessories
+        case .food:
+            return .food
+        case .vet, .medicines:
+            return .medicines
+        case .services, .grooming, .traning, .adopt:
+            return .services
         default:
-            rawSection = 0
+            return .ads
         }
-        return PPDataSection(rawValue: rawSection)!
     }
 
     // MARK: Root bottom-surface runtime contract

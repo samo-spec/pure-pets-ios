@@ -3450,7 +3450,7 @@ private struct PPUniversalCardRenderer: View {
                 )
             )
             .foregroundStyle(store.palette.ink)
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : (store.isHomePresentation ? 1 : 2))
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
             .minimumScaleFactor(store.isHomePresentation ? 0.85 : 1.0)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -4297,7 +4297,7 @@ private struct PPUniversalCardRenderer: View {
             .foregroundStyle(store.palette.ink)
             .lineLimit(
                 store.isHomePresentation
-                    ? 1
+                    ? 2
                     : (dynamicTypeSize.isAccessibilitySize
                         ? (store.layout == .focus ? 4 : 3)
                         : (store.layout == .focus ? 2 : 1))
@@ -4728,7 +4728,7 @@ private struct PPUniversalCardRenderer: View {
             tint: primaryActionAccent,
             itemSymbol: "shippingbox.fill",
             isEnabled: store.canIncreaseQuantity,
-            cornerRadius: store.isHomePresentation ? 9 : (usesProductCardActionStyle ? 12 : 13),
+            cornerRadius: 16,
             presentationStyle: usesProductCardActionStyle ? .productCard : .standard,
             quantityMode: .init(
                 quantity: Binding(
@@ -5807,9 +5807,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var actionShape: RoundedRectangle {
         RoundedRectangle(
-            cornerRadius: store.isHomePresentation
-                ? (isAdAction ? HomeVisualTokens.advertisementActionCorner : 9)
-                : 13,
+            cornerRadius: isAdAction ? HomeVisualTokens.advertisementActionCorner : 16,
             style: .continuous
         )
     }

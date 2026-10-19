@@ -335,7 +335,7 @@ private struct HomeUniversalCompatibilityCard: View {
                         .font(HomeFont.subheadline())
                         .foregroundStyle(Color.ppTextPrimary)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(1)
+                        .lineLimit(2)
                         .minimumScaleFactor(0.85)
                         .frame(maxWidth: .infinity, minHeight: isAdvertisement ? titleMinimumHeight : nil, alignment: .topLeading)
 

@@ -53,7 +53,7 @@ struct PPProductCardActionLabel: View {
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .background(PPProductCardActionSurface(tint: tint))
-        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: symbol)
     }
 }
@@ -76,11 +76,11 @@ private struct PPProductCardActionSurface: View {
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
             .fill(tint.opacity(colorScheme == .dark ? 0.14 : 0.055))
             .overlay {
                 if contrast == .increased {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(tint.opacity(0.65), lineWidth: 1)
                 }
             }

@@ -68,6 +68,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
 
 @property (nonatomic, strong) UIView *avatarView;
 @property (nonatomic, strong) UILabel *avatarLabel;
+@property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UIView *bubbleShadowView;
 @property (nonatomic, strong) UIVisualEffectView *bubbleMaterialView;
 @property (nonatomic, strong) UIView *typingAuraView;
@@ -210,6 +211,25 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.avatarLabel.font = [GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
     self.avatarLabel.textColor = brand;
     [self.avatarView addSubview:self.avatarLabel];
+
+    self.avatarImageView = [[UIImageView alloc] init];
+    self.avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.avatarImageView.contentMode = UIViewContentModeScaleAspectFit;
+    self.avatarImageView.clipsToBounds = YES;
+    UIImage *puryMascot = [UIImage imageNamed:@"PuryV1"];
+    if (puryMascot) {
+        self.avatarImageView.image = [puryMascot imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+        self.avatarLabel.hidden = YES;
+    } else {
+        self.avatarImageView.hidden = YES;
+    }
+    [self.avatarView addSubview:self.avatarImageView];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.avatarImageView.centerXAnchor constraintEqualToAnchor:self.avatarView.centerXAnchor],
+        [self.avatarImageView.centerYAnchor constraintEqualToAnchor:self.avatarView.centerYAnchor],
+        [self.avatarImageView.widthAnchor constraintEqualToConstant:18.0],
+        [self.avatarImageView.heightAnchor constraintEqualToConstant:18.0]
+    ]];
 
     self.bubbleShadowView = [[UIView alloc] init];
     self.bubbleShadowView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1467,6 +1487,14 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
                                                               [UIColor.whiteColor colorWithAlphaComponent:0.10]).CGColor;
     self.avatarView.layer.shadowColor = avatarShadowColor.CGColor;
     self.avatarView.layer.shadowOpacity = darkMode ? 0.18 : 0.12;
+
+    if (self.avatarImageView.image) {
+        self.avatarImageView.hidden = NO;
+        self.avatarLabel.hidden = YES;
+    } else {
+        self.avatarImageView.hidden = YES;
+        self.avatarLabel.hidden = NO;
+    }
 
     self.messageLabel.textColor = assistant ? assistantText : userText;
 

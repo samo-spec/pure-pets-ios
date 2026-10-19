@@ -116,6 +116,7 @@ typedef NS_ENUM(NSInteger, PPFilterAvailability) {
 @interface PPFilterConfigProvider : NSObject
 + (PPFilterState *)defaultFilterStateForSection:(PPDataSection)section;
 + (PPFilterState *)accessoriesFilterStateWithCategories:(NSArray<PPAccessoryCategoryModel *> *)categories;
++ (PPFilterState *)medicinesFilterState;
 @end
 
 NS_ASSUME_NONNULL_END

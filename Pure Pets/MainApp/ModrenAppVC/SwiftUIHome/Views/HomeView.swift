@@ -185,6 +185,43 @@ private struct HomeHeroV2Stage: View {
     }
 }
 
+/// A quiet companion stamp joins profile context to discovery without adding
+/// another control or changing the shared hero's existing layout footprint.
+@available(iOS 15.0, *)
+private struct HomeHeroCompanionSeparator: View {
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.displayScale) private var displayScale
+
+    var body: some View {
+        Color.clear
+            .frame(height: 0.5)
+            .overlay {
+                HStack(spacing: 0) {
+                    rule
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(Color.ppTextSecondary.opacity(
+                            contrast == .increased ? 1 : 0.56
+                        ))
+                        .frame(width: PPSpace.xl, height: PPSpace.md)
+                    rule
+                }
+                .frame(height: PPSpace.md)
+            }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private var rule: some View {
+        Rectangle()
+            .fill(contrast == .increased
+                ? Color.ppTextSecondary.opacity(0.64)
+                : Color.ppSurfaceBorder)
+            .frame(maxWidth: .infinity)
+            .frame(height: contrast == .increased ? 1 : 1 / max(displayScale, 1))
+    }
+}
+
 @available(iOS 15.0, *)
 struct HomeView: View {
     @ObservedObject var store: HomeStore
@@ -469,11 +506,8 @@ struct HomeView: View {
                         companionHeader
                             .padding(.horizontal, PPSpace.base)
                             .padding(.vertical, PPSpace.sm)
-                        Rectangle()
-                            .fill(Color(uiColor: .separator).opacity(0.3))
-                            .frame(height: 0.5)
+                        HomeHeroCompanionSeparator()
                             .padding(.horizontal, PPSpace.base)
-                            .accessibilityHidden(true)
                         marketingStage(source)
                     }
                     .background(Color.homeSurface, in: RoundedRectangle(

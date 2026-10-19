@@ -221,6 +221,12 @@ struct PPMarketplaceSectionDescriptor: Identifiable, Equatable {
         ),
         .init(
             rawValue: 3,
+            titleKey: "marketplace_section_medicines_title",
+            subtitleKey: "marketplace_section_medicines_subtitle",
+            iconName: "pills"
+        ),
+        .init(
+            rawValue: 4,
             titleKey: "CellSectionServices",
             subtitleKey: "marketplace_section_services_subtitle",
             iconName: "hands.sparkles"
@@ -251,6 +257,7 @@ struct PPMarketplaceSubKindChoice: Identifiable {
 @available(iOS 15.0, *)
 enum PPMarketplaceContentTransitionIntent: Equatable {
     case initial
+    case sectionChange(direction: Int)
     case navigation(direction: Int)
     case refinement
 }
@@ -525,15 +532,19 @@ final class PPMarketplaceDataViewStore: ObservableObject {
     func selectSection(_ descriptor: PPMarketplaceSectionDescriptor) {
         guard !isReplacingContext,
               descriptor.rawValue != currentSection.rawValue else { return }
-        prepareBridgeContentTransition(
-            .navigation(
-                direction: descriptor.rawValue > currentSection.rawValue ? 1 : -1
-            )
-        )
+        let direction = descriptor.rawValue > currentSection.rawValue ? 1 : -1
+        prepareBridgeContentTransition(.sectionChange(direction: direction))
+        currentSection = descriptor.section
+        selectedProviderID = selectedProviderIDs[descriptor.rawValue]
+        providerOptions = []
+        rawItems = []
+        records = []
+        loadState = .loading
         updateErrorMessage = nil
         UISelectionFeedbackGenerator().selectionChanged()
 
         layout = PPMarketplaceLayout.resolved(sectionRawValue: descriptor.rawValue)
+        refreshPresentationState(includeContext: true)
         bridge.switchSection(descriptor.section)
     }
 
@@ -973,9 +984,11 @@ final class PPMarketplaceDataViewStore: ObservableObject {
                 guard let self,
                       self.contentRevision == committedRevision else { return }
                 self.isReplacingContext = false
+                self.contentTransitionIntent = .initial
             }
         } else {
             isReplacingContext = false
+            contentTransitionIntent = .initial
         }
     }
 
@@ -985,6 +998,7 @@ final class PPMarketplaceDataViewStore: ObservableObject {
         bridgeContextCommitPending = false
         isRefreshing = false
         isReplacingContext = false
+        contentTransitionIntent = .initial
         commitBridgeContentTransitionIfNeeded()
         let isOffline = !bridge.isNetworkAvailable
         let message = PPMarketplaceText.localized(

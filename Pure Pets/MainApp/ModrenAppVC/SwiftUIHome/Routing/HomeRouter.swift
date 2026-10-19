@@ -98,9 +98,23 @@ final class PPPureLensHostPresenter: NSObject {
         guard #available(iOS 16.0, *), !isPresenting else { return }
         let presenter = resolvedPresenter(from: viewController)
         guard presenter.viewIfLoaded?.window != nil,
-              presenter.presentedViewController == nil,
               !presenter.isBeingDismissed
         else { return }
+
+        if let presented = presenter.presentedViewController {
+            if presented.isBeingDismissed {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self, weak viewController] in
+                    guard let self, let viewController else { return }
+                    self.present(from: viewController)
+                }
+                return
+            }
+            presenter.dismiss(animated: false) { [weak self, weak viewController] in
+                guard let self, let viewController else { return }
+                self.present(from: viewController)
+            }
+            return
+        }
 
         isPresenting = true
         let bridge = PPPureLensDiscoveryBridge(presenter: presenter)
@@ -267,6 +281,9 @@ final class PPPureLensHostPresenter: NSObject {
         )
         let lens = PureLensUIKit.makeViewController(module: module)
         presenter.present(lens, animated: true) { [weak self] in
+            self?.isPresenting = false
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.isPresenting = false
         }
     }

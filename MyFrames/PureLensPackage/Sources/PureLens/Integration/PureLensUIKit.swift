@@ -6,10 +6,16 @@ import UIKit
 @MainActor
 public enum PureLensUIKit {
     public static func makeViewController(module: PureLensModule) -> UIViewController {
-        let controller = UIHostingController(rootView: PureLensView(module: module))
+        let controller = PureLensHostingController(rootView: PureLensView(module: module))
         controller.modalPresentationStyle = .fullScreen
         controller.view.backgroundColor = .black
         return controller
+    }
+}
+
+final class PureLensHostingController<Content: View>: UIHostingController<Content> {
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        .lightContent
     }
 }
 

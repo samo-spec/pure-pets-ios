@@ -2089,13 +2089,13 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         } else {
             config = [UIButtonConfiguration filledButtonConfiguration];
         }
-        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.cornerStyle = compact ? UIButtonConfigurationCornerStyleCapsule : UIButtonConfigurationCornerStyleMedium;
         config.buttonSize = legacyIPadBar ? UIButtonConfigurationSizeMedium : UIButtonConfigurationSizeLarge;
         config.showsActivityIndicator = NO;
         config.baseForegroundColor = resolvedForeground;
         config.baseBackgroundColor = resolvedBackground;
         config.background.backgroundColor = [resolvedBackground colorWithAlphaComponent:(compact && PPIOS26()) ? 0.74 : 1.0];
-        config.background.cornerRadius = (compact ? PPBBCartBadgeCartButtonSize() : PPBBCartAddButtonHeight()) * 0.5;
+        config.background.cornerRadius = compact ? (PPBBCartBadgeCartButtonSize() * 0.5) : 16.0;
         config.background.strokeColor = UIColor.clearColor;
         config.background.strokeWidth = 0.0;
         config.title = compact ? nil : resolvedTitle;
@@ -2126,7 +2126,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         self.addToCartButton.contentEdgeInsets = compact
         ? UIEdgeInsetsZero
         : UIEdgeInsetsMake(0.0, legacyIPadBar ? PPSpaceMD : PPSpaceBase, 0.0, legacyIPadBar ? PPSpaceMD : PPSpaceBase);
-        self.addToCartButton.layer.cornerRadius = (compact ? PPBBCartBadgeCartButtonSize() : PPBBCartAddButtonHeight()) * 0.5;
+        self.addToCartButton.layer.cornerRadius = compact ? (PPBBCartBadgeCartButtonSize() * 0.5) : 16.0;
         if (@available(iOS 13.0, *)) {
             self.addToCartButton.layer.cornerCurve = kCACornerCurveContinuous;
         }

@@ -798,18 +798,36 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
            
             break;
         }
+        case PPDataSectionMedicines: {
+            BOOL isGlobal =
+            (self.currentDeepLinkTarget == PPDeepLinkTargetAllCategories || !self.mainKind);
 
-        /*
-         case PPDataSectionVets: {
-             [[VetManager sharedManager]
-              getVetsForPetMainKindID:self.mainKind.ID completion:^(NSArray<VetModel *> * _Nonnull vets,
-                                                                    NSError * _Nullable error) {
-                 
-                 if(completion) completion(vets,nil);
-             }];
-             break;
-         }
-         */
+            if (isGlobal) {
+                [PetAccessoryManager fetchPublicPharmacyAccessoriesWithCompletion:^(NSArray<PetAccessory *> *items, NSError *error) {
+                    if (completion) completion(items ?: @[], error);
+                }];
+            } else {
+                if (breedID > 0) {
+                    [[PetAccessoryManager sharedManager]
+                     fetchAccessoriesOfKind:AccessTypePetMedicine
+                     MainCategory:speciesID
+                     subKindID:breedID
+                     completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
+                        if (completion) completion(accessories ?: @[], nil);
+                     }];
+                } else {
+                    [[PetAccessoryManager sharedManager]
+                     fetchAccessoriesOfKind:AccessTypePetMedicine
+                     MainCategory:speciesID
+                     completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
+                        if (completion) completion(accessories ?: @[], nil);
+                     }];
+                }
+            }
+
+            break;
+        }
+
         case PPDataSectionServices: {
 
             BOOL isGlobal =
@@ -971,6 +989,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     BOOL isAdsSection = (section == PPDataSectionAds);
     BOOL isAccessoriesSection = (section == PPDataSectionAccessories);
     BOOL isFoodSection = (section == PPDataSectionFood);
+    BOOL isMedicinesSection = (section == PPDataSectionMedicines);
     BOOL isServicesSection = (section == PPDataSectionServices);
 
     // ── Condition filter (Accessories / Food) ──
@@ -1095,9 +1114,9 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             }]];
     }
 
-    // ── HasOffer filter (Accessories / Food) ──
+    // ── HasOffer filter (Accessories / Food / Medicines) ──
     NSInteger offerVal = [state valueForFilterID:PPFilterIDHasOffer];
-    if ((isAccessoriesSection || isFoodSection) && offerVal == PPFilterHasOfferYes) {
+    if ((isAccessoriesSection || isFoodSection || isMedicinesSection) && offerVal == PPFilterHasOfferYes) {
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
                 return [obj respondsToSelector:@selector(hasOffer)] && [obj hasOffer];
@@ -1106,7 +1125,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
     // ── Price filter ──
     NSInteger priceVal = [state valueForFilterID:PPFilterIDPrice];
-    if ((isAdsSection || isFoodSection || isServicesSection) && priceVal != PPFilterPriceAll) {
+    if ((isAdsSection || isFoodSection || isMedicinesSection || isServicesSection) && priceVal != PPFilterPriceAll) {
         // Determine thresholds based on current section
         double lowCeiling = 0, midFloor = 0, midCeiling = 0;
         switch (section) {
@@ -1114,7 +1133,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 lowCeiling = 500; midFloor = 500; midCeiling = 2000; break;
             case PPDataSectionServices:
                 lowCeiling = 100; midFloor = 100; midCeiling = 500; break;
-            default: // Accessories, Food
+            default: // Accessories, Food, Medicines
                 lowCeiling = 250; midFloor = 250; midCeiling = 750; break;
         }
 
@@ -1132,7 +1151,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     }
 
     // ── Sort ──
-    BOOL sectionUsesSort = (isAdsSection || isAccessoriesSection || isFoodSection);
+    BOOL sectionUsesSort = (isAdsSection || isAccessoriesSection || isFoodSection || isMedicinesSection);
     PPFilterGroup *sortGroup = [state groupForID:PPFilterIDSort];
     NSInteger sortVal = (sectionUsesSort && sortGroup)
         ? [state valueForFilterID:PPFilterIDSort]
@@ -1246,6 +1265,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
             case PPDataSectionAccessories:
             case PPDataSectionFood:
+            case PPDataSectionMedicines:
                 cellContext = PPCellForMarket;
                 break;
 

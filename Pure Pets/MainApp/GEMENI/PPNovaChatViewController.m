@@ -5405,7 +5405,26 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     identityLottie.layer.masksToBounds = YES;
     [brandMark addSubview:identityLottie];
     self.novaRingBackgroundLottie = identityLottie;
-    [self pp_loadNovaIdentityAnimationIntoView:identityLottie];
+
+    UIImage *puryMascotImage = [UIImage imageNamed:@"PuryV1"];
+    if (puryMascotImage) {
+        UIImageView *avatarImageView = [[UIImageView alloc] init];
+        avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
+        avatarImageView.userInteractionEnabled = NO;
+        avatarImageView.contentMode = UIViewContentModeScaleAspectFit;
+        avatarImageView.clipsToBounds = YES;
+        avatarImageView.image = [puryMascotImage imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+        [brandMark addSubview:avatarImageView];
+        [NSLayoutConstraint activateConstraints:@[
+            [avatarImageView.centerXAnchor constraintEqualToAnchor:brandMark.centerXAnchor],
+            [avatarImageView.centerYAnchor constraintEqualToAnchor:brandMark.centerYAnchor],
+            [avatarImageView.widthAnchor constraintEqualToConstant:46.0],
+            [avatarImageView.heightAnchor constraintEqualToConstant:46.0]
+        ]];
+        identityLottie.hidden = YES;
+    } else {
+        [self pp_loadNovaIdentityAnimationIntoView:identityLottie];
+    }
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;

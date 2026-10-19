@@ -260,7 +260,8 @@ typedef NS_ENUM(NSInteger, PPDeepLinkTarget) {
     PPDeepLinkTargetTraning,
     PPDeepLinkTargetAdopt,
     PPDeepLinkTargetAllCategories,
-    PPDeepLinkTargetNone
+    PPDeepLinkTargetNone,
+    PPDeepLinkTargetMedicines
 };
 
 typedef NS_ENUM(NSInteger, PPMainKindsLayoutMode) {
@@ -333,9 +334,8 @@ typedef NS_ENUM(NSInteger, PPDataSection) {
     PPDataSectionAds = 0,
     PPDataSectionAccessories,
     PPDataSectionFood,
-   
+    PPDataSectionMedicines,
     PPDataSectionServices,
-    
 }; // PPDataSectionVets,
 
 typedef NS_ENUM(NSInteger, PPFilterAccessoryType) {

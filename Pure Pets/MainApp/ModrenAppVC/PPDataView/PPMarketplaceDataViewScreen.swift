@@ -90,6 +90,7 @@ struct PPMarketplaceDataViewScreen: View {
                                 .background {
                                     PPMarketplaceScrollStabilityController(
                                         isReplacingContext: store.isReplacingContext,
+                                        contentTransitionIntent: store.contentTransitionIntent,
                                         contentRevision: store.contentRevision,
                                         naturalContentHeight: measuredScrollContentHeight,
                                         onRestorationCompleted: {
@@ -174,19 +175,27 @@ struct PPMarketplaceDataViewScreen: View {
                         DispatchQueue.main.async {
                             measuredScrollContentHeight = max(0, height)
                             if store.isReplacingContext {
-                                retainedScrollContentHeight = max(
-                                    retainedScrollContentHeight,
-                                    min(measuredScrollContentHeight, proxy.size.height + 300)
-                                )
+                                if case .refinement = store.contentTransitionIntent {
+                                    retainedScrollContentHeight = max(
+                                        retainedScrollContentHeight,
+                                        min(measuredScrollContentHeight, proxy.size.height + 300)
+                                    )
+                                } else {
+                                    retainedScrollContentHeight = 0
+                                }
                             }
                         }
                     }
                     .onChange(of: store.isReplacingContext) { isReplacing in
                         if isReplacing {
-                            retainedScrollContentHeight = max(
-                                retainedScrollContentHeight,
-                                min(measuredScrollContentHeight, proxy.size.height + 300)
-                            )
+                            if case .refinement = store.contentTransitionIntent {
+                                retainedScrollContentHeight = max(
+                                    retainedScrollContentHeight,
+                                    min(measuredScrollContentHeight, proxy.size.height + 300)
+                                )
+                            } else {
+                                retainedScrollContentHeight = 0
+                            }
                         } else {
                             DispatchQueue.main.async {
                                 retainedScrollContentHeight = 0
@@ -423,6 +432,7 @@ private struct PPMarketplaceScrollContentHeightPreferenceKey: PreferenceKey {
 @available(iOS 15.0, *)
 private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
     let isReplacingContext: Bool
+    let contentTransitionIntent: PPMarketplaceContentTransitionIntent
     let contentRevision: Int
     let naturalContentHeight: CGFloat
     let onRestorationCompleted: () -> Void
@@ -442,6 +452,7 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
         context.coordinator.update(
             anchorView: marker,
             isReplacingContext: isReplacingContext,
+            contentTransitionIntent: contentTransitionIntent,
             contentRevision: contentRevision,
             naturalContentHeight: naturalContentHeight,
             onRestorationCompleted: onRestorationCompleted
@@ -458,9 +469,11 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
         }
 
         private weak var scrollView: UIScrollView?
+        private var contentSizeObservation: NSKeyValueObservation?
         private var capture: Capture?
         private var wasReplacingContext = false
         private var lastContentRevision: Int?
+        private var lastHandledSectionChangeRevision: Int?
         private var restorationToken = 0
         private var previousScrollEnabled = true
         private var ownsScrollLock = false
@@ -471,6 +484,7 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
         func update(
             anchorView: UIView,
             isReplacingContext: Bool,
+            contentTransitionIntent: PPMarketplaceContentTransitionIntent,
             contentRevision: Int,
             naturalContentHeight: CGFloat,
             onRestorationCompleted: @escaping () -> Void
@@ -488,6 +502,30 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
                     return
                 }
                 self.bind(to: scrollView)
+
+                // If this is a major section change, reset scroll to top once
+                // and clear any retained context offset.
+                if case .sectionChange = contentTransitionIntent {
+                    self.unlockScrollViewIfNeeded()
+                    self.capture = nil
+                    self.wasReplacingContext = false
+                    if self.lastHandledSectionChangeRevision != contentRevision {
+                        self.lastHandledSectionChangeRevision = contentRevision
+                        let minimumY = -scrollView.adjustedContentInset.top
+                        if abs(scrollView.contentOffset.y - minimumY) > 0.5 {
+                            UIView.performWithoutAnimation {
+                                scrollView.setContentOffset(
+                                    CGPoint(x: scrollView.contentOffset.x, y: minimumY),
+                                    animated: false
+                                )
+                            }
+                        }
+                    }
+                    self.latestRestorationCompletion?()
+                    return
+                } else {
+                    self.lastHandledSectionChangeRevision = nil
+                }
 
                 if isReplacingContext {
                     if !self.wasReplacingContext {
@@ -519,6 +557,8 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
         func dismantle() {
             isDismantled = true
             restorationToken &+= 1
+            contentSizeObservation?.invalidate()
+            contentSizeObservation = nil
             unlockScrollViewIfNeeded()
             capture = nil
             latestRestorationCompletion = nil
@@ -528,10 +568,17 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
         private func bind(to scrollView: UIScrollView) {
             guard self.scrollView !== scrollView else { return }
             unlockScrollViewIfNeeded()
+            contentSizeObservation?.invalidate()
             self.scrollView = scrollView
             capture = nil
             wasReplacingContext = false
             lastContentRevision = nil
+            lastHandledSectionChangeRevision = nil
+            contentSizeObservation = scrollView.observe(\.contentSize, options: [.new]) { [weak self] sv, _ in
+                DispatchQueue.main.async {
+                    self?.clampScrollOffset(in: sv)
+                }
+            }
         }
 
         private func enclosingScrollView(for view: UIView) -> UIScrollView? {
@@ -590,6 +637,7 @@ private struct PPMarketplaceScrollStabilityController: UIViewRepresentable {
                 }
                 self.capture = nil
                 self.unlockScrollViewIfNeeded()
+                self.clampScrollOffset(in: scrollView)
                 if UIAccessibility.isVoiceOverRunning {
                     UIAccessibility.post(notification: .layoutChanged, argument: nil)
                 }
@@ -714,8 +762,8 @@ private struct PPMarketplaceContent: View {
     }
 
     private var contentMinHeight: CGFloat? {
-        if store.isReplacingContext {
-            // Retain surface height during active context replacement transitions
+        if store.isReplacingContext && store.contentTransitionIntent == .refinement {
+            // Retain surface height during active refinement transitions (e.g. breed/species)
             // to keep the pinned section header stable before new items settle.
             return max(availableHeight, 1)
         }

@@ -810,7 +810,7 @@ static NSString *PPMarketplaceTrimmedString(id value)
 
 - (BOOL)sectionSupportsProviderFilter:(PPDataSection)section
 {
-    return section == PPDataSectionAccessories || section == PPDataSectionFood;
+    return section == PPDataSectionAccessories || section == PPDataSectionFood || section == PPDataSectionMedicines;
 }
 
 - (NSString *)pp_providerIDForViewModel:(PPUniversalCellViewModel *)viewModel
@@ -970,6 +970,8 @@ static NSString *PPMarketplaceTrimmedString(id value)
             return kLang(@"Accessories") ?: @"";
         case PPDataSectionFood:
             return kLang(@"Food") ?: @"";
+        case PPDataSectionMedicines:
+            return kLang(@"marketplace_section_medicines_title") ?: @"";
         case PPDataSectionServices:
             return kLang(@"services") ?: @"";
     }
@@ -981,6 +983,8 @@ static NSString *PPMarketplaceTrimmedString(id value)
     NSString *key = @"dataview_filter_context_products";
     if (section == PPDataSectionAds) {
         key = @"dataview_filter_context_listings";
+    } else if (section == PPDataSectionMedicines) {
+        key = @"dataview_filter_context_medicines";
     } else if (section == PPDataSectionServices) {
         key = @"dataview_filter_context_services";
     }
@@ -1232,6 +1236,8 @@ static NSString *PPMarketplaceTrimmedString(id value)
             return @"bag.fill";
         case PPDataSectionFood:
             return @"cart.fill";
+        case PPDataSectionMedicines:
+            return @"pills.fill";
         case PPDataSectionServices:
             return @"cross.case.fill";
     }

@@ -1052,7 +1052,9 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
                            item.accessKindType == AccessTypePetMedicine &&
                            !item.isDeleted &&
                            !item.isBlocked &&
-                           !item.isDisabled;
+                           !item.isDisabled &&
+                           !item.variantIsArchived &&
+                           (!item.isVariant || item.isDefaultVariant);
                 }]]
              sortedArrayUsingComparator:^NSComparisonResult(PetAccessory *lhs, PetAccessory *rhs) {
                  NSDate *lhsDate = lhs.createdAt ?: NSDate.distantPast;

@@ -311,10 +311,12 @@ final class PureLensStore: ObservableObject {
         guard !Task.isCancelled else { return }
         guard !hasStarted else {
             if cameraAuthorization == .authorized {
+                camera.setAnalysisEnabled(true)
                 resumeCameraIfNeeded()
             } else if let task = requestCameraAuthorizationRefresh() {
                 _ = await task.value
             } else {
+                camera.setAnalysisEnabled(true)
                 resumeCameraIfNeeded()
             }
             return
@@ -331,6 +333,7 @@ final class PureLensStore: ObservableObject {
         }
 
         if cameraAuthorization == .authorized {
+            camera.setAnalysisEnabled(true)
             resumeCameraIfNeeded()
         } else if let task = requestCameraAuthorizationRefresh() {
             _ = await task.value
@@ -680,6 +683,27 @@ final class PureLensStore: ObservableObject {
         pendingLocalAnimal = nil
         animalIdentification = nil
         currentRecognition = nil
+        animalContext = nil
+        unsupportedAnimalContext = nil
+        presentation = nil
+        showsRemoteProcessingConsent = false
+        showsItemOpenError = false
+        didDeclineRemoteProcessingForCurrentDetection = false
+        hasDismissedIdentityCandidates = false
+        didChooseIdentityCandidate = false
+        didShareSelectedFrameForAnimalIdentity = false
+        detections = []
+        detectorState = .searching
+        scanPhase = .searching
+        detectionStabilizer.reset()
+        detectionFeedback.reset()
+        taxonomyItems.removeAll(keepingCapacity: true)
+        imageItems.removeAll(keepingCapacity: true)
+        pendingPipelines.removeAll(keepingCapacity: true)
+        failedPipelines.removeAll(keepingCapacity: true)
+        discoverySections = LensDiscoveryCategory.allCases.map {
+            LensDiscoverySection(category: $0)
+        }
         demoTask?.cancel()
         demoTask = nil
         camera.cancelPendingFrameCapture()
@@ -731,7 +755,11 @@ final class PureLensStore: ObservableObject {
         guard case .detected(let recognition) = detectorState,
               !previousState.isDetected
         else { return }
-        validateAndBeginDiscovery(for: recognition)
+        if !validateAndBeginDiscovery(for: recognition) {
+            detectionStabilizer.reset()
+            detectorState = .searching
+            updateScanPhase()
+        }
     }
 
     private func updateScanPhase() {
@@ -747,8 +775,11 @@ final class PureLensStore: ObservableObject {
         }
     }
 
-    private func validateAndBeginDiscovery(for recognition: LensPetRecognition) {
-        guard supportValidationTask == nil, animalContext == nil else { return }
+    @discardableResult
+    private func validateAndBeginDiscovery(for recognition: LensPetRecognition) -> Bool {
+        guard supportValidationTask == nil, animalContext == nil, presentation == nil else {
+            return false
+        }
         let animal = DetectedAnimalContext(
             recognition: recognition,
             minimumBreedConfidence: configuration.minimumBreedConfidence,
@@ -767,12 +798,13 @@ final class PureLensStore: ObservableObject {
         if canResolveDirectly {
             pendingLocalAnimal = nil
             validateLocalSupport(animal, recognition: recognition)
-            return
+            return true
         }
 
         camera.setAnalysisEnabled(true)
         camera.requestFrameCapture(for: recognition)
         startRepresentativeFrameTimeout()
+        return true
     }
 
     private func validateLocalSupport(

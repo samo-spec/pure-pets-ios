@@ -223,10 +223,14 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
         case PPDeepLinkTargetFood:
             return PPDataSectionFood;
 
-       //case PPDeepLinkTargetVet:
-            //return PPDataSectionVets;
+        case PPDeepLinkTargetVet:
+        case PPDeepLinkTargetMedicines:
+            return PPDataSectionMedicines;
 
         case PPDeepLinkTargetServices:
+        case PPDeepLinkTargetGrooming:
+        case PPDeepLinkTargetTraning:
+        case PPDeepLinkTargetAdopt:
             return PPDataSectionServices;
 
         default:

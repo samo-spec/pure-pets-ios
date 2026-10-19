@@ -711,7 +711,7 @@ PHPickerViewControllerDelegate>
 
 - (UIButton *)pp_makeNovaNavigationButton
 {
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.adjustsImageWhenHighlighted = YES;
     button.showsTouchWhenHighlighted = NO;
@@ -722,7 +722,7 @@ PHPickerViewControllerDelegate>
     button.accessibilityHint = kLang(@"nova_subtitle");
     button.accessibilityTraits = UIAccessibilityTraitButton;
 
-    button.contentEdgeInsets = UIEdgeInsetsZero;
+    button.contentEdgeInsets = UIEdgeInsetsMake(5.0, 5.0, 5.0, 5.0);
     button.titleEdgeInsets = UIEdgeInsetsZero;
     button.imageEdgeInsets = UIEdgeInsetsZero;
 
@@ -735,6 +735,7 @@ PHPickerViewControllerDelegate>
 
     if (button.imageView) {
         button.imageView.contentMode = UIViewContentModeScaleAspectFit;
+        button.imageView.clipsToBounds = YES;
     }
 
     [button addTarget:self action:@selector(pp_novaNavigationButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
@@ -756,6 +757,10 @@ PHPickerViewControllerDelegate>
 
 - (UIImage *)pp_novaNavigationIcon
 {
+    UIImage *puryImage = [UIImage imageNamed:@"PuryV1"];
+    if (puryImage) {
+        return [puryImage imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    }
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *config =
             [UIImageSymbolConfiguration configurationWithPointSize:16.0
