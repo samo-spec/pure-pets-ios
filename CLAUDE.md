@@ -1,6 +1,15 @@
-# CLAUDE.md
+# CLAUDE.md — Pure Pets Project Brain Satellite: Consumer iOS
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This repository is the Consumer iOS reference implementation for Pure Pets (`pure-pets-49199`).
+
+## Brain Boot Contract
+1. For cross-repository context, locate sibling `PurePetsProjects` and read `AGENTS.md` and `docs/agent/INDEX.md`.
+2. `pure-pets-infra` is authoritative for backend schema, rules, Cloud Functions, and lifecycle.
+3. Pure Pets iOS is the default consumer UX/parity reference for all other clients.
+4. Machine pointer: `project-brain.json`.
+
+## Execution Policy
+> **CRITICAL:** NEVER run simulator `xcodebuild` commands. Builds are strictly allowed ONLY on the connected physical device (**iPhone 13 Pro Max**) using the default DerivedData path. Code review is sufficient for Obj-C / Swift changes. `QIBPayment.framework` is physical-device only.
 
 ## Build & Setup
 

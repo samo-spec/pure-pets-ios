@@ -100,8 +100,8 @@ def main():
         "MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentMethodCell.m",
         [
             r"UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline",
-            r"self\.titleLabel\.adjustsFontForContentSizeCategory\s*=\s*YES;",
-            r"self\.subtitleLabel\.adjustsFontForContentSizeCategory\s*=\s*YES;"
+            r"for\s*\(UILabel\s*\*label\s*in\s*@\[self\.titleLabel,\s*self\.subtitleLabel\]\)",
+            r"label\.adjustsFontForContentSizeCategory\s*=\s*YES;"
         ],
         "PPPaymentMethodCell scales fonts with UIFontMetrics and adjustsFontForContentSizeCategory"
     ), "Group 1")
@@ -154,7 +154,7 @@ def main():
     run_check(lambda: check_file_patterns(
         "MainApp/PAYMENTS/CartAndOrdersFiles/PPCartTableCell.m",
         [
-            r"self\.nameLabel\.accessibilityTraits\s*=\s*UIAccessibilityTraitButton;",
+            r"self\.nameLabel\.accessibilityTraits\s*=\s*UIAccessibilityTraitStaticText;",
             r"self\.quantityLabel\.accessibilityLabel\s*=\s*kLang\(@\"a11y_cart_qty_stepper\"\);",
             r"self\.minusButton\.accessibilityLabel\s*=",
             r"self\.plusButton\.accessibilityLabel\s*=",
@@ -277,7 +277,7 @@ def main():
     run_check(lambda: check_file_patterns(
         "MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentMethodCell.m",
         [
-            r"\[self\.iconContainerView\.widthAnchor constraintEqualToConstant:44\.0\]",
+            r"\[self\.iconContainerView\.widthAnchor constraintEqualToConstant:52\.0\]",
             r"\[self\.iconContainerView\.heightAnchor constraintEqualToConstant:44\.0\]"
         ],
         "PPPaymentMethodCell enforces >= 44pt dimension on touch icon container"
@@ -291,10 +291,10 @@ def main():
     run_check(lambda: check_file_patterns(
         "MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentMethodCell.m",
         [
-            r"Language\.isRTL\s*\?\s*@\"chevron\.left\"\s*:\s*@\"chevron\.right\"",
+            r"UIImage systemImageNamed:@\"chevron\.forward\"",
             r"self\.semanticContentAttribute\s*=\s*Language\.semanticAttributeForCurrentLanguage;",
-            r"self\.titleLabel\.textAlignment\s*=\s*NSTextAlignmentNatural;",
-            r"self\.subtitleLabel\.textAlignment\s*=\s*NSTextAlignmentNatural;"
+            r"self\.titleLabel\.textAlignment\s*=\s*Language\.alignmentForCurrentLanguage;",
+            r"self\.subtitleLabel\.textAlignment\s*=\s*Language\.alignmentForCurrentLanguage;"
         ],
         "PPPaymentMethodCell mirrors disclosure chevron and uses natural text alignment for RTL"
     ), "Group 4")

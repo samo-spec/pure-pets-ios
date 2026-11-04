@@ -416,11 +416,14 @@ private struct PPUniversalVariantPickerContent: View {
                 VStack(alignment: .leading, spacing: PPSpace.xs) {
                     Text(store.optionSummary(for: variant))
                         .font(PPAccessoryTypography.bodyBold)
-                    if variant.isArchived {
-                        Text(PPAccessoryViewerL10n.text("accessory_view_option_unavailable"))
-                            .font(PPAccessoryTypography.caption)
-                            .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                    }
+                    Text(PPAccessoryViewerL10n.text(
+                        variant.isArchived ? "accessory_view_option_unavailable" :
+                            selected ? "variant_sheet_confirmed_selection" :
+                                "variant_sheet_check_live_price"
+                    ))
+                    .font(PPAccessoryTypography.caption)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)

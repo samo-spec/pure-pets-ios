@@ -426,42 +426,12 @@ struct PPOrderDetailsMissionControlScreen: View {
                 )
                 .id(store.state.orderID)
             } else {
-                VStack(spacing: PPSpace.sm) {
-                    GeometryReader { proxy in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(Color.ppSeparator.opacity(0.55))
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [accent.opacity(0.72), accent],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(
-                                    width: max(
-                                        10,
-                                        proxy.size.width * store.state.statusProgress
-                                    )
-                                )
-                        }
-                    }
-                    .frame(height: 8)
-
-                    HStack {
-                        Label(
-                            store.state.updatedAtText,
-                            systemImage: "clock.arrow.circlepath"
-                        )
-                        Spacer()
-                        Text(
-                            verbatim: "\(Int(store.state.statusProgress * 100))%"
-                        )
-                            .environment(\.layoutDirection, .leftToRight)
-                    }
+                // Older layout: show the actual update, not an invented
+                // completion percentage derived from a status enum.
+                Label(store.state.updatedAtText, systemImage: "clock.arrow.circlepath")
                     .font(PPOrderMissionTypography.caption())
                     .foregroundStyle(Color.ppTextSecondary)
-                }
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(.horizontal, PPSpace.xs)
@@ -1298,9 +1268,11 @@ private struct PPOrderMissionCommandOrbit: View {
         let deliveredLike = visibleActions.contains {
             $0.kind == "return" || $0.kind == "replacement"
         }
+        // Let customers follow their order or get help before offering
+        // destructive/dispute actions. Eligibility still comes from the bridge.
         return deliveredLike
-            ? ["return", "replacement", "refund", "complaint", "track", "support"]
-            : ["cancel", "track", "complaint", "refund", "support"]
+            ? ["track", "support", "return", "replacement", "refund", "complaint", "cancel"]
+            : ["track", "support", "cancel", "complaint", "refund", "return", "replacement"]
     }
 
     private var gridActions: [PPOrderMissionAction] {

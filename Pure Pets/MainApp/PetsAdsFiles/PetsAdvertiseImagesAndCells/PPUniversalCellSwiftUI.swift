@@ -1623,10 +1623,12 @@ private final class PPUniversalCardStore: ObservableObject {
                 PPUniversalCardContextAction(
                     kind: .addToCart,
                     title: Self.localized(
-                        "addToCart",
-                        fallback: "Add to Cart"
+                        requiresVariantSelection
+                            ? "universal_variant_choose_options"
+                            : "addToCart",
+                        fallback: requiresVariantSelection ? "Choose options" : "Add to cart"
                     ),
-                    systemImage: "cart.badge.plus"
+                    systemImage: requiresVariantSelection ? "slider.horizontal.3" : "cart.badge.plus"
                 )
             )
         }
@@ -5624,9 +5626,11 @@ private struct PPUniversalCardRenderer: View {
             )
         }
         if store.requiresVariantSelection {
+            // A family card opens the variant chooser; it does not add
+            // an unconfigured item. The CTA must describe the real action.
             return store.quantity > 0
-                ? "\(PPUniversalCardStore.localized("InCart", fallback: "In cart")) • \(PPAccessoryViewerL10n.integer(store.quantity))"
-                : PPUniversalCardStore.localized("addToCart", fallback: "Add to cart")
+                ? PPUniversalCardStore.localized("universal_variant_review_options", fallback: "Review options")
+                : PPUniversalCardStore.localized("universal_variant_choose_options", fallback: "Choose options")
         }
         if store.isOutOfStock {
             if store.isNotifyInFlight {
@@ -5666,7 +5670,7 @@ private struct PPUniversalCardRenderer: View {
             return store.isRightToLeft ? "arrow.up.left" : "arrow.up.right"
         }
         if store.requiresVariantSelection {
-            return store.quantity > 0 ? "cart.fill" : "cart.badge.plus"
+            return "slider.horizontal.3"
         }
         if store.isOutOfStock {
             return store.notifySucceeded

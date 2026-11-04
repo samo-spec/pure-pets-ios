@@ -868,10 +868,10 @@
 
 "AddedToCart" = "Added";
 "ItemAddedToYourCart" = "Item added to your cart.";
-"cart_provider_switch_title" = "Cart belongs to another provider";
-"cart_provider_switch_message" = "This cart currently belongs to another provider. Adding this item will clear the current cart and start a new one.";
-"cart_provider_switch_confirm" = "Clear & Add";
-"cart_provider_switch_cancel" = "Cancel";
+"cart_provider_switch_title" = "Switching stores will replace your basket";
+"cart_provider_switch_message" = "Your basket contains items from another seller. To add this product, the current basket must be cleared. You can keep it unchanged instead.";
+"cart_provider_switch_confirm" = "Replace basket and add";
+"cart_provider_switch_cancel" = "Keep my basket";
 
 
 "tempDesc" = "Keep your parrot happy, active, and mentally stimulated with this fun and colorful toy set. Designed to satisfy your bird’s natural curiosity and chewing instincts, it helps prevent boredom and encourages healthy behavior. Made from safe, non-toxic materials suitable for all parrot breeds — perfect for hanging in cages or play stands.";
@@ -5891,3 +5891,10 @@
 "address_picker_choose_hint" = "Use this delivery address.";
 "address_picker_edit_format" = "Edit address: %@";
 "address_picker_location_hint" = "Use your location to help fill a new address. Review it before saving.";
+
+/* Purchase decision clarity (variant combinations) */
+"variant_sheet_confirmed_selection" = "Selected · price and availability shown below";
+"variant_sheet_check_live_price" = "Select to check current price and availability";
+
+"universal_variant_choose_options" = "Choose options";
+"universal_variant_review_options" = "Review options";

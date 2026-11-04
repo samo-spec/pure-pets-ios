@@ -1,0 +1,13 @@
+# Cursor Rules — Pure Pets Consumer iOS Satellite
+
+You are in `pure-pets-ios`, the consumer iOS app and default consumer parity reference for Pure Pets (`pure-pets-49199`).
+Pointer: `project-brain.json`. Cross-repo umbrella brain is at `../PurePetsProjects/docs/agent/INDEX.md`.
+
+Invariants:
+- Code-only UIKit. Do not migrate to SwiftUI unless requested.
+- Objective-C primary with Swift bridges.
+- Design tokens in `PPDesignTokens.h`.
+- RTL leading/trailing layout; `kLang(@"key")` localization (Arabic primary, English secondary).
+- `AppManager` (`AppMgr`) singleton; `GM` utility.
+- Connected physical device only (iPhone 13 Pro Max). Never simulator.
+- Never ingest secrets.

@@ -892,10 +892,10 @@
 
 "AddedToCart" = "تمت الإضافة";
 "ItemAddedToYourCart" = "تمت إضافة العنصر إلى سلة التسوق الخاصة بك.";
-"cart_provider_switch_title" = "السلة تابعة لمزود آخر";
-"cart_provider_switch_message" = "تنتمي هذه السلة حاليًا إلى مزود آخر. ستفرغ إضافة هذا العنصر السلة الحالية وتبدأ سلة جديدة.";
-"cart_provider_switch_confirm" = "تفريغ وإضافة";
-"cart_provider_switch_cancel" = "إلغاء";
+"cart_provider_switch_title" = "تغيير المتجر سيستبدل سلتك";
+"cart_provider_switch_message" = "تحتوي سلتك على منتجات من بائع آخر. لإضافة هذا المنتج يجب إفراغ السلة الحالية، أو يمكنك الاحتفاظ بها دون تغيير.";
+"cart_provider_switch_confirm" = "استبدال السلة والإضافة";
+"cart_provider_switch_cancel" = "الاحتفاظ بسلتك";
 
 
 "tempDesc" = "اجعل طائرك الببغاء سعيدًا ونشيطًا بهذا الطقم الممتع والملوّن من الألعاب. صُممت لتلبية فضول الطيور الطبيعي وغريزة المضغ لديها، مما يساعد على منع الملل وتشجيع السلوك الصحي. مصنوعة من مواد آمنة وغير سامة مناسبة لجميع أنواع الببغاوات — مثالية للتعليق داخل الأقفاص أو أماكن اللعب.";
@@ -5876,3 +5876,10 @@
 "address_picker_choose_hint" = "استخدام هذا العنوان للتوصيل.";
 "address_picker_edit_format" = "تعديل العنوان: %@";
 "address_picker_location_hint" = "استخدم موقعك للمساعدة في تعبئة عنوان جديد، ثم راجعه قبل الحفظ.";
+
+/* وضوح اختيار خيارات المنتج */
+"variant_sheet_confirmed_selection" = "تم الاختيار · السعر والتوفر ظاهرَان أدناه";
+"variant_sheet_check_live_price" = "اختر للتحقق من السعر والتوفر الحاليين";
+
+"universal_variant_choose_options" = "اختر الخيارات";
+"universal_variant_review_options" = "راجع الخيارات";
