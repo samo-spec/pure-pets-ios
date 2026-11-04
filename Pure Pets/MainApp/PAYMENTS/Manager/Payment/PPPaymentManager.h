@@ -9,6 +9,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import "PPOrder.h"
+@class PPAddressModel;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -20,6 +21,10 @@ typedef void (^PPPaymentCompletion)(NSDictionary * _Nullable response,
 + (instancetype)shared;
 + (BOOL)isSimulatedPaymentSuccessEnabled;
 + (void)setSimulatedPaymentSuccessEnabled:(BOOL)enabled;
+
+/// The same contact resolution/normalization used by the QIB launch path.
+- (nullable NSString *)normalizedCheckoutPhoneForAddress:(nullable PPAddressModel *)address;
+- (nullable NSString *)normalizedCheckoutPhoneFromString:(nullable NSString *)phone;
 
 /**
  Starts QIB payment flow for a pending order.

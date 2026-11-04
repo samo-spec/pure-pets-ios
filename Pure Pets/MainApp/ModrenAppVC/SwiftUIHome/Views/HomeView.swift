@@ -705,22 +705,21 @@ struct HomeView: View {
             )
 
         case .marketplace:
-            if let page = store.state.marketplaceHeroPage {
-                marketingStageComposition(
-                    pages: [page],
-                    selectedIndex: 0,
-                    discloseCampaign: false,
-                    categories: store.state.categories,
-                    selectedCategoryID: store.state.selectedMainKindID,
-                    marketplaceSignals: store.state.marketplaceSignals,
-                    onSelect: { _ in },
-                    onPrimary: store.performHeroAction,
-                    onSecondary: store.performHeroSecondaryAction,
-                    onInteractionChanged: { _ in },
-                    onSelectCategory: store.selectCategory,
-                    onMarketplaceSignal: store.loadMarketplaceSignal
-                )
-            }
+            let page = store.state.marketplaceHeroPage ?? store.fallbackMarketplaceHeroPage
+            marketingStageComposition(
+                pages: [page],
+                selectedIndex: 0,
+                discloseCampaign: false,
+                categories: store.state.categories,
+                selectedCategoryID: store.state.selectedMainKindID,
+                marketplaceSignals: store.state.marketplaceSignals,
+                onSelect: { _ in },
+                onPrimary: store.performHeroAction,
+                onSecondary: store.performHeroSecondaryAction,
+                onInteractionChanged: { _ in },
+                onSelectCategory: store.selectCategory,
+                onMarketplaceSignal: store.loadMarketplaceSignal
+            )
         }
     }
 

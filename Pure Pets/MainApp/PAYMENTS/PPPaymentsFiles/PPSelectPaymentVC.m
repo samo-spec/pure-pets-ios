@@ -26,6 +26,7 @@
 
 #import "PPSelectAddressVC.h"
 #import <QuartzCore/QuartzCore.h>
+#import <os/signpost.h>
 
 @import FirebaseAuth;
 
@@ -33,6 +34,16 @@
 
 static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutPreflight";
 static NSInteger const PPOrderCheckoutPreflightCodeInvalidQIBPhone = 1004;
+
+static os_log_t PPPaymentPresentationLog(void)
+{
+    static os_log_t log;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        log = os_log_create("com.purepets", "CheckoutPresentation");
+    });
+    return log;
+}
 
 static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 {
@@ -69,6 +80,25 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 @property (nonatomic, assign) BOOL paymentInstrumentsLoadFailed;
 @property (nonatomic, assign) NSUInteger paymentInstrumentLoadGeneration;
 @property (nonatomic, assign) CGFloat paymentContentWidth;
+@property (nonatomic, copy) NSString *addressesUserID;
+@property (nonatomic, copy) NSString *selectedAddressID;
+@property (nonatomic, assign) NSUInteger addressSessionGeneration;
+@property (nonatomic, assign) NSUInteger addressRefreshGeneration;
+@property (nonatomic, assign) NSUInteger checkoutPreflightGeneration;
+@property (nonatomic, assign) BOOL isPreparingCheckout;
+@property (nonatomic, assign) BOOL isLoadingAddresses;
+@property (nonatomic, assign) BOOL addressesLoadFailed;
+@property (nonatomic, assign) BOOL hasLoadedAddresses;
+@property (nonatomic, strong) UILabel *checkoutNoticeLabel;
+@property (nonatomic, strong) UIButton *retryAddressButton;
+@property (nonatomic, strong) UIStackView *addressStatusStack;
+@property (nonatomic, strong) UIButton *paymentContactButton;
+@property (nonatomic, copy) NSString *checkoutReviewMessage;
+@property (nonatomic, copy, nullable) void (^dismissPhoneEditor)(void);
+@property (nonatomic, assign) BOOL phoneEditorPresented;
+@property (nonatomic, assign) NSUInteger phoneEditorGeneration;
+@property (nonatomic, assign) os_signpost_id_t presentationTraceID;
+
 
 - (void)pp_applyPaymentHeroNavBar;
 - (void)pp_applyPaymentHeroTheme;
@@ -124,6 +154,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
     PPSelectPaymentVC *paymentViewController = [[self alloc] init];
     paymentViewController.explicitCheckoutItems = checkoutItems.copy;
+    [paymentViewController pp_beginPresentationTrace];
     [navigationController pushViewController:paymentViewController animated:YES];
     return YES;
 }
@@ -142,15 +173,36 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     return [PPCartCalculator summaryForItems:items shippingFee:shippingFee];
 }
 
+- (void)pp_beginPresentationTrace
+{
+    if (self.presentationTraceID != OS_SIGNPOST_ID_INVALID) return;
+    self.presentationTraceID = os_signpost_id_generate(PPPaymentPresentationLog());
+    os_signpost_interval_begin(PPPaymentPresentationLog(), self.presentationTraceID, "CartToPaymentPresentation");
+}
+
+- (void)pp_endPresentationTrace:(BOOL)appeared
+{
+    if (self.presentationTraceID == OS_SIGNPOST_ID_INVALID) return;
+    os_signpost_interval_end(PPPaymentPresentationLog(), self.presentationTraceID, "CartToPaymentPresentation",
+                            "%{public}s", appeared ? "appeared" : "cancelled");
+    self.presentationTraceID = OS_SIGNPOST_ID_INVALID;
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [self pp_endPresentationTrace:YES];
+}
+
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [[CartManager sharedManager] refreshPricingConfiguration];
     [self pp_applyPaymentHeroNavBar];
     [self pp_applyPaymentHeroTheme];
-    [self.summaryView setCheckoutLoading:self.isCheckoutInProgress];
+    [self.summaryView setCheckoutLoading:self.isCheckoutInProgress || self.isPreparingCheckout];
     [_summaryView pp_startTrustBannerShimmer];
     [self pp_setupInitialAddressState];
-    [self pp_refreshCheckoutCallToAction];
+    [self pp_updateCheckoutReview];
     [self pp_applyAdaptiveSummaryPresentation];
 
     self.navigationController.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
@@ -159,9 +211,16 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [self pp_endPresentationTrace:NO];
     [self.summaryView pp_stopTrustBannerShimmer];
 
     [self pp_navBarSetVisible:YES animated:YES];
+    // Leaving review invalidates unfinished preflight; QIB lifecycle remains with its coordinator.
+    if (self.isPreparingCheckout) {
+        self.checkoutPreflightGeneration += 1;
+        [self pp_setPreparingCheckout:NO];
+    }
+    if (self.isMovingFromParentViewController && self.dismissPhoneEditor) self.dismissPhoneEditor();
 }
 
 - (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
@@ -185,12 +244,15 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 }
 
 - (void)viewDidLoad {
+    os_signpost_id_t constructionTraceID = os_signpost_id_generate(PPPaymentPresentationLog());
+    os_signpost_interval_begin(PPPaymentPresentationLog(), constructionTraceID, "PaymentViewConstruction");
     [super viewDidLoad];
     self.hidesBottomBarWhenPushed = YES;
 
     self.instrumentManager = [UserPaymentInstrumentManager sharedManager];
     self.availableMethods = [PaymentMethod defaultMethods];
     self.userInstruments = @[];
+    self.initialPaymentSelectionID = PPCurrentUser.SelectedInstrument.instrumentID;
     self.view.backgroundColor = AppBackgroundClr;
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.navigationItem.title = nil;
@@ -202,7 +264,6 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     [self pp_applyDefaultSelectionIfNeeded];
     [self pp_refreshCheckoutCallToAction];
     [self fetchUserPaymentInstruments];
-    [self pp_refreshLatestAddressesForCheckout:nil];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(pp_handleAddressDidChangeNotification:)
@@ -220,6 +281,11 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
                                              selector:@selector(pp_handlePricingConfigurationDidChangeNotification:)
                                                  name:kCartPricingConfigurationDidChangeNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_handlePricingConfigurationDidChangeNotification:)
+                                                 name:kCartUpdatedNotification
+                                               object:nil];
+    os_signpost_interval_end(PPPaymentPresentationLog(), constructionTraceID, "PaymentViewConstruction");
 }
 
 - (void)viewDidLayoutSubviews
@@ -374,6 +440,21 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     };
     [self.paymentPreludeView addArrangedSubview:self.locView];
 
+    self.checkoutNoticeLabel = [self pp_reviewLabelWithText:@""
+        font:[GM MidFontWithSize:PPFontFootnote] style:UIFontTextStyleFootnote color:AppSecondaryTextClr];
+    self.checkoutNoticeLabel.accessibilityIdentifier = @"checkout.reviewNotice";
+    self.retryAddressButton = [self pp_reviewActionButtonWithTitle:kLang(@"payment_review_retry")
+                                                         action:@selector(pp_retryAddresses)];
+    UIStackView *addressStatus = [[UIStackView alloc] initWithArrangedSubviews:@[self.checkoutNoticeLabel, self.retryAddressButton]];
+    self.addressStatusStack = addressStatus;
+    addressStatus.axis = UILayoutConstraintAxisVertical;
+    addressStatus.spacing = PPSpaceXS;
+    [self.paymentPreludeView addArrangedSubview:addressStatus];
+
+    self.paymentContactButton = [self pp_reviewActionButtonWithTitle:@"" action:@selector(pp_editPaymentContact)];
+    self.paymentContactButton.accessibilityIdentifier = @"checkout.paymentContact";
+    [self.paymentPreludeView addArrangedSubview:self.paymentContactButton];
+
     UILabel *methodsTitle = [self pp_reviewLabelWithText:kLang(@"payment_section_methods_title")
                                                   font:[GM boldFontWithSize:PPFontTitle3]
                                                  style:UIFontTextStyleTitle3 color:AppPrimaryTextClr];
@@ -418,6 +499,118 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     [self.paymentPreludeView addArrangedSubview:methodHeading];
     [self pp_updateMethodStatus];
     [self pp_setupInitialAddressState];
+}
+
+- (UIButton *)pp_reviewActionButtonWithTitle:(NSString *)title action:(SEL)action
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout]
+        scaledFontForFont:[GM MidFontWithSize:PPFontCallout]];
+    button.titleLabel.adjustsFontForContentSizeCategory = YES;
+    button.titleLabel.numberOfLines = 0;
+    button.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    button.contentHorizontalAlignment = Language.isRTL ? UIControlContentHorizontalAlignmentRight : UIControlContentHorizontalAlignmentLeft;
+    [button setTitle:title forState:UIControlStateNormal];
+    [button setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+    NSLayoutConstraint *minimumHeight = [button.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin];
+    // UIStackView requires zero height when retry/contact is hidden.
+    minimumHeight.priority = UILayoutPriorityRequired - 1.0;
+    minimumHeight.active = YES;
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    return button;
+}
+
+- (BOOL)pp_checkoutInteractionLocked
+{
+    return self.isPreparingCheckout || self.isCheckoutInProgress || self.isAwaitingCheckoutCancellation;
+}
+
+- (NSString *)pp_checkoutRequiredActionTitle
+{
+    if (self.isAwaitingCheckoutCancellation) return kLang(@"checkout_payment_cancellation_retry");
+    if (self.addressesLoadFailed && !self.selectedAddress) return kLang(@"payment_review_retry");
+    if (!self.selectedAddress) {
+        return kLang(self.hasLoadedAddresses && self.Addresses.count == 0
+            ? @"checkout_add_delivery_address" : @"checkout_choose_delivery_address");
+    }
+    if (![self pp_isAddressCheckoutValid:self.selectedAddress]) return kLang(@"checkout_complete_address");
+    NSString *method = [self pp_selectedCheckoutPaymentMethodID];
+    if (!method.length) return kLang(@"checkout_choose_payment");
+    if ([self pp_checkoutMethodRequiresPhone:method] && ![self pp_validQIBPhoneForAddress:self.selectedAddress].length) {
+        return kLang(@"payment_mobile_required_title");
+    }
+    return nil;
+}
+
+- (void)pp_updateCheckoutReview
+{
+    NSString *addressText = [self pp_bestAddressDisplayText:self.selectedAddress];
+    [self.locView setAddressText:addressText.length ? addressText : kLang(@"PleaseSelectDeliveryLocation")];
+    NSString *message = self.checkoutReviewMessage;
+    if (!message.length && self.addressesLoadFailed) message = kLang(@"checkout_address_refresh_failed");
+    if (!message.length && self.isLoadingAddresses && !self.selectedAddress) message = kLang(@"checkout_loading_addresses");
+    if (!message.length && self.selectedAddressID.length && !self.selectedAddress && self.hasLoadedAddresses) {
+        message = kLang(@"checkout_address_changed_review");
+    }
+    self.checkoutNoticeLabel.text = message ?: @"";
+    self.checkoutNoticeLabel.hidden = message.length == 0;
+    self.retryAddressButton.hidden = !self.addressesLoadFailed || self.isLoadingAddresses;
+    self.addressStatusStack.hidden = self.checkoutNoticeLabel.hidden && self.retryAddressButton.hidden;
+    NSString *method = [self pp_selectedCheckoutPaymentMethodID];
+    self.paymentContactButton.hidden = !method.length || ![self pp_checkoutMethodRequiresPhone:method];
+    NSString *phone = [self pp_validQIBPhoneForAddress:self.selectedAddress];
+    NSString *contact = phone.length
+        ? [NSString stringWithFormat:kLang(@"checkout_payment_contact_format"),
+           [NSString stringWithFormat:@"\u2066%@\u2069", phone]]
+        : kLang(@"checkout_payment_contact_missing");
+    [self.paymentContactButton setTitle:contact forState:UIControlStateNormal];
+    self.paymentContactButton.accessibilityHint = kLang(@"checkout_payment_contact_hint");
+    BOOL locked = [self pp_checkoutInteractionLocked];
+    self.paymentCollection.userInteractionEnabled = !locked;
+    self.paymentContactButton.enabled = !locked;
+    self.retryAddressButton.enabled = !locked;
+    [self pp_refreshCheckoutCallToAction];
+    [self.paymentCollection.collectionViewLayout invalidateLayout];
+}
+
+- (void)pp_retryAddresses
+{
+    if ([self pp_checkoutInteractionLocked]) return;
+    self.checkoutReviewMessage = nil;
+    [self pp_refreshLatestAddressesForCheckout:nil];
+}
+
+- (void)pp_editPaymentContact
+{
+    if ([self pp_checkoutInteractionLocked] || self.phoneEditorPresented) return;
+    [self pp_showQIBMobileNumberSheetForAddress:self.selectedAddress];
+}
+
+- (void)pp_setPreparingCheckout:(BOOL)preparing
+{
+    self.isPreparingCheckout = preparing;
+    [self.summaryView setCheckoutLoading:preparing || self.isCheckoutInProgress];
+    [self pp_updateCheckoutReview];
+}
+
+- (void)pp_showCheckoutReviewMessage:(NSString *)message
+{
+    self.checkoutReviewMessage = message;
+    [self pp_updateCheckoutReview];
+    [self.paymentCollection setContentOffset:CGPointZero animated:!UIAccessibilityIsReduceMotionEnabled()];
+    UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, message);
+}
+
+- (NSArray<NSDictionary *> *)pp_checkoutReviewItemsSnapshot
+{
+    NSMutableArray *snapshot = [NSMutableArray array];
+    for (CartItem *item in [self pp_checkoutItems]) {
+        [snapshot addObject:@{@"item":item.itemID ?: @"", @"sellable":item.sellableUnitId ?: @"",
+            @"variant":item.variantId ?: @"", @"options":item.selectedOptions.copy ?: @{},
+            @"quantity":@(item.quantity), @"price":@(item.price)}];
+    }
+    return snapshot.copy;
 }
 
 - (void)pp_applyPaymentHeroNavBar
@@ -517,7 +710,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     [UIView performWithoutAnimation:^{
         self.summaryView.showDetails = !usesCondensedSummary && !showsPreview;
         self.summaryView.showsItemsPreview = showsPreview;
-        [self.summaryView layoutIfNeeded];
+        [self.summaryView setNeedsLayout];
     }];
 }
 
@@ -544,141 +737,117 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 - (NSString *)pp_bestAddressDisplayText:(PPAddressModel *)address
 {
     if (!address) return @"";
-
-    NSString *displayName = [self pp_trimmedAddressString:address.displayName];
-    if (displayName.length > 0) return displayName;
-
-    NSString *legacyLocation = [self pp_trimmedAddressString:address.locatioName];
-    if (legacyLocation.length > 0) return legacyLocation;
-
-    NSString *line1 = [self pp_trimmedAddressString:address.addressLine1];
-    if (line1.length > 0) return line1;
-
-    NSString *fullName = [self pp_trimmedAddressString:address.fullName];
-    if (fullName.length > 0) return fullName;
-
-    return @"";
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    for (id raw in @[address.fullName ?: @"", address.addressLine1 ?: @"",
+                     address.addressLine2 ?: @"", address.displayName ?: address.locatioName ?: @""]) {
+        NSString *part = [self pp_trimmedAddressString:raw];
+        if (part.length > 0 && ![parts containsObject:part]) [parts addObject:part];
+    }
+    return [parts componentsJoinedByString:@"\n"];
 }
 
 - (void)pp_setupInitialAddressState
 {
+    NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
+    if ([self.addressesUserID isEqualToString:uid] && self.addressesListener) return;
     [self.addressesListener remove];
     self.addressesListener = nil;
+    self.addressesUserID = uid;
+    NSUInteger generation = ++self.addressSessionGeneration;
+    self.addressRefreshGeneration += 1;
     self.Addresses = @[];
     self.selectedAddress = nil;
-    [self.locView setAddressText:kLang(@"PleaseSelectDeliveryLocation")];
+    self.selectedAddressID = nil;
+    self.hasLoadedAddresses = NO;
+    self.addressesLoadFailed = NO;
+    self.isLoadingAddresses = uid.length > 0;
+    [self pp_updateCheckoutReview];
+    if (uid.length == 0) return;
 
-    if (![self pp_hasAuthenticatedUser]) {
-        return;
-    }
-    
     __weak typeof(self) weakSelf = self;
-    self.addressesListener = [PPADDRESS listenToAddressesWithBlock:^(NSArray<PPAddressModel *> * _Nullable addresses, NSError * _Nullable error) {
-        if (error) {
-            PPORDERLog(@"Address listener error | error=%@", error.localizedDescription ?: @"Unknown");
-            return;
-        }
-        [weakSelf pp_applyAddresses:addresses ?: @[]];
+    self.addressesListener = [PPADDRESS listenToAddressesWithBlock:^(NSArray<PPAddressModel *> *addresses, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || generation != self.addressSessionGeneration ||
+                ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) return;
+            self.isLoadingAddresses = NO;
+            self.addressesLoadFailed = error != nil;
+            if (!error) [self pp_applyAddresses:addresses ?: @[]];
+            [self pp_updateCheckoutReview];
+        });
     }];
-
-    [self pp_refreshLatestAddressesForCheckout:nil];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || generation != self.addressSessionGeneration || self.hasLoadedAddresses ||
+            ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) return;
+        self.isLoadingAddresses = NO;
+        self.addressesLoadFailed = YES;
+        [self pp_updateCheckoutReview];
+    });
 }
 
 - (void)pp_applyAddresses:(NSArray<PPAddressModel *> *)addresses
 {
-    __weak typeof(self) weakSelf = self;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-        strongSelf.Addresses = addresses ?: @[];
-        UserModel *currentUser = UsrMgr.currentUser;
-        if (currentUser) {
-            currentUser.Addresses = strongSelf.Addresses.mutableCopy;
-            [UsrMgr cacheUser:currentUser];
-        }
-        PPAddressModel *preferred = [strongSelf pp_preferredAddressFrom:strongSelf.Addresses];
-        strongSelf.selectedAddress = preferred;
-        PPORDERLog(@"Addresses refreshed | count=%lu | selectedAddressId=%@ | isDefault=%d",
-                   (unsigned long)strongSelf.Addresses.count,
-                   [strongSelf pp_effectiveAddressID:preferred],
-                   preferred.isDefault);
-        NSString *addressText = [strongSelf pp_bestAddressDisplayText:preferred];
-        if (addressText.length > 0) {
-            [strongSelf.locView setAddressText:addressText];
-        } else {
-            [strongSelf.locView setAddressText:kLang(@"PleaseSelectDeliveryLocation")];
-        }
-    });
+    NSAssert(NSThread.isMainThread, @"Checkout review updates belong on the main thread");
+    self.Addresses = addresses ?: @[];
+    self.hasLoadedAddresses = YES;
+    self.selectedAddress = [self pp_preferredAddressFrom:self.Addresses];
+    if (self.selectedAddress) self.selectedAddressID = [self pp_effectiveAddressID:self.selectedAddress];
+    // A deleted choice remains unresolved. Never substitute another delivery address silently.
+    [self pp_updateCheckoutReview];
 }
 
 - (PPAddressModel *)pp_preferredAddressFrom:(NSArray<PPAddressModel *> *)addresses
 {
-    if (addresses.count == 0) return nil;
-
-    NSString *selectedID = [self pp_effectiveAddressID:self.selectedAddress];
+    NSString *selectedID = self.selectedAddressID ?: [self pp_effectiveAddressID:self.selectedAddress];
     if (selectedID.length > 0) {
         for (PPAddressModel *address in addresses) {
-            NSString *candidateID = [self pp_effectiveAddressID:address];
-            if ([candidateID isEqualToString:selectedID]) {
-                return address;
-            }
+            if ([[self pp_effectiveAddressID:address] isEqualToString:selectedID]) return address;
         }
+        return nil;
     }
-
     for (PPAddressModel *address in addresses) {
-        if (address.isDefault) {
-            return address;
-        }
+        if (address.isDefault && [self pp_isAddressCheckoutValid:address]) return address;
     }
-
+    for (PPAddressModel *address in addresses) {
+        if ([self pp_isAddressCheckoutValid:address]) return address;
+    }
     return addresses.firstObject;
 }
 
 - (void)pp_presentAddressPickerOrPrompt
 {
-    __weak typeof(self) weakSelf = self;
-    void (^presentPicker)(NSArray<PPAddressModel *> *) = ^(NSArray<PPAddressModel *> *addresses) {
-        PPSelectAddressVC *vc =
-        [[PPSelectAddressVC alloc] initWithOptions:addresses
-                                                        title:kLang(@"select_delivery_location_title")
-                                                          row:nil
-                                            presentationStyle:PPSelectOptionPresentationSheet
-                                                    completion:^(id  _Nullable selectedObject) {
-            PPAddressModel *selected = (PPAddressModel *)selectedObject;
-            if (!selected) return;
-            weakSelf.selectedAddress = selected;
-            NSString *selectedText = [weakSelf pp_bestAddressDisplayText:selected];
-            [weakSelf.locView setAddressText:selectedText.length > 0 ? selectedText : kLang(@"PleaseSelectDeliveryLocation")];
-        }];
-        [PPFunc presentSheetFrom:weakSelf sheetVC:vc detentStyle:PPSheetDetentStyle80];
-        
-    };
-
+    if ([self pp_checkoutInteractionLocked]) return;
     if (self.Addresses.count > 0) {
-        presentPicker(self.Addresses);
+        __weak typeof(self) weakSelf = self;
+        PPSelectAddressVC *vc = [[PPSelectAddressVC alloc] initWithOptions:self.Addresses
+            title:kLang(@"select_delivery_location_title") row:nil
+            presentationStyle:PPSelectOptionPresentationSheet completion:^(id selectedObject) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || ![selectedObject isKindOfClass:PPAddressModel.class] ||
+                    ![[FIRAuth auth].currentUser.uid isEqualToString:self.addressesUserID]) return;
+                self.selectedAddress = selectedObject;
+                self.selectedAddressID = [self pp_effectiveAddressID:selectedObject];
+                self.checkoutReviewMessage = nil;
+                [self pp_updateCheckoutReview];
+            }];
+        vc.selectedOption = self.selectedAddress;
+        [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle80];
         return;
     }
-
-    [PPADDRESS getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> * _Nonnull addresses, NSError * _Nullable error) {
-        if (!error && addresses.count > 0) {
-            [weakSelf pp_applyAddresses:addresses];
-            presentPicker(weakSelf.Addresses);
-            return;
+    if (self.hasLoadedAddresses && !self.addressesLoadFailed) {
+        [self pp_goToAddNewAddressScreen];
+        return;
+    }
+    if (self.isLoadingAddresses) return;
+    __weak typeof(self) weakSelf = self;
+    [self pp_refreshLatestAddressesForCheckout:^(NSArray<PPAddressModel *> *addresses, NSError *error) {
+        if (!error && weakSelf.navigationController.topViewController == weakSelf) {
+            [weakSelf pp_presentAddressPickerOrPrompt];
         }
-
-        [weakSelf.locView setAddressText:kLang(@"PleaseSelectDeliveryLocation")];
-        [PPAlertHelper showConfirmationIn:weakSelf
-                                    title:kLang(@"addr_empty_title")
-                                 subtitle:kLang(@"addr_empty_subtitle")
-                            confirmButton:kLang(@"addr_empty_btn_add")
-                             cancelButton:kLang(@"addr_empty_btn_notnow")
-                                     icon:[UIImage systemImageNamed:@"house.circle"]
-                             confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
-            if (!didConfirm) return;
-            [weakSelf pp_goToAddNewAddressScreen];
-        } cancelBlock:^{}];
     }];
 }
+
 - (void)pp_goToAddNewAddressScreen {
     AddressFormVC *formVC = [[AddressFormVC alloc] initWithAddress:nil];
     formVC.delegate = self;
@@ -693,6 +862,9 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     }
 
     self.selectedAddress = address;
+    self.selectedAddressID = [self pp_effectiveAddressID:address];
+    self.checkoutReviewMessage = nil;
+    [self pp_updateCheckoutReview];
     NSString *selectedText = [self pp_bestAddressDisplayText:address];
     [self.locView setAddressText:selectedText.length > 0 ? selectedText : kLang(@"PleaseSelectDeliveryLocation")];
     [self pp_refreshLatestAddressesForCheckout:nil];
@@ -720,12 +892,19 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 - (void)pp_handleUserDidSyncNotification:(NSNotification *)notification
 {
     (void)notification;
-    [self pp_refreshLatestAddressesForCheckout:nil];
+    [self pp_setupInitialAddressState];
+    [self pp_updateCheckoutReview];
 }
 
 - (void)pp_handleUserDidSignOutNotification:(NSNotification *)notification
 {
     (void)notification;
+    self.checkoutPreflightGeneration += 1;
+    [self pp_setPreparingCheckout:NO];
+    if (self.dismissPhoneEditor) self.dismissPhoneEditor();
+    [self pp_setupInitialAddressState];
+    self.initialPaymentSelectionID = nil;
+    self.paymentSelectionWasExplicit = NO;
     [self.instrumentManager resetForSignOut];
     self.paymentInstrumentLoadGeneration += 1;
     self.isLoadingPaymentInstruments = NO;
@@ -751,9 +930,10 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     [self.summaryView updatePreviewItems:[self pp_checkoutItems]];
     [self pp_applyAdaptiveSummaryPresentation];
 
-    [self pp_applyDefaultSelectionIfNeeded];
+    if (![self pp_checkoutInteractionLocked]) [self pp_applyDefaultSelectionIfNeeded];
     [self.paymentCollection reloadData];
     [self pp_updateMethodStatus];
+    [self pp_updateCheckoutReview];
 }
 
 - (void)setupPaymentCollection {
@@ -836,9 +1016,9 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
             self.paymentInstrumentsLoadFailed = error != nil;
             if (!error) {
                 self.userInstruments = instruments ?: @[];
-                [self pp_applyDefaultSelectionIfNeeded];
+                if (![self pp_checkoutInteractionLocked]) [self pp_applyDefaultSelectionIfNeeded];
                 [self.paymentCollection reloadData];
-                [self pp_refreshCheckoutCallToAction];
+                [self pp_updateCheckoutReview];
             }
             [self pp_updateMethodStatus];
         });
@@ -884,12 +1064,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         address.addressID = effectiveID;
     }
 
-    NSString *line1 = [self pp_trimmedAddressString:address.addressLine1];
-    NSString *fullName = [self pp_trimmedAddressString:address.fullName];
-    NSString *legacyLocation = [self pp_trimmedAddressString:address.locatioName];
-    NSString *displayName = [self pp_trimmedAddressString:[address displayName]];
-    BOOL hasUsableText = line1.length > 0 || fullName.length > 0 || legacyLocation.length > 0 || displayName.length > 0;
-    if (!hasUsableText) return NO;
+    if (![address isSemanticallyValid]) return NO;
 
     NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
     if (uid.length > 0 &&
@@ -936,6 +1111,8 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         unichar c = chars[i];
         if (c >= 0x0660 && c <= 0x0669) {
             chars[i] = '0' + (c - 0x0660);
+        } else if (c >= 0x06F0 && c <= 0x06F9) {
+            chars[i] = '0' + (c - 0x06F0);
         }
     }
     return [NSString stringWithCharacters:chars length:string.length];
@@ -943,54 +1120,26 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
 - (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone
 {
-    NSString *raw = [self pp_arabicToEnglishDigits:[self pp_trimmedAddressString:rawPhone]];
-    if (raw.length == 0) return nil;
-
-    BOOL looksInternational = [raw hasPrefix:@"+"] || [raw hasPrefix:@"00"];
-    NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
-    NSString *digits = [[raw componentsSeparatedByCharactersInSet:nonDigits] componentsJoinedByString:@""];
-    if ([digits hasPrefix:@"00"] && digits.length > 2) {
-        digits = [digits substringFromIndex:2];
-    }
-
-    if (!looksInternational) {
-        NSString *dialCode = [self pp_defaultDialCodeDigits];
-        if ([digits hasPrefix:@"0"] && digits.length > 1) {
-            digits = [digits substringFromIndex:1];
-        }
-        if (dialCode.length > 0 && ![digits hasPrefix:dialCode]) {
-            digits = [dialCode stringByAppendingString:digits];
-        }
-    }
-
-    if (digits.length < 8 || digits.length > 15) {
-        return nil;
-    }
-    return [NSString stringWithFormat:@"+%@", digits];
+    return [[PPPaymentManager shared] normalizedCheckoutPhoneFromString:rawPhone];
 }
 
 - (NSString *)pp_validQIBPhoneForAddress:(PPAddressModel *)address
 {
-    (void)address;
-    NSArray<NSString *> *candidates = @[
-        PPCurrentUser.MobileNo ?: @""
-    ];
-    for (NSString *candidate in candidates) {
-        NSString *normalized = [self pp_normalizedValidPhoneFromString:candidate];
-        if (normalized.length > 0) {
-            return normalized;
-        }
-    }
-    return nil;
+    return [[PPPaymentManager shared] normalizedCheckoutPhoneForAddress:address];
 }
 
 - (void)pp_showQIBMobileNumberSheetForAddress:(PPAddressModel *)address
 {
-    (void)address;
+    if (self.phoneEditorPresented) return;
+    self.phoneEditorPresented = YES;
+    NSUInteger editorGeneration = ++self.phoneEditorGeneration;
+    NSString *editorUserID = [FIRAuth auth].currentUser.uid ?: @"";
+    __weak typeof(self) weakSelf = self;
     UIView *overlay = [[UIView alloc] init];
     overlay.translatesAutoresizingMaskIntoConstraints = NO;
     overlay.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.0];
     overlay.alpha = 0.0;
+    overlay.accessibilityViewIsModal = YES;
 
     UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial]];
     blurView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1026,24 +1175,26 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:22.0];
+    titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2] scaledFontForFont:[GM boldFontWithSize:22.0]];
+    titleLabel.adjustsFontForContentSizeCategory = YES;
     titleLabel.textColor = UIColor.labelColor;
-    titleLabel.text = kLang(@"payment_mobile_required_title");
-    titleLabel.numberOfLines = 2;
+    titleLabel.text = kLang(@"checkout_payment_contact_title");
+    titleLabel.numberOfLines = 0;
     titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [sheet addSubview:titleLabel];
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:14.0];
+    subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:[GM MidFontWithSize:14.0]];
+    subtitleLabel.adjustsFontForContentSizeCategory = YES;
     subtitleLabel.textColor = UIColor.secondaryLabelColor;
     subtitleLabel.text = kLang(@"payment_mobile_required_subtitle");
-    subtitleLabel.numberOfLines = 3;
+    subtitleLabel.numberOfLines = 0;
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [sheet addSubview:subtitleLabel];
 
     NSArray<CountryCodeModel *> *countries = [GM getMiddleEastCountriesForLanguage:[Language currentLanguageCode]];
-    NSString *existingMobile = PPCurrentUser.MobileNo.length > 0 ? PPCurrentUser.MobileNo : ([FIRAuth auth].currentUser.phoneNumber ?: @"");
+    NSString *existingMobile = [self pp_validQIBPhoneForAddress:address] ?: @"";
     NSString *existingDigits = [[existingMobile componentsSeparatedByCharactersInSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]] componentsJoinedByString:@""];
     __block CountryCodeModel *selectedCountry = countries.firstObject;
     NSInteger bestDialLength = 0;
@@ -1065,7 +1216,10 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
     UIButton *countryButton = [UIButton buttonWithType:UIButtonTypeSystem];
     countryButton.translatesAutoresizingMaskIntoConstraints = NO;
-    countryButton.titleLabel.font = [GM boldFontWithSize:16.0];
+    countryButton.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[GM boldFontWithSize:16.0]];
+    countryButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+    countryButton.titleLabel.numberOfLines = 0;
+    countryButton.accessibilityLabel = kLang(@"code_Palce");
     countryButton.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     countryButton.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.88];
     countryButton.layer.cornerRadius = 18.0;
@@ -1085,7 +1239,9 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
     UITextField *phoneField = [[UITextField alloc] init];
     phoneField.translatesAutoresizingMaskIntoConstraints = NO;
-    phoneField.font = [GM boldFontWithSize:18.0];
+    phoneField.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[GM boldFontWithSize:18.0]];
+    phoneField.adjustsFontForContentSizeCategory = YES;
+    phoneField.accessibilityLabel = kLang(@"payment_mobile_placeholder");
     phoneField.placeholder = kLang(@"payment_mobile_placeholder");
     phoneField.keyboardType = UIKeyboardTypePhonePad;
     phoneField.textContentType = UITextContentTypeTelephoneNumber;
@@ -1124,6 +1280,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     phoneStack.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     [sheet addSubview:phoneStack];
 
+    __weak UIButton *weakCountryButton = countryButton;
     [countryButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
         [phoneField resignFirstResponder];
         PPSelectOptionViewController *vc =
@@ -1133,24 +1290,26 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
                                             presentationStyle:PPSelectOptionPresentationSheet
                                                     completion:^(id  _Nullable selectedObject) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (![selectedObject isKindOfClass:CountryCodeModel.class]) {
+                if (![selectedObject isKindOfClass:CountryCodeModel.class] ||
+                    weakSelf.phoneEditorGeneration != editorGeneration) {
                     return;
                 }
                 selectedCountry = (CountryCodeModel *)selectedObject;
-                [countryButton setTitle:countryTitle(selectedCountry) forState:UIControlStateNormal];
+                [weakCountryButton setTitle:countryTitle(selectedCountry) forState:UIControlStateNormal];
                 [phoneField becomeFirstResponder];
             });
         }];
         vc.optionCellBackgroundColor = UIColor.secondarySystemBackgroundColor;
-        [self presentViewController:vc animated:YES completion:nil];
+        [weakSelf presentViewController:vc animated:YES completion:nil];
     }] forControlEvents:UIControlEventTouchUpInside];
 
     UILabel *errorLabel = [[UILabel alloc] init];
     errorLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    errorLabel.font = [GM MidFontWithSize:12.5];
+    errorLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote] scaledFontForFont:[GM MidFontWithSize:12.5]];
+    errorLabel.adjustsFontForContentSizeCategory = YES;
     errorLabel.textColor = UIColor.systemRedColor;
     errorLabel.text = @"";
-    errorLabel.numberOfLines = 2;
+    errorLabel.numberOfLines = 0;
     errorLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [sheet addSubview:errorLabel];
 
@@ -1167,7 +1326,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     UIButton *continueButton = [UIButton buttonWithType:UIButtonTypeSystem];
     continueButton.translatesAutoresizingMaskIntoConstraints = NO;
     continueButton.titleLabel.font = [GM boldFontWithSize:16.0];
-    [continueButton setTitle:kLang(@"payment_mobile_continue") forState:UIControlStateNormal];
+    [continueButton setTitle:kLang(@"checkout_save_contact") forState:UIControlStateNormal];
     continueButton.tintColor = UIColor.whiteColor;
     continueButton.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     continueButton.layer.cornerRadius = 18.0;
@@ -1178,59 +1337,55 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     [hostView addSubview:overlay];
     [hostView bringSubviewToFront:overlay];
     NSLayoutConstraint *sheetBottomConstraint = [sheet.bottomAnchor constraintEqualToAnchor:hostView.safeAreaLayoutGuide.bottomAnchor constant:-12.0];
+    UIScrollView *formScroll = [UIScrollView new];
+    formScroll.translatesAutoresizingMaskIntoConstraints = NO;
+    formScroll.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    [sheet addSubview:formScroll];
+    UIStackView *actions = [[UIStackView alloc] initWithArrangedSubviews:@[continueButton, cancelButton]];
+    actions.axis = UILayoutConstraintAxisVertical;
+    actions.spacing = PPSpaceXS;
+    UIStackView *content = [[UIStackView alloc] initWithArrangedSubviews:@[titleLabel, subtitleLabel, phoneStack, errorLabel, actions]];
+    content.translatesAutoresizingMaskIntoConstraints = NO;
+    content.axis = UILayoutConstraintAxisVertical;
+    content.spacing = PPSpaceMD;
+    [formScroll addSubview:content];
+    handle.hidden = YES;
+    iconView.hidden = YES;
+    for (UIButton *button in @[continueButton, cancelButton]) {
+        button.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[GM boldFontWithSize:16.0]];
+        button.titleLabel.adjustsFontForContentSizeCategory = YES;
+        button.titleLabel.numberOfLines = 0;
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:54.0].active = YES;
+    }
+    NSLayoutConstraint *naturalHeight = [formScroll.heightAnchor constraintEqualToAnchor:content.heightAnchor constant:44.0];
+    naturalHeight.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *preferredWidth = [sheet.widthAnchor constraintEqualToAnchor:overlay.widthAnchor constant:-32.0];
+    preferredWidth.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
         [overlay.topAnchor constraintEqualToAnchor:hostView.topAnchor],
         [overlay.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor],
         [overlay.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor],
         [overlay.bottomAnchor constraintEqualToAnchor:hostView.bottomAnchor],
-
         [blurView.topAnchor constraintEqualToAnchor:overlay.topAnchor],
         [blurView.leadingAnchor constraintEqualToAnchor:overlay.leadingAnchor],
         [blurView.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor],
         [blurView.bottomAnchor constraintEqualToAnchor:overlay.bottomAnchor],
-
-        [sheet.leadingAnchor constraintEqualToAnchor:overlay.leadingAnchor constant:16.0],
-        [sheet.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor constant:-16.0],
+        [sheet.centerXAnchor constraintEqualToAnchor:overlay.centerXAnchor],
+        preferredWidth, [sheet.widthAnchor constraintLessThanOrEqualToConstant:560.0],
+        [sheet.topAnchor constraintGreaterThanOrEqualToAnchor:hostView.safeAreaLayoutGuide.topAnchor constant:12.0],
         sheetBottomConstraint,
-
-        [handle.topAnchor constraintEqualToAnchor:sheet.topAnchor constant:12.0],
-        [handle.centerXAnchor constraintEqualToAnchor:sheet.centerXAnchor],
-        [handle.widthAnchor constraintEqualToConstant:44.0],
-        [handle.heightAnchor constraintEqualToConstant:5.0],
-
-        [iconView.topAnchor constraintEqualToAnchor:handle.bottomAnchor constant:22.0],
-        [iconView.leadingAnchor constraintEqualToAnchor:sheet.leadingAnchor constant:22.0],
-        [iconView.widthAnchor constraintEqualToConstant:38.0],
-        [iconView.heightAnchor constraintEqualToConstant:38.0],
-
-        [titleLabel.centerYAnchor constraintEqualToAnchor:iconView.centerYAnchor],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:12.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:sheet.trailingAnchor constant:-22.0],
-
-        [subtitleLabel.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:18.0],
-        [subtitleLabel.leadingAnchor constraintEqualToAnchor:sheet.leadingAnchor constant:22.0],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:sheet.trailingAnchor constant:-22.0],
-
-        [phoneStack.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0],
-        [phoneStack.leadingAnchor constraintEqualToAnchor:subtitleLabel.leadingAnchor],
-        [phoneStack.trailingAnchor constraintEqualToAnchor:subtitleLabel.trailingAnchor],
-        [phoneStack.heightAnchor constraintEqualToConstant:58.0],
-        [countryButton.widthAnchor constraintEqualToConstant:118.0],
-
-        [errorLabel.topAnchor constraintEqualToAnchor:phoneStack.bottomAnchor constant:8.0],
-        [errorLabel.leadingAnchor constraintEqualToAnchor:phoneStack.leadingAnchor],
-        [errorLabel.trailingAnchor constraintEqualToAnchor:phoneStack.trailingAnchor],
-
-        [cancelButton.topAnchor constraintEqualToAnchor:errorLabel.bottomAnchor constant:16.0],
-        [cancelButton.leadingAnchor constraintEqualToAnchor:phoneStack.leadingAnchor],
-        [cancelButton.widthAnchor constraintEqualToAnchor:continueButton.widthAnchor multiplier:0.78],
-        [cancelButton.heightAnchor constraintEqualToConstant:54.0],
-        [cancelButton.bottomAnchor constraintEqualToAnchor:sheet.bottomAnchor constant:-22.0],
-
-        [continueButton.topAnchor constraintEqualToAnchor:cancelButton.topAnchor],
-        [continueButton.leadingAnchor constraintEqualToAnchor:cancelButton.trailingAnchor constant:12.0],
-        [continueButton.trailingAnchor constraintEqualToAnchor:phoneStack.trailingAnchor],
-        [continueButton.heightAnchor constraintEqualToAnchor:cancelButton.heightAnchor]
+        [formScroll.topAnchor constraintEqualToAnchor:sheet.topAnchor],
+        [formScroll.bottomAnchor constraintEqualToAnchor:sheet.bottomAnchor],
+        [formScroll.leadingAnchor constraintEqualToAnchor:sheet.leadingAnchor],
+        [formScroll.trailingAnchor constraintEqualToAnchor:sheet.trailingAnchor], naturalHeight,
+        [content.topAnchor constraintEqualToAnchor:formScroll.contentLayoutGuide.topAnchor constant:22.0],
+        [content.bottomAnchor constraintEqualToAnchor:formScroll.contentLayoutGuide.bottomAnchor constant:-22.0],
+        [content.leadingAnchor constraintEqualToAnchor:formScroll.contentLayoutGuide.leadingAnchor constant:22.0],
+        [content.trailingAnchor constraintEqualToAnchor:formScroll.contentLayoutGuide.trailingAnchor constant:-22.0],
+        [content.widthAnchor constraintEqualToAnchor:formScroll.frameLayoutGuide.widthAnchor constant:-44.0],
+        [phoneStack.heightAnchor constraintGreaterThanOrEqualToConstant:58.0],
+        [countryButton.widthAnchor constraintGreaterThanOrEqualToConstant:88.0],
+        [countryButton.widthAnchor constraintLessThanOrEqualToAnchor:phoneStack.widthAnchor multiplier:0.40]
     ]];
 
     __block id keyboardWillChangeObserver = nil;
@@ -1279,7 +1434,19 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         } completion:nil];
     }];
 
+    __weak UIView *weakOverlay = overlay;
+    __weak UIVisualEffectView *weakBlurView = blurView;
+    __weak UIView *weakSheet = sheet;
+    __block BOOL dismissed = NO;
     void (^dismissSheet)(void) = ^{
+        if (dismissed) return;
+        dismissed = YES;
+        if (weakSelf.phoneEditorGeneration == editorGeneration) {
+            [PPHUD dismiss];
+            weakSelf.phoneEditorGeneration += 1;
+            weakSelf.phoneEditorPresented = NO;
+            weakSelf.dismissPhoneEditor = nil;
+        }
         if (keyboardWillChangeObserver) {
             [[NSNotificationCenter defaultCenter] removeObserver:keyboardWillChangeObserver];
             keyboardWillChangeObserver = nil;
@@ -1293,11 +1460,12 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
                               delay:0.0
                             options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
-            overlay.alpha = 0.0;
-            blurView.alpha = 0.0;
-            sheet.transform = CGAffineTransformMakeTranslation(0.0, 36.0);
+            weakOverlay.alpha = 0.0;
+            weakBlurView.alpha = 0.0;
+            weakSheet.transform = UIAccessibilityIsReduceMotionEnabled() ? CGAffineTransformIdentity : CGAffineTransformMakeTranslation(0.0, 36.0);
         } completion:^(BOOL finished) {
-            [overlay removeFromSuperview];
+            [weakOverlay removeFromSuperview];
+            UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, weakSelf.paymentContactButton);
         }];
     };
 
@@ -1305,15 +1473,27 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         dismissSheet();
     }] forControlEvents:UIControlEventTouchUpInside];
 
-    __weak typeof(self) weakSelf = self;
+    self.dismissPhoneEditor = dismissSheet;
+    __weak UIButton *weakContinueButton = continueButton;
+    __weak UIButton *weakCancelButton = cancelButton;
     [continueButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
+        UIButton *continueButton = weakContinueButton;
+        UIButton *cancelButton = weakCancelButton;
+        UIButton *countryButton = weakCountryButton;
+        if (!self || self.phoneEditorGeneration != editorGeneration ||
+            ![editorUserID isEqualToString:[FIRAuth auth].currentUser.uid]) {
+            dismissSheet();
+            return;
+        }
 
-        NSString *rawPhone = [NSString stringWithFormat:@"%@%@", selectedCountry.phoneCode ?: @"", phoneField.text ?: @""];
+        NSString *entered = [self pp_trimmedAddressString:phoneField.text];
+        NSString *rawPhone = ([entered hasPrefix:@"+"] || [entered hasPrefix:@"00"])
+            ? entered : [NSString stringWithFormat:@"%@%@", selectedCountry.phoneCode ?: @"", entered ?: @""];
         NSString *normalized = [self pp_normalizedValidPhoneFromString:rawPhone];
         if (normalized.length == 0) {
             errorLabel.text = kLang(@"payment_mobile_invalid");
+            UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, errorLabel.text);
             phoneField.layer.borderColor = UIColor.systemRedColor.CGColor;
             if (!UIAccessibilityIsReduceMotionEnabled()) {
                 phoneField.transform = CGAffineTransformMakeTranslation(Language.isRTL ? 5.0 : -5.0, 0.0);
@@ -1330,12 +1510,28 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         }
 
         continueButton.enabled = NO;
+        cancelButton.enabled = NO;
+        countryButton.enabled = NO;
+        phoneField.enabled = NO;
         continueButton.alpha = 0.72;
         [PPHUD showLoading:kLang(@"Save")];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            if (weakSelf.phoneEditorGeneration != editorGeneration || continueButton.enabled) return;
+            [PPHUD dismiss];
+            errorLabel.text = kLang(@"checkout_contact_save_waiting");
+            cancelButton.enabled = YES;
+            UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, errorLabel.text);
+        });
         [UsrMgr updateCurrentUserProfileWithValues:@{@"MobileNo": normalized}
                                         completion:^(NSError * _Nullable error) {
             dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || self.phoneEditorGeneration != editorGeneration) return;
                 [PPHUD dismiss];
+                if (![[FIRAuth auth].currentUser.uid isEqualToString:editorUserID]) { dismissSheet(); return; }
+                cancelButton.enabled = YES;
+                countryButton.enabled = YES;
+                phoneField.enabled = YES;
                 continueButton.enabled = YES;
                 continueButton.alpha = 1.0;
                 if (error) {
@@ -1345,9 +1541,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
                 }
                 PPCurrentUser.MobileNo = normalized;
                 dismissSheet();
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.24 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                    [self finishPayments];
-                });
+                [self pp_updateCheckoutReview];
             });
         }];
     }] forControlEvents:UIControlEventTouchUpInside];
@@ -1420,21 +1614,45 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     return [FIRAuth auth].currentUser.uid.length > 0;
 }
 
-- (void)pp_refreshLatestAddressesForCheckout:(void (^)(NSArray<PPAddressModel *> * _Nullable addresses, NSError * _Nullable error))completion
+- (void)pp_refreshLatestAddressesForCheckout:(void (^)(NSArray<PPAddressModel *> *, NSError *))completion
 {
-    if (![self pp_hasAuthenticatedUser]) {
-        [self pp_applyAddresses:@[]];
-        if (completion) {
-            completion(@[], nil);
-        }
+    NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
+    if (uid.length == 0) {
+        if (completion) completion(@[], [NSError errorWithDomain:PPOrderCheckoutPreflightErrorDomain code:1003
+            userInfo:@{NSLocalizedDescriptionKey:kLang(@"auth_register_required_title")}]);
         return;
     }
-
-    [PPADDRESS getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> * _Nonnull addresses, NSError * _Nullable error) {
-        if (!error) {
-            [self pp_applyAddresses:addresses ?: @[]];
-        }
-        if (completion) completion(addresses, error);
+    NSUInteger generation = ++self.addressRefreshGeneration;
+    self.isLoadingAddresses = YES;
+    self.addressesLoadFailed = NO;
+    [self pp_updateCheckoutReview];
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || generation != self.addressRefreshGeneration || !self.isLoadingAddresses ||
+            ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) return;
+        self.addressRefreshGeneration += 1;
+        self.isLoadingAddresses = NO;
+        self.addressesLoadFailed = YES;
+        [self pp_updateCheckoutReview];
+    });
+    [PPADDRESS getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> *addresses, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) return;
+            if (generation != self.addressRefreshGeneration) {
+                if (completion) completion(@[], [NSError errorWithDomain:PPOrderCheckoutPreflightErrorDomain code:1004
+                    userInfo:@{NSLocalizedDescriptionKey:kLang(@"checkout_details_changed_review")}]);
+                return;
+            }
+            if (generation == self.addressRefreshGeneration) {
+                self.isLoadingAddresses = NO;
+                self.addressesLoadFailed = error != nil;
+                if (!error) [self pp_applyAddresses:addresses ?: @[]];
+                [self pp_updateCheckoutReview];
+            }
+            if (completion) completion(addresses, error);
+        });
     }];
 }
 
@@ -1618,99 +1836,114 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
 - (void)finishPayments
 {
-    PPORDERLog(@"Checkout tapped | items=%lu | inProgress=%d",
-               (unsigned long)[self pp_checkoutItems].count,
-               self.isCheckoutInProgress);
     if (![self pp_hasAuthenticatedUser]) {
-        [PPAlertHelper showWarningIn:self
-                               title:kLang(@"auth_register_required_title")
+        [PPAlertHelper showWarningIn:self title:kLang(@"auth_register_required_title")
                             subtitle:kLang(@"auth_register_required_subtitle")];
-        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-        PPORDERLog(@"Checkout blocked | reason=unauthenticated");
         return;
     }
-    if (self.isCheckoutInProgress) {
-        [PPHUD showInfo:kLang(@"payment_request_in_progress")];
-        PPORDERLog(@"Checkout blocked | reason=already_in_progress");
+    if (self.isCheckoutInProgress || self.isPreparingCheckout) return;
+    if (self.isAwaitingCheckoutCancellation) {
+        [self pp_presentCheckoutCancellationPendingPromptForOrder:self.pendingCheckoutCancellationOrder];
+        return;
+    }
+    if (!self.selectedAddress) {
+        [self pp_presentAddressPickerOrPrompt];
+        return;
+    }
+    if (![self pp_isAddressCheckoutValid:self.selectedAddress]) {
+        AddressFormVC *editor = [[AddressFormVC alloc] initWithAddress:self.selectedAddress];
+        editor.delegate = self;
+        [self.navigationController pushViewController:editor animated:YES];
+        return;
+    }
+    NSString *methodID = [self pp_selectedCheckoutPaymentMethodID];
+    if (!methodID.length) {
+        [self pp_showCheckoutReviewMessage:kLang(@"checkout_choose_payment")];
+        [self fetchUserPaymentInstruments];
+        return;
+    }
+    if ([self pp_checkoutMethodRequiresPhone:methodID] && ![self pp_validQIBPhoneForAddress:self.selectedAddress].length) {
+        [self pp_editPaymentContact];
+        return;
+    }
+    if (!self.explicitCheckoutItems && CartManager.sharedManager.hasPendingSyncOperations) {
+        [self pp_showCheckoutReviewMessage:kLang(@"checkout_wait_for_cart")];
         return;
     }
 
-    NSString *selectedPaymentMethodID = [self pp_selectedCheckoutPaymentMethodID];
-    if (selectedPaymentMethodID.length == 0) {
-        [PPAlertHelper showErrorIn:self
-                             title:kLang(@"checkout_failed_title")
-                          subtitle:kLang(@"checkout_payment_method_unavailable")];
-        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-        PPORDERLog(@"Checkout blocked | reason=no_payment_method");
-        return;
-    }
-
+    // Freeze the customer's actual confirmation before the first asynchronous operation.
+    NSString *uid = [FIRAuth auth].currentUser.uid;
+    NSString *addressID = [self pp_effectiveAddressID:self.selectedAddress];
+    NSString *instrumentID = [self pp_resolvedSelectedInstrument].instrumentID;
+    NSString *phoneSnapshot = [self pp_validQIBPhoneForAddress:self.selectedAddress] ?: @"";
+    NSDictionary *addressSnapshot = [self.selectedAddress toDictionary].copy;
+    NSArray *itemsSnapshot = [self pp_checkoutReviewItemsSnapshot];
+    double total = [self pp_checkoutSummary].finalTotal;
+    NSUInteger generation = ++self.checkoutPreflightGeneration;
+    self.checkoutReviewMessage = nil;
+    [self pp_setPreparingCheckout:YES];
     __weak typeof(self) weakSelf = self;
-    [self pp_refreshLatestAddressesForCheckout:^(NSArray<PPAddressModel *> * _Nullable addresses, NSError * _Nullable addressError) {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (addressError) {
-                [PPAlertHelper showErrorIn:self
-                                     title:kLang(@"checkout_failed_title")
-                                  subtitle:kLang(@"checkout_address_refresh_failed")];
-                [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-                PPORDERLog(@"Checkout blocked | reason=address_refresh_failed | error=%@",
-                           addressError.localizedDescription ?: @"Unknown");
-                return;
+        if (!self || generation != self.checkoutPreflightGeneration || !self.isPreparingCheckout) return;
+        self.checkoutPreflightGeneration += 1;
+        self.isLoadingAddresses = NO;
+        self.addressesLoadFailed = YES;
+        [self pp_setPreparingCheckout:NO];
+        [self pp_showCheckoutReviewMessage:kLang(@"checkout_address_refresh_failed")];
+    });
+    [self pp_refreshLatestAddressesForCheckout:^(NSArray<PPAddressModel *> *addresses, NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || generation != self.checkoutPreflightGeneration || !self.isPreparingCheckout ||
+            ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) return;
+        if (!self.view.window || self.navigationController.topViewController != self) {
+            [self pp_setPreparingCheckout:NO];
+            return;
+        }
+        [self pp_setPreparingCheckout:NO];
+        if (error) {
+            [self pp_showCheckoutReviewMessage:([error.domain isEqualToString:PPOrderCheckoutPreflightErrorDomain] && error.code == 1004)
+                ? kLang(@"checkout_details_changed_review") : kLang(@"checkout_address_refresh_failed")];
+            return;
+        }
+        PPAddressModel *confirmedAddress = nil;
+        for (PPAddressModel *candidate in addresses) {
+            if ([[self pp_effectiveAddressID:candidate] isEqualToString:addressID]) { confirmedAddress = candidate; break; }
+        }
+        // Selection removal, edits, price changes and pending cart writes require a new review.
+        BOOL changed = !confirmedAddress || ![self.selectedAddressID isEqualToString:addressID] ||
+            ![([self pp_validQIBPhoneForAddress:confirmedAddress] ?: @"") isEqualToString:phoneSnapshot] ||
+            ![[self pp_resolvedSelectedInstrument].instrumentID isEqualToString:instrumentID] ||
+            ![[self pp_selectedCheckoutPaymentMethodID] isEqualToString:methodID] ||
+            ![[self pp_checkoutReviewItemsSnapshot] isEqualToArray:itemsSnapshot] ||
+            fabs([self pp_checkoutSummary].finalTotal - total) > 0.0001 ||
+            (!self.explicitCheckoutItems && CartManager.sharedManager.hasPendingSyncOperations);
+        if (confirmedAddress) {
+            // Timestamps/default preference do not change where a parcel goes.
+            for (NSString *key in @[@"fullName", @"phoneNumber", @"addressLine1", @"addressLine2", @"postalCode", @"cityID", @"stateID", @"locationPoints"]) {
+                id before = addressSnapshot[key] ?: @"";
+                id after = [confirmedAddress toDictionary][key] ?: @"";
+                id visible = [self.selectedAddress toDictionary][key] ?: @"";
+                if (![before isEqual:after] || ![before isEqual:visible]) { changed = YES; break; }
             }
-
-            PPAddressModel *resolvedAddress = [self pp_preferredAddressFrom:addresses ?: @[]];
-            NSString *selectedID = [self pp_effectiveAddressID:self.selectedAddress];
-            if (selectedID.length > 0) {
-                for (PPAddressModel *candidate in addresses ?: @[]) {
-                    NSString *candidateID = [self pp_effectiveAddressID:candidate];
-                    if ([candidateID isEqualToString:selectedID]) {
-                        resolvedAddress = candidate;
-                        break;
-                    }
-                }
-            }
-
-            NSError *validationError = [self pp_checkoutValidationErrorForAddress:resolvedAddress
-                                                                  paymentMethodId:selectedPaymentMethodID];
-            if (validationError) {
-                if (validationError.code == PPOrderCheckoutPreflightCodeInvalidQIBPhone) {
-                    [self pp_showQIBMobileNumberSheetForAddress:resolvedAddress];
-                    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-                    PPORDERLog(@"Checkout blocked | reason=qib_invalid_phone");
-                    return;
-                }
-                NSString *title = validationError.code == 1001
-                    ? kLang(@"select_delivery_location_title")
-                    : kLang(@"checkout_failed_title");
-                [PPAlertHelper showWarningIn:self
-                                       title:title
-                                    subtitle:validationError.localizedDescription ?: kLang(@"checkout_generic_error")];
-                [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-                PPORDERLog(@"Checkout blocked | reason=preflight_failed | paymentMethod=%@ | error=%@",
-                           selectedPaymentMethodID,
-                           validationError.localizedDescription ?: @"Unknown");
-                return;
-            }
-            self.selectedAddress = resolvedAddress;
-            NSString *resolvedText = [self pp_bestAddressDisplayText:resolvedAddress];
-            [self.locView setAddressText:resolvedText.length > 0 ? resolvedText : kLang(@"PleaseSelectDeliveryLocation")];
-
-            if (!self.checkoutCoordinator) {
-                if (self.explicitCheckoutItems.count > 0) {
-                    self.checkoutCoordinator =
-                    [[PPCheckoutCoordinator alloc]
-                     initWithPresentingViewController:self
-                     checkoutItems:self.explicitCheckoutItems];
-                } else {
-                    self.checkoutCoordinator =
-                    [[PPCheckoutCoordinator alloc] initWithPresentingViewController:self];
-                }
-            }
-
-            [self pp_startCheckoutWithPaymentMethodId:selectedPaymentMethodID];
-        });
+        }
+        if (changed) {
+            [self pp_refreshCheckoutPricingPresentation];
+            [self pp_showCheckoutReviewMessage:kLang(@"checkout_details_changed_review")];
+            return;
+        }
+        NSError *validation = [self pp_checkoutValidationErrorForAddress:confirmedAddress paymentMethodId:methodID];
+        if (validation) {
+            [self pp_showCheckoutReviewMessage:validation.localizedDescription];
+            return;
+        }
+        self.selectedAddress = confirmedAddress;
+        if (!self.checkoutCoordinator) {
+            self.checkoutCoordinator = self.explicitCheckoutItems.count > 0
+                ? [[PPCheckoutCoordinator alloc] initWithPresentingViewController:self checkoutItems:self.explicitCheckoutItems]
+                : [[PPCheckoutCoordinator alloc] initWithPresentingViewController:self];
+        }
+        [self pp_startCheckoutWithPaymentMethodId:methodID];
     }];
 }
 
@@ -1727,7 +1960,9 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         return;
     }
 
+    if (self.isCheckoutInProgress || self.isPreparingCheckout) return;
     self.isCheckoutInProgress = YES;
+    [self pp_updateCheckoutReview];
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
     [self.summaryView setCheckoutLoading:YES];
     PPORDERLog(@"Checkout starting | paymentMethod=%@ | addressId=%@",
@@ -1795,6 +2030,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 {
     self.isCheckoutInProgress = NO;
     [self.summaryView setCheckoutLoading:NO];
+    [self pp_updateCheckoutReview];
     PPORDERLog(@"Checkout completed | result=%ld | orderId=%@ | error=%@",
                (long)result,
                order.orderId ?: @"",
@@ -1852,6 +2088,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         // real state, but cannot create a duplicate checkout from this screen.
         self.isAwaitingCheckoutCancellation = YES;
         self.pendingCheckoutCancellationOrder = order;
+        [self pp_updateCheckoutReview];
         PPORDERLog(@"Checkout cancellation is not yet server-confirmed | orderId=%@ | error=%@",
                    order.orderId ?: @"",
                    error.localizedDescription ?: @"");
@@ -1863,6 +2100,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
         self.isAwaitingCheckoutCancellation = NO;
         self.pendingCheckoutCancellationOrder = nil;
+        [self pp_updateCheckoutReview];
         // The abandoned order cannot be replayed for cash or another card.
         // Create a new coordinator only after its server cancellation succeeds.
         self.checkoutCoordinator = nil;
@@ -1945,6 +2183,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
 - (void)dealloc
 {
+    [self pp_endPresentationTrace:NO];
     [self.addressesListener remove];
     self.addressesListener = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];

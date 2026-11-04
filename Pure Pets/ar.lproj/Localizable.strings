@@ -5466,8 +5466,8 @@
 
 /* Payment review */
 "payment_review_navigation" = "إتمام الطلب";
-"payment_review_title" = "كيف تفضّل الدفع؟";
-"payment_review_subtitle" = "تفاصيل التوصيل وطريقة الدفع، في مكان واحد.";
+"payment_review_title" = "راجع طلبك";
+"payment_review_subtitle" = "التوصيل والدفع وإجمالي طلبك، في مكان واحد.";
 "payment_review_retry" = "إعادة المحاولة";
 "payment_review_loading" = "جارٍ تحميل طرق الدفع المحفوظة…";
 "payment_review_unavailable" = "طرق الدفع غير متاحة حاليًا. يُرجى إعادة المحاولة.";
@@ -5832,3 +5832,47 @@
 "MedicineCare_Cat_care_habitat_clean" = "تعقيم وتطهير البيئة والأقفاص";
 "MedicineCare_Cat_care_nursing" = "أدوات الرضاعة والتغذية اليدوية";
 "MedicineCare_Cat_care_general" = "مستلزمات رعاية وعناية عامة";
+
+/* Ordering: delivery assistance, cart feedback and order review */
+"cart_quantity_availability_unknown" = "يلزم التحقق من التوفر";
+"cart_quantity_available_format" = "المتاح: %ld";
+"cart_quantity_checkout_locked" = "جارٍ إتمام طلبك…";
+"cart_quantity_syncing" = "جارٍ تحديث سلتك…";
+"cart_quantity_unavailable" = "غير متوفر · احذفه أو احفظه لوقت لاحق";
+"checkout_add_delivery_address" = "أضف عنوان التوصيل";
+"checkout_choose_delivery_address" = "اختر عنوان التوصيل";
+"checkout_address_changed_review" = "لم يعد هذا العنوان متاحًا. اختر عنوان توصيل آخر.";
+"checkout_choose_payment" = "اختر طريقة الدفع";
+"checkout_complete_address" = "أكمل عنوان التوصيل";
+"checkout_details_changed_review" = "تغيّرت تفاصيل طلبك. راجع عنوان التوصيل وطريقة الدفع والإجمالي قبل التأكيد مجددًا.";
+"checkout_loading_addresses" = "جارٍ تحميل عناوينك المحفوظة…";
+"checkout_payment_contact_format" = "رقم الجوال للدفع: %@";
+"checkout_payment_contact_hint" = "تعديل رقم الجوال المستخدم للدفع.";
+"checkout_payment_contact_missing" = "أضف رقم جوال للدفع";
+"checkout_save_contact" = "حفظ الرقم";
+"checkout_wait_for_cart" = "ما زالت سلتك قيد التحديث. أكّد الطلب بعد اكتمال التحديث.";
+"ordering_address_assistance_hint" = "استعن بموقعك لتعبئة العنوان، أو اختر نقطة على الخريطة، أو أدخل التفاصيل أدناه.";
+"ordering_address_check_details" = "تمت إضافة الموقع. راجع الشارع والمنطقة والرمز البريدي قبل الحفظ.";
+"ordering_address_choose_map" = "اختيار من الخريطة";
+"ordering_address_details_manual" = "تمت إضافة الموقع. أدخل تفاصيل العنوان أدناه.";
+"ordering_address_finding_details" = "جارٍ البحث عن تفاصيل العنوان…";
+"ordering_address_finding_location" = "جارٍ تحديد موقعك…";
+"ordering_address_location_denied" = "الوصول إلى الموقع غير مفعّل. يمكنك إدخال العنوان أو اختيار نقطة على الخريطة.";
+"ordering_address_location_optional" = "اختياري";
+"ordering_address_location_unavailable" = "تعذّر تحديد الموقع. حاول مجددًا، أو اختر من الخريطة، أو أدخل عنوانك.";
+"ordering_address_save_waiting" = "ما زال عنوانك قيد الحفظ. أبقِ هذه الشاشة مفتوحة حتى يعود الاتصال.";
+"ordering_address_selected" = "محدد";
+"ordering_address_use_location" = "استخدام موقعي الحالي";
+"checkout_payment_contact_title" = "رقم الجوال للدفع";
+"checkout_contact_save_waiting" = "ما زال رقمك قيد الحفظ. يمكنك إغلاق هذه النافذة حتى يعود الاتصال.";
+
+/* Saved delivery address picker */
+"address_picker_title" = "عنوان التوصيل";
+"address_picker_hint" = "اختر عنوانًا للمتابعة.";
+"address_picker_empty" = "أضف عنوان التوصيل الأول.";
+"address_picker_no_results" = "لا توجد عناوين مطابقة. جرّب بحثًا آخر.";
+"address_picker_search" = "البحث في العناوين";
+"address_picker_add" = "إضافة عنوان جديد";
+"address_picker_choose_hint" = "استخدام هذا العنوان للتوصيل.";
+"address_picker_edit_format" = "تعديل العنوان: %@";
+"address_picker_location_hint" = "استخدم موقعك للمساعدة في تعبئة عنوان جديد، ثم راجعه قبل الحفظ.";

@@ -18,9 +18,14 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UICollectionView *paymentCollection;
 @property (nonatomic, strong) UserPaymentInstrumentManager *instrumentManager;
 @property (nonatomic, strong) NSArray<UserPaymentInstrument *> *userInstruments;
+@property (nonatomic, assign) BOOL paymentSelectionWasExplicit;
+@property (nonatomic, copy, nullable) NSString *initialPaymentSelectionID;
 
 - (void)pp_configurePaymentHeader:(PPPaymentSectionHeaderView *)header;
 - (CGFloat)pp_paymentHeaderHeightForWidth:(CGFloat)width;
+- (void)pp_updateCheckoutReview;
+- (BOOL)pp_checkoutInteractionLocked;
+- (nullable NSString *)pp_checkoutRequiredActionTitle;
 
 @end
 

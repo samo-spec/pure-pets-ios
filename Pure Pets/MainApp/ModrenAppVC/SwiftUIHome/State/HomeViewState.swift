@@ -420,7 +420,7 @@ struct HomeConfigModel {
         sections: [
             HomeConfigSection(id: 20, type: "PPHomeSectionPureLens", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 15, type: "PPHomeSectionPremiumSearch", isVisible: true, metadata: [:]),
-            HomeConfigSection(id: 17, type: "PPHomeSectionMarketplaceHero", isVisible: false, metadata: [:]),
+            HomeConfigSection(id: 17, type: "PPHomeSectionMarketplaceHero", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 16, type: "PPHomeSectionProviderCategoryNav", isVisible: false, metadata: [:]),
             HomeConfigSection(id: 0, type: "PPHomeSectionHero", isVisible: true, metadata: [:]),
             HomeConfigSection(id: 5, type: "PPHomeSectionMainKinds", isVisible: true, metadata: [:]),

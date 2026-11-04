@@ -789,10 +789,21 @@ def run_all_tests():
     t.assert_true(update_qty_body is not None, "updateQuantity implementation found in CartManager.m")
     if update_qty_body:
         code = update_qty_body.group(1)
-        t.assert_true("previousQuantity = existing.quantity" in code,
-                      "updateQuantity snapshots previousQuantity for rollback")
-        t.assert_true("current.quantity = previousQuantity" in code,
-                      "updateQuantity rolls back current.quantity to previousQuantity on remote error")
+        t.assert_true("mutation.confirmedQuantity = existing.quantity" in code and
+                      code.index("mutation.confirmedQuantity = existing.quantity") < code.index("existing.quantity = clampedQuantity"),
+                      "Quantity queue captures the confirmed value before optimistic mutation")
+        flush = re.search(r"- \(void\)pp_flushQuantityMutation:[^;{]+\{([\s\S]+?)\n\}", cart_mgr_m_src)
+        flush_code = flush.group(1) if flush else ""
+        t.assert_true("current.quantity = mutation.confirmedQuantity" in flush_code and
+                      "if (!error) mutation.confirmedQuantity = submittedQuantity" in flush_code,
+                      "Quantity rollback uses the most recently acknowledged value")
+        t.assert_true("mutation.writeInFlight" in flush_code and
+                      "mutation.revision != submittedRevision" in flush_code and
+                      "[self pp_flushQuantityMutation:mutation forKey:cartKey]" in flush_code,
+                      "Rapid taps serialize writes and drain the newest intent before settling")
+        t.assert_true("self.quantityMutations[cartKey] != mutation" in flush_code and
+                      "mutation.userID isEqualToString:PPCurrentFIRAuthUser.uid" in flush_code,
+                      "Late quantity callbacks cannot mutate a replaced queue or another user cart")
         t.assert_true("PPCartCompleteSync(completion, NO)" in code,
                       "updateQuantity notifies completion(NO) on remote write failure")
         t.assert_true("PPCartCompleteSync(completion, YES)" in code,
@@ -835,8 +846,9 @@ def run_all_tests():
     t.assert_true(undo_body is not None, "undoLastRemoval implementation found in CartManager.m")
     if undo_body:
         code = undo_body.group(1)
-        t.assert_true("pendingDeletedItemKeys removeObject" in code,
-                      "undoLastRemoval clears restored item from pendingDeletedItemKeys")
+        t.assert_true("if ([self.pendingDeletedItemKeys containsObject:cartKey]) return NO" in code and
+                      "pendingDeletedItemKeys removeObject" not in code,
+                      "Undo waits for acknowledged deletion instead of erasing its pending guard")
         t.assert_true("pp_syncCartItemToFirestore" in code,
                       "undoLastRemoval re-syncs restored item to Firestore mirror")
 

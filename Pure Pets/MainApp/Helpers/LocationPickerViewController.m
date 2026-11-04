@@ -77,6 +77,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 @property (nonatomic, assign) CLLocationCoordinate2D lastDeviceCoordinate;
 @property (nonatomic, assign) BOOL hasExplicitInitialCoordinate;
 @property (nonatomic, assign) BOOL shouldCenterOnNextLocationUpdate;
+@property (nonatomic, assign) NSUInteger locationRequestGeneration;
 @property (nonatomic, copy) NSString *selectedLocationTitle;
 
 @property (nonatomic, copy) dispatch_block_t geocodeTimeoutBlock;
@@ -174,7 +175,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     self.hasExplicitInitialCoordinate =
         PPLocationPickerCoordinateIsUsable(self.initialCoordinate);
-    self.shouldCenterOnNextLocationUpdate = !self.hasExplicitInitialCoordinate;
+    self.shouldCenterOnNextLocationUpdate = NO; // Location assistance starts only from its explicit control.
     CLLocationCoordinate2D startCoordinate = self.hasExplicitInitialCoordinate
         ? self.initialCoordinate
         : [self pp_dohaCoordinate];
@@ -266,6 +267,8 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 - (void)viewDidDisappear:(BOOL)animated
 {
     [super viewDidDisappear:animated];
+    self.shouldCenterOnNextLocationUpdate = NO;
+    self.locationRequestGeneration += 1;
     [self.locationManager stopUpdatingLocation];
 }
 
@@ -425,7 +428,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
                                          zoom:15.0];
     self.mapView = [GMSMapView mapWithFrame:CGRectZero camera:camera];
     self.mapView.delegate = self;
-    self.mapView.myLocationEnabled = YES;
+    self.mapView.myLocationEnabled = NO;
     self.mapView.settings.myLocationButton = NO;
     self.mapView.settings.compassButton = NO;
     self.mapView.settings.indoorPicker = NO;
@@ -1214,15 +1217,13 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 {
     [self pp_updatePermissionPresentationForStatus:status];
     if (status == kCLAuthorizationStatusNotDetermined) {
-        [self.locationManager requestWhenInUseAuthorization];
+        if (self.shouldCenterOnNextLocationUpdate) [self.locationManager requestWhenInUseAuthorization];
         return;
     }
     if ([self pp_locationAuthorizationAllowsUpdates:status]) {
-        if (self.shouldCenterOnNextLocationUpdate ||
-            !PPLocationPickerCoordinateIsUsable(self.lastDeviceCoordinate)) {
-            [self.locationManager startUpdatingLocation];
-        }
+        if (self.shouldCenterOnNextLocationUpdate) [self pp_requestCurrentLocation];
     } else {
+        self.shouldCenterOnNextLocationUpdate = NO;
         [self.locationManager stopUpdatingLocation];
     }
 }
@@ -1237,9 +1238,11 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.permissionLabel.text = restricted
         ? kLang(@"location_picker_permission_restricted")
         : kLang(@"location_picker_permission_denied");
-    self.recenterButton.enabled = authorized;
-    self.recenterButton.alpha = authorized ? 1.0 : 0.52;
-    self.recenterButton.accessibilityValue = authorized
+    self.mapView.myLocationEnabled = authorized;
+    BOOL canRequest = authorized || status == kCLAuthorizationStatusNotDetermined;
+    self.recenterButton.enabled = canRequest;
+    self.recenterButton.alpha = canRequest ? 1.0 : 0.52;
+    self.recenterButton.accessibilityValue = canRequest
         ? nil
         : kLang(@"location_picker_recenter_unavailable");
     [self.view setNeedsLayout];
@@ -1249,7 +1252,13 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
       didUpdateLocations:(NSArray<CLLocation *> *)locations
 {
     CLLocation *location = locations.lastObject;
-    if (!location || !PPLocationPickerCoordinateIsUsable(location.coordinate)) {
+    if (!location || !PPLocationPickerCoordinateIsUsable(location.coordinate) ||
+        location.horizontalAccuracy < 0 || location.horizontalAccuracy > 200 ||
+        fabs(location.timestamp.timeIntervalSinceNow) > 30.0) {
+        [manager stopUpdatingLocation];
+        self.shouldCenterOnNextLocationUpdate = NO;
+        [self pp_updatePermissionPresentationForStatus:[self pp_locationAuthorizationStatus]];
+        [PPHUD showInfo:kLang(@"ordering_address_location_unavailable")];
         return;
     }
 
@@ -1268,6 +1277,8 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
 {
+    BOOL wasRequested = self.shouldCenterOnNextLocationUpdate;
+    self.shouldCenterOnNextLocationUpdate = NO;
     [manager stopUpdatingLocation];
     NSLog(@"[LocationPicker] location update failed: %@", error.localizedDescription);
     BOOL canRetry = [self pp_locationAuthorizationAllowsUpdates:
@@ -1277,12 +1288,15 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.recenterButton.accessibilityValue = nil;
     if (error.code == kCLErrorDenied) {
         [self pp_updatePermissionPresentationForStatus:[self pp_locationAuthorizationStatus]];
+    } else if (wasRequested) {
+        [PPHUD showInfo:kLang(@"ordering_address_location_unavailable")];
     }
 }
 
 - (void)locationManager:(CLLocationManager *)manager
 didChangeAuthorizationStatus:(CLAuthorizationStatus)status
 {
+    if (@available(iOS 14.0, *)) return;
     [self pp_handleLocationAuthorizationStatus:status];
 }
 
@@ -1299,8 +1313,8 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
     if (gesture) {
         self.shouldCenterOnNextLocationUpdate = NO;
         [self.locationManager stopUpdatingLocation];
-        BOOL canRecenter = [self pp_locationAuthorizationAllowsUpdates:
-                            [self pp_locationAuthorizationStatus]];
+        CLAuthorizationStatus status = [self pp_locationAuthorizationStatus];
+        BOOL canRecenter = [self pp_locationAuthorizationAllowsUpdates:status] || status == kCLAuthorizationStatusNotDetermined;
         self.recenterButton.enabled = canRecenter;
         self.recenterButton.alpha = canRecenter ? 1.0 : 0.52;
         self.recenterButton.accessibilityValue = nil;
@@ -1598,29 +1612,46 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 - (void)centerToUserLocation
 {
     CLAuthorizationStatus status = [self pp_locationAuthorizationStatus];
+    if (status == kCLAuthorizationStatusNotDetermined) {
+        self.shouldCenterOnNextLocationUpdate = YES;
+        [self.locationManager requestWhenInUseAuthorization];
+        return;
+    }
     if (![self pp_locationAuthorizationAllowsUpdates:status]) {
         [self pp_updatePermissionPresentationForStatus:status];
         return;
     }
 
     CLLocation *mapLocation = self.mapView.myLocation;
-    CLLocationCoordinate2D coordinate = mapLocation
-        ? mapLocation.coordinate
-        : kCLLocationCoordinate2DInvalid;
-    if (!PPLocationPickerCoordinateIsUsable(coordinate)) {
-        coordinate = self.lastDeviceCoordinate;
-    }
+    BOOL fresh = mapLocation && mapLocation.horizontalAccuracy >= 0 && mapLocation.horizontalAccuracy <= 200 &&
+        fabs(mapLocation.timestamp.timeIntervalSinceNow) <= 30.0;
+    CLLocationCoordinate2D coordinate = fresh ? mapLocation.coordinate : kCLLocationCoordinate2DInvalid;
     if (PPLocationPickerCoordinateIsUsable(coordinate)) {
         [self pp_moveCameraToCoordinate:coordinate zoom:15.0];
         return;
     }
 
+    [self pp_requestCurrentLocation];
+}
+
+- (void)pp_requestCurrentLocation
+{
     self.shouldCenterOnNextLocationUpdate = YES;
     self.recenterButton.enabled = NO;
     self.recenterButton.alpha = 0.52;
     self.recenterButton.accessibilityValue =
         kLang(@"location_picker_finding_current_location");
-    [self.locationManager startUpdatingLocation];
+    NSUInteger generation = ++self.locationRequestGeneration;
+    [self.locationManager requestLocation];
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || generation != self.locationRequestGeneration || !self.shouldCenterOnNextLocationUpdate) return;
+        self.shouldCenterOnNextLocationUpdate = NO;
+        [self.locationManager stopUpdatingLocation];
+        [self pp_updatePermissionPresentationForStatus:[self pp_locationAuthorizationStatus]];
+        if (self.view.window) [PPHUD showInfo:kLang(@"ordering_address_location_unavailable")];
+    });
 }
 
 - (void)pp_moveCameraToCoordinate:(CLLocationCoordinate2D)coordinate zoom:(float)zoom

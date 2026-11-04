@@ -5482,8 +5482,8 @@
 
 /* Payment review */
 "payment_review_navigation" = "Checkout";
-"payment_review_title" = "How would you like to pay?";
-"payment_review_subtitle" = "Your delivery details and payment, all in one place.";
+"payment_review_title" = "Review your order";
+"payment_review_subtitle" = "Delivery, payment and your total, in one place.";
 "payment_review_retry" = "Try again";
 "payment_review_loading" = "Loading your saved payment methods…";
 "payment_review_unavailable" = "Payment methods are unavailable right now. Please try again.";
@@ -5847,3 +5847,47 @@
 "MedicineCare_Cat_care_habitat_clean" = "Cage & Surface Sanitisers";
 "MedicineCare_Cat_care_nursing" = "Nursing & Feeding Kits";
 "MedicineCare_Cat_care_general" = "General Pet Care Products";
+
+/* Ordering: delivery assistance, cart feedback and order review */
+"cart_quantity_availability_unknown" = "Availability needs checking";
+"cart_quantity_available_format" = "%ld available";
+"cart_quantity_checkout_locked" = "Completing your order…";
+"cart_quantity_syncing" = "Updating your cart…";
+"cart_quantity_unavailable" = "Unavailable · remove or save for later";
+"checkout_add_delivery_address" = "Add delivery address";
+"checkout_choose_delivery_address" = "Choose delivery address";
+"checkout_address_changed_review" = "This address is no longer available. Choose another delivery address.";
+"checkout_choose_payment" = "Choose payment method";
+"checkout_complete_address" = "Complete delivery address";
+"checkout_details_changed_review" = "Your order details changed. Review the delivery address, payment and total before confirming again.";
+"checkout_loading_addresses" = "Loading your saved addresses…";
+"checkout_payment_contact_format" = "Payment mobile: %@";
+"checkout_payment_contact_hint" = "Edit the mobile number used for payment.";
+"checkout_payment_contact_missing" = "Add a mobile number for payment";
+"checkout_save_contact" = "Save number";
+"checkout_wait_for_cart" = "Your cart is still updating. Confirm once the update finishes.";
+"ordering_address_assistance_hint" = "Use your location to help fill the address, choose a point on the map, or enter your details below.";
+"ordering_address_check_details" = "Location added. Check the street, area and postal code before saving.";
+"ordering_address_choose_map" = "Choose on map";
+"ordering_address_details_manual" = "Location added. Enter the address details below.";
+"ordering_address_finding_details" = "Finding address details…";
+"ordering_address_finding_location" = "Finding your location…";
+"ordering_address_location_denied" = "Location access is off. You can enter the address or choose a point on the map.";
+"ordering_address_location_optional" = "Optional";
+"ordering_address_location_unavailable" = "Location could not be found. Try again, choose on the map, or enter your address.";
+"ordering_address_save_waiting" = "Still saving your address. Keep this screen open while your connection recovers.";
+"ordering_address_selected" = "Selected";
+"ordering_address_use_location" = "Use my current location";
+"checkout_payment_contact_title" = "Payment mobile number";
+"checkout_contact_save_waiting" = "Still saving your number. You can close this editor while your connection recovers.";
+
+/* Saved delivery address picker */
+"address_picker_title" = "Delivery address";
+"address_picker_hint" = "Choose an address to continue.";
+"address_picker_empty" = "Add your first delivery address.";
+"address_picker_no_results" = "No matching addresses. Try another search.";
+"address_picker_search" = "Search addresses";
+"address_picker_add" = "Add new address";
+"address_picker_choose_hint" = "Use this delivery address.";
+"address_picker_edit_format" = "Edit address: %@";
+"address_picker_location_hint" = "Use your location to help fill a new address. Review it before saving.";

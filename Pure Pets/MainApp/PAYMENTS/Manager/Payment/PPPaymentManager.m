@@ -16,6 +16,7 @@
 #define PP_PAYMENT_HAS_FIREBASE_APPCHECK 0
 #endif
 #import "CountryModel.h"
+#import "PPAddressModel.h"
 #import "CitiesManager.h"
 #import "PPFirebaseSessionBridge.h"
 #import <SafariServices/SafariServices.h>
@@ -1546,6 +1547,24 @@ static void PPQIBTryLoadFrameworkBundle(void)
 }
 
 #pragma mark - Helpers
+
+- (NSString *)normalizedCheckoutPhoneForAddress:(PPAddressModel *)address
+{
+    for (NSString *candidate in @[
+        PPCurrentUser.MobileNo ?: @"",
+        [FIRAuth auth].currentUser.phoneNumber ?: @"",
+        address.phoneNumber ?: @""
+    ]) {
+        NSString *normalized = [self normalizedCheckoutPhoneFromString:candidate];
+        if (normalized.length > 0) return normalized;
+    }
+    return nil;
+}
+
+- (NSString *)normalizedCheckoutPhoneFromString:(NSString *)phone
+{
+    return [self pp_normalizedValidPhoneForQIBFromRaw:phone];
+}
 
 - (NSString *)normalizedPhoneForQIBForOrder:(PPOrder *)order
 {

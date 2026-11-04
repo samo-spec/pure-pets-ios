@@ -69,8 +69,8 @@
         dict[@"createdAt"] = self.createdAt;
     }
     
-    if (self.addressLine2.length > 0)
-        dict[@"addressLine2"] = self.addressLine2;
+    // Explicitly clear optional content when merge-writing an edited address.
+    dict[@"addressLine2"] = self.addressLine2 ?: @"";
     
     return dict;
 }
@@ -153,7 +153,8 @@
 
 
 - (nullable NSString *)countryDisplay {
-    CountryModel *country = [CitiesManager.shared CurrentCountry];
+    CityModel *city = [CitiesManager.shared cityByID:self.cityID];
+    CountryModel *country = city.country ?: [CitiesManager.shared CurrentCountry];
     if (!country) return nil;
     
     NSString *flag = [self emojiFlagForCountryCode:country.iso];

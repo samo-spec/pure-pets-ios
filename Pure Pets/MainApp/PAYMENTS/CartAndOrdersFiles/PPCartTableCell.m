@@ -394,6 +394,12 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 @property (nonatomic, strong) UILabel *subtotalCaptionLabel;
 @property (nonatomic, strong) UILabel *savingsLabel;
 @property (nonatomic, strong) UILabel *savedStatusBadgeLabel;
+@property (nonatomic, strong) UILabel *availabilityLabel;
+@property (nonatomic, assign) NSInteger availableQuantity;
+@property (nonatomic, assign) BOOL syncPending;
+@property (nonatomic, assign) BOOL cartLocked;
+@property (nonatomic, assign) BOOL quantityChangesEnabled;
+@property (nonatomic, assign) NSInteger displayedQuantity;
 @property (nonatomic, strong) UIStackView *contentStack;
 @property (nonatomic, strong) UIStackView *identityRow;
 @property (nonatomic, strong) UIStackView *textStack;
@@ -516,15 +522,9 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     PPApplyContinuousCorners(self.itemImageView, PPCorner16);
     [self.imageShellView addSubview:self.itemImageView];
 
-    PPCartProductTitleLabel *titleLabel = [[PPCartProductTitleLabel alloc] init];
-    self.nameLabel = [self pp_configureLabel:titleLabel size:20 bold:YES style:UIFontTextStyleHeadline];
-    __weak typeof(self) weakSelf = self;
-    titleLabel.onActivate = ^BOOL{
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || self.isEditing || !self.currentItem || !self.onAction) return NO;
-        self.onAction(self.currentItem, @"preview");
-        return YES;
-    };
+    // This row has no product-preview route. Expose its name as text rather
+    // than announcing a button that cannot complete its promised action.
+    self.nameLabel = [self pp_labelWithSize:20 bold:YES style:UIFontTextStyleHeadline];
     self.variantOptionsLabel = [self pp_labelWithSize:14 bold:NO style:UIFontTextStyleSubheadline];
     UIStackView *variantOptionsRow = [[UIStackView alloc] initWithArrangedSubviews:@[self.variantOptionsLabel]];
     variantOptionsRow.translatesAutoresizingMaskIntoConstraints = NO;
@@ -538,10 +538,13 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     self.savingsLabel.hidden = YES;
     self.savedStatusBadgeLabel = [self pp_labelWithSize:12 bold:YES style:UIFontTextStyleFootnote];
     self.savedStatusBadgeLabel.hidden = YES;
+    self.availabilityLabel = [self pp_labelWithSize:12 bold:NO style:UIFontTextStyleFootnote];
+    self.availabilityLabel.hidden = YES;
+    self.availabilityLabel.accessibilityIdentifier = @"cart.line.availability";
     self.priceRow = [self pp_stackWithViews:@[self.priceLabel, self.originalPriceLabel]
                                      axis:UILayoutConstraintAxisVertical spacing:PPSpaceXXS];
     self.textStack = [self pp_stackWithViews:@[self.savedStatusBadgeLabel, self.nameLabel,
-                                             self.variantOptionsRow, self.priceRow]
+                                             self.variantOptionsRow, self.priceRow, self.availabilityLabel]
                                       axis:UILayoutConstraintAxisVertical spacing:PPSpaceXS];
     self.identityRow = [self pp_stackWithViews:@[self.imageShellView, self.textStack]
                                         axis:UILayoutConstraintAxisHorizontal spacing:PPSpaceMD];
@@ -700,7 +703,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
                           self.savedRemoveButton, self.savedPrimaryButton]) view.semanticContentAttribute = semantic;
     for (UILabel *label in @[self.nameLabel, self.variantOptionsLabel, self.priceLabel, self.originalPriceLabel,
                              self.subtotalCaptionLabel, self.lineTotalLabel, self.savingsLabel,
-                             self.savedStatusBadgeLabel]) label.textAlignment = Language.alignmentForCurrentLanguage;
+                             self.savedStatusBadgeLabel, self.availabilityLabel]) label.textAlignment = Language.alignmentForCurrentLanguage;
     self.variantOptionsLabel.textAlignment = NSTextAlignmentNatural;
     self.subtotalCaptionLabel.text = kLang(@"cart_cell_line_total");
     self.minusButton.accessibilityLabel = kLang(@"a11y_btn_decrease_qty");
@@ -868,6 +871,13 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     self.onAction = nil;
     self.itemImageView.image = nil;
     self.nameLabel.text = @"";
+    self.displayedQuantity = 0;
+    self.availableQuantity = NSNotFound;
+    self.syncPending = NO;
+    self.cartLocked = NO;
+    self.quantityChangesEnabled = NO;
+    self.availabilityLabel.text = nil;
+    self.availabilityLabel.hidden = YES;
     self.variantOptionsLabel.text = @"";
     self.variantOptionsRow.hidden = YES;
     self.priceLabel.text = @"";
@@ -1000,6 +1010,12 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 
 #pragma mark - Configuration
 
+- (BOOL)representsCartItem:(CartItem *)item
+{
+    return !self.savedForLaterMode && [self.currentItem.itemID isEqualToString:item.itemID] &&
+        [(self.currentItem.variantCombinationKey ?: @"") isEqualToString:item.variantCombinationKey ?: @""];
+}
+
 - (void)configureWithItem:(CartItem *)item
 {
     if (self.currentItem && ![self.currentItem.itemID isEqualToString:item.itemID]) [self pp_resetTransientMotion];
@@ -1022,8 +1038,17 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     self.bottomRow.hidden = NO;
     self.savedActionsRow.hidden = YES;
 
+    BOOL sameLine = [self.currentItem.itemID isEqualToString:item.itemID] &&
+        [(self.currentItem.variantCombinationKey ?: @"") isEqualToString:item.variantCombinationKey ?: @""];
+    NSInteger previousDisplayedQuantity = self.displayedQuantity;
     self.currentItem = item;
+    self.availableQuantity = item.stockQuantity;
+    self.quantityChangesEnabled = YES;
+    BOOL changedQuantity = sameLine && previousDisplayedQuantity > 0 && previousDisplayedQuantity != item.quantity;
+    if (changedQuantity) [self pp_preparePriceAnimationIncreasing:item.quantity > previousDisplayedQuantity];
     [self pp_refreshContentForCurrentItem];
+    self.displayedQuantity = item.quantity;
+    if (changedQuantity) [self pp_animateQuantityChangeWithIncreasing:item.quantity > previousDisplayedQuantity];
 
     DLog(@"Configured cell | itemID=%@ | name=%@ | price=%.2f | original=%.2f | discount=%@ | qty=%ld",
          item.itemID, item.name, item.price, item.originalPrice,
@@ -1036,6 +1061,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 {
     if (self.currentItem && ![self.currentItem.itemID isEqualToString:item.itemID]) [self pp_resetTransientMotion];
     self.savedForLaterMode = YES;
+    self.availabilityLabel.hidden = YES;
     self.savedForLaterActionCompleted = completed;
     self.currentItem = item;
 
@@ -1211,8 +1237,8 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 {
     if (!self.currentItem) return;
     NSString *name = self.currentItem.name ?: @"";
-    self.nameLabel.accessibilityTraits = UIAccessibilityTraitButton;
-    self.nameLabel.accessibilityHint = kLang(@"cart_cell_preview_hint");
+    self.nameLabel.accessibilityTraits = UIAccessibilityTraitStaticText;
+    self.nameLabel.accessibilityHint = nil;
     self.quantityLabel.accessibilityLabel = kLang(@"a11y_cart_qty_stepper");
     self.quantityLabel.accessibilityValue = self.quantityLabel.text;
     self.minusButton.accessibilityLabel = [NSString stringWithFormat:kLang(@"cart_cell_decrease_format"), name];
@@ -1230,6 +1256,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     if (!self.variantOptionsRow.hidden) [elements addObject:self.variantOptionsLabel];
     [elements addObject:self.priceLabel];
     if (!self.originalPriceLabel.hidden) [elements addObject:self.originalPriceLabel];
+    if (!self.availabilityLabel.hidden) [elements addObject:self.availabilityLabel];
     if (self.savedForLaterMode) {
         if (!self.savingsLabel.hidden) [elements addObject:self.savingsLabel];
         [elements addObjectsFromArray:@[self.savedStatusBadgeLabel, self.savedRemoveButton, self.savedPrimaryButton]];
@@ -1241,27 +1268,56 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     self.accessibilityElements = elements;
 }
 
+- (void)updateCartStateWithAvailableQuantity:(NSInteger)availableQuantity
+                               syncPending:(BOOL)syncPending
+                                    locked:(BOOL)locked
+                    quantityChangesEnabled:(BOOL)quantityChangesEnabled
+{
+    self.availableQuantity = availableQuantity;
+    self.syncPending = syncPending;
+    self.cartLocked = locked;
+    self.quantityChangesEnabled = quantityChangesEnabled;
+    [self pp_updateActionAvailability];
+    [self pp_updateAccessibility];
+}
+
 - (void)pp_updateActionAvailability
 {
-    if (!self.currentItem) return;
-    if (self.savedForLaterMode) return;
+    if (!self.currentItem || self.savedForLaterMode) return;
 
-    BOOL canDecrease = self.currentItem.quantity > 1;
-    BOOL stockIsKnown = self.currentItem.stockQuantity != NSNotFound;
-    BOOL canIncrease = !stockIsKnown || self.currentItem.quantity < self.currentItem.stockQuantity;
+    BOOL canDecrease = self.quantityChangesEnabled && !self.cartLocked && self.currentItem.quantity > 1;
+    BOOL stockIsKnown = self.availableQuantity != NSNotFound;
+    BOOL canIncrease = self.quantityChangesEnabled && !self.cartLocked && stockIsKnown &&
+        self.availableQuantity > 0 && self.currentItem.quantity < self.availableQuantity;
     BOOL isSaved = [[PPSaveForLaterManager sharedManager] isItemSaved:self.currentItem.itemID];
-
-    if ([self.minusButton isKindOfClass:[PPCartStepperKeyButton class]]) {
-        ((PPCartStepperKeyButton *)self.minusButton).isAtLimitFloor = !canDecrease;
-    }
-    if ([self.plusButton isKindOfClass:[PPCartStepperKeyButton class]]) {
-        ((PPCartStepperKeyButton *)self.plusButton).isAtLimitCeiling = !canIncrease;
-    }
 
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:canDecrease];
     [self pp_styleActionButton:self.plusButton kind:PPCartActionButtonKindAccent enabled:canIncrease];
     [self pp_setActionButton:self.saveForLaterButton systemName:isSaved ? @"bookmark.fill" : @"bookmark"];
-    [self pp_styleActionButton:self.saveForLaterButton kind:isSaved ? PPCartActionButtonKindAccent : PPCartActionButtonKindNeutral enabled:YES];
+    BOOL canSave = !self.cartLocked && !self.syncPending;
+    [self pp_styleActionButton:self.saveForLaterButton kind:isSaved ? PPCartActionButtonKindAccent : PPCartActionButtonKindNeutral enabled:canSave];
+    // Native disabled semantics must agree with the visual state and VoiceOver.
+    self.minusButton.enabled = canDecrease;
+    self.plusButton.enabled = canIncrease;
+    self.saveForLaterButton.enabled = canSave;
+    self.saveForLaterButton.userInteractionEnabled = canSave;
+    self.saveForLaterButton.alpha = canSave ? 1.0 : 0.4;
+
+    NSString *status = nil;
+    BOOL unavailable = stockIsKnown && self.availableQuantity <= 0;
+    BOOL exceedsAvailability = stockIsKnown && self.currentItem.quantity > self.availableQuantity;
+    if (self.cartLocked) status = kLang(@"cart_quantity_checkout_locked");
+    else if (self.syncPending) status = kLang(@"cart_quantity_syncing");
+    else if (!stockIsKnown) status = kLang(@"cart_quantity_availability_unknown");
+    else if (unavailable) status = kLang(@"cart_quantity_unavailable");
+    else {
+        status = [NSString stringWithFormat:kLang(@"cart_quantity_available_format"), (long)self.availableQuantity];
+    }
+    self.availabilityLabel.text = status;
+    self.availabilityLabel.hidden = status.length == 0;
+    self.availabilityLabel.textColor = (unavailable || exceedsAvailability) && !self.syncPending
+        ? UIColor.systemRedColor : PPCartCellSecondaryTextColor();
+    self.plusButton.accessibilityHint = !canIncrease ? status : nil;
 }
 
 #pragma mark - Actions
@@ -1276,7 +1332,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         return;
     }
 
-    if (!self.currentItem) return;
+    if (!self.currentItem || !self.quantityChangesEnabled || self.cartLocked) return;
 
     if (self.currentItem.quantity <= 1) {
         if ([self.minusButton isKindOfClass:[PPCartStepperKeyButton class]]) {
@@ -1285,15 +1341,10 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         return;
     }
 
-    DLog(@"Minus tapped for %@", self.currentItem.name);
-    self.currentItem.quantity -= 1;
-    [self pp_preparePriceAnimationIncreasing:NO];
-    [self pp_refreshContentForCurrentItem];
-    [self pp_animateQuantityChangeWithIncreasing:NO];
-    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
-
-    if (self.onAction) {
-        self.onAction(self.currentItem, @"minus");
+    NSInteger previousQuantity = self.currentItem.quantity;
+    if (self.onAction) self.onAction(self.currentItem, @"minus");
+    if (self.currentItem.quantity != previousQuantity) {
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
     }
 }
 
@@ -1307,24 +1358,19 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         return;
     }
 
-    if (!self.currentItem || self.currentItem.quantity == NSIntegerMax) return;
-    if (self.currentItem.stockQuantity != NSNotFound &&
-        self.currentItem.quantity >= self.currentItem.stockQuantity) {
+    if (!self.currentItem || !self.quantityChangesEnabled || self.cartLocked || self.currentItem.quantity == NSIntegerMax) return;
+    if (self.availableQuantity == NSNotFound || self.availableQuantity <= 0 ||
+        self.currentItem.quantity >= self.availableQuantity) {
         if ([self.plusButton isKindOfClass:[PPCartStepperKeyButton class]]) {
             [(PPCartStepperKeyButton *)self.plusButton playLimitResistanceRejectionAnimation];
         }
         return;
     }
 
-    DLog(@"Plus tapped for %@", self.currentItem.name);
-    self.currentItem.quantity += 1;
-    [self pp_preparePriceAnimationIncreasing:YES];
-    [self pp_refreshContentForCurrentItem];
-    [self pp_animateQuantityChangeWithIncreasing:YES];
-    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
-
-    if (self.onAction) {
-        self.onAction(self.currentItem, @"plus");
+    NSInteger previousQuantity = self.currentItem.quantity;
+    if (self.onAction) self.onAction(self.currentItem, @"plus");
+    if (self.currentItem.quantity != previousQuantity) {
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
     }
 }
 

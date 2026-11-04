@@ -19,7 +19,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// Callback for quantity, saved-item and product-preview actions.
+/// Callback for quantity intent and saved-item actions.
 typedef void(^PPCartCellActionBlock)(CartItem *item, NSString *action);
 
 @interface PPCartTableCell : UITableViewCell
@@ -31,11 +31,17 @@ typedef void(^PPCartCellActionBlock)(CartItem *item, NSString *action);
 @property (nonatomic, strong, readonly) UILabel *quantityLabel;
 @property (nonatomic, strong, readonly) UIButton *saveForLaterButton;
 
-/// Called for quantity/saved-item buttons and accessible product-preview activation.
+/// Called for quantity/saved-item buttons. The cell never mutates CartItem quantity.
 @property (nonatomic, copy, nullable) PPCartCellActionBlock onAction;
 
 /// Configure the cell with a cart item
 - (void)configureWithItem:(CartItem *)item;
+- (BOOL)representsCartItem:(CartItem *)item;
+/// Presentation of manager-owned availability and synchronization, without mutating the item.
+- (void)updateCartStateWithAvailableQuantity:(NSInteger)availableQuantity
+                               syncPending:(BOOL)syncPending
+                                    locked:(BOOL)locked
+                    quantityChangesEnabled:(BOOL)quantityChangesEnabled;
 - (void)configureWithSavedForLaterItem:(CartItem *)item
                       pendingOperation:(nullable NSString *)pendingOperation
                              completed:(BOOL)completed;

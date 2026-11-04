@@ -170,6 +170,7 @@ final class HomeStore: ObservableObject {
             self?.handle(event)
         }
         installObservers()
+        rebuildState()
     }
 
     deinit {
@@ -1617,7 +1618,13 @@ final class HomeStore: ObservableObject {
             }
         }
 
+        pages.append(buildMarketplaceHeroPage())
+
         return pages
+    }
+
+    var fallbackMarketplaceHeroPage: HomeHeroPage {
+        buildMarketplaceHeroPage()
     }
 
     private func buildPromotionHeroPages() -> [HomeHeroPage] {

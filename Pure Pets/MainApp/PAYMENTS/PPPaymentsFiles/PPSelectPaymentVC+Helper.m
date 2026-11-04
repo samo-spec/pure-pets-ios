@@ -42,7 +42,7 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
     if (!instrument.instrumentID.length) {
         return NO;
     }
-    return [instrument.instrumentID hasPrefix:@"builtin_"];
+    return [instrument.instrumentID hasPrefix:@"builtin_"] || [instrument.instrumentID hasPrefix:@"built_in_"];
 }
 
 - (UserPaymentInstrument *)pp_makeBuiltInInstrumentWithID:(NSString *)instrumentID
@@ -148,7 +148,8 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
         return;
     }
 
-    NSString *selectedID = PPCurrentUser.SelectedInstrument.instrumentID;
+    NSString *selectedID = self.paymentSelectionWasExplicit
+        ? PPCurrentUser.SelectedInstrument.instrumentID : self.initialPaymentSelectionID;
     UserPaymentInstrument *resolved = nil;
     if (selectedID.length > 0) {
         for (UserPaymentInstrument *instrument in displayed) {
@@ -159,7 +160,7 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
         }
     }
 
-    if (!resolved) {
+    if (!resolved && !self.paymentSelectionWasExplicit) {
         for (UserPaymentInstrument *instrument in displayed) {
             if (instrument.isDefault) {
                 resolved = instrument;
@@ -168,7 +169,7 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
         }
     }
 
-    if (!resolved) {
+    if (!resolved && !self.paymentSelectionWasExplicit) {
         resolved = displayed.firstObject; // Default to built-in QIB
     }
 
@@ -213,7 +214,7 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
         }
     }
 
-    return displayed.firstObject;
+    return nil;
 }
 
 - (NSString *)pp_selectedCheckoutPaymentMethodID
@@ -226,7 +227,7 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
 {
     NSString *paymentMethodID = [self pp_selectedCheckoutPaymentMethodID];
     BOOL isCash = [paymentMethodID isEqualToString:@"cash"];
-    NSString *title = isCash ? kLang(@"payment_place_order") : kLang(@"payment_pay_now");
+    NSString *title = [self pp_checkoutRequiredActionTitle] ?: (isCash ? kLang(@"payment_place_order") : kLang(@"payment_pay_now"));
     NSString *symbolName = isCash ? @"shippingbox.fill" : @"creditcard.fill";
     UIImage *icon = [UIImage pp_symbolNamed:symbolName
                                   pointSize:18
@@ -338,6 +339,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 #pragma mark - CollectionView Delegate
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
+    if ([self pp_checkoutInteractionLocked]) return;
     NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
 
     NSInteger modelIndex = indexPath.item;
@@ -345,12 +347,13 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         return;
     }
     UserPaymentInstrument *selected = displayed[modelIndex];
+    self.paymentSelectionWasExplicit = YES;
     PPORDERLog(@"Payment method selected | instrumentId=%@ | methodId=%@",
                selected.instrumentID ?: @"",
                selected.methodID ?: @"");
     PPCurrentUser.SelectedInstrument = selected;
     [self pp_updateVisibleSelectionForInstrumentID:selected.instrumentID animated:YES];
-    [self pp_refreshCheckoutCallToAction];
+    [self pp_updateCheckoutReview];
     [self pp_triggerCheckoutCTAHaloAnimationForMethodID:selected.methodID];
 }
 
@@ -380,6 +383,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 -(void)paymentMethodCellDidRequestDelete:(PPPaymentMethodCell *)cell instrument:(nonnull UserPaymentInstrument *)instrument method:(nonnull PaymentMethod *)method
 {
+    if ([self pp_checkoutInteractionLocked]) return;
     if ([self pp_isBuiltInInstrument:instrument]) {
         [PPHUD showInfo:kLang(@"payment_builtin_remove_blocked")];
         return;
@@ -393,7 +397,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                          cancelButton:kLang(@"CancelButton")
                                  icon:nil
                          confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
-        if(!didConfirm) return;
+        if(!didConfirm || [self pp_checkoutInteractionLocked]) return;
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
         // ✅ User confirmed deletion
         [self.instrumentManager deleteInstrument:instrument
@@ -422,6 +426,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                     method:(PaymentMethod *)method
 {
     (void)cell;
+    if ([self pp_checkoutInteractionLocked]) return;
     if (!instrument || !instrument.instrumentID) {
         [PPHUD showError:kLang(@"UnableToSetDefaultMethod")];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
@@ -430,10 +435,11 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
 
+    self.paymentSelectionWasExplicit = YES;
     if ([self pp_isBuiltInInstrument:instrument]) {
         PPCurrentUser.SelectedInstrument = instrument;
         [self pp_updateVisibleSelectionForInstrumentID:instrument.instrumentID animated:YES];
-        [self pp_refreshCheckoutCallToAction];
+        [self pp_updateCheckoutReview];
         [self pp_triggerCheckoutCTAHaloAnimationForMethodID:instrument.methodID];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
         return;
@@ -443,7 +449,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     
     PPCurrentUser.SelectedInstrument = instrument;
     [self pp_updateVisibleSelectionForInstrumentID:instrument.instrumentID animated:YES];
-    [self pp_refreshCheckoutCallToAction];
+    [self pp_updateCheckoutReview];
     [self pp_triggerCheckoutCTAHaloAnimationForMethodID:instrument.methodID];
     
     __weak typeof(self) weakSelf = self;
@@ -474,6 +480,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 -(void)paymentMethodCellDidRequestEdit:(PPPaymentMethodCell *)cell instrument:(UserPaymentInstrument *)instrument method:(PaymentMethod *)method
 {
+    if ([self pp_checkoutInteractionLocked]) return;
     (void)cell;
     (void)method;
     if ([self pp_isBuiltInInstrument:instrument]) {

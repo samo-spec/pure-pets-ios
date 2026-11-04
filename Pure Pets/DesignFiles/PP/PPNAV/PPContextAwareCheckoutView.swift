@@ -789,6 +789,8 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     private let actionButton = PPContextCheckoutActionButton()
 
     private var itemsTableHeightConstraint: NSLayoutConstraint?
+    private var actionMinimumWidthConstraint: NSLayoutConstraint?
+    private var actionMaximumWidthConstraint: NSLayoutConstraint?
     private var checkoutItems: [CartItem] = []
     private var totalItemQuantity = 0
     private var reviewExpanded = false
@@ -896,10 +898,15 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         deliveryPricingRow.accessibilityIdentifier = "contextCheckout.delivery"
         itemsPricingRow.accessibilityIdentifier = "contextCheckout.itemsBreakdown"
 
+        // The bill stays visible in Cart and Checkout; item disclosure only hides items.
+        pricingBreakdownStack.addArrangedSubview(itemsPricingRow)
         pricingBreakdownStack.addArrangedSubview(deliveryPricingRow)
         pricingBreakdownStack.addArrangedSubview(pricingDivider)
-        pricingBreakdownStack.addArrangedSubview(itemsPricingRow)
-        itemsContainer.addSubview(pricingBreakdownStack)
+        pricingBreakdownStack.isLayoutMarginsRelativeArrangement = true
+        pricingBreakdownStack.directionalLayoutMargins = NSDirectionalEdgeInsets(
+            top: 4, leading: PPContextCheckoutMetrics.breakdownHorizontalInset,
+            bottom: 4, trailing: PPContextCheckoutMetrics.breakdownHorizontalInset
+        )
 
         decisionPanel.translatesAutoresizingMaskIntoConstraints = false
         decisionPanel.layer.cornerRadius = PPContextCheckoutMetrics.panelRadius
@@ -947,6 +954,7 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
 
         contentStack.addArrangedSubview(reviewControl)
         contentStack.addArrangedSubview(itemsContainer)
+        contentStack.addArrangedSubview(pricingBreakdownStack)
         contentStack.addArrangedSubview(decisionPanel)
 
         let tableHeight = itemsTable.heightAnchor.constraint(equalToConstant: PPContextCheckoutMetrics.itemRowHeight)
@@ -958,22 +966,9 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
             itemsTable.trailingAnchor.constraint(equalTo: itemsContainer.trailingAnchor, constant: -4),
             tableHeight,
 
-            pricingBreakdownStack.topAnchor.constraint(
-                equalTo: itemsTable.bottomAnchor,
-                constant: PPContextCheckoutMetrics.breakdownVerticalSpacing
-            ),
-            pricingBreakdownStack.leadingAnchor.constraint(
-                equalTo: itemsContainer.leadingAnchor,
-                constant: PPContextCheckoutMetrics.breakdownHorizontalInset
-            ),
-            pricingBreakdownStack.trailingAnchor.constraint(
-                equalTo: itemsContainer.trailingAnchor,
-                constant: -PPContextCheckoutMetrics.breakdownHorizontalInset
-            ),
             pricingDivider.heightAnchor.constraint(equalToConstant: PPContextCheckoutMetrics.hairline),
-
             reviewHintRow.topAnchor.constraint(
-                equalTo: pricingBreakdownStack.bottomAnchor,
+                equalTo: itemsTable.bottomAnchor,
                 constant: PPContextCheckoutMetrics.breakdownVerticalSpacing
             ),
             reviewHintRow.leadingAnchor.constraint(equalTo: itemsContainer.leadingAnchor, constant: 12),
@@ -998,10 +993,12 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
                 equalTo: decisionPanel.bottomAnchor,
                 constant: -PPContextCheckoutMetrics.decisionVerticalInset
             ),
-            actionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: PPContextCheckoutMetrics.actionHeight),
-            actionButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 178),
-            actionButton.widthAnchor.constraint(lessThanOrEqualToConstant: 226)
+            actionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: PPContextCheckoutMetrics.actionHeight)
         ])
+        actionMinimumWidthConstraint = actionButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 178)
+        actionMaximumWidthConstraint = actionButton.widthAnchor.constraint(lessThanOrEqualToConstant: 226)
+        actionMinimumWidthConstraint?.isActive = true
+        actionMaximumWidthConstraint?.isActive = true
     }
 
     private func buildLayout() {
@@ -1078,13 +1075,28 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     }
 
     private func updateAdaptiveDecisionLayout() {
+        // During destination construction this view has no resolved width yet.
+        guard bounds.width.isFinite, bounds.width > 1 else { return }
         let accessibility = traitCollection.preferredContentSizeCategory.isAccessibilityCategory
-        let shouldStack = accessibility || bounds.width < 350
+        let availableWidth = max(0, bounds.width - PPContextCheckoutMetrics.outerInset * 2 - 14
+                                 - PPContextCheckoutMetrics.decisionHorizontalInset * 2)
+        // Measure the unwrapped text, not the label's current wrapped geometry.
+        // Otherwise changing the axis can change the next axis decision itself.
+        let totalText = totalLabel.attributedText ?? NSAttributedString(
+            string: totalLabel.text ?? "",
+            attributes: [.font: totalLabel.font ?? UIFont.preferredFont(forTextStyle: .title2)]
+        )
+        let requiredWidth = ceil(totalText.size().width) + 178 + PPContextCheckoutMetrics.decisionContentSpacing + 8
+        let shouldStack = accessibility || bounds.width < 350 || requiredWidth > availableWidth
         let nextAxis: NSLayoutConstraint.Axis = shouldStack ? .vertical : .horizontal
         guard decisionStack.axis != nextAxis else { return }
+        actionMinimumWidthConstraint?.isActive = false
+        actionMaximumWidthConstraint?.isActive = false
         decisionStack.axis = nextAxis
         decisionStack.alignment = .fill
         totalLabel.numberOfLines = shouldStack ? 0 : 1
+        actionMinimumWidthConstraint?.isActive = !shouldStack
+        actionMaximumWidthConstraint?.isActive = !shouldStack
         invalidateIntrinsicContentSize()
     }
 
@@ -1222,13 +1234,13 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         let changes = {
             self.reviewControl.isHidden = !showReviewControl
             self.reviewControl.accessibilityElementsHidden = !showReviewControl
+            self.pricingBreakdownStack.isHidden = !hasItems
             self.itemsContainer.isHidden = !showItems
             self.itemsContainer.accessibilityElementsHidden = !showItems
             self.reviewControl.configure(items: self.checkoutItems, expanded: self.reviewExpanded)
             self.invalidateIntrinsicContentSize()
+            self.setNeedsLayout()
             self.superview?.setNeedsLayout()
-            self.layoutIfNeeded()
-            self.superview?.layoutIfNeeded()
         }
 
         stateAnimator?.stopAnimation(true)
@@ -1242,10 +1254,17 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
             return
         }
 
+        // Only an onscreen disclosure animation needs synchronous layout.
+        // Nonanimated updates during navigation settle in UIKit's normal pass.
+        let layoutRoot = superview ?? self
+        layoutRoot.layoutIfNeeded()
         let animator = UIViewPropertyAnimator(
             duration: PPContextCheckoutMetrics.animationDuration,
             curve: .easeOut,
-            animations: changes
+            animations: {
+                changes()
+                layoutRoot.layoutIfNeeded()
+            }
         )
         animator.addCompletion { [weak self] _ in
             self?.stateAnimator = nil

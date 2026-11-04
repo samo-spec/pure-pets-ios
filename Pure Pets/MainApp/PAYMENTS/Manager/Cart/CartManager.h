@@ -62,7 +62,12 @@ presentingViewController:(UIViewController * _Nullable)presentingViewController
 
 - (void)removeItem:(CartItem *)item;
 - (void)removeItem:(CartItem *)item completion:(void (^ _Nullable)(BOOL success))completion;
+/// Restores the most recent removal after its remote deletion has settled.
+- (BOOL)undoLastRemoval;
 - (BOOL)isSyncPendingForItem:(CartItem *)item;
+- (BOOL)isQuantityUpdatePendingForItem:(CartItem *)item;
+/// The existing catalogue/session ceiling; NSNotFound means availability is unknown.
+- (NSInteger)availableQuantityForItem:(CartItem *)item;
 - (BOOL)hasPendingSyncOperations;
 - (NSInteger)totalItemsCount;
 - (double)subtotalAmount;

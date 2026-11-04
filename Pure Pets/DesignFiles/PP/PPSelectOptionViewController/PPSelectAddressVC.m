@@ -4,36 +4,220 @@
 #import "Language.h"
 #import "PPAddressModel.h"
 #import "PPAddressesManager.h"
-#import "PPOptionCell.h"
-#import "PPAlertHelper.h"
-#import "Styling.h"
-
-@import CoreLocation;
-@import FirebaseAuth;
+#import "PPDesignTokens.h"
+#import "CitiesManager.h"
+#import "CityModel.h"
+#import "StateModel.h"
+#import "CountryModel.h"
 #import <math.h>
 
-static const CGFloat PPAddressCellHeight = 110.0;
-static const CGFloat PPAddressBottomActionsHeight = 88.0;
+static const CGFloat PPAddressCellHeight = 168.0;
+static const CGFloat PPAddressBottomActionsHeight = 128.0;
 
-@interface PPSelectAddressVC () <CLLocationManagerDelegate, AddressFormVCDelegate, UIGestureRecognizerDelegate>
+// This sheet owns its row surface. Shared option-cell styling must not repaint it.
+@interface PPDeliveryAddressChoiceCell : UITableViewCell
+@property (nonatomic, strong) UIView *addressSurface;
+@property (nonatomic, strong) UIButton *chooseButton;
+@property (nonatomic, strong) UIButton *editButton;
+@property (nonatomic, strong) UIImageView *selectionMark;
+@property (nonatomic, strong) UILabel *streetLabel;
+@property (nonatomic, strong) UILabel *detailsLabel;
+@property (nonatomic, strong) UILabel *recipientLabel;
+@property (nonatomic, strong) UILabel *defaultLabel;
+@property (nonatomic, copy) void (^onChoose)(void);
+@property (nonatomic, copy) void (^onEdit)(void);
+@property (nonatomic, assign) BOOL addressChosen;
+- (void)configureStreet:(NSString *)street details:(NSString *)details recipient:(NSString *)recipient
+             isDefault:(BOOL)isDefault chosen:(BOOL)chosen;
+@end
+
+@implementation PPDeliveryAddressChoiceCell
+
+- (UILabel *)labelWithFont:(UIFont *)font style:(UIFontTextStyle)style
+{
+    UILabel *label = [UILabel new];
+    label.font = [[UIFontMetrics metricsForTextStyle:style] scaledFontForFont:font];
+    label.adjustsFontForContentSizeCategory = YES;
+    label.numberOfLines = 0;
+    label.textAlignment = Language.alignmentForCurrentLanguage;
+    return label;
+}
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (!self) return nil;
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.accessoryType = UITableViewCellAccessoryNone;
+    self.backgroundConfiguration = UIBackgroundConfiguration.clearConfiguration;
+    self.automaticallyUpdatesBackgroundConfiguration = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.isAccessibilityElement = NO;
+    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    self.addressSurface = [UIView new];
+    self.addressSurface.translatesAutoresizingMaskIntoConstraints = NO;
+    PPApplyContinuousCorners(self.addressSurface, PPCornerCard);
+    self.addressSurface.clipsToBounds = YES;
+    [self.contentView addSubview:self.addressSurface];
+
+    self.chooseButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.chooseButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.chooseButton.isAccessibilityElement = YES;
+    self.chooseButton.accessibilityHint = kLang(@"address_picker_choose_hint");
+    [self.chooseButton addTarget:self action:@selector(chooseAddress) forControlEvents:UIControlEventTouchUpInside];
+
+    self.selectionMark = [UIImageView new];
+    self.selectionMark.translatesAutoresizingMaskIntoConstraints = NO;
+    self.selectionMark.contentMode = UIViewContentModeScaleAspectFit;
+    self.selectionMark.isAccessibilityElement = NO;
+    self.streetLabel = [self labelWithFont:[GM boldFontWithSize:PPFontHeadline] style:UIFontTextStyleHeadline];
+    self.detailsLabel = [self labelWithFont:[GM MidFontWithSize:PPFontSubheadline] style:UIFontTextStyleSubheadline];
+    self.recipientLabel = [self labelWithFont:[GM MidFontWithSize:PPFontFootnote] style:UIFontTextStyleFootnote];
+    UIStackView *text = [[UIStackView alloc] initWithArrangedSubviews:@[self.streetLabel, self.detailsLabel, self.recipientLabel]];
+    text.axis = UILayoutConstraintAxisVertical;
+    text.spacing = PPSpaceXS;
+    [text setCustomSpacing:PPSpaceSM afterView:self.detailsLabel];
+    UIStackView *selection = [[UIStackView alloc] initWithArrangedSubviews:@[self.selectionMark, text]];
+    selection.translatesAutoresizingMaskIntoConstraints = NO;
+    selection.axis = UILayoutConstraintAxisHorizontal;
+    selection.alignment = UIStackViewAlignmentTop;
+    selection.spacing = PPSpaceMD;
+    selection.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    selection.accessibilityElementsHidden = YES;
+    selection.userInteractionEnabled = NO;
+    [self.chooseButton addSubview:selection];
+
+    self.defaultLabel = [self labelWithFont:[GM MidFontWithSize:PPFontFootnote] style:UIFontTextStyleFootnote];
+    self.defaultLabel.text = kLang(@"Default");
+    self.defaultLabel.isAccessibilityElement = NO; // Included in the selection button's spoken summary.
+    self.editButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.editButton.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout] scaledFontForFont:[GM boldFontWithSize:PPFontCallout]];
+    self.editButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+    self.editButton.titleLabel.numberOfLines = 0;
+    self.editButton.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceSM, PPSpaceMD, PPSpaceSM, PPSpaceMD);
+    [self.editButton setTitle:kLang(@"Edit") forState:UIControlStateNormal];
+    [self.editButton addTarget:self action:@selector(editAddress) forControlEvents:UIControlEventTouchUpInside];
+    UIView *space = [UIView new];
+    UIStackView *actions = [[UIStackView alloc] initWithArrangedSubviews:@[self.defaultLabel, space, self.editButton]];
+    actions.axis = UILayoutConstraintAxisHorizontal;
+    actions.alignment = UIStackViewAlignmentCenter;
+    actions.spacing = PPSpaceSM;
+    actions.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [space setContentHuggingPriority:UILayoutPriorityDefaultLow - 1 forAxis:UILayoutConstraintAxisHorizontal];
+    [self.editButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+
+    UIView *divider = [UIView new];
+    divider.backgroundColor = UIColor.separatorColor;
+    [divider.heightAnchor constraintEqualToConstant:0.5].active = YES;
+    UIStackView *content = [[UIStackView alloc] initWithArrangedSubviews:@[self.chooseButton, divider, actions]];
+    content.translatesAutoresizingMaskIntoConstraints = NO;
+    content.axis = UILayoutConstraintAxisVertical;
+    content.spacing = PPSpaceXS;
+    [self.addressSurface addSubview:content];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.addressSurface.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [self.addressSurface.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [self.addressSurface.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceXS],
+        [self.addressSurface.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceSM],
+        [content.leadingAnchor constraintEqualToAnchor:self.addressSurface.leadingAnchor constant:PPSpaceBase],
+        [content.trailingAnchor constraintEqualToAnchor:self.addressSurface.trailingAnchor constant:-PPSpaceBase],
+        [content.topAnchor constraintEqualToAnchor:self.addressSurface.topAnchor constant:PPSpaceBase],
+        [content.bottomAnchor constraintEqualToAnchor:self.addressSurface.bottomAnchor constant:-PPSpaceXS],
+        [selection.leadingAnchor constraintEqualToAnchor:self.chooseButton.leadingAnchor],
+        [selection.trailingAnchor constraintEqualToAnchor:self.chooseButton.trailingAnchor],
+        [selection.topAnchor constraintEqualToAnchor:self.chooseButton.topAnchor],
+        [selection.bottomAnchor constraintEqualToAnchor:self.chooseButton.bottomAnchor constant:-PPSpaceSM],
+        [self.chooseButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
+        [self.selectionMark.widthAnchor constraintEqualToConstant:PPSpaceXL],
+        [self.selectionMark.heightAnchor constraintEqualToConstant:PPSpaceXL],
+        [self.editButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
+        [self.editButton.widthAnchor constraintGreaterThanOrEqualToConstant:64.0]
+    ]];
+    self.accessibilityElements = @[self.chooseButton, self.editButton];
+    return self;
+}
+
+- (void)configureStreet:(NSString *)street details:(NSString *)details recipient:(NSString *)recipient
+             isDefault:(BOOL)isDefault chosen:(BOOL)chosen
+{
+    self.addressChosen = chosen;
+    self.streetLabel.text = street;
+    self.detailsLabel.text = details;
+    self.detailsLabel.hidden = details.length == 0;
+    self.recipientLabel.text = recipient;
+    self.recipientLabel.hidden = recipient.length == 0;
+    self.defaultLabel.hidden = !isDefault;
+    self.selectionMark.image = [UIImage systemImageNamed:chosen ? @"checkmark.circle.fill" : @"circle"
+        withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightMedium]];
+    self.chooseButton.accessibilityLabel = [@[street ?: @"", details ?: @"", recipient ?: @"", isDefault ? kLang(@"Default") : @""] componentsJoinedByString:@"\n"];
+    self.chooseButton.accessibilityTraits = UIAccessibilityTraitButton | (chosen ? UIAccessibilityTraitSelected : 0);
+    self.chooseButton.accessibilityValue = nil; // The selected trait already announces selection.
+    self.editButton.accessibilityLabel = [NSString stringWithFormat:kLang(@"address_picker_edit_format"), street];
+    [self refreshAppearance];
+}
+
+- (void)refreshAppearance
+{
+    self.addressSurface.backgroundColor = [(AppForgroundColr ?: UIColor.secondarySystemGroupedBackgroundColor) colorWithAlphaComponent:1.0];
+    self.addressSurface.layer.borderWidth = self.addressChosen ? 2.0 : (self.traitCollection.accessibilityContrast == UIAccessibilityContrastHigh ? 1.0 : 0.5);
+    UIColor *border = self.addressChosen ? AppPrimaryClr : UIColor.separatorColor;
+    self.addressSurface.layer.borderColor = [border resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    self.selectionMark.tintColor = self.addressChosen ? AppPrimaryClr : UIColor.secondaryLabelColor;
+    self.streetLabel.textColor = AppPrimaryTextClr;
+    self.detailsLabel.textColor = AppSecondaryTextClr;
+    self.recipientLabel.textColor = AppSecondaryTextClr;
+    self.defaultLabel.textColor = AppPrimaryClr;
+    [self.editButton setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+}
+
+- (void)chooseAddress { if (self.onChoose) self.onChoose(); }
+- (void)editAddress { if (self.onEdit) self.onEdit(); }
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    self.onChoose = nil;
+    self.onEdit = nil;
+    self.addressChosen = NO;
+    self.chooseButton.accessibilityValue = nil;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self refreshAppearance];
+}
+@end
+
+
+
+@interface PPSelectAddressVC () <AddressFormVCDelegate>
 
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) UIView *headerContainer;
 @property (nonatomic, strong) UILabel *headerTitleLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
 @property (nonatomic, strong) UIView *bottomActionsContainer;
-@property (nonatomic, strong) UIVisualEffectView *bottomActionsBlurView;
-@property (nonatomic, strong) UIView *bottomActionsTintView;
+@property (nonatomic, strong) UIStackView *bottomActionsStack;
+@property (nonatomic, strong) NSLayoutConstraint *bottomActionsBottomConstraint;
+@property (nonatomic, strong) UIButton *closeButton;
+@property (nonatomic, strong) UIStackView *headerStack;
+@property (nonatomic, strong) UILabel *refreshStatusLabel;
+@property (nonatomic, strong) UIButton *refreshRetryButton;
+@property (nonatomic, assign) BOOL isRefreshingAddresses;
+@property (nonatomic, assign) BOOL addressRefreshFailed;
+@property (nonatomic, assign) CGFloat keyboardOverlap;
+@property (nonatomic, assign) CGFloat sheetContentHeight;
+@property (nonatomic, assign) BOOL didConfigureSheet;
 @property (nonatomic, strong) UIButton *deliverAnotherLocationButton;
 @property (nonatomic, strong) UIButton *deliverCurrentLocationButton;
 
-@property (nonatomic, strong) CLLocationManager *locationManager;
-@property (nonatomic, strong) CLGeocoder *reverseGeocoder;
-@property (nonatomic, assign) CLLocationCoordinate2D currentCoordinate;
-@property (nonatomic, copy) NSString *currentLocationTitle;
-@property (nonatomic, strong) UITapGestureRecognizer *backgroundDismissTapGesture;
-
 @property (nonatomic, assign) BOOL didCompleteSelection;
+@property (nonatomic, strong) PPAddressModel *pendingSavedSelection;
+@property (nonatomic, assign) NSUInteger addressRefreshGeneration;
+@property (nonatomic, copy) NSString *pickerUserID;
 
 @end
 
@@ -49,8 +233,6 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
         _presentationStyle = PPSelectOptionPresentationSheet;
         _allOptions = @[];
         _filteredOptions = @[];
-        _currentCoordinate = kCLLocationCoordinate2DInvalid;
-        _currentLocationTitle = @"";
     }
     return self;
 }
@@ -94,8 +276,6 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
         _onSelectOption = [completion copy];
         _rowDescriptor = row;
         self.title = title.length > 0 ? title : kLang(@"select_delivery_location_title");
-        _currentCoordinate = kCLLocationCoordinate2DInvalid;
-        _currentLocationTitle = @"";
     }
     return self;
 }
@@ -107,34 +287,43 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 {
     [super viewDidLoad];
 
-    BOOL usesTransparentSurface = PPIOS26();
     self.view.backgroundColor = [self pp_sheetBackgroundColor];
-    self.tableView.backgroundColor = usesTransparentSurface ? UIColor.clearColor : [self pp_sheetBackgroundColor];
-    self.tableView.rowHeight = PPAddressCellHeight;
+    self.tableView.backgroundColor = [self pp_sheetBackgroundColor];
+    self.pickerUserID = [PPADDRESS currentAuthenticatedUserID] ?: @"";
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = PPAddressCellHeight;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    self.tableView.contentInset = UIEdgeInsetsMake(0, 0, PPAddressBottomActionsHeight + (usesTransparentSurface ? 24.0 : 20.0), 0);
+    self.tableView.contentInset = UIEdgeInsetsMake(0, 0, PPAddressBottomActionsHeight + PPSpaceXL, 0);
     self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
     }
 
-    [self.tableView registerClass:[PPOptionCell class] forCellReuseIdentifier:@"PPAddressOptionCell"];
+    [self.tableView registerClass:[PPDeliveryAddressChoiceCell class] forCellReuseIdentifier:@"PPAddressOptionCell"];
 
     [self pp_configureHeader];
     [self pp_configureBottomActions];
-    [self pp_applySheetStyleIfNeeded];
-    [self pp_configureBackgroundDismissTap];
     [self pp_refreshVisibleColors];
 
     if (!self.filteredOptions) {
         self.filteredOptions = self.allOptions ?: @[];
     }
-    
+    [self pp_updateSheetState];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_keyboardChanged:) name:UIKeyboardWillChangeFrameNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_keyboardChanged:) name:UIKeyboardWillHideNotification object:nil];
+}
 
-
-    [self pp_startResolvingCurrentLocation];
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    if (!self.searchBar.searchTextField.isFirstResponder) self.keyboardOverlap = 0;
+    // Apply after the shared presenter configures its generic sheet defaults.
+    if (!self.didConfigureSheet) {
+        self.didConfigureSheet = YES;
+        [self pp_applySheetStyleIfNeeded];
+    }
 }
 
 - (void)viewDidLayoutSubviews
@@ -144,475 +333,242 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     if (self.headerContainer) {
         CGFloat targetWidth = CGRectGetWidth(self.tableView.bounds);
         CGRect frame = self.headerContainer.frame;
-        if (fabs(frame.size.width - targetWidth) > 0.5) {
+        CGSize size = [self.headerContainer systemLayoutSizeFittingSize:CGSizeMake(targetWidth, UILayoutFittingCompressedSize.height)
+                                        withHorizontalFittingPriority:UILayoutPriorityRequired
+                                              verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+        if (fabs(frame.size.width - targetWidth) > 0.5 || fabs(frame.size.height - size.height) > 0.5) {
             frame.size.width = targetWidth;
+            frame.size.height = size.height;
             self.headerContainer.frame = frame;
             self.tableView.tableHeaderView = self.headerContainer;
         }
     }
-}
-
-#pragma mark - UI
-
-- (NSString *)pp_localizedStringForKey:(NSString *)key fallback:(NSString *)fallback
-{
-    NSString *value = key.length > 0 ? kLang(key) : nil;
-    if (![value isKindOfClass:NSString.class] || value.length == 0 || [value isEqualToString:key]) {
-        return fallback ?: @"";
+    CGFloat bottom = MAX(self.view.safeAreaInsets.bottom, self.keyboardOverlap);
+    self.bottomActionsBottomConstraint.constant = -bottom;
+    CGFloat bottomInset = CGRectGetHeight(self.bottomActionsContainer.bounds) + MAX(0, bottom - self.view.safeAreaInsets.bottom) + PPSpaceSM;
+    if (fabs(self.tableView.contentInset.bottom - bottomInset) > 0.5) {
+        self.tableView.contentInset = UIEdgeInsetsMake(0, 0, bottomInset, 0);
+        self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
     }
-    return value;
-}
-
-- (NSString *)pp_savedAddressesTitleText
-{
-    return [self pp_localizedStringForKey:@"saved_addresses_title" fallback:@"Saved addresses"];
-}
-
-- (NSString *)pp_deliverAddressesSubtitleText
-{
-    return [self pp_localizedStringForKey:@"deliver_addresses_subtitle" fallback:@"Deliver addresses"];
-}
-
-- (NSString *)pp_deliverToAnotherLocationText
-{
-    return [self pp_localizedStringForKey:@"deliver_to_another_location" fallback:@"Deliver to another location"];
-}
-
-- (NSString *)pp_deliverToCurrentLocationText
-{
-    return [self pp_localizedStringForKey:@"deliver_to_current_location" fallback:@"Deliver to current location"];
-}
-
-- (NSString *)pp_locatingCurrentLocationText
-{
-    return [self pp_localizedStringForKey:@"locating_current_location" fallback:@"Locating current location..."];
-}
-
-- (NSString *)pp_locationAccessDisabledText
-{
-    return [self pp_localizedStringForKey:@"location_access_disabled" fallback:@"Location access disabled"];
-}
-
-- (NSString *)pp_unableToDetectCurrentLocationText
-{
-    return [self pp_localizedStringForKey:@"unable_detect_current_location" fallback:@"Unable to detect current location."];
-}
-
-- (BOOL)pp_isDarkMode
-{
-    if (@available(iOS 13.0, *)) {
-        return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    [self.view bringSubviewToFront:self.bottomActionsContainer];
+    CGFloat desired = ceil(self.tableView.contentSize.height + CGRectGetHeight(self.bottomActionsContainer.bounds) + self.view.safeAreaInsets.bottom + PPSpaceXL);
+    if (fabs(desired - self.sheetContentHeight) > 1.0) {
+        self.sheetContentHeight = desired;
+        if (@available(iOS 16.0, *)) [self.sheetPresentationController invalidateDetents];
     }
-    return NO;
 }
+
+#pragma mark - Sheet presentation
 
 - (UIColor *)pp_sheetBackgroundColor
 {
-    if ([self pp_isDarkMode]) {
-        return [UIColor colorWithRed:0.036 green:0.034 blue:0.042 alpha:1.0];
-    }
-    return PPBackgroundColorForIOS26(PPIOS26()
-                                    ? [AppForgroundColr colorWithAlphaComponent:0.64]
-                                    : AppBackgroundClr);
-}
-
-- (UIColor *)pp_sheetSurfaceColor
-{
-    if ([self pp_isDarkMode]) {
-        return [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.075];
-    }
-    return PPIOS26()
-        ? [AppForgroundColr colorWithAlphaComponent:0.48]
-        : [UIColor colorWithWhite:1.0 alpha:0.96];
-}
-
-- (UIColor *)pp_sheetElevatedSurfaceColor
-{
-    if ([self pp_isDarkMode]) {
-        return [UIColor colorWithRed:0.118 green:0.112 blue:0.128 alpha:0.96];
-    }
-    return PPIOS26()
-        ? [AppForgroundColr colorWithAlphaComponent:0.72]
-        : AppForgroundColr;
-}
-
-- (UIColor *)pp_sheetTintOverlayColor
-{
-    if ([self pp_isDarkMode]) {
-        return [UIColor colorWithRed:0.050 green:0.047 blue:0.056 alpha:PPIOS26() ? 0.72 : 0.94];
-    }
-    return [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.30 : 0.86];
-}
-
-- (UIColor *)pp_sheetTextColor
-{
-    if ([self pp_isDarkMode]) {
-        return [UIColor colorWithWhite:1.0 alpha:0.96];
-    }
-    return AppPrimaryTextClr;
-}
-
-- (UIColor *)pp_sheetSecondaryTextColor
-{
-    if ([self pp_isDarkMode]) {
-        return [UIColor colorWithWhite:1.0 alpha:0.64];
-    }
-    return [AppPrimaryTextClr colorWithAlphaComponent:0.64];
-}
-
-- (UIColor *)pp_sheetStrokeColor
-{
-    if ([self pp_isDarkMode]) {
-        return [UIColor colorWithWhite:1.0 alpha:0.12];
-    }
-    return [UIColor colorWithWhite:0.0 alpha:0.075];
-}
-
-- (UIColor *)pp_sheetAccentSurfaceColor
-{
-    return [AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.20 : 0.12];
-}
-
-- (UIBlurEffectStyle)pp_bottomActionsBlurStyle
-{
-    if (@available(iOS 13.0, *)) {
-        if ([self pp_isDarkMode]) {
-            return PPIOS26() ? UIBlurEffectStyleSystemThinMaterialDark : UIBlurEffectStyleSystemMaterialDark;
-        }
-        return PPIOS26() ? UIBlurEffectStyleSystemThinMaterialLight : UIBlurEffectStyleSystemUltraThinMaterialLight;
-    }
-    return UIBlurEffectStyleExtraLight;
-}
-
-- (void)pp_refreshSearchBarColors
-{
-    if (!self.searchBar) {
-        return;
-    }
-
-    self.searchBar.tintColor = AppPrimaryClr;
-    self.searchBar.barTintColor = UIColor.clearColor;
-
-    if (@available(iOS 13.0, *)) {
-        UITextField *textField = self.searchBar.searchTextField;
-        textField.textColor = [self pp_sheetTextColor];
-        textField.tintColor = AppPrimaryClr;
-        textField.backgroundColor = [self pp_sheetSurfaceColor];
-        textField.layer.cornerRadius = 16.0;
-        textField.layer.masksToBounds = YES;
-        textField.font = [GM MidFontWithSize:14.5];
-        textField.textAlignment = [Language alignmentForCurrentLanguage];
-
-        NSString *placeholder = self.searchBar.placeholder ?: [self pp_localizedStringForKey:@"SearchHere" fallback:@"Search addresses"];
-        textField.attributedPlaceholder =
-            [[NSAttributedString alloc] initWithString:placeholder
-                                            attributes:@{
-            NSForegroundColorAttributeName: [self pp_sheetSecondaryTextColor],
-            NSFontAttributeName: [GM MidFontWithSize:14.5]
-        }];
-
-        if ([textField.leftView respondsToSelector:@selector(setTintColor:)]) {
-            textField.leftView.tintColor = [self pp_sheetSecondaryTextColor];
-        }
-    }
-}
-
-- (void)pp_refreshActionButton:(UIButton *)button primary:(BOOL)primary
-{
-    if (!button) {
-        return;
-    }
-
-    if (primary) {
-        button.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.92 : 0.96];
-        button.layer.borderWidth = 0.0;
-        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    } else {
-        button.backgroundColor = [self pp_sheetElevatedSurfaceColor];
-        button.layer.borderWidth = 1.0;
-        [button pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.34 : 0.24]];
-        [button setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
-    }
+    // An opaque canvas prevents checkout content showing through address text.
+    return [(AppBackgroundClr ?: UIColor.systemGroupedBackgroundColor) colorWithAlphaComponent:1.0];
 }
 
 - (void)pp_refreshVisibleColors
 {
-    BOOL usesTransparentSurface = PPIOS26();
     self.view.backgroundColor = [self pp_sheetBackgroundColor];
-    self.tableView.backgroundColor = usesTransparentSurface ? UIColor.clearColor : [self pp_sheetBackgroundColor];
-
-    self.headerTitleLabel.textColor = [self pp_sheetTextColor];
-    self.headerSubtitleLabel.textColor = [self pp_sheetSecondaryTextColor];
-    [self pp_refreshSearchBarColors];
-
-    self.bottomActionsBlurView.effect = [UIBlurEffect effectWithStyle:[self pp_bottomActionsBlurStyle]];
-    self.bottomActionsTintView.backgroundColor = [self pp_sheetTintOverlayColor];
-    [self.bottomActionsContainer pp_setBorderColor:[self pp_sheetStrokeColor]];
-    self.bottomActionsContainer.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.bottomActionsContainer.layer.shadowOpacity = [self pp_isDarkMode] ? 0.24 : 0.10;
-    self.bottomActionsContainer.layer.shadowRadius = 18.0;
-    self.bottomActionsContainer.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-
-    [self pp_refreshActionButton:self.deliverAnotherLocationButton primary:YES];
-    [self pp_refreshActionButton:self.deliverCurrentLocationButton primary:NO];
-    [self pp_refreshCurrentLocationButtonTitle];
+    self.tableView.backgroundColor = [self pp_sheetBackgroundColor];
+    self.bottomActionsContainer.backgroundColor = [self pp_sheetBackgroundColor];
+    self.headerTitleLabel.textColor = AppPrimaryTextClr;
+    self.headerSubtitleLabel.textColor = AppSecondaryTextClr;
+    self.refreshStatusLabel.textColor = AppSecondaryTextClr;
+    self.closeButton.tintColor = AppSecondaryTextClr;
+    self.closeButton.backgroundColor = [(AppForgroundColr ?: UIColor.secondarySystemGroupedBackgroundColor) colorWithAlphaComponent:1.0];
+    self.searchBar.tintColor = AppPrimaryClr;
+    self.searchBar.searchTextField.textColor = AppPrimaryTextClr;
+    self.searchBar.searchTextField.textAlignment = Language.alignmentForCurrentLanguage;
 }
 
 - (void)pp_configureHeader
 {
-    CGFloat headerHeight = self.showSearchBar ? 168.0 : 116.0;
-    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.tableView.bounds), headerHeight)];
-    header.backgroundColor = UIColor.clearColor;
-    header.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.tableView.bounds), 120)];
+    header.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.headerTitleLabel = [UILabel new];
+    self.headerTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2] scaledFontForFont:[GM boldFontWithSize:PPFontTitle2]];
+    self.headerTitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.headerTitleLabel.numberOfLines = 0;
+    self.headerTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.headerTitleLabel.text = kLang(@"address_picker_title");
+    self.headerTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
 
-    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:28];
-    titleLabel.textColor = [self pp_sheetTextColor];
-    titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    titleLabel.text = [self pp_savedAddressesTitleText];
+    self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.closeButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.closeButton setImage:[UIImage systemImageNamed:@"xmark" withConfiguration:
+        [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold]] forState:UIControlStateNormal];
+    self.closeButton.accessibilityLabel = kLang(@"Close");
+    self.closeButton.accessibilityIdentifier = @"addressPicker.close";
+    PPApplyContinuousCorners(self.closeButton, PPCornerCard);
+    [self.closeButton.widthAnchor constraintEqualToConstant:PPTouchTargetMin].active = YES;
+    [self.closeButton.heightAnchor constraintEqualToConstant:PPTouchTargetMin].active = YES;
+    [self.closeButton addTarget:self action:@selector(pp_closeSheet) forControlEvents:UIControlEventTouchUpInside];
+    NSArray<UIView *> *headingViews = self.presentationStyle == PPSelectOptionPresentationPush
+        ? @[self.headerTitleLabel] : @[self.headerTitleLabel, self.closeButton];
+    UIStackView *heading = [[UIStackView alloc] initWithArrangedSubviews:headingViews];
+    heading.axis = UILayoutConstraintAxisHorizontal;
+    heading.alignment = UIStackViewAlignmentCenter;
+    heading.spacing = PPSpaceMD;
+    heading.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
-    UILabel *subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:15];
-    subtitleLabel.textColor = [self pp_sheetSecondaryTextColor];
-    subtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    subtitleLabel.text = [self pp_deliverAddressesSubtitleText];
-    self.headerTitleLabel = titleLabel;
-    self.headerSubtitleLabel = subtitleLabel;
+    self.headerSubtitleLabel = [UILabel new];
+    self.headerSubtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:[GM MidFontWithSize:PPFontSubheadline]];
+    self.headerSubtitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.headerSubtitleLabel.numberOfLines = 0;
+    self.headerSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.refreshStatusLabel = [UILabel new];
+    self.refreshStatusLabel.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+    self.refreshStatusLabel.adjustsFontForContentSizeCategory = YES;
+    self.refreshStatusLabel.numberOfLines = 0;
+    self.refreshStatusLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.refreshStatusLabel.hidden = YES;
+    self.refreshRetryButton = [self pp_actionButton:kLang(@"payment_review_retry") symbol:@"arrow.clockwise" primary:NO action:@selector(pp_retryAddressRefresh)];
+    self.refreshRetryButton.hidden = YES;
 
-    [header addSubview:titleLabel];
-    [header addSubview:subtitleLabel];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [titleLabel.topAnchor constraintEqualToAnchor:header.topAnchor constant:16.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:20.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-20.0],
-
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
-        [subtitleLabel.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:20.0],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-20.0]
-    ]];
-
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[heading, self.headerSubtitleLabel, self.refreshStatusLabel, self.refreshRetryButton]];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.spacing = PPSpaceSM;
     if (self.showSearchBar) {
-        UISearchBar *searchBar = [[UISearchBar alloc] initWithFrame:CGRectZero];
-        searchBar.translatesAutoresizingMaskIntoConstraints = NO;
-        searchBar.searchBarStyle = UISearchBarStyleMinimal;
-        searchBar.delegate = self;
-        searchBar.placeholder = [self pp_localizedStringForKey:@"SearchHere" fallback:@"Search addresses"];
-        searchBar.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-
-        [header addSubview:searchBar];
-        self.searchBar = searchBar;
-        [self pp_refreshSearchBarColors];
-
-        [NSLayoutConstraint activateConstraints:@[
-            [searchBar.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:22.0],
-            [searchBar.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:14.0],
-            [searchBar.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-14.0],
-            [searchBar.heightAnchor constraintEqualToConstant:48.0]
-        ]];
+        self.searchBar = [UISearchBar new];
+        self.searchBar.searchBarStyle = UISearchBarStyleMinimal;
+        self.searchBar.delegate = self;
+        self.searchBar.placeholder = kLang(@"address_picker_search");
+        self.searchBar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+        [stack addArrangedSubview:self.searchBar];
     }
-
+    [header addSubview:stack];
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.topAnchor constraintEqualToAnchor:header.topAnchor constant:PPSpaceLG],
+        [stack.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:PPScreenMargin],
+        [stack.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-PPScreenMargin],
+        [stack.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-PPSpaceBase]
+    ]];
+    self.headerStack = stack;
     self.headerContainer = header;
     self.searchContainer = header;
     self.tableView.tableHeaderView = header;
 }
 
-- (UIButton *)pp_createActionButtonWithTitle:(NSString *)title primary:(BOOL)primary action:(SEL)action
+- (UIButton *)pp_actionButton:(NSString *)title symbol:(NSString *)symbol primary:(BOOL)primary action:(SEL)action
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.layer.cornerRadius = 17.0;
-    if (@available(iOS 13.0, *)) {
-        button.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    button.layer.masksToBounds = YES;
-    button.titleLabel.font = [GM MidFontWithSize:16];
-    button.titleLabel.numberOfLines = 2;
+    UIButtonConfiguration *config = primary ? UIButtonConfiguration.filledButtonConfiguration : UIButtonConfiguration.plainButtonConfiguration;
+    config.title = title;
+    config.titleLineBreakMode = NSLineBreakByWordWrapping;
+    config.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+    config.image = [UIImage systemImageNamed:symbol];
+    config.imagePadding = PPSpaceSM;
+    config.imagePlacement = NSDirectionalRectEdgeLeading;
+    config.baseBackgroundColor = AppPrimaryClr;
+    config.baseForegroundColor = primary ? UIColor.whiteColor : AppPrimaryClr;
+    config.background.cornerRadius = PPCornerMedium;
+    config.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMD, PPSpaceBase, PPSpaceMD, PPSpaceBase);
+    config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> *(NSDictionary<NSAttributedStringKey, id> *attributes) {
+        NSMutableDictionary *result = attributes.mutableCopy;
+        result[NSFontAttributeName] = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:[GM boldFontWithSize:PPFontBody]];
+        return result;
+    };
+    button.configuration = config;
+    button.titleLabel.adjustsFontForContentSizeCategory = YES;
+    button.titleLabel.numberOfLines = 0;
     button.titleLabel.textAlignment = NSTextAlignmentCenter;
-    button.titleLabel.adjustsFontSizeToFitWidth = YES;
-    button.titleLabel.minimumScaleFactor = 0.8;
-    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
-    button.contentEdgeInsets = UIEdgeInsetsMake(14, 16, 14, 16);
-    button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-
-    [button setTitle:title forState:UIControlStateNormal];
-    [self pp_refreshActionButton:button primary:primary];
+    button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    NSLayoutConstraint *minimumHeight = [button.heightAnchor constraintGreaterThanOrEqualToConstant:(primary ? 54.0 : PPTouchTargetMin)];
+    // The retry action is hidden in a stack until needed; allow its hidden height to be zero.
+    minimumHeight.priority = UILayoutPriorityRequired - 1;
+    minimumHeight.active = YES;
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     return button;
 }
 
 - (void)pp_configureBottomActions
 {
-    UIView *container = [[UIView alloc] initWithFrame:CGRectZero];
+    UIView *container = [UIView new];
     container.translatesAutoresizingMaskIntoConstraints = NO;
-    container.backgroundColor = UIColor.clearColor;
-    container.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    container.layer.cornerRadius = 24.0;
-    if (@available(iOS 13.0, *)) {
-        container.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    container.layer.masksToBounds = NO;
-    container.layer.borderWidth = 0.8;
-    [container pp_setBorderColor:[self pp_sheetStrokeColor]];
-
-    UIBlurEffectStyle blurStyle = [self pp_bottomActionsBlurStyle];
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:blurStyle];
-    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-    blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    blurView.layer.cornerRadius = 24.0;
-    if (@available(iOS 13.0, *)) {
-        blurView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    blurView.layer.masksToBounds = YES;
-
-    UIView *tintView = [[UIView alloc] initWithFrame:CGRectZero];
-    tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [self pp_sheetTintOverlayColor];
-    tintView.layer.cornerRadius = 24.0;
-    if (@available(iOS 13.0, *)) {
-        tintView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    tintView.layer.masksToBounds = YES;
-
-    UIButton *anotherButton = [self pp_createActionButtonWithTitle:[self pp_deliverToAnotherLocationText]
-                                                            primary:YES
-                                                             action:@selector(pp_handleDeliverAnotherLocationTapped:)];
-
-    UIButton *currentButton = [self pp_createActionButtonWithTitle:[self pp_deliverToCurrentLocationText]
-                                                            primary:NO
-                                                             action:@selector(pp_handleDeliverCurrentLocationTapped:)];
-
-    [container addSubview:blurView];
-    [container addSubview:tintView];
-    [container addSubview:anotherButton];
-    [container addSubview:currentButton];
-
-    [self.view addSubview:container];
     self.bottomActionsContainer = container;
-    self.bottomActionsBlurView = blurView;
-    self.bottomActionsTintView = tintView;
-    self.deliverAnotherLocationButton = anotherButton;
-    self.deliverCurrentLocationButton = currentButton;
-
+    self.deliverAnotherLocationButton = [self pp_actionButton:kLang(@"address_picker_add") symbol:@"plus" primary:YES action:@selector(pp_handleDeliverAnotherLocationTapped:)];
+    self.deliverCurrentLocationButton = [self pp_actionButton:kLang(@"ordering_address_use_location") symbol:@"location" primary:NO action:@selector(pp_handleDeliverCurrentLocationTapped:)];
+    self.deliverAnotherLocationButton.accessibilityIdentifier = @"addressPicker.add";
+    self.deliverCurrentLocationButton.accessibilityIdentifier = @"addressPicker.useLocation";
+    self.deliverCurrentLocationButton.accessibilityHint = kLang(@"address_picker_location_hint");
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[self.deliverAnotherLocationButton, self.deliverCurrentLocationButton]];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.spacing = PPSpaceXS;
+    self.bottomActionsStack = stack;
+    [container addSubview:stack];
+    [self.view addSubview:container];
+    UILayoutGuide *viewport = self.tableView.frameLayoutGuide;
+    self.bottomActionsBottomConstraint = [container.bottomAnchor constraintEqualToAnchor:viewport.bottomAnchor];
     [NSLayoutConstraint activateConstraints:@[
-        [container.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:16.0],
-        [container.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16.0],
-        [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-10.0],
-        [container.heightAnchor constraintEqualToConstant:PPAddressBottomActionsHeight],
-
-        [blurView.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [blurView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [blurView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [blurView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-
-        [tintView.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [tintView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [tintView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [tintView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-
-        [anotherButton.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
-        [anotherButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-14.0],
-        [anotherButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:14.0],
-
-        [currentButton.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
-        [currentButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-14.0],
-        [currentButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-14.0],
-        [currentButton.leadingAnchor constraintEqualToAnchor:anotherButton.trailingAnchor constant:12.0],
-        [currentButton.widthAnchor constraintEqualToAnchor:anotherButton.widthAnchor]
+        [container.leadingAnchor constraintEqualToAnchor:viewport.leadingAnchor],
+        [container.trailingAnchor constraintEqualToAnchor:viewport.trailingAnchor],
+        self.bottomActionsBottomConstraint,
+        [stack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:PPScreenMargin],
+        [stack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-PPScreenMargin],
+        [stack.topAnchor constraintEqualToAnchor:container.topAnchor constant:PPSpaceMD],
+        [stack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-PPSpaceSM]
     ]];
-
-    [self pp_refreshCurrentLocationButtonTitle];
 }
 
 - (void)pp_applySheetStyleIfNeeded
 {
-    if (self.presentationStyle != PPSelectOptionPresentationSheet) {
-        return;
-    }
-
-    if (@available(iOS 15.0, *)) {
-        if (@available(iOS 16.0, *)) {
-            UISheetPresentationControllerDetent *detent70 =
-                [UISheetPresentationControllerDetent customDetentWithIdentifier:@"pp.select.address.70"
-                                                                        resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> _Nonnull context) {
-                return context.maximumDetentValue * 0.70;
+    if (self.presentationStyle != PPSelectOptionPresentationSheet) return;
+    if (@available(iOS 16.0, *)) {
+        __weak typeof(self) weakSelf = self;
+        UISheetPresentationControllerDetent *content = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"pp.address.content"
+            resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+                CGFloat desired = weakSelf.sheetContentHeight > 0 ? weakSelf.sheetContentHeight : 520.0;
+                return MIN(context.maximumDetentValue * 0.82, MAX(360.0, desired));
             }];
-            self.sheetPresentationController.detents = @[detent70];
-            self.sheetPresentationController.selectedDetentIdentifier = detent70.identifier;
-        } else {
-            self.sheetPresentationController.detents = @[
-                [UISheetPresentationControllerDetent largeDetent]
-            ];
-        }
-        self.sheetPresentationController.preferredCornerRadius = PPIOS26() ? 34.0 : 24.0;
-        self.sheetPresentationController.prefersScrollingExpandsWhenScrolledToEdge = NO;
-        self.sheetPresentationController.prefersGrabberVisible = YES;
+        self.sheetPresentationController.detents = @[content, UISheetPresentationControllerDetent.largeDetent];
+        self.sheetPresentationController.selectedDetentIdentifier = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)
+            ? UISheetPresentationControllerDetentIdentifierLarge : content.identifier;
     }
+    self.sheetPresentationController.preferredCornerRadius = PPCornerHero;
+    self.sheetPresentationController.prefersScrollingExpandsWhenScrolledToEdge = YES;
+    self.sheetPresentationController.prefersGrabberVisible = YES;
 }
 
-- (void)pp_configureBackgroundDismissTap
+- (void)pp_closeSheet
 {
-    if (self.backgroundDismissTapGesture || self.presentationStyle != PPSelectOptionPresentationSheet) {
-        return;
-    }
-
-    UITapGestureRecognizer *tap =
-        [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleBackgroundDismissTap:)];
-    tap.cancelsTouchesInView = NO;
-    tap.delegate = self;
-    [self.view addGestureRecognizer:tap];
-    self.backgroundDismissTapGesture = tap;
-}
-
-- (void)pp_handleBackgroundDismissTap:(UITapGestureRecognizer *)recognizer
-{
-    if (recognizer.state != UIGestureRecognizerStateEnded ||
-        self.presentationStyle != PPSelectOptionPresentationSheet) {
-        return;
-    }
-
-    CGPoint pointInView = [recognizer locationInView:self.view];
-    if (self.bottomActionsContainer && CGRectContainsPoint(self.bottomActionsContainer.frame, pointInView)) {
-        return;
-    }
-
-    CGPoint pointInTable = [recognizer locationInView:self.tableView];
-    if (self.tableView.tableHeaderView && CGRectContainsPoint(self.tableView.tableHeaderView.frame, pointInTable)) {
-        return;
-    }
-    NSIndexPath *rowPath = [self.tableView indexPathForRowAtPoint:pointInTable];
-    if (rowPath) {
-        return;
-    }
-
+    [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:nil];
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+- (void)pp_keyboardChanged:(NSNotification *)notification
 {
-    if (gestureRecognizer != self.backgroundDismissTapGesture) {
-        return YES;
+    if ([notification.name isEqualToString:UIKeyboardWillHideNotification]) {
+        self.keyboardOverlap = 0;
+        [self.view setNeedsLayout];
+        return;
     }
-
-    UIView *touchView = touch.view;
-    if ([touchView isKindOfClass:UIControl.class]) {
-        return NO;
-    }
-    if (self.bottomActionsContainer && [touchView isDescendantOfView:self.bottomActionsContainer]) {
-        return NO;
-    }
-    if (self.tableView.tableHeaderView && [touchView isDescendantOfView:self.tableView.tableHeaderView]) {
-        return NO;
-    }
-
-    CGPoint pointInTable = [touch locationInView:self.tableView];
-    if ([self.tableView indexPathForRowAtPoint:pointInTable]) {
-        return NO;
-    }
-    return YES;
+    if (!self.view.window || self.presentedViewController) return;
+    CGRect keyboard = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGRect local = [self.view convertRect:keyboard fromCoordinateSpace:self.view.window.screen.coordinateSpace];
+    CGRect intersection = CGRectIntersection(self.view.bounds, local);
+    BOOL docked = !CGRectIsNull(intersection) && CGRectGetWidth(intersection) >= CGRectGetWidth(self.view.bounds) * 0.7 &&
+        CGRectGetMaxY(intersection) >= CGRectGetMaxY(self.view.bounds) - 1.0;
+    self.keyboardOverlap = docked ? CGRectGetHeight(intersection) : 0;
+    [self.view setNeedsLayout];
 }
+
+- (void)pp_updateSheetState
+{
+    if (!self.isViewLoaded) return;
+    self.headerSubtitleLabel.text = self.allOptions.count == 0 ? kLang(@"address_picker_empty") :
+        (self.filteredOptions.count == 0 ? kLang(@"address_picker_no_results") : kLang(@"address_picker_hint"));
+    self.refreshStatusLabel.text = self.addressRefreshFailed ? kLang(@"checkout_address_refresh_failed") : kLang(@"checkout_loading_addresses");
+    self.refreshStatusLabel.hidden = !self.isRefreshingAddresses && !self.addressRefreshFailed;
+    self.refreshRetryButton.hidden = !self.addressRefreshFailed;
+    [self.view setNeedsLayout];
+}
+
+- (void)pp_retryAddressRefresh { [self pp_reloadAddressesFromServerSelectingID:nil]; }
+
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }
 
 #pragma mark - Data
 
@@ -641,7 +597,10 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
         self.filteredOptions = [self.allOptions filteredArrayUsingPredicate:predicate] ?: @[];
     }
 
-    [self.tableView reloadData];
+    if (self.isViewLoaded) {
+        [self.tableView reloadData];
+        [self pp_updateSheetState];
+    }
 }
 
 - (NSString *)pp_effectiveAddressID:(PPAddressModel *)address
@@ -657,19 +616,69 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 {
     if (!address) return @"";
 
-    NSString *displayName = [address.displayName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (displayName.length > 0) return displayName;
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    for (NSString *value in @[address.addressLine1 ?: @"", address.addressLine2 ?: @"",
+                               address.displayName ?: address.locatioName ?: @""]) {
+        NSString *part = [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (part.length && ![parts containsObject:part]) [parts addObject:part];
+    }
+    return parts.count ? [parts componentsJoinedByString:@"\n"] : (address.fullName ?: @"");
+}
 
-    NSString *locationName = [address.locatioName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (locationName.length > 0) return locationName;
+// Display the structured fields once. Keep pp_displayTextForAddress unchanged
+// for legacy XLForm values; presentation does not redefine saved identity.
+- (NSString *)pp_trimAddressPart:(NSString *)value
+{
+    return [value isKindOfClass:NSString.class]
+        ? [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] : @"";
+}
 
-    NSString *line1 = [address.addressLine1 stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (line1.length > 0) return line1;
+- (NSString *)pp_isolatedAddressPart:(NSString *)value
+{
+    NSString *text = [self pp_trimAddressPart:value];
+    return text.length ? [NSString stringWithFormat:@"\u2068%@\u2069", text] : @"";
+}
 
-    NSString *fullName = [address.fullName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (fullName.length > 0) return fullName;
+- (NSString *)pp_localizedAddressName:(NSString *)arabic english:(NSString *)english
+{
+    NSString *preferred = [self pp_trimAddressPart:Language.isRTL ? arabic : english];
+    return preferred.length ? preferred : [self pp_trimAddressPart:Language.isRTL ? english : arabic];
+}
 
-    return @"";
+- (NSString *)pp_streetForAddress:(PPAddressModel *)address
+{
+    for (NSString *candidate in @[address.addressLine1 ?: @"", address.locatioName ?: @"", address.fullName ?: @""]) {
+        NSString *value = [self pp_trimAddressPart:candidate];
+        if (value.length) return value;
+    }
+    return kLang(@"checkout_complete_address");
+}
+
+- (NSString *)pp_detailsForAddress:(PPAddressModel *)address street:(NSString *)street
+{
+    CityModel *city = [CitiesManager.shared cityByID:address.cityID];
+    StateModel *area = [CitiesManager.shared stateByID:address.stateID];
+    CountryModel *country = city.country;
+    NSMutableSet<NSString *> *seen = [NSMutableSet setWithObject:street.lowercaseString];
+    NSMutableArray<NSString *> *lines = [NSMutableArray array];
+    NSString *line2 = [self pp_trimAddressPart:address.addressLine2];
+    if (line2.length && ![seen containsObject:line2.lowercaseString]) {
+        [lines addObject:[self pp_isolatedAddressPart:line2]];
+        [seen addObject:line2.lowercaseString];
+    }
+    NSMutableArray<NSString *> *region = [NSMutableArray array];
+    for (NSString *candidate in @[
+        [self pp_localizedAddressName:area.arName english:area.enName],
+        [self pp_localizedAddressName:city.arName english:city.enName],
+        [self pp_trimAddressPart:address.postalCode],
+        [self pp_localizedAddressName:country.arName english:country.enName]
+    ]) {
+        if (candidate.length == 0 || [seen containsObject:candidate.lowercaseString]) continue;
+        [seen addObject:candidate.lowercaseString];
+        [region addObject:[self pp_isolatedAddressPart:candidate]];
+    }
+    if (region.count) [lines addObject:[region componentsJoinedByString:Language.isRTL ? @"، " : @", "]];
+    return [lines componentsJoinedByString:@"\n"];
 }
 
 - (NSString *)pp_searchableTextForAddress:(PPAddressModel *)address
@@ -704,27 +713,41 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 
 - (void)pp_reloadAddressesFromServerSelectingID:(NSString *)selectedAddressID
 {
+    NSString *uid = self.pickerUserID.copy;
+    if (!uid.length || ![[PPADDRESS currentAuthenticatedUserID] isEqualToString:uid]) return;
+    NSUInteger generation = ++self.addressRefreshGeneration;
+    self.isRefreshingAddresses = YES;
+    self.addressRefreshFailed = NO;
+    [self pp_updateSheetState];
     __weak typeof(self) weakSelf = self;
-    [[PPAddressesManager sharedManager] getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> * _Nullable addresses, NSError * _Nullable error) {
-        if (error || addresses.count == 0) {
-            return;
-        }
-
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.addressRefreshGeneration != generation || !self.isRefreshingAddresses ||
+            ![[PPADDRESS currentAuthenticatedUserID] isEqualToString:uid]) return;
+        self.addressRefreshGeneration += 1;
+        self.isRefreshingAddresses = NO;
+        self.addressRefreshFailed = YES;
+        [self pp_updateSheetState];
+    });
+    [PPADDRESS getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> * _Nullable addresses, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self) {
+            if (!self || self.addressRefreshGeneration != generation ||
+                ![[PPADDRESS currentAuthenticatedUserID] isEqualToString:uid]) return;
+            self.isRefreshingAddresses = NO;
+            self.addressRefreshFailed = error != nil;
+            if (error) {
+                [self pp_updateSheetState];
+                if (self.view.window && !self.presentedViewController) {
+                    UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, kLang(@"checkout_address_refresh_failed"));
+                }
                 return;
             }
-            self.allOptions = addresses;
+            NSString *currentID = selectedAddressID ?: ([self.selectedOption isKindOfClass:PPAddressModel.class]
+                ? [self pp_effectiveAddressID:self.selectedOption] : @"");
+            self.allOptions = addresses ?: @[];
+            self.selectedOption = [self pp_addressForID:currentID];
             [self pp_applyFilterWithQuery:self.searchBar.text ?: @""];
-
-            if (selectedAddressID.length > 0) {
-                PPAddressModel *selected = [self pp_addressForID:selectedAddressID];
-                if (selected) {
-                    self.selectedOption = selected;
-                    [self.tableView reloadData];
-                }
-            }
         });
     }];
 }
@@ -739,15 +762,14 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
         PPAddressModel *selected = (PPAddressModel *)self.selectedOption;
         NSString *selectedID = [self pp_effectiveAddressID:selected];
         NSString *candidateID = [self pp_effectiveAddressID:address];
-        if (selectedID.length > 0 && [selectedID isEqualToString:candidateID]) {
-            return YES;
-        }
+        if (selectedID.length > 0) return [selectedID isEqualToString:candidateID];
     }
 
     if ([self.rowDescriptor.value isKindOfClass:NSString.class]) {
         NSString *current = [(NSString *)self.rowDescriptor.value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
         if (current.length > 0) {
-            return [[self pp_displayTextForAddress:address] isEqualToString:current];
+            return [[self pp_displayTextForAddress:address] isEqualToString:current] ||
+                [address.displayName isEqualToString:current];
         }
     }
 
@@ -756,7 +778,10 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 
 - (void)pp_completeWithAddress:(PPAddressModel *)address
 {
-    if (!address || self.didCompleteSelection) {
+    NSString *uid = [PPADDRESS currentAuthenticatedUserID] ?: @"";
+    if (!address || self.didCompleteSelection || uid.length == 0 ||
+        ![uid isEqualToString:self.pickerUserID] || [self pp_effectiveAddressID:address].length == 0 ||
+        (address.userID.length > 0 && ![address.userID isEqualToString:uid])) {
         return;
     }
     self.didCompleteSelection = YES;
@@ -797,73 +822,26 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    PPOptionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPAddressOptionCell" forIndexPath:indexPath];
-    id item = (indexPath.row < self.filteredOptions.count) ? self.filteredOptions[indexPath.row] : nil;
-
-    if (![item isKindOfClass:PPAddressModel.class]) {
-        [cell configureWithTitle:@"" subtitle:@" " imageNamed:@"mappin.and.ellipse.circle.fill"];
-        cell.accessoryType = UITableViewCellAccessoryNone;
-        cell.backgroundColor = UIColor.clearColor;
-        cell.contentView.backgroundColor = UIColor.clearColor;
+    PPDeliveryAddressChoiceCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPAddressOptionCell" forIndexPath:indexPath];
+    PPAddressModel *address = indexPath.row < self.filteredOptions.count ? self.filteredOptions[indexPath.row] : nil;
+    if (![address isKindOfClass:PPAddressModel.class]) {
+        [cell configureStreet:@"" details:@"" recipient:@"" isDefault:NO chosen:NO];
+        cell.onChoose = nil;
+        cell.onEdit = nil;
         return cell;
     }
-
-    PPAddressModel *address = (PPAddressModel *)item;
-
-    NSString *title = [address.fullName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (title.length == 0) {
-        title = [self pp_displayTextForAddress:address];
-    }
-
-    NSString *subtitle = [self pp_displayTextForAddress:address];
-    if (subtitle.length == 0) {
-        subtitle = @" ";
-    }
-
-    if (address.isDefault) {
-        NSString *defaultText = [self pp_localizedStringForKey:@"Default" fallback:@"Default"];
-        subtitle = [NSString stringWithFormat:@"%@ • %@", subtitle, defaultText];
-    }
-
-    NSString *iconName = address.isDefault ? @"flag.circle.fill" : @"mappin.and.ellipse.circle.fill";
-    [cell configureWithTitle:title subtitle:subtitle imageNamed:iconName];
-    cell.titleLabel.numberOfLines = 1;
-    cell.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    cell.subtitleLabel.numberOfLines = 3;
-    cell.subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
-    cell.titleLabel.font = [GM MidFontWithSize:17];
-    cell.subtitleLabel.font = [GM MidFontWithSize:14];
-    cell.titleLabel.textColor = [self pp_sheetTextColor];
-    cell.subtitleLabel.textColor = [self pp_sheetSecondaryTextColor];
-    cell.circleImageView.tintColor = AppPrimaryClr;
-    cell.circleImageView.backgroundColor = [self pp_sheetAccentSurfaceColor];
-    cell.circleImageView.layer.cornerRadius = 20.0;
-    cell.circleImageView.layer.masksToBounds = YES;
-    BOOL isSelected = [self pp_isAddressSelected:address];
-    cell.accessoryType = isSelected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
-    cell.tintColor = AppPrimaryClr;
-    cell.backgroundColor = UIColor.clearColor;
-    cell.contentView.backgroundColor = UIColor.clearColor;
-    if (@available(iOS 14.0, *)) {
-        UIBackgroundConfiguration *backgroundConfig = [UIBackgroundConfiguration clearConfiguration];
-        backgroundConfig.cornerRadius = 22.0;
-        backgroundConfig.backgroundColor = [self pp_sheetSurfaceColor];
-        if (@available(iOS 15.0, *)) {
-            backgroundConfig.backgroundInsets = NSDirectionalEdgeInsetsMake(6.0, 14.0, 6.0, 14.0);
-            backgroundConfig.strokeColor = [self pp_sheetStrokeColor];
-            backgroundConfig.strokeWidth = 1.0;
-        }
-        cell.backgroundConfiguration = backgroundConfig;
-
-        UIBackgroundConfiguration *selectedConfig = [backgroundConfig copy];
-        selectedConfig.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.22 : 0.10];
-        if (@available(iOS 15.0, *)) {
-            selectedConfig.strokeColor = [AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.92 : 0.84];
-            selectedConfig.strokeWidth = 2.0;
-        }
-        cell.backgroundConfiguration = isSelected ? selectedConfig : backgroundConfig;
-    }
-
+    NSString *street = [self pp_streetForAddress:address];
+    NSString *recipient = [self pp_trimAddressPart:address.fullName];
+    if ([recipient caseInsensitiveCompare:street] == NSOrderedSame) recipient = @"";
+    [cell configureStreet:[self pp_isolatedAddressPart:street]
+                  details:[self pp_detailsForAddress:address street:street]
+                recipient:[self pp_isolatedAddressPart:recipient]
+                isDefault:address.isDefault chosen:[self pp_isAddressSelected:address]];
+    cell.chooseButton.accessibilityIdentifier = @"addressPicker.chooseSavedAddress";
+    cell.editButton.accessibilityIdentifier = @"addressPicker.editSavedAddress";
+    __weak typeof(self) weakSelf = self;
+    cell.onChoose = ^{ [weakSelf pp_completeWithAddress:address]; };
+    cell.onEdit = ^{ [weakSelf pp_presentAddressForm:address useLocation:NO]; };
     return cell;
 }
 
@@ -876,18 +854,6 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     }
 
     [self pp_completeWithAddress:(PPAddressModel *)item];
-}
-
-- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (@available(iOS 14.0, *)) {
-        return;
-    }
-
-    [Styling applyBackgroundStyleForTableView:tableView
-                                         cell:cell
-                                    indexPath:indexPath
-                               useRowCardMode:YES];
 }
 
 #pragma mark - Search
@@ -904,92 +870,62 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 
 #pragma mark - Actions
 
-- (void)pp_handleDeliverAnotherLocationTapped:(id)sender
+- (void)pp_presentAddressForm:(PPAddressModel *)address useLocation:(BOOL)useLocation
 {
-    (void)sender;
-
-    AddressFormVC *formVC = [[AddressFormVC alloc] initWithAddress:nil];
+    if (self.presentedViewController || ![[PPADDRESS currentAuthenticatedUserID] isEqualToString:self.pickerUserID]) return;
+    [self.view endEditing:YES];
+    self.keyboardOverlap = 0;
+    [self.view setNeedsLayout];
+    AddressFormVC *formVC = [[AddressFormVC alloc] initWithAddress:address];
     formVC.addressFormPresent = AddressFormPresentSheet;
+    formVC.prefillFromCurrentLocation = useLocation;
     formVC.delegate = self;
-
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:formVC];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
-
     if (@available(iOS 15.0, *)) {
-        nav.sheetPresentationController.detents = @[
-            [UISheetPresentationControllerDetent mediumDetent],
-            [UISheetPresentationControllerDetent largeDetent]
-        ];
+        nav.sheetPresentationController.detents = @[[UISheetPresentationControllerDetent largeDetent]];
         nav.sheetPresentationController.prefersGrabberVisible = YES;
     }
-
     [self presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)pp_handleDeliverAnotherLocationTapped:(id)sender
+{
+    [self pp_presentAddressForm:nil useLocation:NO];
 }
 
 - (void)pp_handleDeliverCurrentLocationTapped:(id)sender
 {
-    (void)sender;
+    [self pp_presentAddressForm:nil useLocation:YES];
+}
 
-    if (![self pp_isValidCoordinate:self.currentCoordinate]) {
-        NSString *title = [self pp_localizedStringForKey:@"Location" fallback:@"Location"];
-        NSString *message = [self pp_localizedStringForKey:@"unable_detect_current_location_now"
-                                                  fallback:@"Unable to detect current location right now."];
-        [PPAlertHelper showWarningIn:self
-                               title:title
-                            subtitle:message
-                          completion:nil];
-        return;
-    }
-
-    FIRUser *authUser = [FIRAuth auth].currentUser;
-    NSString *tempID = [NSString stringWithFormat:@"current_%@", NSUUID.UUID.UUIDString.lowercaseString];
-    NSString *locationTitle = self.currentLocationTitle.length > 0
-        ? self.currentLocationTitle
-        : [NSString stringWithFormat:@"%.6f, %.6f", self.currentCoordinate.latitude, self.currentCoordinate.longitude];
-
-    PPAddressModel *currentAddress = [PPAddressModel new];
-    currentAddress.documentID = tempID;
-    currentAddress.addressID = tempID;
-    currentAddress.userID = authUser.uid ?: @"";
-    currentAddress.fullName = authUser.displayName ?: @"";
-    currentAddress.phoneNumber = authUser.phoneNumber ?: @"";
-    currentAddress.addressLine1 = locationTitle;
-    currentAddress.addressLine2 = nil;
-    currentAddress.locatioName = locationTitle;
-    currentAddress.locationPoints = [NSString stringWithFormat:@"%.6f, %.6f", self.currentCoordinate.latitude, self.currentCoordinate.longitude];
-    currentAddress.postalCode = @"";
-    currentAddress.isDefault = NO;
-
-    [self pp_completeWithAddress:currentAddress];
+- (void)tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.row >= self.filteredOptions.count) return;
+    PPAddressModel *address = self.filteredOptions[indexPath.row];
+    if ([address isKindOfClass:PPAddressModel.class]) [self pp_presentAddressForm:address useLocation:NO];
 }
 
 #pragma mark - AddressFormVCDelegate
 
 - (void)addressFormVC:(AddressFormVC *)controller didSaveAddress:(PPAddressModel *)address
 {
-    (void)controller;
-    if (![address isKindOfClass:PPAddressModel.class]) {
-        return;
-    }
+    if (![address isKindOfClass:PPAddressModel.class]) return;
+    self.pendingSavedSelection = address;
+    [self pp_reloadAddressesFromServerSelectingID:[self pp_effectiveAddressID:address]];
+}
 
-    NSString *savedID = [self pp_effectiveAddressID:address];
-    [self pp_reloadAddressesFromServerSelectingID:savedID];
-
-    __weak typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.42 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || self.didCompleteSelection) {
-            return;
-        }
-
-        PPAddressModel *resolved = [self pp_addressForID:savedID] ?: address;
-        [self pp_completeWithAddress:resolved];
-    });
+- (void)addressFormVCDidFinishClosing:(AddressFormVC *)controller
+{
+    PPAddressModel *saved = self.pendingSavedSelection;
+    self.pendingSavedSelection = nil;
+    if (saved) [self pp_completeWithAddress:saved];
 }
 
 - (void)addressFormVC:(AddressFormVC *)controller didDeleteAddress:(PPAddressModel *)address
 {
     (void)controller;
+    if (![[PPADDRESS currentAuthenticatedUserID] isEqualToString:self.pickerUserID]) return;
     NSString *deletedID = [self pp_effectiveAddressID:address];
 
     if (deletedID.length > 0 && [self.selectedOption isKindOfClass:PPAddressModel.class]) {
@@ -999,180 +935,36 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
         }
     }
 
+    // The editor only reports deletion after persistence succeeds. Keep the
+    // acknowledged deletion visible even if the subsequent read is offline.
+    if (deletedID.length > 0) {
+        NSMutableArray *remaining = [NSMutableArray arrayWithCapacity:self.allOptions.count];
+        for (id option in self.allOptions) {
+            if ([option isKindOfClass:PPAddressModel.class] &&
+                [[self pp_effectiveAddressID:option] isEqualToString:deletedID]) continue;
+            [remaining addObject:option];
+        }
+        self.allOptions = remaining;
+    }
+
     [self pp_reloadAddressesFromServerSelectingID:nil];
 }
 
-#pragma mark - Current Location
-
-- (BOOL)pp_isValidCoordinate:(CLLocationCoordinate2D)coordinate
-{
-    if (!CLLocationCoordinate2DIsValid(coordinate)) {
-        return NO;
-    }
-    return !(fabs(coordinate.latitude) < 0.000001 && fabs(coordinate.longitude) < 0.000001);
-}
-
-- (void)pp_refreshCurrentLocationButtonTitle
-{
-    NSString *title = [self pp_deliverToCurrentLocationText];
-    NSString *subtitle = self.currentLocationTitle.length > 0
-        ? self.currentLocationTitle
-        : [self pp_locatingCurrentLocationText];
-
-    NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
-    style.alignment = NSTextAlignmentCenter;
-    style.lineSpacing = 2.0;
-
-    NSDictionary *titleAttrs = @{
-        NSFontAttributeName: [GM MidFontWithSize:15],
-        NSForegroundColorAttributeName: AppPrimaryClr,
-        NSParagraphStyleAttributeName: style
-    };
-
-    NSDictionary *subtitleAttrs = @{
-        NSFontAttributeName: [GM MidFontWithSize:12],
-        NSForegroundColorAttributeName: [self pp_isDarkMode] ? [UIColor colorWithWhite:1.0 alpha:0.68] : [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.74],
-        NSParagraphStyleAttributeName: style
-    };
-
-    NSMutableAttributedString *combined = [[NSMutableAttributedString alloc] initWithString:title attributes:titleAttrs];
-    [combined appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n" attributes:titleAttrs]];
-    [combined appendAttributedString:[[NSAttributedString alloc] initWithString:subtitle attributes:subtitleAttrs]];
-
-    [self.deliverCurrentLocationButton setAttributedTitle:combined forState:UIControlStateNormal];
-}
-
-- (void)pp_startResolvingCurrentLocation
-{
-    self.currentCoordinate = kCLLocationCoordinate2DInvalid;
-    self.currentLocationTitle = [self pp_locatingCurrentLocationText];
-    [self pp_refreshCurrentLocationButtonTitle];
-
-    if (!self.locationManager) {
-        self.locationManager = [[CLLocationManager alloc] init];
-        self.locationManager.delegate = self;
-        self.locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters;
-    }
-
-    if (!self.reverseGeocoder) {
-        self.reverseGeocoder = [[CLGeocoder alloc] init];
-    }
-
-    CLAuthorizationStatus status;
-    if (@available(iOS 14.0, *)) {
-        status = self.locationManager.authorizationStatus;
-    } else {
-        status = [CLLocationManager authorizationStatus];
-    }
-
-    if (status == kCLAuthorizationStatusNotDetermined) {
-        [self.locationManager requestWhenInUseAuthorization];
-        return;
-    }
-
-    if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
-        self.currentLocationTitle = [self pp_locationAccessDisabledText];
-        [self pp_refreshCurrentLocationButtonTitle];
-        return;
-    }
-
-    [self pp_requestCurrentLocationSample];
-}
-
-- (void)pp_requestCurrentLocationSample
-{
-    if (@available(iOS 9.0, *)) {
-        [self.locationManager requestLocation];
-    } else {
-        [self.locationManager startUpdatingLocation];
-    }
-}
-
-- (void)pp_reverseGeocodeCoordinate:(CLLocationCoordinate2D)coordinate
-{
-    if (![self pp_isValidCoordinate:coordinate]) {
-        return;
-    }
-
-    if (self.reverseGeocoder.isGeocoding) {
-        [self.reverseGeocoder cancelGeocode];
-    }
-
-    CLLocation *location = [[CLLocation alloc] initWithLatitude:coordinate.latitude longitude:coordinate.longitude];
-    __weak typeof(self) weakSelf = self;
-    [self.reverseGeocoder reverseGeocodeLocation:location completionHandler:^(NSArray<CLPlacemark *> * _Nullable placemarks, NSError * _Nullable error) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || error || placemarks.count == 0) {
-            return;
-        }
-
-        CLPlacemark *placemark = placemarks.firstObject;
-        NSString *primary = placemark.subLocality ?: placemark.locality ?: placemark.thoroughfare ?: @"";
-        NSString *secondary = placemark.locality ?: placemark.administrativeArea ?: placemark.country ?: @"";
-
-        NSString *resolved = @"";
-        if (primary.length > 0 && secondary.length > 0 && ![primary isEqualToString:secondary]) {
-            resolved = [NSString stringWithFormat:@"%@, %@", primary, secondary];
-        } else {
-            resolved = primary.length > 0 ? primary : secondary;
-        }
-
-        if (resolved.length == 0) {
-            return;
-        }
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.currentLocationTitle = resolved;
-            [self pp_refreshCurrentLocationButtonTitle];
-        });
-    }];
-}
-
-- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations
-{
-    (void)manager;
-    CLLocation *location = locations.lastObject;
-    if (!location) {
-        return;
-    }
-
-    self.currentCoordinate = location.coordinate;
-    self.currentLocationTitle = [NSString stringWithFormat:@"%.6f, %.6f",
-                                 self.currentCoordinate.latitude,
-                                 self.currentCoordinate.longitude];
-    [self pp_refreshCurrentLocationButtonTitle];
-
-    [self.locationManager stopUpdatingLocation];
-    [self pp_reverseGeocodeCoordinate:self.currentCoordinate];
-}
-
-- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
-{
-    (void)manager;
-    (void)error;
-
-    if (![self pp_isValidCoordinate:self.currentCoordinate]) {
-        self.currentLocationTitle = [self pp_unableToDetectCurrentLocationText];
-        [self pp_refreshCurrentLocationButtonTitle];
-    }
-}
-
-- (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager
-{
-    (void)manager;
-    [self pp_startResolvingCurrentLocation];
-}
-
-- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
-{
-    (void)manager;
-    (void)status;
-    [self pp_startResolvingCurrentLocation];
-}
+#pragma mark - Appearance
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory]) {
+        [self.deliverAnotherLocationButton setNeedsUpdateConfiguration];
+        [self.deliverCurrentLocationButton setNeedsUpdateConfiguration];
+        [self.refreshRetryButton setNeedsUpdateConfiguration];
+        if (UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)) {
+            self.sheetPresentationController.selectedDetentIdentifier = UISheetPresentationControllerDetentIdentifierLarge;
+        }
+        [self.tableView reloadData];
+        [self.view setNeedsLayout];
+    }
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
             [self pp_refreshVisibleColors];

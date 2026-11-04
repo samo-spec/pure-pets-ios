@@ -2056,8 +2056,10 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         }
         if (displayedRows == currentRows) {
             self.pendingQuantitySyncReloadSkips -= 1;
-            [self updateTotalLabel];
-            return;
+            if ([self pp_refreshVisibleActiveCartRows]) {
+                [self updateTotalLabel];
+                return;
+            }
         }
         self.pendingQuantitySyncReloadSkips = 0;
     }
@@ -2067,9 +2069,31 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         return;
     }
 
-    [self.cartTableView reloadData];
+    if (![self pp_refreshVisibleActiveCartRows]) {
+        [self.cartTableView reloadData];
+    }
     [self updateTotalLabel];
     [self pp_updateSavedForLaterFooter];
+}
+
+// Preserve focus and scroll position while quantities/status change. Only skip
+// a structural reload when each visible row still represents the same exact line.
+- (BOOL)pp_refreshVisibleActiveCartRows
+{
+    NSArray<CartItem *> *items = CartManager.sharedManager.cartItems;
+    if (self.cartTableView.numberOfSections == 0 ||
+        [self.cartTableView numberOfRowsInSection:0] != (NSInteger)items.count + [self pp_savedForLaterInlineRowCount]) return NO;
+    for (NSIndexPath *path in self.cartTableView.indexPathsForVisibleRows) {
+        if (path.section != 0 || path.row >= (NSInteger)items.count) continue;
+        PPCartTableCell *cell = (PPCartTableCell *)[self.cartTableView cellForRowAtIndexPath:path];
+        if (![cell isKindOfClass:PPCartTableCell.class] || ![cell representsCartItem:items[path.row]]) return NO;
+    }
+    for (NSIndexPath *path in self.cartTableView.indexPathsForVisibleRows) {
+        if (path.section != 0 || path.row >= (NSInteger)items.count) continue;
+        [self pp_configureActiveCartCell:(PPCartTableCell *)[self.cartTableView cellForRowAtIndexPath:path]
+                                  item:items[path.row]];
+    }
+    return YES;
 }
 
 - (void)pp_notifyCartBadgeAndCollections
@@ -2218,27 +2242,11 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)pp_undoLastRemovalTapped
 {
     if (!self.lastRemovedCartItem) return;
-
-    CartItem *restored = [self pp_cloneCartItem:self.lastRemovedCartItem];
-    NSInteger preferredIndex = self.lastRemovedCartIndex;
-    [self pp_hideUndoBarAnimated:YES clearPayload:YES];
-
-    CartManager *manager = [CartManager sharedManager];
-    CartItem *existing = [manager getCartItemForItemID:restored.itemID];
-    if (existing) {
-        NSInteger mergedQuantity = existing.quantity + restored.quantity;
-        [manager updateQuantity:mergedQuantity forItem:existing completion:nil];
-    } else {
-        NSInteger safeIndex = MIN(MAX(preferredIndex, 0), manager.cartItems.count);
-        [manager.cartItems insertObject:restored atIndex:safeIndex];
-        [manager saveCart];
-
-        if (UserManager.sharedManager.currentUser.ID.length > 0) {
-            [manager syncCartToFirestore:@[restored]];
-        } else {
-            [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
-        }
+    if (![CartManager.sharedManager undoLastRemoval]) {
+        [PPHUD showInfo:kLang(@"cart_quantity_syncing")];
+        return;
     }
+    [self pp_hideUndoBarAnimated:YES clearPayload:YES];
 
     [self pp_notifyCartBadgeAndCollections];
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartUndo];
@@ -2250,13 +2258,33 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     if (indexPath.row >= CartManager.sharedManager.cartItems.count) return;
     if (self.isPerformingTableMutation) return;
 
-    self.isPerformingTableMutation = YES;
-
     CartItem *item = CartManager.sharedManager.cartItems[indexPath.row];
+    if (CartManager.sharedManager.isLocked || [CartManager.sharedManager isSyncPendingForItem:item]) {
+        [PPHUD showInfo:kLang(@"cart_quantity_syncing")];
+        return;
+    }
+    self.isPerformingTableMutation = YES;
     CartItem *removedSnapshot = [self pp_cloneCartItem:item];
     NSInteger removedIndex = indexPath.row;
 
-    [[CartManager sharedManager] removeItem:item];
+    // Offer undo only after deletion settles, so a late delete cannot erase it.
+    [self pp_hideUndoBarAnimated:NO clearPayload:YES];
+    NSUInteger removalToken = self.undoPresentationToken;
+    __block BOOL removalSettled = NO;
+    __block BOOL removalSucceeded = NO;
+    __block BOOL animationFinished = NO;
+    __weak typeof(self) weakSelf = self;
+    void (^presentUndoIfReady)(void) = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !removalSettled || !removalSucceeded || !animationFinished ||
+            self.undoPresentationToken != removalToken) return;
+        [self pp_presentUndoForItem:removedSnapshot originalIndex:removedIndex];
+    };
+    [[CartManager sharedManager] removeItem:item completion:^(BOOL success) {
+        removalSettled = YES;
+        removalSucceeded = success;
+        presentUndoIfReady();
+    }];
     [[CartManager sharedManager] saveCart];
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartItemRemoved];
 
@@ -2267,7 +2295,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         self.isPerformingTableMutation = NO;
         [self updateTotalLabel];
         [self pp_notifyCartBadgeAndCollections];
-        [self pp_presentUndoForItem:removedSnapshot originalIndex:removedIndex];
+        animationFinished = YES;
+        presentUndoIfReady();
     }];
 }
 
@@ -2863,20 +2892,29 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     }
 
     [cell configureWithItem:item];
+    CartManager *manager = CartManager.sharedManager;
+    BOOL pending = [manager isSyncPendingForItem:item];
+    [cell updateCartStateWithAvailableQuantity:[manager availableQuantityForItem:item]
+                                  syncPending:pending
+                                       locked:manager.isLocked
+                       quantityChangesEnabled:!manager.isLocked && (!pending || [manager isQuantityUpdatePendingForItem:item])];
     __weak typeof(self) weakSelf = self;
     cell.onAction = ^(CartItem *actionItem, NSString *action) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
         if ([action isEqualToString:@"plus"] || [action isEqualToString:@"minus"]) {
-            NSUInteger previousSkipCount = strongSelf.pendingQuantitySyncReloadSkips;
-            strongSelf.pendingQuantitySyncReloadSkips = MIN(previousSkipCount + 2, 8);
-            [[CartManager sharedManager] updateQuantity:actionItem.quantity
-                                                forItem:actionItem
-                                             completion:^(BOOL success) {
-                if (!success) {
-                    strongSelf.pendingQuantitySyncReloadSkips = previousSkipCount;
-                }
+            NSInteger row = [strongSelf pp_cartRowForItem:actionItem];
+            if (row == NSNotFound || strongSelf.isPerformingTableMutation) return;
+            CartManager *manager = CartManager.sharedManager;
+            CartItem *current = manager.cartItems[row];
+            BOOL increasing = [action isEqualToString:@"plus"];
+            if (increasing && current.quantity == NSIntegerMax) return;
+            NSInteger requested = increasing ? current.quantity + 1 : MAX(1, current.quantity - 1);
+            [manager updateQuantity:requested forItem:current completion:^(__unused BOOL success) {
+                // Completion also covers rollback/rejection; never leave the cell
+                // displaying a quantity that the manager did not accept.
+                [weakSelf updateViewFromSync];
             }];
             [strongSelf updateTotalLabel];
         } else if ([action isEqualToString:@"moveToSavedForLater"]) {
@@ -3817,6 +3855,10 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     if (self.isPerformingTableMutation) {
         return;
     }
+    if (CartManager.sharedManager.isLocked || [CartManager.sharedManager isSyncPendingForItem:item]) {
+        [PPHUD showInfo:kLang(@"cart_quantity_syncing")];
+        return;
+    }
 
     NSInteger targetRow = [self pp_cartRowForItem:item];
     if (targetRow == NSNotFound) {
@@ -4028,7 +4070,9 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)tableView;
-    return [self pp_isCartItemIndexPath:indexPath];
+    if (![self pp_isCartItemIndexPath:indexPath]) return NO;
+    CartManager *manager = CartManager.sharedManager;
+    return !manager.isLocked && ![manager isSyncPendingForItem:manager.cartItems[indexPath.row]];
 }
 
 // Enable swipe-to-delete (SAFE)
@@ -4044,7 +4088,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
 trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (![self pp_isCartItemIndexPath:indexPath]) return nil;
+    if (![self tableView:tableView canEditRowAtIndexPath:indexPath]) return nil;
 
     UIContextualAction *removeAction =
     [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive

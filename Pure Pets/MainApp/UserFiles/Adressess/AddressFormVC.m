@@ -864,6 +864,14 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 @property (nonatomic, strong) UIBarButtonItem *saveBarButtonItem;
 @property (nonatomic, strong) UIBarButtonItem *leadingBarButtonItem;
 @property (nonatomic, assign) NSUInteger activeSaveToken;
+@property (nonatomic, strong) PPAddressModel *persistenceDraft;
+@property (nonatomic, copy) NSString *formUserID;
+@property (nonatomic, assign) NSUInteger geocodeGeneration;
+@property (nonatomic, assign) BOOL isRequestingLocation;
+@property (nonatomic, assign) NSUInteger locationRequestGeneration;
+@property (nonatomic, strong) UILabel *locationStatusLabel;
+@property (nonatomic, strong) UIButton *locationSettingsButton;
+@property (nonatomic, strong) UIButton *useCurrentLocationButton;
 @end
 
 @implementation AddressFormVC
@@ -978,13 +986,13 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 
     self.currentDeviceCoordinate = kCLLocationCoordinate2DInvalid;
     self.reverseGeocoder = [[CLGeocoder alloc] init];
+    self.formUserID = [PPADDRESS currentAuthenticatedUserID] ?: @"";
     self.countriesArray = CitiesManager.shared.countries ?: @[];
     self.resolvedCountry = [self pp_resolvedCountryForFormLoad];
 
     [self pp_prepareDraftState];
     [self pp_setupHeaderView];
     [self pp_buildFormView];
-    [self pp_setupBackdrop];
     [self pp_applyCanvasBackground];
     [self pp_refreshFormValuesAndStates];
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -998,7 +1006,15 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 
     if (!self.address) {
         [self pp_applyResolvedCountryDefaultsIfNeeded];
-        [self pp_startPrefillFromCurrentLocationIfNeeded];
+    }
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    if (self.prefillFromCurrentLocation) {
+        self.prefillFromCurrentLocation = NO;
+        [self pp_useCurrentLocation];
     }
 }
 
@@ -1019,7 +1035,10 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     [super viewWillDisappear:animated];
     [PPHUD dismiss];
     [self.locationManager stopUpdatingLocation];
+    self.isRequestingLocation = NO;
+    self.geocodeGeneration += 1;
     [self.reverseGeocoder cancelGeocode];
+    [self pp_setLocationStatus:nil];
 }
 
 - (void)dealloc
@@ -1069,18 +1088,43 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
 }
 
+- (void)textFieldDidEndEditing:(UITextField *)textField
+{
+    for (PPFormEngineView *form in @[self.recipientFormView, self.streetFormView]) {
+        for (PPFormFieldConfig *config in form.fields) {
+            PPFormFieldRowView *row = [form rowForIdentifier:config.identifier];
+            if (row.textField != textField) continue;
+            NSString *value = [self pp_trimmedString:textField.text];
+            NSString *error = config.required && value.length == 0 ? config.placeholder : nil;
+            if ([config.identifier isEqualToString:PPAddressFormFieldPhone] && value.length > 0) {
+                NSUInteger digits = [self pp_digitsOnlyValue:self.draftPhoneNumber].length;
+                if (digits < 8 || digits > 15) error = kLang(@"payment_mobile_invalid");
+            }
+            [form setErrorText:error forIdentifier:config.identifier];
+            return;
+        }
+    }
+}
+
 - (BOOL)textField:(UITextField *)textField
 shouldChangeCharactersInRange:(NSRange)range
  replacementString:(NSString *)string
 {
-    (void)range;
     PPFormFieldRowView *phoneRow = [self.recipientFormView rowForIdentifier:PPAddressFormFieldPhone];
-    if (textField != phoneRow.textField || string.length == 0) {
-        return YES;
+    if (textField != phoneRow.textField || string.length == 0) return YES;
+    if (NSMaxRange(range) > textField.text.length) return NO;
+    NSString *updated = [(textField.text ?: @"") stringByReplacingCharactersInRange:range withString:string];
+    NSString *trimmed = [updated stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if ([trimmed hasPrefix:@"+"] || [[self pp_digitsOnlyValue:trimmed] hasPrefix:@"00"]) {
+        [self pp_parsePhoneNumber:trimmed];
+        [self.recipientFormView setValue:[self pp_phoneCodeDisplayText] forIdentifier:PPAddressFormFieldPhoneCode];
+    } else {
+        self.draftPhoneDigits = [self pp_digitsOnlyValue:updated];
+        self.draftPhoneNumber = [NSString stringWithFormat:@"%@%@", self.currentPhoneCode ?: @"+974", self.draftPhoneDigits];
     }
-
-    NSCharacterSet *nonDigits = NSCharacterSet.decimalDigitCharacterSet.invertedSet;
-    return [string rangeOfCharacterFromSet:nonDigits].location == NSNotFound;
+    textField.text = self.draftPhoneDigits;
+    [textField sendActionsForControlEvents:UIControlEventEditingChanged];
+    return NO;
 }
 
 #pragma mark - Setup
@@ -1162,138 +1206,94 @@ shouldChangeCharactersInRange:(NSRange)range
     [self pp_buildAddressFormFields];
 }
 
+- (UIButton *)pp_locationActionWithTitle:(NSString *)title symbol:(NSString *)symbol action:(SEL)action
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.titleLabel.font = PPAddressScaledFont([GM boldFontWithSize:PPFontCallout], UIFontTextStyleCallout);
+    button.titleLabel.adjustsFontForContentSizeCategory = YES;
+    button.titleLabel.numberOfLines = 0;
+    button.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    button.contentHorizontalAlignment = Language.isRTL ? UIControlContentHorizontalAlignmentRight : UIControlContentHorizontalAlignmentLeft;
+    button.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceSM, PPSpaceMD, PPSpaceSM, PPSpaceMD);
+    [button setTitle:title forState:UIControlStateNormal];
+    [button setImage:[UIImage systemImageNamed:symbol] forState:UIControlStateNormal];
+    [button setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+    button.tintColor = AppPrimaryClr;
+    button.backgroundColor = [self pp_surfaceColor];
+    PPApplyContinuousCorners(button, PPCornerMedium);
+    [button.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin].active = YES;
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    return button;
+}
+
 - (void)pp_setupHeaderView
 {
-    UIView *headerRoot = [[UIView alloc] init];
-    headerRoot.translatesAutoresizingMaskIntoConstraints = NO;
-    headerRoot.backgroundColor = UIColor.clearColor;
+    UILabel *title = [UILabel new];
+    title.font = PPAddressScaledFont([GM boldFontWithSize:PPFontTitle1], UIFontTextStyleTitle1);
+    title.adjustsFontForContentSizeCategory = YES;
+    title.numberOfLines = 0;
+    title.textColor = AppPrimaryTextClr;
+    title.textAlignment = Language.alignmentForCurrentLanguage;
+    title.accessibilityTraits = UIAccessibilityTraitHeader;
+    self.headerTitleLabel = title;
 
-    UIView *cardView = [[UIView alloc] init];
-    cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    cardView.backgroundColor = [self pp_surfaceColor];
-    PPApplyContinuousCorners(cardView, PPCornerHero);
-    cardView.layer.borderWidth = 1.0;
-    [cardView pp_setBorderColor:[self pp_surfaceBorderColor]];
-    PPApplyCardShadow(cardView);
-    [headerRoot addSubview:cardView];
+    UILabel *subtitle = [UILabel new];
+    subtitle.font = PPAddressScaledFont([GM MidFontWithSize:PPFontCallout], UIFontTextStyleCallout);
+    subtitle.adjustsFontForContentSizeCategory = YES;
+    subtitle.numberOfLines = 0;
+    subtitle.textColor = AppSecondaryTextClr;
+    subtitle.textAlignment = Language.alignmentForCurrentLanguage;
+    self.headerSubtitleLabel = subtitle;
 
-    UIColor *brandClr = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    self.useCurrentLocationButton = [self pp_locationActionWithTitle:kLang(@"ordering_address_use_location")
+                                                            symbol:@"location.fill" action:@selector(pp_useCurrentLocation)];
+    self.useCurrentLocationButton.accessibilityIdentifier = @"addressForm.useCurrentLocation";
+    UIButton *mapButton = [self pp_locationActionWithTitle:kLang(@"ordering_address_choose_map")
+                                                  symbol:@"map" action:@selector(pp_openLocationPicker)];
+    mapButton.accessibilityIdentifier = @"addressForm.chooseMap";
+    self.locationStatusLabel = [UILabel new];
+    self.locationStatusLabel.font = PPAddressScaledFont([GM MidFontWithSize:PPFontFootnote], UIFontTextStyleFootnote);
+    self.locationStatusLabel.adjustsFontForContentSizeCategory = YES;
+    self.locationStatusLabel.numberOfLines = 0;
+    self.locationStatusLabel.textColor = AppSecondaryTextClr;
+    self.locationStatusLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.locationStatusLabel.hidden = YES;
+    self.locationSettingsButton = [self pp_locationActionWithTitle:kLang(@"pp_perm_open_settings")
+                                                               symbol:@"gear" action:@selector(pp_openLocationSettings)];
+    self.locationSettingsButton.hidden = YES;
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[title, subtitle, self.useCurrentLocationButton, mapButton, self.locationStatusLabel, self.locationSettingsButton]];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.spacing = PPSpaceSM;
+    stack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [stack setCustomSpacing:PPSpaceMD afterView:subtitle];
+    self.headerRoot = stack;
+}
 
-    UIView *accentBar = [[UIView alloc] init];
-    accentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    accentBar.backgroundColor = brandClr;
-    PPApplyContinuousCorners(accentBar, PPCornerPill);
-    accentBar.accessibilityElementsHidden = YES;
-    [cardView addSubview:accentBar];
+- (void)pp_setLocationStatus:(NSString *)status
+{
+    self.locationStatusLabel.text = status;
+    self.locationStatusLabel.hidden = status.length == 0;
+    self.useCurrentLocationButton.enabled = !self.isRequestingLocation && !self.isSaving;
+    self.useCurrentLocationButton.alpha = self.useCurrentLocationButton.enabled ? 1.0 : 0.6;
+}
 
-    UIView *iconBadge = [[UIView alloc] init];
-    iconBadge.translatesAutoresizingMaskIntoConstraints = NO;
-    iconBadge.backgroundColor = [brandClr colorWithAlphaComponent:0.10];
-    PPApplyContinuousCorners(iconBadge, PPCornerCard);
-    iconBadge.layer.masksToBounds = YES;
-    iconBadge.layer.borderWidth = 1.0;
-    [iconBadge pp_setBorderColor:[brandClr colorWithAlphaComponent:0.16]];
-    [cardView addSubview:iconBadge];
+- (void)pp_useCurrentLocation
+{
+    if (self.isSaving || self.isRequestingLocation) return;
+    self.isRequestingLocation = YES;
+    self.didShowLocationPermissionAlert = NO;
+    self.locationSettingsButton.hidden = YES;
+    [self.view endEditing:YES];
+    [self pp_startPrefillFromCurrentLocationIfNeeded];
+}
 
-    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"mappin.and.ellipse"]];
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.tintColor = brandClr;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    iconView.accessibilityElementsHidden = YES;
-    [iconBadge addSubview:iconView];
-
-    UILabel *eyebrowLabel = [[UILabel alloc] init];
-    eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowLabel.font = PPAddressScaledFont([GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightSemibold], UIFontTextStyleCaption1);
-    eyebrowLabel.textColor = brandClr;
-    eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    eyebrowLabel.adjustsFontForContentSizeCategory = YES;
-    [cardView addSubview:eyebrowLabel];
-
-    UILabel *titleLabel = [[UILabel alloc] init];
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = PPAddressScaledFont([GM boldFontWithSize:PPFontTitle1] ?: [UIFont systemFontOfSize:PPFontTitle1 weight:UIFontWeightBold], UIFontTextStyleTitle1);
-    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    titleLabel.numberOfLines = 2;
-    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    titleLabel.adjustsFontForContentSizeCategory = YES;
-    [cardView addSubview:titleLabel];
-
-    UILabel *subtitleLabel = [[UILabel alloc] init];
-    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = PPAddressScaledFont([GM MidFontWithSize:PPFontCallout] ?: [UIFont systemFontOfSize:PPFontCallout weight:UIFontWeightMedium], UIFontTextStyleCallout);
-    subtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    subtitleLabel.numberOfLines = 0;
-    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    subtitleLabel.adjustsFontForContentSizeCategory = YES;
-    [cardView addSubview:subtitleLabel];
-
-    PPInsetLabel *metaLabel = [[PPInsetLabel alloc] init];
-    metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    metaLabel.font = PPAddressScaledFont([GM MidFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:PPFontFootnote weight:UIFontWeightSemibold], UIFontTextStyleFootnote);
-    metaLabel.textColor = brandClr;
-    metaLabel.numberOfLines = 2;
-    metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    metaLabel.adjustsFontForContentSizeCategory = YES;
-    metaLabel.backgroundColor = [[UIColor ppSoftRose] colorWithAlphaComponent:0.16];
-    PPApplyContinuousCorners(metaLabel, PPCornerSmall);
-    metaLabel.layer.masksToBounds = YES;
-    metaLabel.layer.borderWidth = 1.0;
-    [metaLabel pp_setBorderColor:[brandClr colorWithAlphaComponent:0.14]];
-    metaLabel.textInsets = UIEdgeInsetsMake(PPSpaceXS, PPSpaceSM, PPSpaceXS, PPSpaceSM);
-
-    [cardView addSubview:metaLabel];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [cardView.topAnchor constraintEqualToAnchor:headerRoot.topAnchor constant:PPSpaceSM],
-        [cardView.leadingAnchor constraintEqualToAnchor:headerRoot.leadingAnchor],
-        [cardView.trailingAnchor constraintEqualToAnchor:headerRoot.trailingAnchor],
-        [cardView.bottomAnchor constraintEqualToAnchor:headerRoot.bottomAnchor constant:-PPSpaceMD],
-
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:PPSpaceXL],
-        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:PPSpaceXL],
-        [accentBar.widthAnchor constraintEqualToConstant:(PPSpaceXL + PPSpaceSM)],
-        [accentBar.heightAnchor constraintEqualToConstant:PPSpaceXS],
-
-        [iconBadge.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:PPSpaceLG],
-        [iconBadge.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-PPSpaceXL],
-        [iconBadge.widthAnchor constraintEqualToConstant:(PPSpaceXL * 2.0)],
-        [iconBadge.heightAnchor constraintEqualToConstant:(PPSpaceXL * 2.0)],
-
-        [iconView.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
-        [iconView.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:PPSpaceXL],
-        [iconView.heightAnchor constraintEqualToConstant:PPSpaceXL],
-
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:PPSpaceMD],
-        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:PPSpaceXL],
-        [eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:iconBadge.leadingAnchor constant:-PPSpaceMD],
-
-        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:PPSpaceSM],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:PPSpaceXL],
-        [titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:iconBadge.leadingAnchor constant:-PPSpaceMD],
-
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:PPSpaceSM],
-        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
-
-        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:PPSpaceMD],
-        [metaLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:titleLabel.trailingAnchor],
-        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-PPSpaceXL],
-        [metaLabel.heightAnchor constraintGreaterThanOrEqualToConstant:(PPSpaceXL + PPSpaceSM)]
-    ]];
-
-    self.headerRoot = headerRoot;
-    self.headerCardView = cardView;
-    self.headerGradientBar = accentBar;
-    self.headerEyebrowLabel = eyebrowLabel;
-    self.headerTitleLabel = titleLabel;
-    self.headerSubtitleLabel = subtitleLabel;
-    self.headerMetaLabel = metaLabel;
-
-    CGSize fittingSize = [headerRoot systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
-    headerRoot.frame = CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), fittingSize.height);
+- (void)pp_openLocationSettings
+{
+    NSURL *url = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+    [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
 }
 
 - (PPFormStyle *)pp_addressFormStyle
@@ -1755,7 +1755,7 @@ shouldChangeCharactersInRange:(NSRange)range
 {
     self.headerEyebrowLabel.text = [self pp_localizedAddressStringForKey:@"AddressHeroEyebrow" fallback:@"Delivery destination"];
     self.headerTitleLabel.text = [self pp_formTitleText];
-    self.headerSubtitleLabel.text = [self pp_formSubtitleText];
+    self.headerSubtitleLabel.text = kLang(@"ordering_address_assistance_hint");
 
     NSString *metaText = [self pp_headerMetaText];
     self.headerMetaLabel.text = metaText.length > 0 ? [NSString stringWithFormat:@"  %@  ", metaText] : @"";
@@ -1773,14 +1773,12 @@ shouldChangeCharactersInRange:(NSRange)range
 
 - (NSString *)pp_digitsOnlyValue:(NSString *)value
 {
-    NSCharacterSet *digits = [NSCharacterSet decimalDigitCharacterSet];
     NSMutableString *result = [NSMutableString string];
-    NSString *safeValue = value ?: @"";
-    for (NSUInteger index = 0; index < safeValue.length; index++) {
-        unichar character = [safeValue characterAtIndex:index];
-        if ([digits characterIsMember:character]) {
-            [result appendFormat:@"%C", character];
-        }
+    for (NSUInteger index = 0; index < value.length; index++) {
+        unichar character = [value characterAtIndex:index];
+        if (character >= 0x0660 && character <= 0x0669) character = '0' + character - 0x0660;
+        if (character >= 0x06F0 && character <= 0x06F9) character = '0' + character - 0x06F0;
+        if (character >= '0' && character <= '9') [result appendFormat:@"%C", character];
     }
     return result.copy;
 }
@@ -1988,9 +1986,7 @@ shouldChangeCharactersInRange:(NSRange)range
                 if (normalizedCity.length == 0) {
                     continue;
                 }
-                if ([normalizedCandidate isEqualToString:normalizedCity] ||
-                    [normalizedCandidate containsString:normalizedCity] ||
-                    [normalizedCity containsString:normalizedCandidate]) {
+                if ([normalizedCandidate isEqualToString:normalizedCity]) {
                     return city;
                 }
             }
@@ -2021,9 +2017,7 @@ shouldChangeCharactersInRange:(NSRange)range
                 if (normalizedState.length == 0) {
                     continue;
                 }
-                if ([normalizedCandidate isEqualToString:normalizedState] ||
-                    [normalizedCandidate containsString:normalizedState] ||
-                    [normalizedState containsString:normalizedCandidate]) {
+                if ([normalizedCandidate isEqualToString:normalizedState]) {
                     return state;
                 }
             }
@@ -2136,10 +2130,7 @@ shouldChangeCharactersInRange:(NSRange)range
 
     CityModel *resolvedCity = preferredCity;
     if (![resolvedCity isKindOfClass:CityModel.class] || ![self.citiesArray containsObject:resolvedCity]) {
-        resolvedCity = [CitiesManager.shared defaultCityForCountry:resolvedCountry];
-    }
-    if (![resolvedCity isKindOfClass:CityModel.class]) {
-        resolvedCity = self.citiesArray.firstObject;
+        resolvedCity = nil;
     }
     if (![resolvedCity isKindOfClass:CityModel.class]) {
         self.selectedCity = nil;
@@ -2168,7 +2159,7 @@ shouldChangeCharactersInRange:(NSRange)range
 
     StateModel *resolvedState = state;
     if (![resolvedState isKindOfClass:StateModel.class] || ![self.statesArray containsObject:resolvedState]) {
-        resolvedState = [self pp_defaultStateForCity:city];
+        resolvedState = nil;
     }
     self.selectedState = resolvedState;
 
@@ -2190,13 +2181,8 @@ shouldChangeCharactersInRange:(NSRange)range
         ? suggestedTitle
         : [NSString stringWithFormat:@"%.6f, %.6f", coordinate.latitude, coordinate.longitude];
 
-    CityModel *nearestCity = [self pp_nearestCityForCoordinate:coordinate];
-    if (nearestCity) {
-        [self pp_applyCity:nearestCity state:[self pp_defaultStateForCity:nearestCity]];
-    } else {
-        [self pp_reloadRowsAtIndexPaths:@[[self pp_indexPathForFieldKind:PPAddressFieldKindLocation]]];
-        [self pp_refreshHeaderContent];
-    }
+    [self pp_reloadRowsAtIndexPaths:@[[self pp_indexPathForFieldKind:PPAddressFieldKindLocation]]];
+    [self pp_refreshHeaderContent];
 }
 
 - (NSString *)pp_titleFromPlacemark:(CLPlacemark *)placemark
@@ -2235,66 +2221,64 @@ shouldChangeCharactersInRange:(NSRange)range
 
 - (void)pp_reverseGeocodeCoordinateForRowTitle:(CLLocationCoordinate2D)coordinate
 {
-    if (![self pp_isValidCoordinate:coordinate]) {
-        return;
-    }
-    if (!self.reverseGeocoder) {
-        self.reverseGeocoder = [[CLGeocoder alloc] init];
-    }
-    if (self.reverseGeocoder.isGeocoding) {
-        [self.reverseGeocoder cancelGeocode];
-    }
-
+    if (![self pp_isValidCoordinate:coordinate]) return;
+    [self.reverseGeocoder cancelGeocode];
+    NSUInteger generation = ++self.geocodeGeneration;
+    NSString *requestedPoints = self.selectedLocationPoints.copy;
+    NSString *requestedUID = self.formUserID.copy;
+    [self pp_syncDraftFromForm];
+    NSString *lineAtRequest = self.draftAddressLine1.copy;
+    NSString *postalAtRequest = self.draftPostalCode.copy;
+    [self pp_setLocationStatus:kLang(@"ordering_address_finding_details")];
     CLLocation *location = [[CLLocation alloc] initWithLatitude:coordinate.latitude longitude:coordinate.longitude];
     __weak typeof(self) weakSelf = self;
     [self.reverseGeocoder reverseGeocodeLocation:location completionHandler:^(NSArray<CLPlacemark *> * _Nullable placemarks, NSError * _Nullable error) {
-        if (error || placemarks.count == 0) {
-            return;
-        }
-
-        CLPlacemark *placemark = placemarks.firstObject;
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self) {
+            if (!self || self.geocodeGeneration != generation || self.isSaving ||
+                ![self.selectedLocationPoints isEqualToString:requestedPoints] ||
+                ![[PPADDRESS currentAuthenticatedUserID] isEqualToString:requestedUID]) return;
+            [self pp_syncDraftFromForm];
+            CLPlacemark *placemark = placemarks.firstObject;
+            if (error || !placemark) {
+                [self pp_setLocationStatus:kLang(@"ordering_address_details_manual")];
                 return;
             }
-
-            CountryModel *placemarkCountry = [CitiesManager.shared countryWithCode:placemark.ISOcountryCode];
-            if (!placemarkCountry) {
-                placemarkCountry = self.resolvedCountry ?: [self pp_qatarCountry];
+            CountryModel *country = [CitiesManager.shared countryWithCode:placemark.ISOcountryCode];
+            if (country) {
+                NSArray<CityModel *> *cities = [CitiesManager.shared citiesForCountryCode:country.iso];
+                CityModel *city = [self pp_cityMatchingPlacemark:placemark inCities:cities];
+                StateModel *state = city ? [self pp_stateMatchingPlacemark:placemark inStates:city.states] : nil;
+                // Never overwrite an explicit region choice. The customer can correct it below.
+                if (!self.selectedCity && !self.selectedState) {
+                    [self pp_applyCountry:country preferredCity:city preferredState:state];
+                }
             }
-            self.resolvedCountry = placemarkCountry ?: [self pp_qatarCountry];
-            self.selectedCountry = self.resolvedCountry;
-            self.citiesArray = [self pp_citiesForCountryOrQatar:self.resolvedCountry];
-
-            CityModel *matchedCity = [self pp_cityMatchingPlacemark:placemark inCities:self.citiesArray];
-            if (!matchedCity) {
-                matchedCity = [self pp_nearestCityForCoordinate:coordinate];
+            if (lineAtRequest.length == 0 && self.draftAddressLine1.length == 0) {
+                NSMutableArray<NSString *> *street = [NSMutableArray array];
+                if (placemark.subThoroughfare.length) [street addObject:placemark.subThoroughfare];
+                if (placemark.thoroughfare.length) [street addObject:placemark.thoroughfare];
+                self.draftAddressLine1 = [street componentsJoinedByString:@" "];
             }
-            if (matchedCity) {
-                StateModel *matchedState = [self pp_stateMatchingPlacemark:placemark inStates:matchedCity.states];
-                [self pp_applyCity:matchedCity state:matchedState];
+            if (postalAtRequest.length == 0 && self.draftPostalCode.length == 0 && placemark.postalCode.length) {
+                self.draftPostalCode = placemark.postalCode;
             }
-
-            NSString *resolvedTitle = [self pp_titleFromPlacemark:placemark];
-            if (resolvedTitle.length == 0 && matchedCity) {
-                resolvedTitle = [self pp_localizedCityName:matchedCity];
-            }
-            if (resolvedTitle.length == 0 && self.resolvedCountry) {
-                resolvedTitle = [self pp_localizedCountryName:self.resolvedCountry];
-            }
-            if (resolvedTitle.length > 0) {
-                self.selectedLocationName = resolvedTitle;
-            }
-
-            [self pp_reloadGeographyRows];
-            [self pp_refreshHeaderContent];
+            NSString *title = [self pp_titleFromPlacemark:placemark];
+            if (title.length) self.selectedLocationName = title;
+            [self pp_refreshFormValuesAndStates];
+            [self pp_setLocationStatus:kLang(@"ordering_address_check_details")];
+            UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, self.locationStatusLabel.text);
         });
     }];
 }
 
 - (void)pp_openLocationPicker
 {
+    if (self.isSaving) return;
+    self.geocodeGeneration += 1;
+    self.isRequestingLocation = NO;
+    [self.locationManager stopUpdatingLocation];
+    [self.reverseGeocoder cancelGeocode];
     LocationPickerViewController *pickerVC = [[LocationPickerViewController alloc] init];
     CLLocationCoordinate2D initialCoordinate = kCLLocationCoordinate2DInvalid;
     if (self.selectedLocationPoints.length > 0) {
@@ -2316,17 +2300,6 @@ shouldChangeCharactersInRange:(NSRange)range
     }
 
     __weak typeof(self) weakSelf = self;
-    pickerVC.onLocationConfirmed = ^(GMSAddress *gmsAddress) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || !gmsAddress) {
-            return;
-        }
-
-        CLLocationCoordinate2D coordinate = gmsAddress.coordinate;
-        NSString *resolvedTitle = [self titleFromAddress:gmsAddress];
-        [self pp_applyCoordinateToForm:coordinate suggestedTitle:resolvedTitle];
-        [self pp_reverseGeocodeCoordinateForRowTitle:coordinate];
-    };
     pickerVC.onCoordinateConfirmed = ^(CLLocationCoordinate2D coordinate, NSString *locationTitle) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) {
@@ -2426,6 +2399,8 @@ shouldChangeCharactersInRange:(NSRange)range
 
 - (void)pp_presentCountryOptions
 {
+    self.geocodeGeneration += 1;
+    [self.reverseGeocoder cancelGeocode];
     NSArray<CountryModel *> *options = [self pp_availableCountries];
     if (options.count == 0) {
         [PPHUD showInfo:kLang(@"TapToSelect") ?: @"No countries available"];
@@ -2449,6 +2424,8 @@ shouldChangeCharactersInRange:(NSRange)range
 
 - (void)pp_presentCityOptions
 {
+    self.geocodeGeneration += 1;
+    [self.reverseGeocoder cancelGeocode];
     if (!self.selectedCountry) {
         [PPHUD showInfo:kLang(@"TapToSelect") ?: @"Select a country first"];
         return;
@@ -2478,6 +2455,8 @@ shouldChangeCharactersInRange:(NSRange)range
 
 - (void)pp_presentStateOptions
 {
+    self.geocodeGeneration += 1;
+    [self.reverseGeocoder cancelGeocode];
     if (!self.selectedCity) {
         [PPHUD showInfo:kLang(@"TapToSelect") ?: @"Select a city first"];
         return;
@@ -2994,6 +2973,11 @@ shouldChangeCharactersInRange:(NSRange)range
                                          subtitle:kLang(@"MobileNo_Palce") ?: @"Phone number is required"];
         return NO;
     }
+    NSUInteger phoneLength = [self pp_digitsOnlyValue:self.draftPhoneNumber].length;
+    if (phoneLength < 8 || phoneLength > 15) {
+        [self pp_showValidationErrorForIdentifier:PPAddressFormFieldPhone subtitle:kLang(@"payment_mobile_invalid")];
+        return NO;
+    }
     if (self.draftAddressLine1.length == 0) {
         [self pp_showValidationErrorForIdentifier:PPAddressFormFieldAddressLine1
                                          subtitle:kLang(@"AddressLine1Placeholder") ?: @"Address line 1 is required"];
@@ -3074,21 +3058,22 @@ shouldChangeCharactersInRange:(NSRange)range
 
 - (void)pp_closeAfterPersistence
 {
-    if (self.addressFormPresent == AddressFormPresentSheet) {
-        if (self.navigationController.presentingViewController) {
-            [self.navigationController dismissViewControllerAnimated:YES completion:nil];
-        } else {
-            [self dismissViewControllerAnimated:YES completion:nil];
+    void (^finished)(void) = ^{
+        if ([self.delegate respondsToSelector:@selector(addressFormVCDidFinishClosing:)]) {
+            [self.delegate addressFormVCDidFinishClosing:self];
         }
+    };
+    if (self.addressFormPresent == AddressFormPresentSheet || self.navigationController.viewControllers.count <= 1) {
+        UIViewController *presented = self.navigationController.presentingViewController ? self.navigationController : self;
+        [presented dismissViewControllerAnimated:YES completion:finished];
         return;
     }
-
-    if (self.navigationController.viewControllers.count > 1) {
-        [self.navigationController popViewControllerAnimated:YES];
-    } else if (self.navigationController.presentingViewController) {
-        [self.navigationController dismissViewControllerAnimated:YES completion:nil];
+    [self.navigationController popViewControllerAnimated:YES];
+    id<UIViewControllerTransitionCoordinator> coordinator = self.navigationController.transitionCoordinator;
+    if (coordinator) {
+        [coordinator animateAlongsideTransition:nil completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) { finished(); }];
     } else {
-        [self dismissViewControllerAnimated:YES completion:nil];
+        finished();
     }
 }
 
@@ -3099,6 +3084,10 @@ shouldChangeCharactersInRange:(NSRange)range
     }
 
     [self.view endEditing:YES];
+    if (self.formUserID.length == 0 || ![[PPADDRESS currentAuthenticatedUserID] isEqualToString:self.formUserID]) {
+        [PPHUD showError:kLang(@"auth_register_required_subtitle")];
+        return;
+    }
 
     if (![self pp_validateAddressForm]) {
         return;
@@ -3110,13 +3099,27 @@ shouldChangeCharactersInRange:(NSRange)range
     NSString *addressLine2 = [self pp_trimmedString:self.draftAddressLine2];
     NSString *postalCode = [self pp_trimmedString:self.draftPostalCode];
 
+    self.geocodeGeneration += 1;
+    self.isRequestingLocation = NO;
+    [self.locationManager stopUpdatingLocation];
+    [self.reverseGeocoder cancelGeocode];
     [self pp_setSavingState:YES];
     [PPHUD showLoading:kLang(@"Saving") ?: @"Saving"];
     self.activeSaveToken += 1;
     NSUInteger saveToken = self.activeSaveToken;
 
     BOOL isNewAddress = self.address == nil;
-    PPAddressModel *addressToSave = self.address ?: [[PPAddressModel alloc] init];
+    if (!self.persistenceDraft) {
+        self.persistenceDraft = self.address
+            ? [[PPAddressModel alloc] initWithDictionary:self.address.toDictionary documentID:self.address.documentID]
+            : [[PPAddressModel alloc] init];
+        if (self.persistenceDraft.documentID.length == 0) {
+            self.persistenceDraft.documentID = NSUUID.UUID.UUIDString;
+        }
+        self.persistenceDraft.addressID = self.persistenceDraft.documentID;
+    }
+    PPAddressModel *addressToSave = [[PPAddressModel alloc] initWithDictionary:self.persistenceDraft.toDictionary
+                                                                documentID:self.persistenceDraft.documentID];
     NSString *fallbackPhone = PPCurrentUser.MobileNo.length > 0
         ? PPCurrentUser.MobileNo
         : ([FIRAuth auth].currentUser.phoneNumber ?: @"");
@@ -3124,7 +3127,7 @@ shouldChangeCharactersInRange:(NSRange)range
     addressToSave.fullName = fullName;
     addressToSave.phoneNumber = phoneNumber.length > 0 ? phoneNumber : fallbackPhone;
     addressToSave.addressLine1 = addressLine1;
-    addressToSave.addressLine2 = addressLine2.length > 0 ? addressLine2 : nil;
+    addressToSave.addressLine2 = addressLine2 ?: @"";
     addressToSave.cityID = self.selectedCity.cityID;
     addressToSave.stateID = self.selectedState.stateID;
     addressToSave.locatioName = self.selectedLocationName ?: @"";
@@ -3144,12 +3147,10 @@ shouldChangeCharactersInRange:(NSRange)range
             return;
         }
 
-        self.activeSaveToken += 1;
-        [self pp_setSavingState:NO];
         [PPHUD dismiss];
-        [PPAlertHelper showErrorIn:self
-                             title:kLang(@"StatusSaveFailed") ?: @"Save failed"
-                          subtitle:kLang(@"save_timeout_message") ?: @"Saving is taking too long. Please check your connection and try again."];
+        [self pp_setLocationStatus:kLang(@"ordering_address_save_waiting")];
+        self.leadingBarButtonItem.enabled = YES;
+        UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, self.locationStatusLabel.text);
     });
 
     void (^handleResult)(PPAddressModel * _Nullable, NSError * _Nullable) =
@@ -3159,20 +3160,25 @@ shouldChangeCharactersInRange:(NSRange)range
             if (!self) {
                 return;
             }
-            if (self.activeSaveToken != saveToken) {
+            if (self.activeSaveToken != saveToken ||
+                ![[PPADDRESS currentAuthenticatedUserID] isEqualToString:self.formUserID]) {
                 return;
             }
 
             [self pp_setSavingState:NO];
             [PPHUD dismiss];
+            [self pp_setLocationStatus:nil];
 
             if (error || !savedAddress) {
+                if (!self.view.window) return;
                 [PPAlertHelper showErrorIn:self
                                      title:kLang(@"StatusSaveFailed") ?: @"Save failed"
                                   subtitle:error.localizedDescription ?: (kLang(@"SomethingWentWrong") ?: @"Something went wrong")];
                 return;
             }
 
+            self.address = savedAddress;
+            if (!self.view.window) return;
             if ([self.delegate respondsToSelector:@selector(addressFormVC:didSaveAddress:)]) {
                 [self.delegate addressFormVC:self didSaveAddress:savedAddress];
             }
@@ -3191,7 +3197,8 @@ shouldChangeCharactersInRange:(NSRange)range
 
 - (void)showDeleteConfirmation
 {
-    if (!self.address || self.address.documentID.length == 0) {
+    if (self.isSaving || !self.address || self.address.documentID.length == 0 ||
+        ![self.formUserID isEqualToString:[PPADDRESS currentAuthenticatedUserID]]) {
         return;
     }
 
@@ -3205,14 +3212,16 @@ shouldChangeCharactersInRange:(NSRange)range
                          confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
         if (!didConfirm) return;
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
+        if (!self || ![self.formUserID isEqualToString:[PPADDRESS currentAuthenticatedUserID]]) return;
 
         [self pp_setSavingState:YES];
         [PPHUD showLoading];
         [[PPAddressesManager sharedManager] deleteAddress:self.address completion:^(BOOL success, NSError * _Nullable error) {
             dispatch_async(dispatch_get_main_queue(), ^{
+                if (![self.formUserID isEqualToString:[PPADDRESS currentAuthenticatedUserID]]) return;
                 [self pp_setSavingState:NO];
                 [PPHUD dismiss];
+                if (!self.view.window) return;
                 if (!success || error) {
                     [PPAlertHelper showErrorIn:self
                                          title:kLang(@"DeleteFailed") ?: @"Delete failed"
@@ -3233,107 +3242,96 @@ shouldChangeCharactersInRange:(NSRange)range
 
 #pragma mark - Location
 
+- (BOOL)pp_isUsableLocationSample:(CLLocation *)location
+{
+    return location && [self pp_isValidCoordinate:location.coordinate] &&
+        location.horizontalAccuracy >= 0.0 && location.horizontalAccuracy <= 200.0 &&
+        fabs(location.timestamp.timeIntervalSinceNow) <= 30.0;
+}
+
 - (void)pp_startPrefillFromCurrentLocationIfNeeded
 {
-    if (self.address || self.didApplyInitialLocation) {
+    if (!self.isRequestingLocation || self.isSaving) return;
+    if (![CLLocationManager locationServicesEnabled]) {
+        self.isRequestingLocation = NO;
+        [self pp_setLocationStatus:kLang(@"ordering_address_location_unavailable")];
         return;
     }
-
     if (!self.locationManager) {
         self.locationManager = [[CLLocationManager alloc] init];
         self.locationManager.delegate = self;
         self.locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters;
     }
-
+    [self pp_setLocationStatus:kLang(@"ordering_address_finding_location")];
     CLAuthorizationStatus status;
-    if (@available(iOS 14.0, *)) {
-        status = self.locationManager.authorizationStatus;
-    } else {
-        status = [CLLocationManager authorizationStatus];
-    }
-
+    if (@available(iOS 14.0, *)) status = self.locationManager.authorizationStatus;
+    else status = [CLLocationManager authorizationStatus];
     if (status == kCLAuthorizationStatusNotDetermined) {
         [self.locationManager requestWhenInUseAuthorization];
         return;
     }
     if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
-        [self pp_applyResolvedCountryDefaultsIfNeeded];
         [self pp_showLocationPermissionDeniedAlertIfNeeded];
         return;
     }
-
-    CLLocation *cachedLocation = self.locationManager.location;
-    if (cachedLocation && [self pp_isValidCoordinate:cachedLocation.coordinate]) {
-        [self pp_applyCoordinateToForm:cachedLocation.coordinate suggestedTitle:nil];
-        [self pp_reverseGeocodeCoordinateForRowTitle:cachedLocation.coordinate];
+    CLLocation *cached = self.locationManager.location;
+    if ([self pp_isUsableLocationSample:cached]) {
+        [self locationManager:self.locationManager didUpdateLocations:@[cached]];
         return;
     }
-
-    [self.locationManager startUpdatingLocation];
+    NSUInteger generation = ++self.locationRequestGeneration;
+    [self.locationManager requestLocation];
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.isRequestingLocation || self.locationRequestGeneration != generation) return;
+        self.isRequestingLocation = NO;
+        [self.locationManager stopUpdatingLocation];
+        [self pp_setLocationStatus:kLang(@"ordering_address_location_unavailable")];
+    });
 }
 
 - (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations
 {
+    if (!self.isRequestingLocation || self.isSaving || !self.view.window) return;
+    [manager stopUpdatingLocation];
+    self.isRequestingLocation = NO;
     CLLocation *location = locations.lastObject;
-    if (!location || ![self pp_isValidCoordinate:location.coordinate]) {
+    if (![self pp_isUsableLocationSample:location]) {
+        [self pp_setLocationStatus:kLang(@"ordering_address_location_unavailable")];
         return;
     }
-
-    [manager stopUpdatingLocation];
     [self pp_applyCoordinateToForm:location.coordinate suggestedTitle:nil];
     [self pp_reverseGeocodeCoordinateForRowTitle:location.coordinate];
 }
 
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
 {
+    if (!self.isRequestingLocation) return;
     [manager stopUpdatingLocation];
-    NSLog(@"[AddressFormVC] Current location failed: %@", error.localizedDescription ?: @"Unknown error");
-    [self pp_applyResolvedCountryDefaultsIfNeeded];
+    self.isRequestingLocation = NO;
+    [self pp_setLocationStatus:kLang(@"ordering_address_location_unavailable")];
 }
 
 - (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
 {
-    if (status == kCLAuthorizationStatusAuthorizedAlways || status == kCLAuthorizationStatusAuthorizedWhenInUse) {
-        [manager startUpdatingLocation];
-    } else if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
-        [self pp_applyResolvedCountryDefaultsIfNeeded];
-        [self pp_showLocationPermissionDeniedAlertIfNeeded];
-    }
+    if (@available(iOS 14.0, *)) return; // The modern callback owns authorization changes.
+    if (self.isRequestingLocation) [self pp_startPrefillFromCurrentLocationIfNeeded];
 }
 
 - (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager API_AVAILABLE(ios(14.0))
 {
-    CLAuthorizationStatus status = manager.authorizationStatus;
-    if (status == kCLAuthorizationStatusAuthorizedAlways || status == kCLAuthorizationStatusAuthorizedWhenInUse) {
-        [manager startUpdatingLocation];
-    } else if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
-        [self pp_applyResolvedCountryDefaultsIfNeeded];
-        [self pp_showLocationPermissionDeniedAlertIfNeeded];
-    }
+    if (self.isRequestingLocation) [self pp_startPrefillFromCurrentLocationIfNeeded];
 }
 
 #pragma mark - Permission
 
 - (void)pp_showLocationPermissionDeniedAlertIfNeeded
 {
-    if (self.didShowLocationPermissionAlert) {
-        return;
-    }
-    self.didShowLocationPermissionAlert = YES;
-
-    [PPAlertHelper showConfirmationIn:self
-                                title:kLang(@"pp_perm_location_title")
-                             subtitle:kLang(@"pp_perm_location_denied_message")
-                        confirmButton:kLang(@"pp_perm_open_settings")
-                         cancelButton:kLang(@"pp_perm_not_now")
-                                 icon:PPSYSImage(@"location.slash")
-                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
-        if (!didConfirm) return;
-        NSURL *settingsURL = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
-        if ([[UIApplication sharedApplication] canOpenURL:settingsURL]) {
-            [[UIApplication sharedApplication] openURL:settingsURL options:@{} completionHandler:nil];
-        }
-    } cancelBlock:^{}];
+    self.isRequestingLocation = NO;
+    self.locationSettingsButton.hidden = self.locationManager.authorizationStatus == kCLAuthorizationStatusRestricted;
+    [self pp_setLocationStatus:kLang(@"ordering_address_location_denied")];
+    UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, self.locationStatusLabel.text);
 }
 
 #pragma mark - Trait Collection
@@ -3371,6 +3369,10 @@ shouldChangeCharactersInRange:(NSRange)range
 - (void)pp_parsePhoneNumber:(NSString *)fullPhone
 {
     NSString *trimmed = [self pp_trimmedString:fullPhone];
+    NSString *digits = [self pp_digitsOnlyValue:trimmed];
+    BOOL international = [trimmed hasPrefix:@"+"] || [digits hasPrefix:@"00"];
+    if ([digits hasPrefix:@"00"] && digits.length > 2) digits = [digits substringFromIndex:2];
+    trimmed = international ? [@"+" stringByAppendingString:digits] : digits;
     self.draftPhoneDigits = @"";
     self.currentPhoneCode = @"+974";
     self.autoDetectedCountry = nil;
@@ -3399,7 +3401,9 @@ shouldChangeCharactersInRange:(NSRange)range
         self.draftPhoneDigits = [trimmed substringFromIndex:dialCode.length];
         [self pp_matchCountryCodeModel:self.currentPhoneCode];
     } else {
-        self.draftPhoneDigits = trimmed;
+        // A full international number need not belong to the regional code list.
+        self.currentPhoneCode = @"+";
+        self.draftPhoneDigits = digits;
     }
 }
 
@@ -3421,15 +3425,7 @@ shouldChangeCharactersInRange:(NSRange)range
 
 - (void)pp_phoneFieldChanged:(UITextField *)textField
 {
-    NSString *raw = textField.text ?: @"";
-    NSCharacterSet *digitsSet = [NSCharacterSet decimalDigitCharacterSet];
-    NSMutableString *digits = [NSMutableString string];
-    for (NSUInteger i = 0; i < raw.length; i++) {
-        unichar ch = [raw characterAtIndex:i];
-        if ([digitsSet characterIsMember:ch]) {
-            [digits appendFormat:@"%C", ch];
-        }
-    }
+    NSString *digits = [self pp_digitsOnlyValue:textField.text ?: @""];
     if (![textField.text isEqualToString:digits]) {
         textField.text = digits;
     }
