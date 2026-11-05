@@ -21,6 +21,7 @@
 #import "PPSearchHelper.h"
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
+#import "PPPinterestLayout.h"
 #import "PetAccessory.h"
 #import "PetAd.h"
 #import "SearchCacheManager.h"
@@ -203,6 +204,7 @@ static NSDictionary *PPImageSearchRetintedLottieJSON(NSDictionary *jsonDict, UIC
 <UITextFieldDelegate,
 UICollectionViewDelegate,
 UICollectionViewDelegateFlowLayout,
+PPPinterestLayoutDelegate,
 PPUniversalCellDelegate,
 UIImagePickerControllerDelegate,
 UINavigationControllerDelegate,
@@ -216,6 +218,7 @@ PHPickerViewControllerDelegate>
 @property (nonatomic, strong) UIView *bottomSearchFadeView;
 @property (nonatomic, strong) CAGradientLayer *bottomSearchFadeLayer;
 @property (nonatomic, strong) UICollectionView *collectionView;
+@property (nonatomic, strong) PPPinterestLayout *pinterestLayout;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
 
 @property (nonatomic, copy) NSArray<PPUniversalCellViewModel *> *results;
@@ -265,6 +268,7 @@ PHPickerViewControllerDelegate>
 @property (nonatomic, assign) BOOL imageSearchLoadingLottieReady;
 @property (nonatomic, assign) BOOL imageSearchLoadingLottieUnavailable;
 @property (nonatomic, assign) BOOL imageSearchLoadingVisible;
+@property (nonatomic, strong) UIActivityIndicatorView *imageSearchLoadingActivityIndicator;
 
 @property (nonatomic, assign) BOOL isSearching;
 @property (nonatomic, assign) BOOL didAnimateHero;
@@ -442,12 +446,7 @@ PHPickerViewControllerDelegate>
     [super traitCollectionDidChange:previousTraitCollection];
     if (previousTraitCollection &&
         ![previousTraitCollection.preferredContentSizeCategory isEqualToString:self.traitCollection.preferredContentSizeCategory]) {
-        for (PPUniversalCellViewModel *item in self.dataSource.snapshot.itemIdentifiers) {
-            if (item.modelContext == PPCellForServices) {
-                [self.collectionView.collectionViewLayout invalidateLayout];
-                break;
-            }
-        }
+        [self.collectionView.collectionViewLayout invalidateLayout];
     }
     if (@available(iOS 13.0, *)) {
         if (previousTraitCollection.userInterfaceStyle != self.traitCollection.userInterfaceStyle) {
@@ -1486,13 +1485,17 @@ PHPickerViewControllerDelegate>
 
 - (void)setupCollectionView
 {
-    UICollectionViewFlowLayout *layout = [UICollectionViewFlowLayout new];
+    PPPinterestLayout *layout = [[PPPinterestLayout alloc] init];
+    layout.delegate = self;
+    layout.columnCount = 0;
     layout.minimumInteritemSpacing = kPPSearchInteritemSpacing;
     layout.minimumLineSpacing = kPPSearchLineSpacing;
+    layout.spacing = kPPSearchInteritemSpacing;
     layout.sectionInset = UIEdgeInsetsMake(0.0,
                                            kPPSearchHorizontalInset,
-                                           64.0,
+                                           96.0,
                                            kPPSearchHorizontalInset);
+    self.pinterestLayout = layout;
 
     UICollectionView *collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero
                                                            collectionViewLayout:layout];
@@ -1594,6 +1597,7 @@ PHPickerViewControllerDelegate>
         __strong typeof(weakSelf) self = weakSelf;
         PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         viewModel.indexPath = indexPath;
+        cell.showsSubtitle = YES;
         [cell applyViewModel:viewModel
                      context:viewModel.modelContext
                   layoutMode:PPCellLayoutModePinterest
@@ -1744,6 +1748,11 @@ PHPickerViewControllerDelegate>
     iconView.tintColor = UIColor.whiteColor;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
 
+    UIActivityIndicatorView *activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
+    activityIndicator.translatesAutoresizingMaskIntoConstraints = NO;
+    activityIndicator.color = AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0];
+    activityIndicator.hidesWhenStopped = YES;
+
 #if PPSEARCH_HAS_LOTTIE
     LOTAnimationView *lottieView = [[LOTAnimationView alloc] init];
     lottieView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1774,6 +1783,7 @@ PHPickerViewControllerDelegate>
 
     [orbView addSubview:orbInnerGlow];
     [orbView addSubview:iconView];
+    [orbView addSubview:activityIndicator];
 #if PPSEARCH_HAS_LOTTIE
     [orbView addSubview:lottieView];
 #endif
@@ -1811,6 +1821,9 @@ PHPickerViewControllerDelegate>
         [iconView.widthAnchor constraintEqualToConstant:34.0],
         [iconView.heightAnchor constraintEqualToConstant:34.0],
 
+        [activityIndicator.centerXAnchor constraintEqualToAnchor:orbView.centerXAnchor],
+        [activityIndicator.centerYAnchor constraintEqualToAnchor:orbView.centerYAnchor],
+
         [titleLabel.topAnchor constraintEqualToAnchor:orbView.bottomAnchor constant:18.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:22.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-22.0],
@@ -1834,6 +1847,7 @@ PHPickerViewControllerDelegate>
     self.imageSearchLoadingCardView = cardView;
     self.imageSearchLoadingOrbView = orbView;
     self.imageSearchLoadingIconView = iconView;
+    self.imageSearchLoadingActivityIndicator = activityIndicator;
     self.imageSearchLoadingTitleLabel = titleLabel;
     self.imageSearchLoadingSubtitleLabel = subtitleLabel;
     self.imageSearchLoadingOrbGradientLayer = orbGradient;
@@ -3244,6 +3258,47 @@ PHPickerViewControllerDelegate>
     );
 }
 
+#pragma mark - PPPinterestLayoutDelegate
+
+- (CGFloat)collectionView:(UICollectionView *)collectionView
+                   layout:(PPPinterestLayout *)layout
+ heightForItemAtIndexPath:(NSIndexPath *)indexPath
+                withWidth:(CGFloat)width
+{
+    PPUniversalCellViewModel *item = [self.dataSource itemIdentifierForIndexPath:indexPath];
+    if (!item) {
+        NSArray<PPUniversalCellViewModel *> *items = self.dataSource.snapshot.itemIdentifiers;
+        if (indexPath.item < items.count) {
+            item = items[indexPath.item];
+        }
+    }
+    if (!item && indexPath.item < self.results.count) {
+        item = self.results[indexPath.item];
+    }
+    if (!item) {
+        return MAX(130.0, width);
+    }
+
+    NSString *contentSizeCategory = self.traitCollection.preferredContentSizeCategory ?: UIContentSizeCategoryLarge;
+
+    if (@available(iOS 16.0, *)) {
+        if (item.modelContext == PPCellForServices) {
+            CGFloat serviceHeight = [PPUniversalCardHostingCell serviceFittingHeightForViewModel:item
+                                                                                        width:width
+                                                                          contentSizeCategory:contentSizeCategory];
+            return MAX(130.0, serviceHeight);
+        } else {
+            CGFloat discoveryHeight = [PPUniversalCardHostingCell discoveryFittingHeightForViewModel:item
+                                                                                               width:width
+                                                                                 contentSizeCategory:contentSizeCategory
+                                                                                dataViewPresentation:NO];
+            return MAX(130.0, discoveryHeight);
+        }
+    }
+
+    return MAX(130.0, ceil(width * 1.35));
+}
+
 #pragma mark - UICollectionViewDelegateFlowLayout
 
 - (CGSize)collectionView:(UICollectionView *)collectionView
@@ -3252,33 +3307,28 @@ PHPickerViewControllerDelegate>
 {
     UIEdgeInsets sectionInset = UIEdgeInsetsMake(0.0,
                                                  kPPSearchHorizontalInset,
-                                                 64.0,
+                                                 96.0,
                                                  kPPSearchHorizontalInset);
     CGFloat interitemSpacing = kPPSearchInteritemSpacing;
-    UICollectionViewFlowLayout *flowLayout =
-    [collectionViewLayout isKindOfClass:[UICollectionViewFlowLayout class]]
-    ? (UICollectionViewFlowLayout *)collectionViewLayout
-    : nil;
-    if (flowLayout) {
+    if ([collectionViewLayout isKindOfClass:[PPPinterestLayout class]]) {
+        PPPinterestLayout *pLayout = (PPPinterestLayout *)collectionViewLayout;
+        sectionInset = pLayout.sectionInset;
+        interitemSpacing = pLayout.minimumInteritemSpacing;
+    } else if ([collectionViewLayout isKindOfClass:[UICollectionViewFlowLayout class]]) {
+        UICollectionViewFlowLayout *flowLayout = (UICollectionViewFlowLayout *)collectionViewLayout;
         sectionInset = flowLayout.sectionInset;
         interitemSpacing = flowLayout.minimumInteritemSpacing;
     }
 
     CGFloat availableWidth = collectionView.bounds.size.width - sectionInset.left - sectionInset.right;
     CGFloat gridWidth = floor((availableWidth - interitemSpacing) / 2.0);
-    PPUniversalCellViewModel *item = [self.dataSource itemIdentifierForIndexPath:indexPath];
-    if (item && item.modelContext == PPCellForServices) {
-        if (@available(iOS 16.0, *)) {
-            BOOL accessibilitySize = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
-            CGFloat serviceWidth = MAX(0.0, accessibilitySize ? availableWidth : gridWidth);
-            CGFloat serviceHeight = [PPUniversalCardHostingCell serviceFittingHeightForViewModel:item
-                                                                                        width:serviceWidth
-                                                                          contentSizeCategory:self.traitCollection.preferredContentSizeCategory];
-            return CGSizeMake(serviceWidth, serviceHeight);
-        }
-    }
-    CGFloat itemHeight = 320.0;
-    return CGSizeMake(MAX(0.0, gridWidth), itemHeight);
+    CGFloat itemWidth = MAX(1.0, gridWidth);
+
+    CGFloat itemHeight = [self collectionView:collectionView
+                                       layout:(PPPinterestLayout *)collectionViewLayout
+                     heightForItemAtIndexPath:indexPath
+                                    withWidth:itemWidth];
+    return CGSizeMake(itemWidth, itemHeight);
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -4343,6 +4393,7 @@ PHPickerViewControllerDelegate>
     self.imageSearchLoadingLottieView.hidden = !showLottie;
     self.imageSearchLoadingLottieView.alpha = showLottie ? 1.0 : 0.0;
 #endif
+    [self.imageSearchLoadingOrbView bringSubviewToFront:self.imageSearchLoadingActivityIndicator];
 }
 
 - (void)pp_updateImageSearchLoadingLottiePlayback
@@ -4397,6 +4448,8 @@ PHPickerViewControllerDelegate>
 
 - (void)pp_startImageSearchLoadingAnimations
 {
+    [self.imageSearchLoadingActivityIndicator startAnimating];
+    [self.imageSearchLoadingOrbView bringSubviewToFront:self.imageSearchLoadingActivityIndicator];
     [self pp_pauseLegacyImageSearchLoadingCAAnimations];
     [self pp_prepareImageSearchLoadingLottieIfNeeded];
     [self pp_applyImageSearchLoadingLottieVisualState];
@@ -4445,6 +4498,7 @@ PHPickerViewControllerDelegate>
 
 - (void)pp_stopImageSearchLoadingAnimations
 {
+    [self.imageSearchLoadingActivityIndicator stopAnimating];
     [self pp_pauseLegacyImageSearchLoadingCAAnimations];
 #if PPSEARCH_HAS_LOTTIE
     @try {

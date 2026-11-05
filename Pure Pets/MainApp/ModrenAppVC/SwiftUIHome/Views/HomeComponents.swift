@@ -5558,9 +5558,22 @@ struct HomeFeedSection: View {
         return false
     }
 
+    private var isServiceSection: Bool {
+        if section.kind == .recommendations {
+            if case let .content(cards) = section.state {
+                return cards.contains { $0.kind == .service || $0.context == .forServices }
+            }
+        }
+        if case let .content(cards) = section.state, let first = cards.first {
+            return first.kind == .service || first.context == .forServices
+        }
+        return false
+    }
+
     private var targetCardHeight: CGFloat {
         cardSizing.height(
             isAdvertisement: isAdsSection,
+            isService: isServiceSection,
             measuredProductInformationHeight: productInformationHeight
         )
     }

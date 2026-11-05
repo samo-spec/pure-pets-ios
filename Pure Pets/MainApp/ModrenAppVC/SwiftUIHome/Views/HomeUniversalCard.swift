@@ -138,14 +138,19 @@ private struct HomeProductInformationRegionModifier: ViewModifier {
 struct HomeUniversalCardSizing: DynamicProperty {
     static let productMediaHeight: CGFloat = 134
     static let advertisementMediaHeight: CGFloat = 120
+    static let serviceMediaHeight: CGFloat = 116
     // Renderer inset (3), card inset (6), compact information padding (8).
     private static let productInformationInsets: CGFloat = 16
 
     @Environment(\.homeProductInformationHeight) private var measuredInformationHeight
     @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 142
     @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 124
+    @ScaledMetric(relativeTo: .body) private var serviceInformationHeight: CGFloat = 208
 
-    func height(isAdvertisement: Bool, measuredProductInformationHeight: CGFloat? = nil) -> CGFloat {
+    func height(isAdvertisement: Bool, isService: Bool = false, measuredProductInformationHeight: CGFloat? = nil) -> CGFloat {
+        if isService {
+            return Self.serviceMediaHeight + serviceInformationHeight + Self.productInformationInsets
+        }
         if isAdvertisement {
             return Self.advertisementMediaHeight + advertisementInformationHeight
         }
@@ -189,8 +194,13 @@ struct HomeUniversalCard: View {
             card.context == .forHomeAds
     }
 
+    private var isServiceCard: Bool {
+        card.kind == .service ||
+            card.context == .forServices
+    }
+
     private var cardHeight: CGFloat {
-        cardSizing.height(isAdvertisement: isAdsCard)
+        cardSizing.height(isAdvertisement: isAdsCard, isService: isServiceCard)
     }
 
     var body: some View {

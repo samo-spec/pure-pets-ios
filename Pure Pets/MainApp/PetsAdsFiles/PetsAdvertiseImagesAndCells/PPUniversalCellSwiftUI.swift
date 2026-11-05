@@ -2208,7 +2208,7 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 }
 
-// MARK: - Services · Care Folio
+// MARK: - Services · Service Window
 
 /// A display projection only. The universal store and its delegate retain all
 /// navigation, authentication, ownership and persistence responsibilities.
@@ -2367,6 +2367,8 @@ private struct PPUniversalServiceCard: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.displayScale) private var displayScale
     private var expanded: Bool { store.layout == .focus }
     private var showsDescription: Bool { expanded || store.layout == .fullWidth }
     private var compact: Bool { store.layout == .horizontalRow }
@@ -2386,28 +2388,11 @@ private struct PPUniversalServiceCard: View {
                     if store.showsOwnerRow, let ownerName {
                         providerPreview(name: ownerName, note: note)
                     }
-                    if expanded {
-                        // Focus carousels have a bounded height. Long copy and
-                        // AX sizes scroll while quick actions remain reachable.
-                        ScrollView(.vertical) {
-                            openSurface(note)
-                        }
-                    } else {
-                        ViewThatFits(in: .vertical) {
-                            openSurface(note).fixedSize(horizontal: false, vertical: true)
-                            if !typeSize.isAccessibilitySize {
-                                openSurface(note, condensed: true).fixedSize(horizontal: false, vertical: true)
-                            }
-                            // Legacy UIKit rows may still supply a small fixed
-                            // height. Preserve readable text and the 44pt action
-                            // edge rather than clipping the service's content.
-                            ScrollView(.vertical) { openSurface(note) }
-                        }
-                        .layoutPriority(1)
-                        Spacer(minLength: 0)
+                    ViewThatFits(in: .vertical) {
+                        openSurface(note).fixedSize(horizontal: false, vertical: true)
+                        openSurface(note, condensed: true).fixedSize(horizontal: false, vertical: true)
                     }
-                    Divider().overlay(Color.ppSeparator).padding(.horizontal, 16)
-                    reviewAndActions(note)
+                    .layoutPriority(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(store.isHighlighted ? Color.ppSurfaceElevated : Color.ppSurfaceRaised, in: shape)
@@ -2422,6 +2407,7 @@ private struct PPUniversalServiceCard: View {
             }
         }
         .modifier(PPUniversalServiceEntrance(isReady: !store.model.isSkeleton, isMeasuring: isMeasuring))
+        .environment(\.layoutDirection, store.isRightToLeft ? .rightToLeft : .leftToRight)
         .environment(\.locale, Locale(identifier: store.isRightToLeft ? "ar_QA" : "en_QA"))
         .multilineTextAlignment(.leading)
         .accessibilityIdentifier("pp.universal.service.\(store.model.id)")
@@ -2440,103 +2426,95 @@ private struct PPUniversalServiceCard: View {
     }
 
     private func openSurface(_ note: PPUniversalServiceNote, condensed: Bool = false) -> some View {
-        Button {
-            perform(note) {
-                PPUniversalHaptics.light()
-                store.tapCard()
-            }
-        } label: {
-            VStack(alignment: .leading, spacing: condensed ? 8 : 16) {
-                identity(note, condensed: condensed)
-                if showsDescription, !condensed, !note.description.isEmpty, note.description != note.title {
-                    Text(note.description)
-                        .font(HomeFont.regular(16))
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+        ZStack(alignment: .topTrailing) {
+            Button {
+                perform(note) {
+                    PPUniversalHaptics.light()
+                    store.tapCard()
                 }
-                terms(note)
-                if let reason = store.model.reasonText, !reason.isEmpty {
-                    Label(reason, systemImage: store.model.isOwner && !store.model.isPubliclyVisible ? "eye.slash" : "info.circle")
-                        .font(HomeFont.medium(13))
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if let badge = store.model.badgeText, !badge.isEmpty, badge != note.category {
-                    Text(badge)
-                        .font(HomeFont.medium(13))
+            } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    artwork(note, condensed: condensed)
+                        .padding(condensed ? PPSpace.xs : PPSpace.sm)
+                    VStack(alignment: .leading, spacing: condensed ? PPSpace.xs : PPSpace.sm) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            category(note)
+                            title(note, condensed: condensed)
+                        }
+                        if showsDescription, !condensed, !note.description.isEmpty, note.description != note.title {
+                            Text(note.description)
+                                .font(HomeFont.regular(14))
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        terms(note)
+                        reviewSummary(note)
+                        if let reason = store.model.reasonText, !reason.isEmpty {
+                            Label(reason, systemImage: store.model.isOwner && !store.model.isPubliclyVisible ? "eye.slash" : "info.circle")
+                                .font(HomeFont.medium(12))
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if let badge = store.model.badgeText, !badge.isEmpty, badge != note.category {
+                            Text(badge)
+                                .font(HomeFont.medium(12))
+                                .foregroundStyle(Color.ppAccentText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                        HStack(alignment: .center, spacing: PPSpace.sm) {
+                            Text(PPUniversalServiceNote.text("service_cell_explore"))
+                                .font(HomeFont.bold(14))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.forward")
+                                .font(.system(size: 13, weight: .semibold))
+                                .frame(width: 28, height: 28)
+                                .background(Color.ppSurfaceElevated, in: Circle())
+                                .accessibilityHidden(true)
+                        }
                         .foregroundStyle(Color.ppAccentText)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                if !condensed {
-                    HStack(spacing: 8) {
-                        Text(PPUniversalServiceNote.text("service_cell_explore"))
-                            .font(HomeFont.bold(14))
-                        Image(systemName: "arrow.forward")
-                            .font(.system(size: 12, weight: .semibold))
-                            .accessibilityHidden(true)
+                        .frame(minHeight: condensed ? 36 : 42)
+                        .padding(.top, 2)
+                        .overlay(alignment: .top) {
+                            Rectangle().fill(Color.ppSeparator).frame(height: 0.5)
+                        }
                     }
-                    .foregroundStyle(Color.ppAccentText)
-                }
-            }
-            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            .padding(condensed ? 12 : 16)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(PPUniversalServicePressStyle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel([note.category, note.title, showsDescription ? note.description : "", note.price, note.availability,
-                             store.model.reasonText ?? "", store.model.badgeText == note.category ? "" : (store.model.badgeText ?? "")]
-            .filter { !$0.isEmpty }.joined(separator: ", "))
-        .accessibilityHint(PPUniversalServiceNote.text("service_note_open_hint"))
-        .accessibilityIdentifier("pp.universal.service.open.\(store.model.id)")
-    }
-
-    @ViewBuilder
-    private func identity(_ note: PPUniversalServiceNote, condensed: Bool = false) -> some View {
-        if condensed {
-            HStack(alignment: .top, spacing: 10) {
-                if hasArtwork { artwork(note, size: 44) }
-                VStack(alignment: .leading, spacing: 4) {
-                    category(note)
-                    title(note, condensed: true)
+                    .padding(.horizontal, condensed ? PPSpace.sm : PPSpace.base)
+                    .padding(.top, 2)
+                    .padding(.bottom, condensed ? PPSpace.xs : PPSpace.sm)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(shape)
             }
-        } else if typeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 12) {
-                category(note)
-                title(note)
-                if hasArtwork { artwork(note, size: 72) }
-            }
-        } else {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        category(note)
-                        title(note)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    if hasArtwork { artwork(note, size: expanded ? 100 : 72) }
+            .buttonStyle(PPUniversalServicePressStyle())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel([note.category, note.title, showsDescription ? note.description : "", note.price,
+                                 note.availability, note.reviewAccessibility, store.model.reasonText ?? "",
+                                 store.model.badgeText == note.category ? "" : (store.model.badgeText ?? "")]
+                .filter { !$0.isEmpty }.joined(separator: ", "))
+            .accessibilityHint(PPUniversalServiceNote.text("service_note_open_hint"))
+            .accessibilityIdentifier("pp.universal.service.open.\(store.model.id)")
+
+            // Siblings, never buttons nested in the open-service Button. The
+            // solid surface keeps their contrast independent of the photograph.
+            actionControls(note)
+                .background(Color.ppSurfaceRaised, in: Capsule())
+                .overlay {
+                    Capsule().strokeBorder(contrast == .increased ? Color.ppTextPrimary : Color.ppSeparator,
+                                           lineWidth: contrast == .increased ? 1 : 0.5)
                 }
-                .frame(minWidth: 260)
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .top, spacing: 8) {
-                        category(note).frame(maxWidth: .infinity, alignment: .leading)
-                        if hasArtwork { artwork(note, size: 44) }
-                    }
-                    title(note)
-                }
-            }
+                .padding(PPSpace.md)
         }
     }
 
     private func category(_ note: PPUniversalServiceNote) -> some View {
         Label {
-            Text(note.category).font(HomeFont.bold(13))
-                .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
+            Text(note.category).font(HomeFont.bold(12))
                 .fixedSize(horizontal: false, vertical: true)
         } icon: {
-            Image(systemName: note.symbol).font(.system(size: 13, weight: .medium))
+            Image(systemName: note.symbol).font(.system(size: 12, weight: .medium))
                 .accessibilityHidden(true)
         }
         .foregroundStyle(Color.ppAccentText)
@@ -2544,9 +2522,9 @@ private struct PPUniversalServiceCard: View {
 
     private func title(_ note: PPUniversalServiceNote, condensed: Bool = false) -> some View {
         Text(note.title)
-            .font(HomeFont.bold(expanded ? 28 : (compact || condensed ? 22 : 24)))
+            .font(HomeFont.bold(expanded ? 26 : (condensed ? 17 : 20)))
             .foregroundStyle(Color.ppTextPrimary)
-            .lineLimit(typeSize.isAccessibilitySize || expanded ? nil : (condensed ? 2 : 3))
+            .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -2554,18 +2532,18 @@ private struct PPUniversalServiceCard: View {
     @ViewBuilder
     private func terms(_ note: PPUniversalServiceNote) -> some View {
         if typeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
                 price(note)
                 availability(note)
             }
         } else {
             ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline, spacing: 16) {
+                HStack(alignment: .firstTextBaseline, spacing: PPSpace.md) {
                     price(note).fixedSize(horizontal: true, vertical: false)
                     Spacer(minLength: 0)
                     availability(note).fixedSize(horizontal: true, vertical: false)
                 }
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: PPSpace.xs) {
                     price(note)
                     availability(note)
                 }
@@ -2575,7 +2553,7 @@ private struct PPUniversalServiceCard: View {
 
     private func price(_ note: PPUniversalServiceNote) -> some View {
         Text(note.price)
-            .font(HomeFont.bold(22)).foregroundStyle(Color.ppTextPrimary)
+            .font(HomeFont.bold(18)).foregroundStyle(Color.ppTextPrimary)
             .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -2583,14 +2561,10 @@ private struct PPUniversalServiceCard: View {
     private func availability(_ note: PPUniversalServiceNote) -> some View {
         if !note.availability.isEmpty {
             Label(note.availability, systemImage: note.availabilitySymbol)
-                .font(HomeFont.medium(13))
+                .font(HomeFont.medium(12))
                 .foregroundStyle(Color.ppTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    private var hasArtwork: Bool {
-        store.viewModel?.image != nil || validImageURL != nil
     }
 
     private var validImageURL: URL? {
@@ -2600,63 +2574,102 @@ private struct PPUniversalServiceCard: View {
         return url
     }
 
-    private func artwork(_ note: PPUniversalServiceNote, size: CGFloat) -> some View {
-        Group {
-            if isMeasuring {
-                Color.ppSurfaceElevated
-            } else if let image = store.viewModel?.image {
-                Image(uiImage: image).resizable().scaledToFill()
-            } else {
-                PPUniversalImageRepresentable(
-                    references: store.uiReferences,
-                    signature: store.imageSignature,
-                    imageURL: validImageURL?.absoluteString,
-                    cacheKey: store.model.id,
-                    placeholder: store.imagePlaceholder,
-                    placeholderSystemImage: note.symbol,
-                    topCornerRadius: 16, bottomCornerRadius: 16,
-                    usesAspectFitContainment: store.isHomePresentation,
-                    contained: false, fillsEmptyAreaWithImageBackground: false,
-                    focusesPetFace: false,
-                    imageLoader: store.imageLoader
-                )
-            }
-        }
-        .frame(width: size, height: size)
-        .background(Color.ppSurfaceElevated)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+    private func serviceArtworkSignature(symbol: String, size: CGSize) -> String {
+        let widthStr = String(Int(ceil(size.width)))
+        let heightStr = String(Int(ceil(size.height)))
+        let scaleStr = String(describing: displayScale)
+        let rtlStr = String(store.isRightToLeft)
+        let darkStr = String(colorScheme == .dark)
+        let contrastStr = String(contrast == .increased)
+        let urlStr = validImageURL?.absoluteString ?? ""
+        return "\(store.imageSignature)|\(urlStr)|\(symbol)|\(widthStr)|\(heightStr)|\(scaleStr)|\(rtlStr)|\(darkStr)|\(contrastStr)"
+    }
+
+    private func serviceArtworkPlaceholder(symbol: String, size: CGSize) -> UIImage? {
+        PPUniversalServiceArtworkPlaceholder.image(
+            symbol: symbol,
+            size: size,
+            displayScale: displayScale,
+            isRightToLeft: store.isRightToLeft,
+            dark: colorScheme == .dark,
+            highContrast: contrast == .increased
+        )
     }
 
     @ViewBuilder
-    private func reviewAndActions(_ note: PPUniversalServiceNote) -> some View {
-        if typeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 8) {
-                reviewSummary(note)
-                actionControls(note).frame(maxWidth: .infinity, alignment: .trailing)
+    private func serviceArtworkRepresentable(symbol: String, size: CGSize) -> some View {
+        let signature = serviceArtworkSignature(symbol: symbol, size: size)
+        let imageURL = validImageURL?.absoluteString
+        let placeholder = serviceArtworkPlaceholder(symbol: symbol, size: size)
+        PPUniversalImageRepresentable(
+            references: store.uiReferences,
+            signature: signature,
+            imageURL: imageURL,
+            cacheKey: store.model.id,
+            placeholder: placeholder,
+            placeholderSystemImage: symbol,
+            topCornerRadius: PPCorner.medium,
+            bottomCornerRadius: PPCorner.medium,
+            usesAspectFitContainment: false,
+            contained: false,
+            fillsEmptyAreaWithImageBackground: false,
+            focusesPetFace: false,
+            imageLoader: store.imageLoader
+        )
+    }
+
+    @ViewBuilder
+    private func serviceArtworkBody(note: PPUniversalServiceNote, size: CGSize) -> some View {
+        if !isMeasuring {
+            if let image = store.viewModel?.image {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size.width, height: size.height)
+                    .clipped()
+            } else {
+                serviceArtworkRepresentable(symbol: note.symbol, size: size)
             }
-            .padding(16)
-        } else {
-            HStack(alignment: .center, spacing: 8) {
-                reviewSummary(note).frame(maxWidth: .infinity, alignment: .leading)
-                actionControls(note)
-            }
-            .padding(.leading, 16).padding(.trailing, 8).padding(.vertical, 4)
         }
     }
 
-    private func reviewSummary(_ note: PPUniversalServiceNote) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let rating = note.rating {
-                Label(rating, systemImage: "star.fill")
-                    .font(HomeFont.bold(14)).foregroundStyle(Color.ppAccentText)
+    private func artwork(_ note: PPUniversalServiceNote, condensed: Bool) -> some View {
+        let height: CGFloat = condensed || compact ? 76 : (expanded || showsDescription ? 164 : 116)
+        return Color.ppSurfaceElevated
+            .overlay {
+                GeometryReader { geometry in
+                    serviceArtworkBody(note: note, size: geometry.size)
+                }
             }
-            Text(note.reviews).font(HomeFont.regular(12))
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
-                .fixedSize(horizontal: false, vertical: true)
+            .frame(height: height)
+            .clipShape(RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous))
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private func reviewSummary(_ note: PPUniversalServiceNote) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+                if let rating = note.rating {
+                    Label(rating, systemImage: "star.fill")
+                        .font(HomeFont.bold(14)).foregroundStyle(Color.ppAccentText)
+                        .fixedSize()
+                }
+                Text(note.reviews).font(HomeFont.regular(13))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                if let rating = note.rating {
+                    Label(rating, systemImage: "star.fill")
+                        .font(HomeFont.bold(14)).foregroundStyle(Color.ppAccentText)
+                }
+                Text(note.reviews).font(HomeFont.regular(13))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(note.reviewAccessibility)
     }
@@ -2715,7 +2728,6 @@ private struct PPUniversalServiceCard: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Color.ppTextPrimary)
                     .frame(width: 44, height: 44)
-                    .background(Color.ppSurfaceElevated, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .contentShape(Rectangle())
             }
             .accessibilityLabel(String(format: PPUniversalServiceNote.text("service_note_actions_format"), note.title))
@@ -2801,26 +2813,66 @@ private struct PPUniversalServiceCard: View {
     }
 
     private var loadingFolio: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Capsule().fill(Color.ppSurfaceElevated).frame(width: 80, height: 12)
-            VStack(alignment: .leading, spacing: 8) {
-                Capsule().fill(Color.ppSurfaceElevated).frame(height: 20)
-                Capsule().fill(Color.ppSurfaceElevated).frame(height: 20).padding(.trailing, 32)
-            }
-            Capsule().fill(Color.ppSurfaceElevated).frame(width: 96, height: 20)
-            Capsule().fill(Color.ppSurfaceElevated).frame(width: 80, height: 12)
-            Divider()
-            HStack {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(Color.ppSurfaceElevated).frame(height: compact ? 76 : 116)
+            VStack(alignment: .leading, spacing: PPSpace.md) {
                 Capsule().fill(Color.ppSurfaceElevated).frame(width: 80, height: 12)
-                Spacer(minLength: 0)
-                RoundedRectangle(cornerRadius: 14).fill(Color.ppSurfaceElevated).frame(width: 44, height: 44)
+                Capsule().fill(Color.ppSurfaceElevated).frame(height: 20)
+                Capsule().fill(Color.ppSurfaceElevated).frame(height: 20).padding(.trailing, PPSpace.xxl)
+                Capsule().fill(Color.ppSurfaceElevated).frame(width: 96, height: 20)
+                Capsule().fill(Color.ppSurfaceElevated).frame(width: 80, height: 12)
+                Divider()
+                Capsule().fill(Color.ppSurfaceElevated).frame(width: 96, height: 20)
             }
+            .padding(.horizontal, PPSpace.sm).padding(.bottom, PPSpace.md)
         }
-        .padding(16)
+        .padding(PPSpace.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.ppSurfaceRaised, in: shape)
         .accessibilityHidden(true)
         .allowsHitTesting(false)
+    }
+}
+
+/// A correctly proportioned, semantic placeholder for the existing image
+/// pipeline. A raw SF Symbol in an aspect-fill UIImageView becomes a giant
+/// cropped glyph. This small bounded cache keeps failure/loading artwork calm
+/// without adding another loader, callback, observer or image-state owner.
+@available(iOS 16.0, *)
+private enum PPUniversalServiceArtworkPlaceholder {
+    private static let cache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 24
+        cache.totalCostLimit = 4 * 1024 * 1024
+        return cache
+    }()
+
+    static func image(symbol: String, size: CGSize, displayScale: CGFloat, isRightToLeft: Bool, dark: Bool, highContrast: Bool) -> UIImage {
+        let width = size.width.isFinite && size.width > 0 ? ceil(min(size.width, 1200)) : 160
+        let height = size.height.isFinite && size.height > 0 ? ceil(min(size.height, 300)) : 116
+        let scale = displayScale.isFinite && displayScale > 0 ? min(displayScale, 4) : 1
+        let key = "\(symbol)|\(width)|\(height)|\(scale)|\(isRightToLeft)|\(dark)|\(highContrast)" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        let traits = UITraitCollection(traitsFrom: [
+            UITraitCollection(userInterfaceStyle: dark ? .dark : .light),
+            UITraitCollection(accessibilityContrast: highContrast ? .high : .normal)
+        ])
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = true
+        let image = UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).image { context in
+            UIColor.ppSurfaceElevated.resolvedColor(with: traits).setFill()
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+            if let glyph = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 28, weight: .regular))?
+                .withTintColor(UIColor.ppTextSecondary.resolvedColor(with: traits), renderingMode: .alwaysOriginal) {
+                // Keep the fallback clear of the trailing utility dock.
+                let centerX = isRightToLeft ? width - min(36, width / 4) : min(36, width / 4)
+                glyph.draw(at: CGPoint(x: centerX - glyph.size.width / 2, y: (height - glyph.size.height) / 2))
+            }
+        }
+        cache.setObject(image, forKey: key, cost: Int(width * height * scale * scale * 4))
+        return image
     }
 }
 
