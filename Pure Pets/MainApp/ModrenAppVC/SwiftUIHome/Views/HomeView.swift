@@ -451,6 +451,26 @@ struct HomeView: View {
                     content: .module(resolved.module)
                 )
             )
+
+            // When "Picked for you" (suggestions) is rendered, also render the separated suggested services companion section
+            if rawID == HomeLegacySectionID.suggestions.rawValue,
+               let companion = store.state.sections.first(where: {
+                   $0.id == HomeSuggestedServicesCompanionSectionID
+               }) {
+                rows.append(
+                    HomeRenderRow(
+                        id: "\(resolved.zone.rawValue)-\(companion.id)",
+                        zone: resolved.zone,
+                        content: .module(
+                            PPHomeModule(
+                                rawID: companion.id,
+                                type: "PPHomeSectionSuggestedServices",
+                                kind: .commerceRail(.services)
+                            )
+                        )
+                    )
+                )
+            }
         }
 
         // This is not a Home Control section: it is an in-app recovery surface

@@ -4482,7 +4482,9 @@
 "home_pulse_section_pet_listings" = "إعلانات مناسبة لحيوانك";
 "home_pulse_section_pet_services" = "رعاية تناسب حيوانك";
 "home_pulse_section_picked" = "مختارات لك";
-"home_pulse_section_picked_subtitle" = "مزيج حديث من سوق بيور بتس وخدماتها";
+"home_pulse_section_picked_subtitle" = "مختارات مميزة من منتجات سوق بيور بتس تناسب أليفك";
+"home_pulse_section_suggested_services" = "خدمات مقترحة لك";
+"home_pulse_section_suggested_services_subtitle" = "أحدث عروض العناية والتدريب والصحة من مزوّدي الخدمات";
 "home_pulse_section_relevant" = "أنسب لحيوانك";
 "home_pulse_section_relevant_subtitle" = "متوافق مع فصيلة الحيوان المختار";
 "home_pulse_section_relevant_ads" = "إعلانات مناسبة لحيوانك";

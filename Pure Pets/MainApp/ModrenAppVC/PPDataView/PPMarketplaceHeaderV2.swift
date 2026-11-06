@@ -196,8 +196,29 @@ struct PPMarketplaceHeaderV2: View {
     /// title mathematically, whatever the control count.
     @ViewBuilder
     private var identityRow: some View {
-        if #available(iOS 16.0, *) {
-            ViewThatFits(in: .horizontal) {
+        Group {
+            if #available(iOS 16.0, *) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: PPSpace.sm) {
+                        backControl(size: resolvedExpandedControlSize, compact: false)
+                            .frame(width: identitySlotWidth, alignment: .leading)
+
+                        contextControl(compact: false, alignment: .center)
+
+                        cartControl(size: resolvedExpandedControlSize, compact: false)
+                            .frame(width: identitySlotWidth, alignment: .trailing)
+                    }
+
+                    VStack(alignment: .leading, spacing: PPSpace.md) {
+                        HStack(spacing: PPSpace.sm) {
+                            backControl(size: resolvedExpandedControlSize, compact: false)
+                            Spacer()
+                            cartControl(size: resolvedExpandedControlSize, compact: false)
+                        }
+                        contextControl(compact: false, alignment: .leading)
+                    }
+                }
+            } else {
                 HStack(alignment: .center, spacing: PPSpace.sm) {
                     backControl(size: resolvedExpandedControlSize, compact: false)
                         .frame(width: identitySlotWidth, alignment: .leading)
@@ -207,29 +228,10 @@ struct PPMarketplaceHeaderV2: View {
                     cartControl(size: resolvedExpandedControlSize, compact: false)
                         .frame(width: identitySlotWidth, alignment: .trailing)
                 }
-
-                VStack(alignment: .leading, spacing: PPSpace.md) {
-                    HStack(spacing: PPSpace.sm) {
-                        backControl(size: resolvedExpandedControlSize, compact: false)
-                        Spacer()
-                        cartControl(size: resolvedExpandedControlSize, compact: false)
-                    }
-                    contextControl(compact: false, alignment: .leading)
-                }
-            }
-        } else {
-            HStack(alignment: .center, spacing: PPSpace.sm) {
-                backControl(size: resolvedExpandedControlSize, compact: false)
-                    .frame(width: identitySlotWidth, alignment: .leading)
-
-                contextControl(compact: false, alignment: .center)
-
-                cartControl(size: resolvedExpandedControlSize, compact: false)
-                    .frame(width: identitySlotWidth, alignment: .trailing)
             }
         }
+        .padding(.horizontal, horizontalInset)
     }
-    .padding(.horizontal, horizontalInset)
 
     // MARK: Compact state
 

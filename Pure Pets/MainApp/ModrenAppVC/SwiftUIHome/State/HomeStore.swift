@@ -30,6 +30,10 @@ enum HomeLegacySectionID: Int, CaseIterable {
     case medicines = 21
 }
 
+/// Companion section identifier for suggested services separated from "Picked for you" (suggestions 6).
+/// Keeps rawConfigSectionID == 6 for config binding while ensuring a unique Identifiable ID for SwiftUI rendering.
+let HomeSuggestedServicesCompanionSectionID: Int = 601
+
 private enum HomeHeroPresentationMode {
     static let marketplaceHeroID = "home-marketplace-hero"
 }
@@ -1259,8 +1263,13 @@ final class HomeStore: ObservableObject {
         case HomeLegacySectionID.marketplaceHero.rawValue:
             guard let page = state.marketplaceHeroPage else { return "none" }
             return heroPagesFingerprint([page])
-        case HomeLegacySectionID.suggestions.rawValue,
-             HomeLegacySectionID.accessories.rawValue,
+        case HomeLegacySectionID.suggestions.rawValue:
+            let matches = state.sections.filter {
+                $0.id == rawSectionID || $0.rawConfigSectionID == rawSectionID
+            }
+            if matches.isEmpty { return "absent" }
+            return matches.map { sectionFingerprint($0) }.joined(separator: "+")
+        case HomeLegacySectionID.accessories.rawValue,
              HomeLegacySectionID.lastFood.rawValue,
              HomeLegacySectionID.medicines.rawValue,
              HomeLegacySectionID.nearbyServices.rawValue,
@@ -2066,6 +2075,7 @@ final class HomeStore: ObservableObject {
         for rawID in state.config.orderedSectionIDs
         where state.config.isVisible(rawID) {
             let section: HomeSectionModel?
+            var companionSection: HomeSectionModel? = nil
             switch rawID {
             case HomeLegacySectionID.buyAgain.rawValue:
                 let buyAgainCards = previewCards(
@@ -2087,9 +2097,8 @@ final class HomeStore: ObservableObject {
                 )
             case HomeLegacySectionID.suggestions.rawValue:
                 let recommendationCards = uniqueCards(
-                    previewCards(from: relevantAccessories, context: .forMarket, kind: .accessory, limit: 4) +
-                    previewCards(from: relevantAds, context: .forAds, kind: .advertisement, limit: 3) +
-                    previewCards(from: relevantServices, context: .forServices, kind: .service, limit: 2)
+                    previewCards(from: relevantAccessories, context: .forMarket, kind: .accessory, limit: 6) +
+                    previewCards(from: relevantAds, context: .forAds, kind: .advertisement, limit: 4)
                 )
                 section = makeSection(
                     kind: .recommendations,
@@ -2098,6 +2107,27 @@ final class HomeStore: ObservableObject {
                     cards: recommendationCards,
                     source: PPHomeBridgeSource.accessories.rawValue
                 )
+
+                let suggestedServiceCards = previewCards(
+                    from: relevantServices,
+                    context: .forServices,
+                    kind: .service,
+                    limit: 8
+                )
+                if !suggestedServiceCards.isEmpty {
+                    let copy = suggestedServicesSectionCopy(
+                        audience: audience,
+                        usesContext: usesContextualRecommendations || !relevantServices.isEmpty
+                    )
+                    companionSection = makeSection(
+                        kind: .services,
+                        rawID: HomeSuggestedServicesCompanionSectionID,
+                        rawConfigSectionID: rawID,
+                        copy: copy,
+                        cards: suggestedServiceCards,
+                        source: PPHomeBridgeSource.services.rawValue
+                    )
+                }
             case HomeLegacySectionID.suggestionAds.rawValue:
                 section = makeSection(
                     kind: .advertisements,
@@ -2181,6 +2211,17 @@ final class HomeStore: ObservableObject {
                     }
                 }
             }
+
+            if let companionSection, emitted.insert(companionSection.id).inserted {
+                result.append(companionSection)
+                if case let .content(cards) = companionSection.state {
+                    for card in cards {
+                        if card.kind == .service {
+                            displayedServiceIDs.insert(card.id)
+                        }
+                    }
+                }
+            }
         }
         return result
     }
@@ -2188,6 +2229,7 @@ final class HomeStore: ObservableObject {
     private func makeSection(
         kind: HomeSectionID,
         rawID: Int,
+        rawConfigSectionID: Int? = nil,
         copy: HomeSectionCopy,
         cards: [HomeCardModel],
         source: Int
@@ -2222,7 +2264,7 @@ final class HomeStore: ObservableObject {
                 "ShowAll",
                 fallback: "See all"
             ),
-            rawConfigSectionID: rawID,
+            rawConfigSectionID: rawConfigSectionID ?? rawID,
             state: renderState
         )
     }
@@ -2325,6 +2367,28 @@ final class HomeStore: ObservableObject {
             }
         }
         return generalSectionCopy(for: kind)
+    }
+
+    private func suggestedServicesSectionCopy(
+        audience: HomeMarketplaceAudience,
+        usesContext: Bool
+    ) -> HomeSectionCopy {
+        if usesContext {
+            switch audience {
+            case .pet:
+                return petSectionCopy(for: .services)
+            case let .category(categoryTitle):
+                return categorySectionCopy(for: .services, title: categoryTitle)
+            case .general:
+                break
+            }
+        }
+        return localizedSectionCopy(
+            titleKey: "home_pulse_section_suggested_services",
+            titleFallback: "Suggested services for you",
+            subtitleKey: "home_pulse_section_suggested_services_subtitle",
+            subtitleFallback: "Top grooming, training, and care offers for your pet"
+        )
     }
 
     private func petSectionCopy(
@@ -2650,7 +2714,6 @@ final class HomeStore: ObservableObject {
             return [
                 PPHomeBridgeSource.accessories.rawValue,
                 PPHomeBridgeSource.advertisements.rawValue,
-                PPHomeBridgeSource.services.rawValue,
             ]
         case .accessories:
             return [PPHomeBridgeSource.accessories.rawValue]

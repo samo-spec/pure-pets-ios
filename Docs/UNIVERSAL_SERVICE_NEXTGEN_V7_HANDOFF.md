@@ -6,7 +6,7 @@
 - Baseline: `4e9872b626e2c622eb92ebcfb30c4bc1f7b1f355`, clean checkout. Original source and baseline manifest: `/tmp/pp-service-v7-86R3qG`.
 - Entry: user explicitly selected `swiftymax-nextgen-category-defining-v7`, superseding the default V6 routing for this task.
 - Existing architecture: `PPUniversalCell.m` registers `PPUniversalCardHostingCell`; `PPUniversalCardRenderer` dispatches `.services` to the existing SwiftUI `PPUniversalServiceCard`. No platform migration.
-- Build/run permission has not been granted for this task. Native rendering, VoiceOver, motion, performance and device behavior remain UNVERIFIED. No Simulator, app build, install, deploy or production write is authorized by this handoff.
+- User explicitly approved physical-iPhone build, install and validation on 2026-11-05. Only the connected iPhone 13 Pro Max and Xcode default DerivedData are in scope. No Simulator, deploy or production write is authorized. Native rendering, VoiceOver, motion and performance remain UNVERIFIED until individually evidenced.
 
 ## Phase 1 — Inspection completed
 
@@ -58,3 +58,16 @@
 2. Capture actual service cards in Arabic RTL and English LTR, light/dark, narrow/wide hosts, long content and AX sizes. Verify intrinsic sizing, bounded scroll fallback, content reading order and 44pt utility hit targets.
 3. Exercise detail navigation, rapid taps, favorites, owner controls, provider chat, video, missing/failed/local/remote imagery and reused records. Check that utility taps do not open the service.
 4. Verify VoiceOver, Reduce Motion/live changes and device frame pacing. No candidate screenshots or native runtime evidence have been captured; do not certify visual quality from source checks.
+
+## Phase 6 — Authorized device verification in progress
+
+- Rechecked `00008110-00046D640EB8401E`: connected physical iPhone 13 Pro Max, iPhone14,3, iOS 27.0.1, developer mode enabled.
+- Built workspace `Pure Pets.xcworkspace`, scheme `Pure Pets`, Debug, destination `platform=iOS,id=00008110-00046D640EB8401E`; no DerivedData override. **BUILD SUCCEEDED**, 2026-11-05 05:02 local time. Log: `/tmp/pp-service-v7-86R3qG/device-build.log`.
+- Build includes current combined checkout at `df21e8b1` (concurrently committed outside this task). Exact compiled source SHA-256: `6d0a33d9768d1a1bb31f344bb76de212277809dae30d0f9057d441e18263c7d6`; service-section SHA-256: `f91ada9e9aec3cf539568dfab67ee9d7d46a7b5993030e5daa264af66af557d5`.
+- Concurrent edits removed the service scroll fallback and changed Home sizing after the prior review; retained those edits. Prior source-review claims apply to the earlier recorded hash. Current native build passes; bounded-host runtime behavior still needs verification.
+- No compile errors. Existing deprecation/concurrency warnings remain, plus the backward-compatible `UITraitCollection(traitsFrom:)` initializer used by the service placeholder.
+- Device screenshot capture works. Initial capture shows the lock screen; iPhone Mirroring reports connection timeout. User asked to unlock once then relock for Mirroring.
+- First candidate installed successfully (`install.json`). Launch failed with `com.apple.dt.CoreDeviceError 3`: remote connection invalidated (`com.apple.Mercury.error 1001`). This is a device-transport failure, not evidence of an app crash or successful launch.
+- Current-source review found two medium regressions in concurrent sizing edits: no bounded overflow recovery, and unconditional two-line titles at accessibility sizes/focus. Fixed by a final vertical scroll candidate only when `!isMeasuring`, plus unlimited title lines for accessibility/focus. Retained compact standard-card geometry and external Home sizing.
+- Reviewer confirmed both fixed with no new delta findings at `fbf220658692c986bd99034a2e6f4c7756c4d5886230b38017ab72e6739ad083`. Final physical-device rebuild and install in progress. No runtime acceptance claim yet.
+- Handoff on user switch to Admin/Pro authentication: final rebuild failed in Xcode dependency scanning (`NSObject+YYAddForARC.m`, missing `Pure Pets_vers.o.scan` in default DerivedData). The earlier candidate built and installed; the final 10-line adaptation correction is source-parsed/reviewed but not successfully rebuilt/installed. Launch retry also timed out after 25 seconds. No app crash or service rendering verdict can be inferred from these toolchain/device-transport failures. Resume at final device rebuild after the current Admin/Pro task; preserve the same device/default-DerivedData constraints.

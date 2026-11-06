@@ -4506,7 +4506,9 @@
 "home_pulse_section_pet_listings" = "Listings for your pet";
 "home_pulse_section_pet_services" = "Care for your pet";
 "home_pulse_section_picked" = "Picked for you";
-"home_pulse_section_picked_subtitle" = "A fresh mix from across Pure Pets";
+"home_pulse_section_picked_subtitle" = "Handpicked products from Pure Pets marketplace";
+"home_pulse_section_suggested_services" = "Suggested services for you";
+"home_pulse_section_suggested_services_subtitle" = "Top grooming, training, and care offers for your pet";
 "home_pulse_section_relevant" = "Relevant for your pet";
 "home_pulse_section_relevant_subtitle" = "Matched to the selected pet category";
 "home_pulse_section_relevant_ads" = "Pet listings for you";

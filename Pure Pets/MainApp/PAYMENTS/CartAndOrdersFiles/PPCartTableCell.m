@@ -621,9 +621,23 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     // Full-width columns only when the content needs vertical reflow.
     self.textWidthConstraint = [self.textStack.widthAnchor constraintEqualToAnchor:self.identityRow.widthAnchor];
 
+    [self.contentStack setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [self.identityRow setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [self.textStack setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [self.bottomRow setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+
+    NSLayoutConstraint *cardBottomConstraint = [self.cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceSM];
+    cardBottomConstraint.priority = UILayoutPriorityRequired - 1;
+
+    NSLayoutConstraint *contentBottomConstraint = [self.contentStack.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceBase];
+    contentBottomConstraint.priority = UILayoutPriorityRequired - 1;
+
+    NSLayoutConstraint *purchaseBottomConstraint = [self.purchaseSurfaceView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor];
+    purchaseBottomConstraint.priority = UILayoutPriorityDefaultHigh;
+
     [NSLayoutConstraint activateConstraints:@[
         [self.cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceSM],
-        [self.cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceSM],
+        cardBottomConstraint,
         [self.cardContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPSpaceBase],
         [self.cardContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPSpaceBase],
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.cardContainer.topAnchor],
@@ -635,11 +649,11 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         [self.savedStateTintView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
         [self.savedStateTintView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
         [self.purchaseSurfaceView.topAnchor constraintEqualToAnchor:self.dividerView.topAnchor],
-        [self.purchaseSurfaceView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+        purchaseBottomConstraint,
         [self.purchaseSurfaceView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
         [self.purchaseSurfaceView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
         [self.contentStack.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceBase],
-        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceBase],
+        contentBottomConstraint,
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSpaceBase],
         [self.contentStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSpaceBase],
         self.imageWidthConstraint,
@@ -719,12 +733,11 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     // A real width is supplied by table fitting, including edit-mode indentation.
     CGFloat available = MAX(0, width - 2 * (PPSpaceBase + PPSpaceBase));
     BOOL verticalIdentity = accessibility || (available > 0 && available < 240);
-    if (!verticalIdentity) self.textWidthConstraint.active = NO;
+    if (self.textWidthConstraint.active != verticalIdentity) {
+        self.textWidthConstraint.active = verticalIdentity;
+    }
     self.identityRow.axis = verticalIdentity ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    self.identityRow.alignment = UIStackViewAlignmentLeading;
-    if (!verticalIdentity) self.identityRow.alignment = UIStackViewAlignmentTop;
-    // In vertical mode the text column must retain the full measured width.
-    if (verticalIdentity) self.textWidthConstraint.active = YES;
+    self.identityRow.alignment = verticalIdentity ? UIStackViewAlignmentLeading : UIStackViewAlignmentTop;
     self.imageWidthConstraint.constant = accessibility ? 72 : 88;
     self.dividerView.imageAxisOffset = self.imageWidthConstraint.constant / 2;
     CGFloat quantityWidth = MAX(30, ceil(self.quantityLabel.intrinsicContentSize.width));
@@ -941,11 +954,29 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
           withHorizontalFittingPriority:(UILayoutPriority)horizontalFittingPriority
                 verticalFittingPriority:(UILayoutPriority)verticalFittingPriority
 {
+    CGFloat width = targetSize.width;
+    if (width <= 0) {
+        width = CGRectGetWidth(self.bounds);
+    }
+    if (width <= 0) {
+        width = UIScreen.mainScreen.bounds.size.width;
+    }
     CGFloat editingInset = MAX(0, CGRectGetWidth(self.bounds) - CGRectGetWidth(self.contentView.bounds));
-    [self pp_updateLayoutForWidth:targetSize.width - editingInset];
-    return [super systemLayoutSizeFittingSize:targetSize
-              withHorizontalFittingPriority:horizontalFittingPriority
-                    verticalFittingPriority:verticalFittingPriority];
+    CGFloat fittingWidth = MAX(0, width - editingInset);
+
+    [self pp_updateLayoutForWidth:fittingWidth];
+
+    self.contentView.bounds = CGRectMake(0, 0, fittingWidth, self.contentView.bounds.size.height);
+    [self.contentView setNeedsLayout];
+    [self.contentView layoutIfNeeded];
+
+    CGSize size = [self.contentView systemLayoutSizeFittingSize:CGSizeMake(fittingWidth, 0)
+                                  withHorizontalFittingPriority:UILayoutPriorityRequired
+                                        verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+
+    size.width = targetSize.width;
+    size.height = ceil(size.height);
+    return size;
 }
 
 - (void)layoutSubviews

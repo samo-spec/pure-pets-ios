@@ -5559,6 +5559,9 @@ struct HomeFeedSection: View {
     }
 
     private var isServiceSection: Bool {
+        if section.kind == .services {
+            return true
+        }
         if section.kind == .recommendations {
             if case let .content(cards) = section.state {
                 return cards.contains { $0.kind == .service || $0.context == .forServices }

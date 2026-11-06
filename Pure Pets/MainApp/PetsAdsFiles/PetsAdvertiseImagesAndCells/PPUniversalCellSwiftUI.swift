@@ -2391,6 +2391,14 @@ private struct PPUniversalServiceCard: View {
                     ViewThatFits(in: .vertical) {
                         openSurface(note).fixedSize(horizontal: false, vertical: true)
                         openSurface(note, condensed: true).fixedSize(horizontal: false, vertical: true)
+                        if !isMeasuring {
+                            // Only bounded hosts that cannot fit either density
+                            // scroll. Intrinsic sizing keeps the natural content
+                            // height and never measures a scroll container.
+                            ScrollView(.vertical) {
+                                openSurface(note, condensed: true)
+                            }
+                        }
                     }
                     .layoutPriority(1)
                 }
@@ -2524,7 +2532,7 @@ private struct PPUniversalServiceCard: View {
         Text(note.title)
             .font(HomeFont.bold(expanded ? 26 : (condensed ? 17 : 20)))
             .foregroundStyle(Color.ppTextPrimary)
-            .lineLimit(2)
+            .lineLimit(typeSize.isAccessibilitySize || expanded ? nil : 2)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
