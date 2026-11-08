@@ -658,6 +658,10 @@ willConnectToSession:(UISceneSession *)session
 - (void)sceneDidBecomeActive:(UIScene *)scene { [self updateUserOnlineStatus:YES];    [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
 [self tryHandlePendingChatNotification];
 [self pp_startUserScopedListenersIfPossible];
+id<UIApplicationDelegate> appDelegate = UIApplication.sharedApplication.delegate;
+if ([appDelegate isKindOfClass:AppDelegate.class]) {
+    [(AppDelegate *)appDelegate pp_refreshNotificationRegistrationIfNeeded];
+}
 
 // H-08: Notify in-flight payment flows to re-check order status after app resume.
 [[NSNotificationCenter defaultCenter] postNotificationName:PPAppDidBecomeActiveNotification object:nil];

@@ -34,11 +34,14 @@
 @property (nonatomic, copy) NSString *notificationV2PendingReason;
 @property (nonatomic, copy) NSString *notificationV2InFlightSignature;
 @property (nonatomic, copy) NSString *notificationV2LastSuccessfulSignature;
+@property (nonatomic, assign) BOOL notificationV2RegistrationNeedsForegroundRetry;
 @property (nonatomic, assign) BOOL notificationV2LogoutBarrierActive;
 @property (nonatomic, assign) NSUInteger notificationV2LifecycleEpoch;
 @property (nonatomic, strong) NSMutableArray *notificationV2LogoutBarrierWaiters;
 
 - (void)pp_flushPendingNotificationV2Registration;
+- (BOOL)pp_hasCurrentNotificationV2BindingForUID:(NSString *)uid;
+- (void)pp_notificationUserProfileDidSync:(NSNotification *)notification;
 - (void)pp_forwardNotificationTapToActiveScene:(NSDictionary *)userInfo;
 - (void)pp_finishNotificationV2RegistrationCycle;
 - (void)pp_releaseNotificationV2LogoutBarrierWaiters;
@@ -61,13 +64,18 @@ static NSString * const kPPNotificationV2ReasonAuthChange = @"auth_change";
 static NSString * const kPPNotificationV2ReasonFCMRefresh = @"fcm_refresh";
 static NSString * const kPPNotificationV2ReasonLegacySync = @"legacy_sync";
 static NSString * const kPPNotificationV2UserBindingDefaultsKey = @"PPNotificationV2UserBindingV1";
+static NSTimeInterval const PPUserNotificationLeaseRefreshLeadTimeMillis = 24.0 * 60.0 * 60.0 * 1000.0;
 
 static NSString *PPAppDelegateNotificationEnvironment(void) {
-#if DEBUG
-    return @"sandbox";
-#else
+    id raw = [NSBundle.mainBundle objectForInfoDictionaryKey:@"PPNotificationsEnvironment"];
+    NSString *configured = [raw isKindOfClass:NSString.class]
+        ? [[raw stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString]
+        : @"";
+    if ([configured isEqualToString:@"sandbox"] || [configured isEqualToString:@"production"]) return configured;
+    // Logical Firebase audience, independent of the APNs token environment.
+    // Every shipped configuration uses the production Firebase project, as do
+    // Admin and Pro. Firebase Messaging handles development APNs tokens.
     return @"production";
-#endif
 }
 
 static NSString *PPAppDelegateTrimmedString(id value) {
@@ -852,6 +860,11 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
 - (void)pp_registerForNotificationV2AuthChanges
 {
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:PPUserManagerDidSyncCurrentUserNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_notificationUserProfileDidSync:)
+                                                 name:PPUserManagerDidSyncCurrentUserNotification
+                                               object:nil];
     if (self.notificationV2AuthHandle) {
         [[FIRAuth auth] removeAuthStateDidChangeListener:self.notificationV2AuthHandle];
         self.notificationV2AuthHandle = 0;
@@ -869,6 +882,14 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
         [strongSelf pp_syncMessagingTokenIfAvailable];
         [strongSelf pp_attemptNotificationV2RegistrationForReason:kPPNotificationV2ReasonAuthChange];
     }];
+}
+
+- (void)pp_notificationUserProfileDidSync:(NSNotification *)notification
+{
+    (void)notification;
+    // Auth may arrive before UsersCol creation/restoration finishes. Resume
+    // the serialized registration when the existing profile owner is ready.
+    [self pp_refreshNotificationRegistrationIfNeeded];
 }
 
 - (void)pp_beginNotificationV2LogoutBarrierWithCompletion:(dispatch_block_t)completion
@@ -944,6 +965,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     self.notificationV2PendingReason = nil;
     self.notificationV2InFlightSignature = nil;
     self.notificationV2LastSuccessfulSignature = nil;
+    self.notificationV2RegistrationNeedsForegroundRetry = YES;
     [self.notificationV2LogoutBarrierWaiters removeAllObjects];
     NSLog(@"PPLAB NotificationsV2 logout barrier lowered | appId=%@ epoch=%lu",
           kPPNotificationV2UserAppID,
@@ -1093,6 +1115,48 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     });
 }
 
+- (BOOL)pp_hasCurrentNotificationV2BindingForUID:(NSString *)uid
+{
+    NSDictionary *binding = [NSUserDefaults.standardUserDefaults dictionaryForKey:kPPNotificationV2UserBindingDefaultsKey];
+    NSNumber *leaseExpiresAtMillis = [binding[@"leaseExpiresAtMillis"] isKindOfClass:NSNumber.class]
+        ? binding[@"leaseExpiresAtMillis"] : nil;
+    NSTimeInterval refreshThresholdMillis = NSDate.date.timeIntervalSince1970 * 1000.0 +
+        PPUserNotificationLeaseRefreshLeadTimeMillis;
+    return uid.length > 0 &&
+        [PPAppDelegateTrimmedString(binding[@"uid"]) isEqualToString:uid] &&
+        [PPAppDelegateTrimmedString(binding[@"appId"]) isEqualToString:kPPNotificationV2UserAppID] &&
+        [PPAppDelegateTrimmedString(binding[@"environment"]) isEqualToString:PPAppDelegateNotificationEnvironment()] &&
+        PPAppDelegateTrimmedString(binding[@"installationId"]).length > 0 &&
+        PPAppDelegateTrimmedString(binding[@"bindingGeneration"]).length > 0 &&
+        PPAppDelegateTrimmedString(binding[@"fcmTokenHash"]).length > 0 &&
+        leaseExpiresAtMillis.doubleValue > refreshThresholdMillis;
+}
+
+- (void)pp_refreshNotificationRegistrationIfNeeded
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [self pp_refreshNotificationRegistrationIfNeeded]; });
+        return;
+    }
+    if (self.notificationV2LogoutBarrierActive) return;
+    NSString *uid = PPAppDelegateTrimmedString([FIRAuth auth].currentUser.uid);
+    if (uid.length == 0) return;
+    UIApplication *application = UIApplication.sharedApplication;
+    if (!application.isRegisteredForRemoteNotifications) {
+        // Also recover when alerts were enabled in Settings after an earlier
+        // denial. Reading settings does not present another permission prompt.
+        [[UNUserNotificationCenter currentNotificationCenter] getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings *settings) {
+            BOOL allowed = settings.authorizationStatus == UNAuthorizationStatusAuthorized ||
+                settings.authorizationStatus == UNAuthorizationStatusProvisional;
+            if (allowed) {
+                dispatch_async(dispatch_get_main_queue(), ^{ [application registerForRemoteNotifications]; });
+            }
+        }];
+    }
+    if (!self.notificationV2RegistrationNeedsForegroundRetry && [self pp_hasCurrentNotificationV2BindingForUID:uid]) return;
+    [self pp_attemptNotificationV2RegistrationForReason:@"foreground_retry"];
+}
+
 - (void)pp_flushPendingNotificationV2Registration
 {
     self.notificationV2RegistrationDebounceScheduled = NO;
@@ -1123,6 +1187,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
     NSUInteger registrationEpoch = self.notificationV2LifecycleEpoch;
     self.notificationV2RegistrationInFlight = YES;
+    self.notificationV2RegistrationNeedsForegroundRetry = YES;
 
     __weak typeof(self) weakSelf = self;
     [self pp_resolveCurrentFCMTokenWithCompletion:^(NSString * _Nullable token) {
@@ -1212,7 +1277,9 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
                        PPAppDelegateNotificationEnvironment(),
                        notificationScopeSignature] componentsJoinedByString:@"|"];
 
-                if ([registrationSignature isEqualToString:PPAppDelegateTrimmedString(strongSelf.notificationV2LastSuccessfulSignature)]) {
+                if ([registrationSignature isEqualToString:PPAppDelegateTrimmedString(strongSelf.notificationV2LastSuccessfulSignature)] &&
+                    [strongSelf pp_hasCurrentNotificationV2BindingForUID:uid]) {
+                    strongSelf.notificationV2RegistrationNeedsForegroundRetry = NO;
                     DLog(@"[NotificationsV2] Registration skipped | reason=%@ duplicateSignature=yes",
                          safeReason.length > 0 ? safeReason : @"unknown");
                     [strongSelf pp_finishNotificationV2RegistrationCycle];
@@ -1270,24 +1337,30 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
                         BOOL ok = [response[@"ok"] respondsToSelector:@selector(boolValue)] ? [response[@"ok"] boolValue] : NO;
                         NSArray *scopes = [response[@"scopes"] isKindOfClass:NSArray.class] ? response[@"scopes"] : notificationScopes;
-                        if (ok) {
-                            strongSelf.notificationV2LastSuccessfulSignature = registrationSignature;
+                        BOOL isActive = [response[@"isActive"] respondsToSelector:@selector(boolValue)] && [response[@"isActive"] boolValue];
+                        if (ok && isActive) {
                             NSString *bindingGeneration = PPAppDelegateTrimmedString(response[@"bindingGeneration"]);
                             NSString *fcmTokenHash = PPAppDelegateTrimmedString(response[@"fcmTokenHash"]);
                             NSString *responseEnvironment = PPAppDelegateTrimmedString(response[@"environment"]);
                             if (responseEnvironment.length == 0) {
                                 responseEnvironment = PPAppDelegateNotificationEnvironment();
                             }
-                            if (bindingGeneration.length > 0 && fcmTokenHash.length > 0) {
+                            NSNumber *leaseExpiresAtMillis = [response[@"leaseExpiresAtMillis"] isKindOfClass:NSNumber.class]
+                                ? response[@"leaseExpiresAtMillis"] : nil;
+                            if (bindingGeneration.length > 0 && fcmTokenHash.length > 0 &&
+                                leaseExpiresAtMillis.doubleValue > NSDate.date.timeIntervalSince1970 * 1000.0) {
                                 NSDictionary *binding = @{
                                     @"uid": uid,
                                     @"installationId": safeInstallationId,
                                     @"appId": kPPNotificationV2UserAppID,
                                     @"environment": responseEnvironment,
                                     @"bindingGeneration": bindingGeneration,
-                                    @"fcmTokenHash": fcmTokenHash
+                                    @"fcmTokenHash": fcmTokenHash,
+                                    @"leaseExpiresAtMillis": leaseExpiresAtMillis
                                 };
                                 [NSUserDefaults.standardUserDefaults setObject:binding forKey:kPPNotificationV2UserBindingDefaultsKey];
+                                strongSelf.notificationV2LastSuccessfulSignature = registrationSignature;
+                                strongSelf.notificationV2RegistrationNeedsForegroundRetry = ![strongSelf pp_hasCurrentNotificationV2BindingForUID:uid];
                             } else {
                                 NSLog(@"PPLAB NotificationsV2 registration incomplete | reason=%@ appId=%@ hasGeneration=%@ hasTokenHash=%@",
                                       safeReason.length > 0 ? safeReason : @"unknown",
@@ -1617,7 +1690,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 - (void)applicationDidBecomeActive:(UIApplication *)application
 {
-    [self pp_syncMessagingTokenIfAvailable];
+    [self pp_refreshNotificationRegistrationIfNeeded];
 }
  
 // Clean up any observers

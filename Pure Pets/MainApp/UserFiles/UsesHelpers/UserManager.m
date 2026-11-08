@@ -207,15 +207,6 @@ static NSString * const PPUserNotificationV2AppID = @"user_ios";
 static NSString * const PPUserNotificationV2BindingDefaultsKey = @"PPNotificationV2UserBindingV1";
 static NSTimeInterval const PPUserNotificationV2DeactivateTimeout = 3.0;
 
-static NSString *PPUserNotificationV2Environment(void)
-{
-#if DEBUG
-    return @"sandbox";
-#else
-    return @"production";
-#endif
-}
-
 static AppDelegate *PPUserNotificationV2AppDelegate(void)
 {
     id<UIApplicationDelegate> delegate = UIApplication.sharedApplication.delegate;
@@ -1092,9 +1083,14 @@ static AppDelegate *PPUserNotificationV2AppDelegate(void)
     NSString *bindingGeneration = PPUserManagerTrimmedString(binding[@"bindingGeneration"]);
     NSString *fcmTokenHash = PPUserManagerTrimmedString(binding[@"fcmTokenHash"]);
 
+    // Deactivate the exact stored binding even when an update changed the
+    // logical audience. UID, app, generation and token hash remain mandatory;
+    // the callable rechecks current ownership and rejects stale generations.
+    BOOL bindingEnvironmentIsSupported = [environment isEqualToString:@"production"] ||
+        [environment isEqualToString:@"sandbox"];
     BOOL bindingMatchesSession = [bindingUID isEqualToString:uid] &&
         [appId isEqualToString:PPUserNotificationV2AppID] &&
-        [environment isEqualToString:PPUserNotificationV2Environment()] &&
+        bindingEnvironmentIsSupported &&
         installationId.length > 0 && bindingGeneration.length > 0 && fcmTokenHash.length > 0;
     if (!bindingMatchesSession) {
         NSLog(@"PPLAB NotificationsV2 logout skipped | reason=%@ binding_match=no appId=%@",
@@ -3397,6 +3393,7 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
                     strongSelf.currentUser = u;
                     [strongSelf cacheUser:u];
                     NSLog(@"[UserManager] 🔄 currentUser cached after addUser.");
+                    [PPUserNotificationV2AppDelegate() pp_refreshNotificationRegistrationIfNeeded];
                 }
                 if (completion) completion(nil, uid);
             }];

@@ -21,6 +21,7 @@
 @property (nonatomic, strong) AVAudioPlayer * _Nullable audioPlayer;
 
 + (BOOL)pp_isNotificationPayloadRoutable:(NSDictionary *)payload;
+- (void)pp_refreshNotificationRegistrationIfNeeded;
 
 @end
 
