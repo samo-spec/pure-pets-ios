@@ -2607,7 +2607,15 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     NSString *progressText = [self progressCounterTextForCurrentIndex:currentIndex totalSteps:descriptors.count];
 
     self.orderStatusLabel.text = PPOrderCustomerVisibleStatusTitle(statusKey);
-    self.statusSummarySubtitleLabel.text = PPOrderCustomerVisibleStatusHint(statusKey);
+    NSString *hintText = PPOrderCustomerVisibleStatusHint(statusKey);
+    if (self.order.deliveryOtp.length > 0 &&
+        ([statusKey isEqualToString:@"delivery_partner_assigned"] ||
+         [statusKey isEqualToString:@"on_the_way"] ||
+         [statusKey isEqualToString:@"ready_for_delivery"])) {
+        NSString *otpSection = [NSString stringWithFormat:@"\n\n🔑 %@: %@", kLang(@"order_delivery_otp_title"), self.order.deliveryOtp];
+        hintText = [hintText stringByAppendingString:otpSection];
+    }
+    self.statusSummarySubtitleLabel.text = hintText;
     self.statusProgressChipLabel.text = progressText;
     self.progressTimelineProgressLabel.text = progressText;
     self.statusEtaChipLabel.text = [self summaryStatusDateTextForOrder:self.order statusKey:statusKey];

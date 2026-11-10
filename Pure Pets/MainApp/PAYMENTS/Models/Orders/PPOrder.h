@@ -30,6 +30,10 @@ typedef NS_ENUM(NSInteger, PPOrderStatus) {
 @property (nonatomic, copy) NSString *rawStatus;
 @property (nonatomic, copy) NSString *deliveryStatus;
 @property (nonatomic, copy, nullable) NSString *deliveryUserId;
+@property (nonatomic, copy, nullable) NSString *deliveryOtp;
+@property (nonatomic, copy, nullable) NSString *deliveryDriverName;
+@property (nonatomic, copy, nullable) NSString *deliveryDriverPhone;
+@property (nonatomic, copy, nullable) NSString *deliveryCompanyName;
 
 @property (nonatomic, assign) double amount;
 @property (nonatomic, assign) double shippingFee;

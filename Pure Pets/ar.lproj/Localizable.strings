@@ -1797,6 +1797,15 @@
 "order_delivery_hint_failed" = "تعذر إكمال توصيل هذا الطلب. سيقوم فريقنا بتحديثك قريباً.";
 "order_delivery_hint_returned" = "تم إرجاع الطلب إلى المتجر. سيقوم فريقنا بتحديثك قريباً.";
 "order_delivery_hint_delayed" = "توصيل طلبك متأخر حالياً. سيقوم فريقنا بتحديثك قريباً.";
+"order_delivery_otp_eyebrow" = "رمز التحقق والتسليم";
+"order_delivery_otp_title" = "رمز استلام الطلب";
+"order_delivery_otp_hint" = "يرجى تزويد مندوب التوصيل بهذا الرمز عند وصوله لتأكيد استلامك للطلب بنجاح.";
+"order_delivery_otp_copied" = "تم نسخ الرمز";
+"order_delivery_otp_copy_action" = "نسخ الرمز";
+"order_courier_info_eyebrow" = "فريق التوصيل";
+"order_courier_info_title" = "مندوب التوصيل المعيّن";
+"order_courier_call_action" = "الاتصال بالمندوب";
+"order_courier_company_prefix" = "شركة التوصيل";
 
 "empty_cart_title" = "سلة التسوق فارغة";
 "empty_cart_subtitle" = "لم تقم بإضافة أي منتجات بعد. تصفح المتجر وأضف ما يعجبك.";

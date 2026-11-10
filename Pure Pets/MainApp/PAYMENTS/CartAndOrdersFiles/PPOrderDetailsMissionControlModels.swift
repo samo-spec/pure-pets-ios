@@ -458,7 +458,39 @@ struct PPOrderMissionState {
     let fulfillmentLoading: Bool
     let fulfillmentVersion: Int
     let hasFulfillmentData: Bool
+    let deliveryOtp: String
+    let deliveryDriverName: String
+    let deliveryDriverPhone: String
+    let deliveryCompanyName: String
     let screenTitle: String
+
+    var isDeliveryOtpActive: Bool {
+        guard !deliveryOtp.isEmpty else { return false }
+        let activeStatuses: Set<String> = [
+            "ready_for_delivery",
+            "delivery_partner_assigned",
+            "on_the_way",
+            "in_transit",
+            "handed_over",
+            "out_for_delivery",
+            "pending_collection"
+        ]
+        return activeStatuses.contains(statusKey)
+    }
+
+    var hasCourierInfo: Bool {
+        return !deliveryDriverName.isEmpty || !deliveryCompanyName.isEmpty
+    }
+
+    var formattedDeliveryOtp: String {
+        guard deliveryOtp.count >= 4 else { return deliveryOtp }
+        if deliveryOtp.count == 6 {
+            let prefix = deliveryOtp.prefix(3)
+            let suffix = deliveryOtp.suffix(3)
+            return "\(prefix)  \(suffix)"
+        }
+        return deliveryOtp.map { String($0) }.joined(separator: " ")
+    }
 
     init(dictionary: [AnyHashable: Any]) {
         orderID = dictionary.missionString("orderID")
@@ -513,6 +545,10 @@ struct PPOrderMissionState {
         fulfillmentLoading = dictionary.missionBool("fulfillmentLoading")
         fulfillmentVersion = dictionary.missionInt("fulfillmentVersion")
         hasFulfillmentData = dictionary.missionBool("hasFulfillmentData")
+        deliveryOtp = dictionary.missionString("deliveryOtp")
+        deliveryDriverName = dictionary.missionString("deliveryDriverName")
+        deliveryDriverPhone = dictionary.missionString("deliveryDriverPhone")
+        deliveryCompanyName = dictionary.missionString("deliveryCompanyName")
         screenTitle = dictionary.missionString("screenTitle")
     }
 

@@ -5738,6 +5738,161 @@ struct PPHomeServiceGateway: View {
     }
 }
 
+// MARK: - Companion invitations
+
+/// Presentation-only layout shared by the adoption and first-pet invitations.
+/// Measure the actual content proposal so narrow windows and larger type can
+/// release the illustration column without shrinking or truncating the copy.
+@available(iOS 15.0, *)
+struct PPHomeCompanionInvitationLayout<Copy: View, Artwork: View>: View {
+    let artworkSide: CGFloat
+    let copy: Copy
+    let artwork: Artwork
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var availableWidth: CGFloat = 0
+
+    init(
+        artworkSide: CGFloat,
+        @ViewBuilder copy: () -> Copy,
+        @ViewBuilder artwork: () -> Artwork
+    ) {
+        self.artworkSide = artworkSide
+        self.copy = copy()
+        self.artwork = artwork()
+    }
+
+    private var usesVerticalLayout: Bool {
+        dynamicTypeSize >= .xxxLarge ||
+            (availableWidth > 0 &&
+                availableWidth < artworkSide + PPSpace.base * 10)
+    }
+
+    var body: some View {
+        Group {
+            if usesVerticalLayout {
+                VStack(alignment: .leading, spacing: PPSpace.base) {
+                    artwork
+                        .frame(maxWidth: .infinity)
+                    copy
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                HStack(alignment: .center, spacing: PPSpace.base) {
+                    copy
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+                    artwork
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: PPHomeCompanionInvitationWidthKey.self,
+                    value: proxy.size.width
+                )
+            }
+        }
+        .onPreferenceChange(PPHomeCompanionInvitationWidthKey.self) { width in
+            guard width.isFinite, width > 0,
+                  abs(availableWidth - width) > 0.5 else { return }
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                availableWidth = width
+            }
+        }
+    }
+}
+
+private struct PPHomeCompanionInvitationWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+@available(iOS 15.0, *)
+struct PPHomeCompanionInvitationSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(
+            cornerRadius: PPCorner.card,
+            style: .continuous
+        )
+        content
+            .background(Color.homeSurface, in: shape)
+            .clipShape(shape)
+            .overlay {
+                shape.stroke(
+                    HomeVisualTokens.cardBorder(
+                        colorScheme: colorScheme,
+                        contrast: contrast
+                    ),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(
+                        contrast: contrast
+                    )
+                )
+            }
+            .shadow(
+                color: contrast == .increased ? .clear : PPShadow.subtle.color,
+                radius: contrast == .increased ? 0 : PPShadow.subtle.radius,
+                x: PPShadow.subtle.x,
+                y: contrast == .increased ? 0 : PPShadow.subtle.y
+            )
+            .contentShape(shape)
+    }
+}
+
+/// The warm field belongs to the illustration, keeping Home's text and action
+/// surfaces quiet. Artwork is deliberately not circle-clipped: the cat's tail
+/// and the adoption scene keep their complete silhouette.
+@available(iOS 15.0, *)
+struct PPHomeCompanionArtwork<Content: View>: View {
+    let side: CGFloat
+    let content: Content
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    init(side: CGFloat, @ViewBuilder content: () -> Content) {
+        self.side = side
+        self.content = content()
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
+                .fill(HomeSemanticTone.care.opacity(
+                    colorScheme == .dark ? 0.16 : 0.09
+                ))
+                .overlay {
+                    RoundedRectangle(
+                        cornerRadius: PPCorner.hero,
+                        style: .continuous
+                    )
+                    .stroke(
+                        HomeSemanticTone.care.opacity(
+                            contrast == .increased ? 0.60 : 0.16
+                        ),
+                        lineWidth: contrast == .increased ? 1.5 : 1
+                    )
+                }
+                .padding(PPSpace.sm)
+
+            content
+        }
+        .frame(width: side, height: side)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 // MARK: - Pet context
 
 /// Zone 5 personalization. Deliberately compact: pet context is a signal, not
@@ -5781,220 +5936,75 @@ private struct HomeBuildPetProfileFeaturedCard: View {
     let onOpenProfiles: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.layoutDirection) private var layoutDirection
 
-    /// Coral remains part of the pet-profile artwork and supporting badge.
-    private var actionAccent: Color {
-        HomeSemanticTone.care
-    }
-
-    /// The visible action itself follows Home's global primary-action system.
-    private var primaryActionAccent: Color {
-        HomeSemanticTone.brand
-    }
-
-    private var cardShape: HomeFeaturedCardShape {
-        HomeFeaturedCardShape(
-            cornerRadius: HomeVisualTokens.compactCardCorner,
-            topTrailingDelta: 12,
-            isRightToLeft: layoutDirection == .rightToLeft
-        )
-    }
-
-    private var animationHaloSize: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 116 : 94
-    }
-
-    private var animationViewSize: CGFloat {
-        dynamicTypeSize.isAccessibilitySize
-            ? 180
-            : animationHaloSize * 1.55
-    }
-
-    private var subtitleColor: Color {
-        Color.homeTextPrimary.opacity(
-            contrast == .increased
-                ? 0.96
-                : (colorScheme == .dark ? 0.90 : 0.84)
-        )
-    }
+    private let artworkSide = PPSpace.base * 8
 
     var body: some View {
         Button(action: onOpenProfiles) {
-            ZStack(alignment: .trailing) {
+            PPHomeCompanionInvitationLayout(artworkSide: artworkSide) {
+                profileCopy
+            } artwork: {
                 animationArea
-                    .padding(.trailing, PPSpace.base)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: PPSpace.xs) {
-                        pawBadge
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.bottom, PPSpace.xs)
-
-                    VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                        Text(PPHomeZoneCopy.petEmptyTitle)
-                            .font(HomeFont.bold(18))
-                            .foregroundStyle(Color.homeTextPrimary)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                            .minimumScaleFactor(0.82)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        Text(PPHomeZoneCopy.petEmptySubtitle)
-                            .font(HomeFont.medium(13))
-                            .foregroundStyle(subtitleColor)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
-                            .minimumScaleFactor(0.92)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: PPSpace.sm)
-
-                    HStack(spacing: PPSpace.xs) {
-                        Text(PPHomeZoneCopy.petOpenProfile)
-                            .font(HomeFont.bold(13))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.80)
-
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 10, weight: .bold))
-                            .flipsForRightToLeftLayoutDirection(true)
-                            .accessibilityHidden(true)
-                    }
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, PPSpace.base)
-                    .frame(height: 38)
-                    .background(
-                        primaryActionAccent,
-                        in: RoundedRectangle(
-                            cornerRadius: HomeVisualTokens.primaryActionCorner,
-                            style: .continuous
-                        )
-                    )
-                    .shadow(
-                        color: primaryActionAccent.opacity(
-                            colorScheme == .dark ? 0.18 : 0.24
-                        ),
-                        radius: 6,
-                        y: 3
-                    )
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, PPSpace.base)
-                .padding(.trailing, animationHaloSize + 12 + PPSpace.base)
-                .padding(.vertical, PPSpace.base)
             }
-            .frame(maxWidth: .infinity)
-            .frame(
-                minHeight: dynamicTypeSize.isAccessibilitySize ? 180 : 152
-            )
-            .background {
-                PPWaveCardBG(
-                    animationEnabled: !reduceMotion,
-                    shape: .rounded,
-                    cornerRadius: HomeVisualTokens.compactCardCorner,
-                    accentColorOverride: UIColor(actionAccent)
-                )
-            }
-            .clipShape(cardShape)
-            .overlay {
-                cardShape.stroke(
-                    HomeVisualTokens.cardBorder(
-                        colorScheme: colorScheme,
-                        contrast: contrast
-                    ),
-                    lineWidth: HomeVisualTokens.cardBorderWidth(
-                        contrast: contrast
-                    )
-                )
-            }
-            .shadow(
-                color: contrast == .increased ? .clear : PPShadow.subtle.color,
-                radius: contrast == .increased ? 0 : PPShadow.subtle.radius,
-                x: PPShadow.subtle.x,
-                y: contrast == .increased ? 0 : PPShadow.subtle.y
-            )
-            .contentShape(cardShape)
+            .padding(PPSpace.lg)
+            .modifier(PPHomeCompanionInvitationSurface())
         }
         .buttonStyle(HomeCardPressStyle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(PPHomeZoneCopy.petEmptyTitle)
+        .accessibilityLabel(Text("\(PPHomeZoneCopy.petEmptyTitle), \(PPHomeZoneCopy.petOpenProfile)"))
+        .accessibilityValue(PPHomeZoneCopy.petEmptySubtitle)
         .accessibilityHint(PPHomeZoneCopy.petEmptyHint)
+        .accessibilityIdentifier("home.petProfile.create")
+    }
+
+    private var profileCopy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            Text(PPHomeZoneCopy.petEmptyTitle)
+                .font(HomeFont.bold(21))
+                .foregroundStyle(Color.homeTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(PPHomeZoneCopy.petEmptySubtitle)
+                .font(HomeFont.subheadline())
+                .foregroundStyle(Color.homeTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: PPSpace.sm) {
+                Text(PPHomeZoneCopy.petOpenProfile)
+                    .font(HomeFont.bold(15))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 11, weight: .bold))
+                    .flipsForRightToLeftLayoutDirection(true)
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(Color.ppAccentText)
+            .frame(
+                minHeight: HomeVisualTokens.minimumTouchTarget,
+                alignment: .leading
+            )
+        }
+        .multilineTextAlignment(.leading)
     }
 
     private var animationArea: some View {
-        ZStack {
-            Circle()
-                .fill(
-                    actionAccent.opacity(
-                        colorScheme == .dark ? 0.19 : 0.12
-                    )
-                )
-                .overlay {
-                    Circle().stroke(
-                        actionAccent.opacity(
-                            contrast == .increased ? 0.48 : 0.16
-                        ),
-                        lineWidth: contrast == .increased ? 1.5 : 0.8
-                    )
-                }
-                .frame(
-                    width: animationHaloSize,
-                    height: animationHaloSize
-                )
-
+        PPHomeCompanionArtwork(side: artworkSide) {
             if reduceMotion {
                 Image("pawprint")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .foregroundStyle(actionAccent)
-                    .frame(
-                        width: animationHaloSize * 0.66,
-                        height: animationHaloSize * 0.66
-                    )
+                    .foregroundStyle(HomeSemanticTone.care)
+                    .frame(width: artworkSide / 2, height: artworkSide / 2)
             } else {
                 HomeHeroLottieRepresentable(
                     animationName: "LottieAnimations/Loader cat.json",
                     loadsFromFirebase: true,
                     playbackEnabled: true
                 )
-                .frame(
-                    width: animationViewSize,
-                    height: animationViewSize
-                )
-                .clipShape(Circle())
+                .frame(width: artworkSide, height: artworkSide)
             }
         }
-        .frame(width: animationHaloSize, height: animationHaloSize)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    private var pawBadge: some View {
-        Image("pawsmall")
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(actionAccent)
-            .frame(width: 32, height: 32)
-            .background(Color.homeRaisedSurface.opacity(0.8), in: Circle())
-            .overlay {
-                Circle().stroke(
-                    actionAccent.opacity(
-                        contrast == .increased ? 0.48 : 0.14
-                    ),
-                    lineWidth: contrast == .increased ? 1.5 : 0.8
-                )
-            }
-            .shadow(
-                color: actionAccent.opacity(0.12),
-                radius: 4,
-                y: 2
-            )
-            .accessibilityHidden(true)
     }
 }
 

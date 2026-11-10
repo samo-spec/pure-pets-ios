@@ -1832,6 +1832,15 @@
 "order_delivery_hint_failed" = "We could not complete this delivery. Our team will update you shortly.";
 "order_delivery_hint_returned" = "This order was returned to the store. Our team will update you shortly.";
 "order_delivery_hint_delayed" = "Your delivery is delayed. Our team will update you again shortly.";
+"order_delivery_otp_eyebrow" = "DELIVERY VERIFICATION CODE";
+"order_delivery_otp_title" = "Delivery Verification Code";
+"order_delivery_otp_hint" = "Please share this code with your courier upon arrival to securely confirm delivery.";
+"order_delivery_otp_copied" = "Code copied";
+"order_delivery_otp_copy_action" = "Copy Code";
+"order_courier_info_eyebrow" = "DELIVERY TEAM";
+"order_courier_info_title" = "Assigned Courier";
+"order_courier_call_action" = "Call Courier";
+"order_courier_company_prefix" = "Carrier";
 
 "empty_cart_title" = "Your cart is empty";
 "empty_cart_subtitle" = "Looks like you haven’t added anything yet. Start exploring and add items you love.";

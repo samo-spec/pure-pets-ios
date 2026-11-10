@@ -1350,149 +1350,74 @@ private struct HomeAdoptionSection: View {
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.layoutDirection) private var layoutDirection
 
-    var body: some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: PPSpace.lg) {
-                    adoptionArtwork
-                        .frame(maxWidth: .infinity)
+    private let artworkSide = PPSpace.base * 8
 
-                    adoptionCopy
-                }
-            } else {
-                HStack(alignment: .center, spacing: PPSpace.base) {
-                    adoptionCopy
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .layoutPriority(1)
-
-                    adoptionArtwork
-                }
-            }
-        }
-        .padding(dynamicTypeSize.isAccessibilitySize ? PPSpace.lg : PPSpace.base)
-        .background {
-            HomeHeroField(
-                accent: Color.ppAdoptionAccent,
-                increasedContrast: contrast == .increased,
-                cornerGlowOpacityScale: 0.50,
-                cornerRadius: PPCorner.card
-            )
-        }
-        .overlay {
-            cardShape.stroke(
-                Color.ppAdoptionAccent.opacity(
-                    contrast == .increased
-                        ? 0.58
-                        : (colorScheme == .dark ? 0.34 : 0.20)
-                ),
-                lineWidth: contrast == .increased ? 1.5 : 1
-            )
-        }
-        .clipShape(cardShape)
-        .shadow(
-            color: Color.ppAdoptionAccent.opacity(colorScheme == .dark ? 0.07 : 0.055),
-            radius: contrast == .increased ? 0 : 10,
-            y: contrast == .increased ? 0 : 4
+    private var title: String {
+        HomeModelAdapter.localized(
+            "home_adopt_title",
+            fallback: "تعرّف إلى رفيقك القادم"
         )
     }
 
-    private var cardShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+    private var subtitle: String {
+        HomeModelAdapter.localized(
+            "home_adopt_subtitle",
+            fallback: "حيوانات تنتظر بيتاً محباً"
+        )
+    }
+
+    private var actionTitle: String {
+        HomeModelAdapter.localized("home_quick_action_adopt", fallback: "تبني")
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 0) {
+                PPHomeCompanionInvitationLayout(artworkSide: artworkSide) {
+                    adoptionCopy
+                } artwork: {
+                    adoptionArtwork
+                }
+                .padding(PPSpace.lg)
+
+                Rectangle()
+                    .fill(Color.homeSeparator)
+                    .frame(height: contrast == .increased ? 1.5 : 1)
+                    .padding(.horizontal, PPSpace.lg)
+                    .accessibilityHidden(true)
+
+                adoptionAction
+                    .padding(.horizontal, PPSpace.lg)
+                    .padding(.vertical, PPSpace.sm)
+            }
+            .modifier(PPHomeCompanionInvitationSurface())
+        }
+        .buttonStyle(HomeCardPressStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(title), \(actionTitle)"))
+        .accessibilityHint(subtitle)
+        .accessibilityIdentifier("home.adoption")
     }
 
     private var adoptionCopy: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                Text(HomeModelAdapter.localized(
-                    "home_adopt_title",
-                    fallback: "تعرّف إلى رفيقك القادم"
-                ))
-                .font(HomeFont.title1())
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            Text(title)
+                .font(HomeFont.bold(26))
                 .foregroundStyle(Color.homeTextPrimary)
-                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
 
-                Text(HomeModelAdapter.localized(
-                    "home_adopt_subtitle",
-                    fallback: "حيوانات تنتظر بيتاً محباً"
-                ))
+            Text(subtitle)
                 .font(HomeFont.callout())
                 .foregroundStyle(Color.homeTextSecondary)
-                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Button(action: action) {
-                HStack(spacing: PPSpace.sm) {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .accessibilityHidden(true)
-
-                    Text(HomeModelAdapter.localized(
-                        "home_quick_action_adopt",
-                        fallback: "تبني"
-                    ))
-                    .font(HomeFont.bold(16))
-                    .fixedSize(horizontal: false, vertical: true)
-
-                    Spacer(minLength: PPSpace.sm)
-
-                    Image(systemName: "chevron.forward")
-                        .font(.system(size: 12, weight: .bold))
-                        .flipsForRightToLeftLayoutDirection(true)
-                        .accessibilityHidden(true)
-                }
-                .foregroundStyle(Color.white)
-                .padding(.horizontal, PPSpace.base)
-                .padding(.vertical, PPSpace.sm)
-                .frame(maxWidth: .infinity, minHeight: 50)
-                .background(PPGradient.hero, in: RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
-                ))
-                .shadow(
-                    color: Color.ppBrandPrimary.opacity(
-                        contrast == .increased
-                            ? 0
-                            : (colorScheme == .dark ? 0.08 : 0.10)
-                    ),
-                    radius: contrast == .increased ? 0 : 4,
-                    y: contrast == .increased ? 0 : 2
-                )
-                .contentShape(RoundedRectangle(
-                    cornerRadius: PPCorner.medium,
-                    style: .continuous
-                ))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(HomeModelAdapter.localized(
-                "home_quick_action_adopt",
-                fallback: "تبني"
-            ))
         }
+        .multilineTextAlignment(.leading)
     }
 
     private var adoptionArtwork: some View {
-        ZStack {
-            Circle()
-                .fill(Color.homeRaisedSurface.opacity(colorScheme == .dark ? 0.72 : 0.90))
-
-            Circle()
-                .fill(Color.ppAdoptionAccent.opacity(colorScheme == .dark ? 0.15 : 0.09))
-                .padding(PPSpace.sm)
-
-            Circle()
-                .stroke(
-                    Color.ppAdoptionAccent.opacity(contrast == .increased ? 0.62 : 0.24),
-                    lineWidth: contrast == .increased ? 1.5 : 1
-                )
-
+        PPHomeCompanionArtwork(side: artworkSide) {
             if reduceMotion {
                 Image(systemName: "heart.circle.fill")
                     .font(.system(size: 58, weight: .regular))
@@ -1503,34 +1428,35 @@ private struct HomeAdoptionSection: View {
                     loadsFromFirebase: true,
                     playbackEnabled: true
                 )
-                .clipShape(Circle())
-                .padding(PPSpace.xs)
+                .frame(width: artworkSide, height: artworkSide)
             }
         }
-        .frame(
-            width: dynamicTypeSize.isAccessibilitySize ? 176 : 148,
-            height: dynamicTypeSize.isAccessibilitySize ? 176 : 148
-        )
-        .overlay(alignment: .topTrailing) {
+    }
+
+    /// The complete invitation is the button; this footer names its action
+    /// without nesting a second control or competing with the relationship art.
+    private var adoptionAction: some View {
+        HStack(spacing: PPSpace.sm) {
             Image(systemName: "heart.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.ppAdoptionAccent)
-                .frame(width: 36, height: 36)
-                .background(Color.homeRaisedSurface, in: Circle())
-                .overlay {
-                    Circle()
-                        .stroke(
-                            Color.ppAdoptionAccent.opacity(contrast == .increased ? 0.58 : 0.20),
-                            lineWidth: contrast == .increased ? 1.5 : 1
-                        )
-                }
-                .offset(
-                    x: layoutDirection == .rightToLeft ? -2 : 2,
-                    y: -2
-                )
+                .font(.system(size: 13, weight: .semibold))
+                .accessibilityHidden(true)
+
+            Text(actionTitle)
+                .font(HomeFont.bold(17))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: PPSpace.md)
+
+            Image(systemName: "arrow.forward")
+                .font(.system(size: 14, weight: .semibold))
+                .flipsForRightToLeftLayoutDirection(true)
+                .foregroundStyle(Color.white)
+                .frame(width: PPSpace.xxxl, height: PPSpace.xxxl)
+                .background(Color.homeBrand, in: Circle())
+                .accessibilityHidden(true)
         }
-        .accessibilityHidden(true)
-        .allowsHitTesting(false)
+        .foregroundStyle(Color.ppAccentText)
+        .frame(minHeight: HomeVisualTokens.minimumTouchTarget)
     }
 }
 

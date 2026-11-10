@@ -863,6 +863,10 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         @"fulfillmentLoading": @(self.fulfillmentLoading),
         @"fulfillmentVersion": @(order.fulfillmentVersion),
         @"hasFulfillmentData": @(order.fulfillmentVersion == 1 || order.fulfillmentOrderIDs.count > 0 || order.fulfillmentSummary.count > 0),
+        @"deliveryOtp": PPMissionSafeString(order.deliveryOtp),
+        @"deliveryDriverName": PPMissionSafeString(order.deliveryDriverName),
+        @"deliveryDriverPhone": PPMissionSafeString(order.deliveryDriverPhone),
+        @"deliveryCompanyName": PPMissionSafeString(order.deliveryCompanyName),
         @"screenTitle": kLang(@"order_details_title")
     } mutableCopy];
     if (order.createdAt) state[@"createdAt"] = order.createdAt;

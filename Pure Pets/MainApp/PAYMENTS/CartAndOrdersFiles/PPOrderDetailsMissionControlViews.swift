@@ -47,6 +47,9 @@ struct PPOrderDetailsMissionControlScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    @State private var didCopyOtp = false
 
     var body: some View {
         ZStack {
@@ -224,6 +227,12 @@ struct PPOrderDetailsMissionControlScreen: View {
             HStack(alignment: .top, spacing: PPSpace.lg) {
                 VStack(spacing: PPSpace.lg) {
                     hero
+                    if store.state.isDeliveryOtpActive {
+                        deliveryOtpCard
+                    }
+                    if store.state.hasCourierInfo {
+                        courierInfoCard
+                    }
                     timelineSection
                     manifestSection
                 }
@@ -241,6 +250,12 @@ struct PPOrderDetailsMissionControlScreen: View {
         } else {
             VStack(spacing: PPSpace.lg) {
                 hero
+                if store.state.isDeliveryOtpActive {
+                    deliveryOtpCard
+                }
+                if store.state.hasCourierInfo {
+                    courierInfoCard
+                }
                 timelineSection
                 manifestSection
                 financialSection
@@ -266,6 +281,186 @@ struct PPOrderDetailsMissionControlScreen: View {
                 usesAccentBorder: false
             )
         )
+    }
+
+    private var deliveryOtpCard: some View {
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            HStack(spacing: PPSpace.md) {
+                Image(systemName: "shield.lefthalf.filled.badge.checkmark")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Color.ppPrimary)
+                    .frame(width: 40, height: 40)
+                    .background(Color.ppPrimary.opacity(0.12), in: Circle())
+                    .overlay(Circle().stroke(Color.ppPrimary.opacity(0.24), lineWidth: 1))
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(PPOrderMissionText("order_delivery_otp_eyebrow"))
+                        .font(PPOrderMissionTypography.caption(11.5))
+                        .tracking(layoutDirection == .rightToLeft ? 0 : 0.9)
+                        .foregroundStyle(Color.ppTextTertiary)
+                    Text(PPOrderMissionText("order_delivery_otp_title"))
+                        .font(PPOrderMissionTypography.headline())
+                        .foregroundStyle(Color.ppTextPrimary)
+                }
+
+                Spacer(minLength: 0)
+
+                Button(action: copyDeliveryOtp) {
+                    HStack(spacing: 4) {
+                        Image(systemName: didCopyOtp ? "checkmark" : "doc.on.doc")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(PPOrderMissionText(didCopyOtp ? "order_delivery_otp_copied" : "order_delivery_otp_copy_action"))
+                            .font(PPOrderMissionTypography.caption(12))
+                    }
+                    .padding(.horizontal, PPSpace.md)
+                    .padding(.vertical, PPSpace.xs)
+                    .background(
+                        didCopyOtp ? Color.ppSuccess.opacity(0.15) : Color.ppSecondarySurface,
+                        in: Capsule()
+                    )
+                    .foregroundStyle(didCopyOtp ? Color.ppSuccess : Color.ppPrimary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(PPOrderMissionText("order_delivery_otp_copy_action"))
+            }
+
+            // OTP Digits display
+            Button(action: copyDeliveryOtp) {
+                HStack(spacing: PPSpace.sm) {
+                    Spacer(minLength: 0)
+                    ForEach(Array(store.state.deliveryOtp.enumerated()), id: \.offset) { index, char in
+                        Text(String(char))
+                            .font(.system(size: 26, weight: .bold, design: .monospaced))
+                            .foregroundStyle(Color.ppPrimary)
+                            .frame(width: 44, height: 52)
+                            .background(
+                                Color.ppBackground,
+                                in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                            )
+                            .overlay {
+                                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                                    .strokeBorder(Color.ppPrimary.opacity(0.35), lineWidth: 1.5)
+                            }
+                        if index == 2 && store.state.deliveryOtp.count == 6 {
+                            Spacer()
+                                .frame(width: 8)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, PPSpace.xs)
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(PPOrderMissionText("order_delivery_otp_title")): \(store.state.deliveryOtp)")
+            .accessibilityHint(PPOrderMissionText("order_delivery_otp_copy_action"))
+
+            // Helper text
+            HStack(alignment: .top, spacing: PPSpace.sm) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .padding(.top, 1)
+                Text(PPOrderMissionText("order_delivery_otp_hint"))
+                    .font(PPOrderMissionTypography.caption(12.5))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, PPSpace.xs)
+        }
+        .padding(PPSpace.base)
+        .modifier(PPOrderMissionGlassCard(accent: Color.ppPrimary, emphasis: true))
+    }
+
+    @ViewBuilder
+    private var courierInfoCard: some View {
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            HStack(spacing: PPSpace.md) {
+                Image(systemName: "box.truck.fill")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(PPOrderMissionColorRole.location)
+                    .frame(width: 40, height: 40)
+                    .background(PPOrderMissionColorRole.location.opacity(0.12), in: Circle())
+                    .overlay(Circle().stroke(PPOrderMissionColorRole.location.opacity(0.24), lineWidth: 1))
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(PPOrderMissionText("order_courier_info_eyebrow"))
+                        .font(PPOrderMissionTypography.caption(11.5))
+                        .tracking(layoutDirection == .rightToLeft ? 0 : 0.9)
+                        .foregroundStyle(Color.ppTextTertiary)
+                    Text(PPOrderMissionText("order_courier_info_title"))
+                        .font(PPOrderMissionTypography.headline())
+                        .foregroundStyle(Color.ppTextPrimary)
+                }
+
+                Spacer(minLength: 0)
+
+                if !store.state.deliveryDriverPhone.isEmpty {
+                    Button {
+                        let phone = store.state.deliveryDriverPhone
+                        let clean = phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+                        if let url = URL(string: "tel://\(clean)"), UIApplication.shared.canOpenURL(url) {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "phone.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text(PPOrderMissionText("order_courier_call_action"))
+                                .font(PPOrderMissionTypography.caption(12.5))
+                        }
+                        .padding(.horizontal, PPSpace.md)
+                        .padding(.vertical, PPSpace.xs)
+                        .background(Color.ppPrimary.opacity(0.12), in: Capsule())
+                        .foregroundStyle(Color.ppPrimary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(PPOrderMissionText("order_courier_call_action"))
+                }
+            }
+
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                if !store.state.deliveryDriverName.isEmpty {
+                    HStack(spacing: PPSpace.sm) {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.ppTextSecondary)
+                        Text(store.state.deliveryDriverName)
+                            .font(PPOrderMissionTypography.callout())
+                            .foregroundStyle(Color.ppTextPrimary)
+                    }
+                }
+                if !store.state.deliveryCompanyName.isEmpty {
+                    HStack(spacing: PPSpace.sm) {
+                        Image(systemName: "building.2.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.ppTextSecondary)
+                        Text("\(PPOrderMissionText("order_courier_company_prefix")): \(store.state.deliveryCompanyName)")
+                            .font(PPOrderMissionTypography.caption(13))
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
+                }
+            }
+            .padding(.horizontal, PPSpace.xs)
+        }
+        .padding(PPSpace.base)
+        .modifier(PPOrderMissionGlassCard(accent: PPOrderMissionColorRole.location))
+    }
+
+    private func copyDeliveryOtp() {
+        guard !store.state.deliveryOtp.isEmpty else { return }
+        UIPasteboard.general.string = store.state.deliveryOtp
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            didCopyOtp = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation {
+                didCopyOtp = false
+            }
+        }
     }
 
     private var heroReferenceStrip: some View {

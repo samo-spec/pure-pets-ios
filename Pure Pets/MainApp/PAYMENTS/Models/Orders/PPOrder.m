@@ -503,6 +503,10 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
 
     order.deliveryStatus = PPOrderTrimmedString(data[@"deliveryStatus"]);
     order.deliveryUserId = PPOrderTrimmedString(data[@"deliveryUserId"] ?: data[@"deliveryUid"]);
+    order.deliveryOtp = PPOrderTrimmedString(data[@"deliveryOtp"] ?: data[@"customerOtp"] ?: data[@"expectedOtp"] ?: data[@"otp"]);
+    order.deliveryDriverName = PPOrderTrimmedString(data[@"deliveryDriverName"] ?: data[@"deliveryUserName"] ?: data[@"driverName"] ?: data[@"courierName"]);
+    order.deliveryDriverPhone = PPOrderTrimmedString(data[@"deliveryDriverPhone"] ?: data[@"deliveryUserPhone"] ?: data[@"driverPhone"] ?: data[@"courierPhone"]);
+    order.deliveryCompanyName = PPOrderTrimmedString(data[@"deliveryCompanyName"] ?: data[@"companyName"] ?: data[@"carrierName"]);
     NSLog(@"PPLAB PPOrder parse start | orderId=%@ rawStatus=%@ deliveryStatus=%@ fulfillmentVersion=%@",
           order.orderId ?: @"",
           order.rawStatus ?: @"",
@@ -541,7 +545,7 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
         else if (self.status == PPOrderStatusAbandoned) statusString = @"abandoned";
     }
 
-    return @{
+    NSMutableDictionary *dict = [@{
         @"orderId": self.orderId ?: @"",
         @"orderNumber": self.orderNumber.length > 0 ? self.orderNumber : [self displayOrderReference],
         @"userId": self.userId ?: @"",
@@ -571,7 +575,15 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
         @"fulfillmentVersion": @(self.fulfillmentVersion),
         @"fulfillmentOrderIDs": self.fulfillmentOrderIDs ?: @[],
         @"fulfillmentSummary": self.fulfillmentSummary ?: @{}
-    };
+    } mutableCopy];
+
+    if (self.deliveryUserId.length > 0) dict[@"deliveryUserId"] = self.deliveryUserId;
+    if (self.deliveryOtp.length > 0) dict[@"deliveryOtp"] = self.deliveryOtp;
+    if (self.deliveryDriverName.length > 0) dict[@"deliveryDriverName"] = self.deliveryDriverName;
+    if (self.deliveryDriverPhone.length > 0) dict[@"deliveryDriverPhone"] = self.deliveryDriverPhone;
+    if (self.deliveryCompanyName.length > 0) dict[@"deliveryCompanyName"] = self.deliveryCompanyName;
+
+    return dict.copy;
 }
 
 - (NSDictionary *)firestoreData
