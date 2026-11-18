@@ -152,7 +152,10 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         return checkoutItems == nil;
     }
 
+    os_signpost_id_t initializationTrace = os_signpost_id_generate(PPPaymentPresentationLog());
+    os_signpost_interval_begin(PPPaymentPresentationLog(), initializationTrace, "PaymentControllerInit");
     PPSelectPaymentVC *paymentViewController = [[self alloc] init];
+    os_signpost_interval_end(PPPaymentPresentationLog(), initializationTrace, "PaymentControllerInit");
     paymentViewController.explicitCheckoutItems = checkoutItems.copy;
     [paymentViewController pp_beginPresentationTrace];
     [navigationController pushViewController:paymentViewController animated:YES];
@@ -773,7 +776,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
             self.isLoadingAddresses = NO;
             self.addressesLoadFailed = error != nil;
             if (!error) [self pp_applyAddresses:addresses ?: @[]];
-            [self pp_updateCheckoutReview];
+            else [self pp_updateCheckoutReview];
         });
     }];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -1023,6 +1026,17 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
             [self pp_updateMethodStatus];
         });
     }];
+    // Bound the first-result loading state. Keep the listener/generation alive
+    // so a late snapshot can recover, and never alter an in-flight checkout.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.paymentInstrumentLoadGeneration != generation ||
+            !self.isLoadingPaymentInstruments ||
+            ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) return;
+        self.isLoadingPaymentInstruments = NO;
+        self.paymentInstrumentsLoadFailed = YES;
+        [self pp_updateMethodStatus];
+    });
 }
 
 -(void)showPaymentSheetFull:(BOOL)showFull
@@ -1649,7 +1663,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
                 self.isLoadingAddresses = NO;
                 self.addressesLoadFailed = error != nil;
                 if (!error) [self pp_applyAddresses:addresses ?: @[]];
-                [self pp_updateCheckoutReview];
+                else [self pp_updateCheckoutReview];
             }
             if (completion) completion(addresses, error);
         });

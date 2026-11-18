@@ -23,6 +23,7 @@
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
 #import <QuartzCore/QuartzCore.h>
+#import <os/signpost.h>
 @import FirebaseFunctions;
 
 static NSString *const kCartSupportPhoneNumber = @"+97459997720";
@@ -42,6 +43,16 @@ static NSTimeInterval const kPPSavedRowRevealDuration = 0.28;
 static NSTimeInterval const kPPSavedTransferAnticipationDuration = 0.10;
 static NSTimeInterval const kPPSavedTransferDuration = 0.62;
 static NSTimeInterval const kPPSavedTableReflowDuration = 0.50;
+
+static os_log_t PPCartCheckoutInteractionLog(void)
+{
+    static os_log_t log;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        log = os_log_create("com.purepets", "CheckoutPresentation");
+    });
+    return log;
+}
 
 static UIColor *PPCartScreenBackgroundColor(void)
 {
@@ -895,7 +906,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                                                                 scale:UIImageSymbolScaleLarge
                                                               palette:@[AppForgroundColr, AppForgroundColr]
                                                          makeTemplate:NO]];
-        [self.summaryView layoutIfNeeded];
+        [self.summaryView setNeedsLayout];
     }];
 
     if ([CartManager sharedManager].cartItems.count > 0) {
@@ -909,7 +920,9 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    [self.summaryView layoutIfNeeded];
+    // UIKit has just laid out this hierarchy. Forcing the self-sizing summary
+    // through another synchronous layout here re-enters transition layout
+    // (seen in the cart-to-payment scene-update watchdog report).
 
     if (self.undoContainerView && !CGRectIsEmpty(self.undoContainerView.bounds)) {
         self.undoContainerView.layer.shadowPath =
@@ -1051,7 +1064,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
     [self.summaryView setCheckoutLoading:NO];
     [self updateTotalLabel];
-    [self.summaryView layoutIfNeeded];
+    [self.summaryView setNeedsLayout];
     [self.premiumBackgroundView startAnimations];
     [self pp_updateSavedForLaterFooter];
     [self pp_applyBottomSurfaceAnimated:animated];
@@ -2301,43 +2314,52 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 }
 
 - (void)checkoutTapped {
-    if (!UserManager.sharedManager.isUserLoggedIn) {
-        [self.summaryView setCheckoutLoading:NO];
-        [self.summaryView setCheckoutSurfaceState:@"restricted"
-                                            title:kLang(@"checkout_summary_restricted_title")
-                                         subtitle:kLang(@"checkout_summary_restricted_subtitle")];
-        [UserManager showPromptOnTopController];
-        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-        return;
-    }
+    // Handler time includes validation, summary feedback, init and push scheduling;
+    // the payment controller separately traces presentation through viewDidAppear.
+    os_log_t log = PPCartCheckoutInteractionLog();
+    os_signpost_id_t trace = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, trace, "CartCheckoutTap");
+    @try {
+        if (!UserManager.sharedManager.isUserLoggedIn) {
+            [self.summaryView setCheckoutLoading:NO];
+            [self.summaryView setCheckoutSurfaceState:@"restricted"
+                                                title:kLang(@"checkout_summary_restricted_title")
+                                             subtitle:kLang(@"checkout_summary_restricted_subtitle")];
+            [UserManager showPromptOnTopController];
+            [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+            return;
+        }
 
-    if ([CartManager sharedManager].cartItems.count == 0) {
-        [self.summaryView setCheckoutLoading:NO];
-        [self.summaryView setCheckoutSurfaceState:@"empty"
-                                            title:kLang(@"checkout_summary_empty_title")
-                                         subtitle:kLang(@"checkout_summary_empty_subtitle")];
-        [PPAlertHelper showWarningIn:self
-                               title:kLang(@"checkout_cart_empty")
-                            subtitle:kLang(@"checkout_cart_empty_message")];
-        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-        return;
-    }
+        if ([CartManager sharedManager].cartItems.count == 0) {
+            [self.summaryView setCheckoutLoading:NO];
+            [self.summaryView setCheckoutSurfaceState:@"empty"
+                                                title:kLang(@"checkout_summary_empty_title")
+                                             subtitle:kLang(@"checkout_summary_empty_subtitle")];
+            [PPAlertHelper showWarningIn:self
+                                   title:kLang(@"checkout_cart_empty")
+                                subtitle:kLang(@"checkout_cart_empty_message")];
+            [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+            return;
+        }
 
-    [self.summaryView clearCheckoutSurfaceState];
-    [self.summaryView setCheckoutLoading:YES];
-    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+        [self.summaryView clearCheckoutSurfaceState];
+        [self.summaryView setCheckoutLoading:YES];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
 
-    // Order is created in PPCheckoutCoordinator from payment screen.
-    if (![PPSelectPaymentVC pushFromViewController:self]) {
-        [self.summaryView setCheckoutLoading:NO];
-        [self.summaryView setCheckoutSurfaceState:@"error"
-                                            title:kLang(@"checkout_summary_error_title")
-                                         subtitle:kLang(@"checkout_summary_error_subtitle")];
-        [[PPCommerceFeedbackManager shared]
-         playEvent:PPCommerceFeedbackEventPaymentFailure];
-        [PPAlertHelper showWarningIn:self
-                               title:kLang(@"checkout_failed_title")
-                            subtitle:kLang(@"checkout_generic_error")];
+        // Order is created in PPCheckoutCoordinator from payment screen.
+        if (![PPSelectPaymentVC pushFromViewController:self]) {
+            [self.summaryView setCheckoutLoading:NO];
+            [self.summaryView setCheckoutSurfaceState:@"error"
+                                                title:kLang(@"checkout_summary_error_title")
+                                             subtitle:kLang(@"checkout_summary_error_subtitle")];
+            [[PPCommerceFeedbackManager shared]
+             playEvent:PPCommerceFeedbackEventPaymentFailure];
+            [PPAlertHelper showWarningIn:self
+                                   title:kLang(@"checkout_failed_title")
+                                subtitle:kLang(@"checkout_generic_error")];
+        }
+    } @finally {
+        os_signpost_interval_end(log, trace, "CartCheckoutTap");
     }
 }
 

@@ -655,7 +655,9 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 
 - (void)setAddressText:(NSString *)addressText
 {
-    _addressText = [addressText copy];
+    NSString *resolvedText = [addressText isKindOfClass:NSString.class] ? [addressText copy] : @"";
+    if ([_addressText isEqualToString:resolvedText]) return;
+    _addressText = resolvedText;
     BOOL hasAddress = [self pp_hasSelectedAddress];
     NSString *displayText = hasAddress ? _addressText : [self pp_addressPlaceholderText];
     self.addressLabel.text = displayText;

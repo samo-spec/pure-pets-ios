@@ -66,6 +66,7 @@
 }
 
 + (nullable PaymentMethod *)methodForID:(NSString *)methodID {
+    if (![methodID isKindOfClass:NSString.class]) return nil;
     NSString *normalized = [[methodID ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].lowercaseString copy];
     if ([normalized isEqualToString:@"card"]) {
         normalized = @"qib";

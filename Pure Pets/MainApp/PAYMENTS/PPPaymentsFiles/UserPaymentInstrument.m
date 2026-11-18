@@ -1,6 +1,16 @@
 #import "UserPaymentInstrument.h"
 #import <FirebaseFirestore/FirebaseFirestore.h>
- 
+
+static NSString *PPInstrumentStringFromValue(id value) {
+    return [value isKindOfClass:NSString.class] ? [value copy] : @"";
+}
+
+static BOOL PPInstrumentBoolFromValue(id value) {
+    // Preserve legacy string booleans without sending boolValue to NSNull/maps.
+    return ([value isKindOfClass:NSNumber.class] || [value isKindOfClass:NSString.class])
+        ? [value boolValue] : NO;
+}
+
 static NSDate *PPInstrumentDateFromValue(id value) {
     if ([value isKindOfClass:NSDate.class]) {
         return (NSDate *)value;
@@ -48,19 +58,20 @@ static NSDate *PPInstrumentDateFromValue(id value) {
 
 - (instancetype)initWithDictionary:(NSDictionary *)dict {
     if (self = [super init]) {
-        _userID = dict[@"userID"];
-        _methodID = dict[@"methodID"];
-        _createdAt = PPInstrumentDateFromValue(dict[@"createdAt"]) ?: [NSDate date];
-        _updatedAt = PPInstrumentDateFromValue(dict[@"updatedAt"]) ?: [NSDate date];
-        _isDefault = [dict[@"isDefault"] boolValue];
-        _originalData = [dict[@"originalData"] isKindOfClass:NSDictionary.class] ? dict[@"originalData"] : @{};
-        NSDictionary *meta = [dict[@"metaData"] isKindOfClass:NSDictionary.class] ? dict[@"metaData"] : nil;
-        if (!meta && [dict[@"metadata"] isKindOfClass:NSDictionary.class]) {
+        NSDictionary *payload = [dict isKindOfClass:NSDictionary.class] ? dict : @{};
+        _userID = PPInstrumentStringFromValue(payload[@"userID"]);
+        _methodID = PPInstrumentStringFromValue(payload[@"methodID"]);
+        _createdAt = PPInstrumentDateFromValue(payload[@"createdAt"]) ?: [NSDate date];
+        _updatedAt = PPInstrumentDateFromValue(payload[@"updatedAt"]) ?: [NSDate date];
+        _isDefault = PPInstrumentBoolFromValue(payload[@"isDefault"]);
+        _originalData = [payload[@"originalData"] isKindOfClass:NSDictionary.class] ? payload[@"originalData"] : @{};
+        NSDictionary *meta = [payload[@"metaData"] isKindOfClass:NSDictionary.class] ? payload[@"metaData"] : nil;
+        if (!meta && [payload[@"metadata"] isKindOfClass:NSDictionary.class]) {
             // Backward compatibility for legacy key typo.
-            meta = dict[@"metadata"];
+            meta = payload[@"metadata"];
         }
         _metaData = meta ?: @{};
-        _maskedDetails = dict[@"maskedDetails"];
+        _maskedDetails = PPInstrumentStringFromValue(payload[@"maskedDetails"]);
 
         // Build PaymentMethod if possible
         _method = [PaymentMethod methodForID:_methodID];
@@ -101,10 +112,11 @@ static NSDate *PPInstrumentDateFromValue(id value) {
 #pragma mark - Display
 
 - (NSString *)displaySummary {
-    if (self.maskedDetails.length > 0)
-        return self.maskedDetails;
-    if (self.metaData[@"maskedCard"])
-        return self.metaData[@"maskedCard"];
+    NSString *maskedDetails = PPInstrumentStringFromValue(self.maskedDetails);
+    if (maskedDetails.length > 0) return maskedDetails;
+    NSDictionary *metadata = [self.metaData isKindOfClass:NSDictionary.class] ? self.metaData : @{};
+    NSString *maskedCard = PPInstrumentStringFromValue(metadata[@"maskedCard"]);
+    if (maskedCard.length > 0) return maskedCard;
     return kLang(@"Unknown Payment Method");
 }
 

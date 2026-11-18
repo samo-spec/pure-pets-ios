@@ -25,6 +25,7 @@ static NSString * const kPPBuiltInCashInstrumentID = @"builtin_cash_on_delivery"
 
 static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
 {
+    if (![methodID isKindOfClass:NSString.class]) return @"";
     NSString *normalized = [[methodID ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].lowercaseString copy];
     if ([normalized isEqualToString:@"cash"] ||
         [normalized isEqualToString:@"cod"] ||
@@ -116,6 +117,8 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
         if ([self pp_isBuiltInInstrument:instrument]) { continue; }
         
         NSString *normalizedMethodID = PPPaymentSelectionNormalizedMethodID(instrument.methodID);
+        // A malformed saved method cannot become an actionable fallback card.
+        if (normalizedMethodID.length == 0) { continue; }
         
         if ([normalizedMethodID isEqualToString:@"cash"] && ![CartManager sharedManager].cashOnDeliveryEnabled) {
             continue;
