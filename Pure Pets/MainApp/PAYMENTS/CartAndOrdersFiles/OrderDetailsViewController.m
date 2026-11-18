@@ -4319,19 +4319,11 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     if (currency.length == 0) currency = [self safeString:[CountryModel safeCurrentCurrencyCode]];
     if (currency.length == 0) currency = @"QAR";
     double total = MAX(0.0, order.totalAmount);
-    double effectiveShippingFee = MAX(0.0, order.shippingFee);
-    if (order.fulfillmentVersion != 1) {
-        // Preserve only the documented legacy fallback. V1 monetary fields are
-        // the immutable server checkout snapshot, including an explicit zero.
-        if (effectiveShippingFee <= 0.0 &&
-            total <= MAX(0.0, order.amount) + 0.009 &&
-            order.amount > 0.0) {
-            effectiveShippingFee = MAX(0.0, [CartManager sharedManager].deliveryFee);
-        }
-        double recomputedTotal = MAX(0.0, order.amount) + effectiveShippingFee;
-        if (recomputedTotal > total) total = recomputedTotal;
-        if (total <= 0.0) total = MAX(0.0, order.amount);
+    if (total <= 0.0) {
+        double effectiveShippingFee = MAX(0.0, order.shippingFee);
+        total = MAX(0.0, order.amount) + effectiveShippingFee;
     }
+    if (total <= 0.0) total = MAX(0.0, order.amount);
     return [NSString stringWithFormat:@"%.2f %@", total, currency];
 }
 

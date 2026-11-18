@@ -795,16 +795,10 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     double subtotal = MAX(0.0, order.amount);
     double shipping = MAX(0.0, order.shippingFee);
     double total = MAX(0.0, order.totalAmount);
-    if (order.fulfillmentVersion != 1) {
-        // Legacy orders predate the immutable checkout snapshot contract and
-        // may still require the historical pricing fallback.
-        if (shipping <= 0.0 && total <= subtotal + 0.009 && subtotal > 0.0) {
-            shipping = MAX(0.0, CartManager.sharedManager.deliveryFee);
-        }
-        double recomputedTotal = subtotal + shipping;
-        if (recomputedTotal > total) total = recomputedTotal;
-        if (total <= 0.0) total = subtotal;
+    if (total <= 0.0) {
+        total = subtotal + shipping;
     }
+    if (total <= 0.0) total = subtotal;
 
     NSDictionary *coordinate = [self deliveryCoordinate];
     NSArray *requests = [self requestDictionaries];

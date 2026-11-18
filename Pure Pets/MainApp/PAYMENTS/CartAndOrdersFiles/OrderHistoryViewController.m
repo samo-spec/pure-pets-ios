@@ -2682,20 +2682,15 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (double)displayAmountValueForOrder:(PPOrder *)order
 {
     double totalAmount = order.totalAmount;
+    if (totalAmount > 0.0) {
+        return totalAmount;
+    }
     double effectiveShippingFee = MAX(0.0, order.shippingFee);
-    if (effectiveShippingFee <= 0.0 &&
-        totalAmount <= MAX(0.0, order.amount) + 0.009 &&
-        order.amount > 0.0) {
-        effectiveShippingFee = MAX(0.0, [CartManager sharedManager].deliveryFee);
-    }
     double recomputedTotal = MAX(0.0, order.amount) + effectiveShippingFee;
-    if (recomputedTotal > totalAmount) {
-        totalAmount = recomputedTotal;
+    if (recomputedTotal > 0.0) {
+        return recomputedTotal;
     }
-    if (totalAmount <= 0.0) {
-        totalAmount = order.amount;
-    }
-    return MAX(0.0, totalAmount);
+    return MAX(0.0, order.amount);
 }
 
 - (double)totalSpentForOrders:(NSArray<PPOrder *> *)orders

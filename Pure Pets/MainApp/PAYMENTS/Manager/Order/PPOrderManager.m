@@ -865,6 +865,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         @"paymentMethodId": resolvedPaymentMethodID
     } mutableCopy];
     payload[@"idempotencyKey"] = resolvedIdempotencyKey;
+    payload[@"expectedDeliveryFee"] = @([CartManager sharedManager].pp_currentCheckoutShippingFee);
     NSLog(@"PPLAB createPendingOrder route | addressId=%@ paymentMethod=%@ keyPresent=1",
           shippingAddressID ?: @"",
           resolvedPaymentMethodID ?: @"");
