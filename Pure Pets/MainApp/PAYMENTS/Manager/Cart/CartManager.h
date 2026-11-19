@@ -82,6 +82,9 @@ presentingViewController:(UIViewController * _Nullable)presentingViewController
 - (void)removePurchasedItems:(NSArray<CartItem *> *)purchasedItems
                   completion:(void (^ _Nullable)(BOOL success))completion;
 - (void)refreshPricingConfiguration;
+- (double)pp_currentCheckoutShippingFee;
+- (double)pp_checkoutShippingFeeForItems:(nullable NSArray<CartItem *> *)items;
+- (void)fetchLatestPricingConfigurationWithCompletion:(void (^ _Nullable)(double deliveryFee, NSError * _Nullable error))completion;
 @end
 
 NS_ASSUME_NONNULL_END

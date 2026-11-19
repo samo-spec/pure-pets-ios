@@ -5894,3 +5894,9 @@
 
 "universal_variant_choose_options" = "اختر الخيارات";
 "universal_variant_review_options" = "راجع الخيارات";
+
+"checkout_delivery_fee_changed" = "تغيرت رسوم التوصيل منذ احتساب التسعيرة. يُرجى مراجعة الإجمالي المحدث قبل المتابعة.";
+"checkout_delivery_fee_changed_title" = "تحديث رسوم التوصيل";
+"checkout_confirm_updated_price" = "تأكيد ومتابعة الطلب";
+"checkout_delivery_fee_changed_prompt" = "تم تحديث رسوم التوصيل إلى %@ %@. الإجمالي الجديد للطلب هو %@ %@. هل ترغب في المتابعة؟";
+

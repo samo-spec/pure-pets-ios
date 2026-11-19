@@ -1824,8 +1824,30 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     return rawReason;
 }
 
+- (BOOL)pp_isDeliveryPriceChangeError:(NSError *)error
+{
+    if (!error) return NO;
+    NSString *rawReason = [self pp_trimmedCheckoutMessage:error.localizedDescription];
+    if ([rawReason isEqualToString:kLang(@"checkout_delivery_fee_changed")]) {
+        return YES;
+    }
+    NSDictionary *userInfo = error.userInfo;
+    if ([userInfo[@"domainCode"] isEqualToString:@"PRICE_CHANGED"]) return YES;
+    NSDictionary *details = [userInfo[@"details"] isKindOfClass:NSDictionary.class] ? userInfo[@"details"] : nil;
+    if ([details[@"domainCode"] isEqualToString:@"PRICE_CHANGED"]) return YES;
+    return [self pp_checkoutMessage:rawReason containsAnyToken:@[
+        @"delivery fee has changed",
+        @"price_changed",
+        @"pricing version has changed",
+        @"quote was generated"
+    ]];
+}
+
 - (BOOL)pp_checkoutFailureNeedsCartReviewForError:(NSError *)error userMessage:(NSString *)message
 {
+    if ([self pp_isDeliveryPriceChangeError:error]) {
+        return NO;
+    }
     NSString *rawReason = [self pp_trimmedCheckoutMessage:error.localizedDescription];
     NSString *safeMessage = [self pp_trimmedCheckoutMessage:message];
     if ([error.domain isEqualToString:@"Checkout"] && (error.code == 1001 || error.code == 1003)) {
@@ -2150,7 +2172,37 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         BOOL needsCartReview = [self pp_checkoutFailureNeedsCartReviewForError:error userMessage:reason];
         PPORDERLog(@"Checkout failed | rawError=%@ | retryable=%d", rawReason, isRetryable);
 
-        if (isRetryable) {
+        BOOL isPriceChange = [self pp_isDeliveryPriceChangeError:error];
+        if (isPriceChange) {
+            __weak typeof(self) weakPriceChange = self;
+            [self.summaryView setCheckoutLoading:YES];
+            [[CartManager sharedManager] fetchLatestPricingConfigurationWithCompletion:^(double updatedDeliveryFee, NSError * _Nullable fetchError) {
+                __strong typeof(weakPriceChange) strongPriceChange = weakPriceChange;
+                if (!strongPriceChange) return;
+                [strongPriceChange.summaryView setCheckoutLoading:NO];
+                [strongPriceChange pp_refreshCheckoutPricingPresentation];
+
+                PPCartSummary *newSummary = [strongPriceChange pp_checkoutSummary];
+                NSString *currency = [CountryModel safeCurrentCurrencyCode] ?: @"QAR";
+                NSString *feeFormatted = [NSString stringWithFormat:@"%.2f", newSummary.shippingFee];
+                NSString *totalFormatted = [NSString stringWithFormat:@"%.2f", newSummary.finalTotal];
+                NSString *prompt = [NSString stringWithFormat:kLang(@"checkout_delivery_fee_changed_prompt"),
+                                    feeFormatted, currency, totalFormatted, currency];
+
+                [PPAlertHelper showConfirmationIn:strongPriceChange
+                                            title:kLang(@"checkout_delivery_fee_changed_title")
+                                         subtitle:prompt
+                                    confirmButton:kLang(@"checkout_confirm_updated_price")
+                                     cancelButton:kLang(@"cancel")
+                                             icon:nil
+                                     confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+                    if (!didConfirm) return;
+                    PPORDERLog(@"User confirmed updated delivery fee and total | resubmitting checkout | method=%@", paymentMethodId);
+                    [strongPriceChange pp_startCheckoutWithPaymentMethodId:paymentMethodId];
+                }
+                                      cancelBlock:nil];
+            }];
+        } else if (isRetryable) {
             __weak typeof(self) weakRetry = self;
             [PPAlertHelper showConfirmationIn:self
                                         title:kLang(@"payment_failed_title")

@@ -5909,3 +5909,9 @@
 
 "universal_variant_choose_options" = "Choose options";
 "universal_variant_review_options" = "Review options";
+
+"checkout_delivery_fee_changed" = "The delivery fee has changed since your quote was calculated. Please review the updated total before proceeding.";
+"checkout_delivery_fee_changed_title" = "Delivery Fee Updated";
+"checkout_confirm_updated_price" = "Confirm & Continue";
+"checkout_delivery_fee_changed_prompt" = "The delivery fee has been updated to %@ %@. The new order total is %@ %@. Would you like to proceed?";
+

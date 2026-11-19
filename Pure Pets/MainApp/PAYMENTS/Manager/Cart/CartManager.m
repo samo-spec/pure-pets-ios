@@ -279,9 +279,35 @@ static void PPCartMergeVariantMetadata(CartItem *source, CartItem *target)
     }
 }
 
+- (double)pp_checkoutShippingFeeForItems:(nullable NSArray<CartItem *> *)items
+{
+    return items.count == 0 ? 0.0 : MAX(0.0, self.deliveryFee);
+}
+
 - (double)pp_currentCheckoutShippingFee
 {
-    return self.cartItems.count == 0 ? 0.0 : MAX(0.0, self.deliveryFee);
+    return [self pp_checkoutShippingFeeForItems:self.cartItems];
+}
+
+- (void)fetchLatestPricingConfigurationWithCompletion:(void (^ _Nullable)(double deliveryFee, NSError * _Nullable error))completion
+{
+    FIRDocumentReference *settingsRef = [[[FIRFirestore firestore] collectionWithPath:@"CommerceConfig"]
+                                         documentWithPath:@"payments"];
+    __weak typeof(self) weakSelf = self;
+    [settingsRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"[Cart] ⚠️ Pricing config refresh failed: %@", error.localizedDescription);
+            if (completion) {
+                completion(weakSelf ? weakSelf.deliveryFee : 0.0, error);
+            }
+            return;
+        }
+        NSDictionary *data = [snapshot.data isKindOfClass:NSDictionary.class] ? snapshot.data : @{};
+        [weakSelf pp_applyPricingConfiguration:data];
+        if (completion) {
+            completion(weakSelf ? weakSelf.deliveryFee : 0.0, nil);
+        }
+    }];
 }
 
 - (NSString *)pp_cartKeyForItem:(CartItem *)item

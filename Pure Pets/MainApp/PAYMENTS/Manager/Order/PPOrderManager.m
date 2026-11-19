@@ -256,6 +256,10 @@ static NSString *PPOrderLocalizedKnownBackendMessage(NSString *message) {
     if ([lowercase containsString:@"requested amount does not match the order total"]) {
         return kLang(@"payment_backend_amount_changed");
     }
+    if ([lowercase containsString:@"delivery fee has changed"] ||
+        [lowercase containsString:@"price_changed"]) {
+        return kLang(@"checkout_delivery_fee_changed");
+    }
     if ([lowercase containsString:@"online payment is currently unavailable"]) {
         return kLang(@"payment_backend_online_payment_disabled");
     }
@@ -825,6 +829,23 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                      idempotencyKey:(NSString *)idempotencyKey
                           completion:(void (^)(PPOrder *, NSError *))completion
 {
+    [self createPendingOrderWithItems:items
+                               amount:amount
+                              address:address
+                      paymentMethodId:paymentMethodId
+                       idempotencyKey:idempotencyKey
+                  expectedDeliveryFee:nil
+                           completion:completion];
+}
+
+- (void)createPendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                              amount:(double)amount
+                            address:(PPAddressModel * _Nullable)address
+                    paymentMethodId:(NSString *)paymentMethodId
+                     idempotencyKey:(NSString *)idempotencyKey
+                expectedDeliveryFee:(nullable NSNumber *)expectedDeliveryFee
+                          completion:(void (^)(PPOrder *, NSError *))completion
+{
     NSString *userId = [FIRAuth auth].currentUser.uid ?: @"";
     if (userId.length == 0) {
         NSError *error = [NSError errorWithDomain:@"PPOrder"
@@ -865,7 +886,12 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         @"paymentMethodId": resolvedPaymentMethodID
     } mutableCopy];
     payload[@"idempotencyKey"] = resolvedIdempotencyKey;
-    payload[@"expectedDeliveryFee"] = @([CartManager sharedManager].pp_currentCheckoutShippingFee);
+    NSNumber *resolvedDeliveryFee = expectedDeliveryFee;
+    if (resolvedDeliveryFee == nil) {
+        double fee = (items.count > 0) ? MAX(0.0, [CartManager sharedManager].deliveryFee) : 0.0;
+        resolvedDeliveryFee = @(fee);
+    }
+    payload[@"expectedDeliveryFee"] = resolvedDeliveryFee;
     NSLog(@"PPLAB createPendingOrder route | addressId=%@ paymentMethod=%@ keyPresent=1",
           shippingAddressID ?: @"",
           resolvedPaymentMethodID ?: @"");
@@ -1003,6 +1029,23 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                              idempotencyKey:(NSString *)idempotencyKey
                                   completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion
 {
+    [self fetchOrCreatePendingOrderWithItems:items
+                                      amount:amount
+                                     address:address
+                             paymentMethodId:paymentMethodId
+                              idempotencyKey:idempotencyKey
+                         expectedDeliveryFee:nil
+                                  completion:completion];
+}
+
+- (void)fetchOrCreatePendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                                     amount:(double)amount
+                                    address:(PPAddressModel * _Nullable)address
+                            paymentMethodId:(NSString *)paymentMethodId
+                             idempotencyKey:(NSString *)idempotencyKey
+                        expectedDeliveryFee:(nullable NSNumber *)expectedDeliveryFee
+                                  completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion
+{
     NSString *userId = [FIRAuth auth].currentUser.uid ?: @"";
     if (userId.length == 0) {
         NSError *error = [NSError errorWithDomain:@"PPOrder"
@@ -1101,7 +1144,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                     PPORDERLog(@"prepareOrderForRetry unavailable, creating new pending order | orderId=%@ | error=%@",
                                bestMatch.orderId ?: @"",
                                callableError.localizedDescription ?: @"Invalid response");
-                    [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
+                    [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey expectedDeliveryFee:expectedDeliveryFee completion:completion];
                     return;
                 }
 
@@ -1132,7 +1175,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         }
 
         // ── No match found: Create new order ──────────
-        [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
+        [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey expectedDeliveryFee:expectedDeliveryFee completion:completion];
     }];
 }
 

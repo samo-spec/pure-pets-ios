@@ -822,6 +822,7 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
          address:self.selectedAddress
          paymentMethodId:self.selectedPaymentMethodId
          idempotencyKey:self.checkoutIdempotencyKey
+         expectedDeliveryFee:@(checkoutSummary.shippingFee)
          completion:^(PPOrder *order, NSError *error) {
             if (![self pp_isCheckoutGenerationCurrent:generation] || self.hasResolvedCheckout) {
                 PPORDERLog(@"Ignoring stale pending-order callback | generation=%ld", (long)generation);

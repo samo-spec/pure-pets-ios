@@ -147,11 +147,27 @@ NS_ASSUME_NONNULL_BEGIN
                      idempotencyKey:(nullable NSString *)idempotencyKey
                           completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion;
 
+- (void)createPendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                              amount:(double)amount
+                            address:(PPAddressModel * _Nullable)address
+                    paymentMethodId:(nullable NSString *)paymentMethodId
+                     idempotencyKey:(nullable NSString *)idempotencyKey
+                expectedDeliveryFee:(nullable NSNumber *)expectedDeliveryFee
+                          completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion;
+
 - (void)fetchOrCreatePendingOrderWithItems:(NSArray<NSDictionary *> *)items
                                      amount:(double)amount
                                     address:(PPAddressModel * _Nullable)address
                             paymentMethodId:(nullable NSString *)paymentMethodId
                              idempotencyKey:(nullable NSString *)idempotencyKey
+                                  completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion;
+
+- (void)fetchOrCreatePendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                                     amount:(double)amount
+                                    address:(PPAddressModel * _Nullable)address
+                            paymentMethodId:(nullable NSString *)paymentMethodId
+                             idempotencyKey:(nullable NSString *)idempotencyKey
+                        expectedDeliveryFee:(nullable NSNumber *)expectedDeliveryFee
                                   completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion;
 
 /// Validate that requested quantities are currently available in `petAccessories`.
