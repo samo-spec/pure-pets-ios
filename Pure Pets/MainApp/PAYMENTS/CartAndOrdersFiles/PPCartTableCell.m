@@ -421,6 +421,11 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 @property (nonatomic, strong, readwrite) UIButton *saveForLaterButton;
 @property (nonatomic, strong) UIButton *savedRemoveButton;
 @property (nonatomic, strong) UIButton *savedPrimaryButton;
+@property (nonatomic, strong) NSLayoutConstraint *cardTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *cardBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *contentTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *contentBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *dividerHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *imageWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *textWidthConstraint;
 @property (nonatomic, strong) CartItem *currentItem;
@@ -626,18 +631,22 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     [self.textStack setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self.bottomRow setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
 
-    NSLayoutConstraint *cardBottomConstraint = [self.cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceSM];
-    cardBottomConstraint.priority = UILayoutPriorityRequired - 1;
+    self.cardTopConstraint = [self.cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceSM];
+    self.cardBottomConstraint = [self.cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceSM];
+    self.cardBottomConstraint.priority = UILayoutPriorityRequired - 1;
 
-    NSLayoutConstraint *contentBottomConstraint = [self.contentStack.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceBase];
-    contentBottomConstraint.priority = UILayoutPriorityRequired - 1;
+    self.contentTopConstraint = [self.contentStack.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceBase];
+    self.contentBottomConstraint = [self.contentStack.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceBase];
+    self.contentBottomConstraint.priority = UILayoutPriorityRequired - 1;
+
+    self.dividerHeightConstraint = [self.dividerView.heightAnchor constraintEqualToConstant:16];
 
     NSLayoutConstraint *purchaseBottomConstraint = [self.purchaseSurfaceView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor];
     purchaseBottomConstraint.priority = UILayoutPriorityDefaultHigh;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceSM],
-        cardBottomConstraint,
+        self.cardTopConstraint,
+        self.cardBottomConstraint,
         [self.cardContainer.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPSpaceBase],
         [self.cardContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPSpaceBase],
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.cardContainer.topAnchor],
@@ -652,8 +661,8 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         purchaseBottomConstraint,
         [self.purchaseSurfaceView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
         [self.purchaseSurfaceView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceBase],
-        contentBottomConstraint,
+        self.contentTopConstraint,
+        self.contentBottomConstraint,
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSpaceBase],
         [self.contentStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSpaceBase],
         self.imageWidthConstraint,
@@ -666,7 +675,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         [self.placeholderImageView.centerYAnchor constraintEqualToAnchor:self.imageShellView.centerYAnchor],
         [self.placeholderImageView.widthAnchor constraintEqualToConstant:28],
         [self.placeholderImageView.heightAnchor constraintEqualToConstant:28],
-        [self.dividerView.heightAnchor constraintEqualToConstant:16],
+        self.dividerHeightConstraint,
         [self.stepperStack.centerYAnchor constraintEqualToAnchor:self.quantityControlView.centerYAnchor],
         [self.stepperStack.topAnchor constraintGreaterThanOrEqualToAnchor:self.quantityControlView.topAnchor constant:4.0],
         [self.stepperStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.quantityControlView.bottomAnchor constant:-4.0],
@@ -705,6 +714,30 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         [self.savingsLabel removeFromSuperview];
         [savingsParent addArrangedSubview:self.savingsLabel];
     }
+
+    if (self.savedForLaterMode) {
+        self.contentStack.spacing = 8.0;
+        self.textStack.spacing = 3.0;
+        self.priceRow.spacing = 2.0;
+        self.cardTopConstraint.constant = 4.0;
+        self.cardBottomConstraint.constant = -4.0;
+        self.contentTopConstraint.constant = 10.0;
+        self.contentBottomConstraint.constant = -10.0;
+        self.dividerHeightConstraint.constant = 12.0;
+        self.imageWidthConstraint.constant = 62.0;
+    } else {
+        self.contentStack.spacing = PPSpaceMD;
+        self.textStack.spacing = PPSpaceXS;
+        self.priceRow.spacing = PPSpaceXXS;
+        self.cardTopConstraint.constant = PPSpaceSM;
+        self.cardBottomConstraint.constant = -PPSpaceSM;
+        self.contentTopConstraint.constant = PPSpaceBase;
+        self.contentBottomConstraint.constant = -PPSpaceBase;
+        self.dividerHeightConstraint.constant = 16.0;
+        self.imageWidthConstraint.constant = 88.0;
+    }
+    self.dividerView.imageAxisOffset = self.imageWidthConstraint.constant / 2.0;
+    [self.dividerView setNeedsDisplay];
 }
 
 - (void)pp_applyLanguage
@@ -738,8 +771,13 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     }
     self.identityRow.axis = verticalIdentity ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
     self.identityRow.alignment = verticalIdentity ? UIStackViewAlignmentLeading : UIStackViewAlignmentTop;
-    self.imageWidthConstraint.constant = accessibility ? 72 : 88;
+    if (self.savedForLaterMode) {
+        self.imageWidthConstraint.constant = accessibility ? 56 : 62;
+    } else {
+        self.imageWidthConstraint.constant = accessibility ? 72 : 88;
+    }
     self.dividerView.imageAxisOffset = self.imageWidthConstraint.constant / 2;
+    [self.dividerView setNeedsDisplay];
     CGFloat quantityWidth = MAX(30, ceil(self.quantityLabel.intrinsicContentSize.width));
     CGFloat totalWidth = MAX(96, ceil(self.lineTotalLabel.attributedText.length
         ? self.lineTotalLabel.attributedText.size.width
@@ -993,6 +1031,10 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     if (!self.contentStack) return;
     self.lineTotalLabel.font = PPCartNumberFont(27, UIFontTextStyleTitle1, self.traitCollection);
     self.quantityLabel.font = PPCartNumberFont(17, UIFontTextStyleBody, self.traitCollection);
+    CGFloat nameSize = self.savedForLaterMode ? 17.0 : 20.0;
+    self.nameLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+                           scaledFontForFont:[GM boldFontWithSize:nameSize]
+                           compatibleWithTraitCollection:self.traitCollection];
     [self pp_applyVisualTheme];
     for (UIButton *button in @[self.savedRemoveButton, self.savedPrimaryButton]) {
         UIButtonConfiguration *configuration = button.configuration;
@@ -1170,6 +1212,10 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     [self pp_updatePresentationRows];
     [self pp_applyLanguage];
     self.nameLabel.text = item.name.length ? item.name : kLang(@"cart_cell_unnamed_item");
+    CGFloat nameSize = self.savedForLaterMode ? 17.0 : 20.0;
+    self.nameLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+                           scaledFontForFont:[GM boldFontWithSize:nameSize]
+                           compatibleWithTraitCollection:self.traitCollection];
     // Preserve legacy summaries, but prefer the snapshot's current-language display names.
     self.variantOptionsLabel.text = item.optionsSummary;
     NSString *options = [self pp_optionsTextForItem:item];

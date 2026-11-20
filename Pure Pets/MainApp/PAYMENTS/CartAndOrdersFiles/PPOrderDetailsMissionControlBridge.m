@@ -683,7 +683,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                 PPMissionSafeString(data[@"deliveryRequestFulfillmentOrderID"]),
                 [data[@"deliveryRequestFulfillmentOrderIDs"] isKindOfClass:NSArray.class] ? data[@"deliveryRequestFulfillmentOrderIDs"] : @[]];
             NSInteger incomingRevision = PPMissionInteger(data[@"shippingAddressRevision"], 0);
-            if ([self hasCurrentOwnerAuthority] && incomingRevision < self.observedAddressRevision) {
+            if ([self.order.orderId isEqualToString:orderID] &&
+                [self.order.userId isEqualToString:ownerUID] && incomingRevision < self.observedAddressRevision) {
                 // An earlier listener event can arrive after the callable's committed response.
                 updatedOrder.shippingAddressId = self.order.shippingAddressId;
                 updatedOrder.shippingAddressSnapshot = self.order.shippingAddressSnapshot;
@@ -897,6 +898,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         @"addressEditRetryable": @(self.addressEligibilityError.length > 0 && !self.isOffline),
         @"addressEditable": @(addressEditable),
         @"addressEditMessage": addressEditable ? kLang(@"order_mission_address_edit_hint") : [self addressEditBlockedMessage],
+        @"isDeliveryStarted": @([self isDeliveryStarted]),
         @"hasCoordinate": coordinate[@"hasCoordinate"] ?: @NO,
         @"latitude": coordinate[@"latitude"] ?: @0,
         @"longitude": coordinate[@"longitude"] ?: @0,
@@ -1089,8 +1091,45 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     }];
 }
 
+- (BOOL)isDeliveryStarted
+{
+    if (!self.order) return NO;
+    if (self.order.inTransitAt != nil || self.order.deliveredAt != nil || self.order.deliveryAddressLockedAt != nil) {
+        return YES;
+    }
+    NSString *raw = PPMissionNormalizedKey(self.order.rawStatus);
+    NSString *delivery = PPMissionNormalizedKey(self.order.effectiveDeliveryStatus);
+    NSString *visible = PPMissionNormalizedKey(self.order.customerVisibleStatusKey);
+    NSArray *startedTokens = @[
+        @"in_transit", @"out_for_delivery", @"delivering", @"delivered",
+        @"picked_up", @"handed_over", @"on_the_way", @"completed", @"fulfilled"
+    ];
+    if (PPMissionMatches(raw, startedTokens) ||
+        PPMissionMatches(delivery, startedTokens) ||
+        PPMissionMatches(visible, startedTokens)) {
+        return YES;
+    }
+    if ([PPMissionSafeString(self.addressEligibility[@"reason"]) isEqualToString:@"delivery_started"]) {
+        return YES;
+    }
+    for (NSDictionary *child in [self fulfillmentDictionaries]) {
+        NSString *childStatus = PPMissionNormalizedKey(child[@"statusKey"]);
+        if (PPMissionMatches(childStatus, startedTokens)) {
+            return YES;
+        }
+    }
+    for (NSDictionary *req in [self requestDictionaries]) {
+        NSString *reqStatus = PPMissionNormalizedKey(req[@"statusKey"]);
+        if (PPMissionMatches(reqStatus, startedTokens)) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 - (BOOL)isAddressEditable
 {
+    if ([self isDeliveryStarted]) return NO;
     return [self hasCurrentOwnerAuthority] && !self.isOffline && !self.addressEligibilityLoading &&
         [self.addressEligibility[@"canChange"] boolValue];
 }
@@ -1099,6 +1138,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 {
     if (![self hasCurrentOwnerAuthority]) return kLang(@"order_mission_permission_denied");
     if (self.isOffline) return kLang(@"order_mission_address_online_required");
+    if ([self isDeliveryStarted]) return kLang(@"order_mission_address_driver_started");
     if (self.addressEligibilityLoading) return kLang(@"order_mission_checking_address_edit");
     if (self.addressEligibilityError.length > 0) return self.addressEligibilityError;
     return PPMissionAddressReasonMessage(self.addressEligibility[@"reason"]);
@@ -1116,8 +1156,16 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     [callable callWithObject:payload completion:^(FIRHTTPSCallableResult *response, NSError *error) {
         PPMissionOnMain(^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self || !self.running || self.generation != generation || ![self hasCurrentOwnerAuthority] ||
-                ![self.verifiedOwnerUID isEqual:uid] || ![self.order.orderId isEqual:orderID]) {
+            if (!self || !self.running || ![FIRAuth.auth.currentUser.uid isEqual:uid] || ![self.order.orderId isEqual:orderID]) {
+                completion(nil, PPMissionError(403, kLang(@"order_mission_permission_denied")));
+                return;
+            }
+            if (generation != self.generation) {
+                // A refresh invalidates this observation but cannot retract an already submitted command.
+                completion(nil, PPMissionError(503, kLang(@"order_mission_address_service_error")));
+                return;
+            }
+            if (![self hasCurrentOwnerAuthority] || ![self.verifiedOwnerUID isEqual:uid]) {
                 completion(nil, PPMissionError(403, kLang(@"order_mission_permission_denied")));
                 return;
             }
@@ -1958,6 +2006,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                       documentID:(NSString *)documentID
                            model:(PPAddressModel *)model
 {
+    if ([data[@"deleted"] isEqual:@YES] || [data[@"isDeleted"] isEqual:@YES] ||
+        [data[@"isActive"] isEqual:@NO]) return NO;
     for (NSString *key in @[@"userID", @"userId", @"uid"]) {
         NSString *owner = PPMissionSafeString(data[key]);
         if (owner.length && ![owner isEqualToString:self.verifiedOwnerUID]) return NO;
@@ -1980,7 +2030,6 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         @"subtitle": [[@[address.addressLine2 ?: @"", address.locatioName ?: @"", address.postalCode ?: @"", address.fullName ?: @""]
                        filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"length > 0"]] componentsJoinedByString:@" · "],
         @"isDefault": @(address.isDefault),
-        @"isSelected": @([identifier isEqualToString:PPMissionSafeString(self.order.shippingAddressId)]),
         @"isSelectable": @(selectable),
         @"availabilityMessage": selectable
             ? @"" : kLang(@"order_mission_address_not_selectable")
@@ -2071,8 +2120,12 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                      idempotencyKey:(NSString *)idempotencyKey
                          completion:(PPOrderMissionResult)completion
 {
-    if (![self hasCurrentOwnerAuthority] || self.isOffline) {
-        completion(nil, PPMissionError(403, [self addressEditBlockedMessage]));
+    if (![self hasCurrentOwnerAuthority]) {
+        completion(nil, PPMissionError(403, kLang(@"order_mission_permission_denied")));
+        return;
+    }
+    if (self.isOffline) {
+        completion(nil, PPMissionError(503, kLang(@"order_mission_address_online_required")));
         return;
     }
     if (!identifier.length || !idempotencyKey.length) {
@@ -2082,6 +2135,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     NSDictionary *command = @{@"action": @"change", @"orderId": self.order.orderId,
                               @"shippingAddressId": identifier, @"expectedShippingAddressId": previousAddressID,
                               @"expectedAddressRevision": @(revision), @"idempotencyKey": idempotencyKey};
+    NSInteger lookupAtSubmit = self.addressLookupToken;
     __weak typeof(self) weakSelf = self;
     [self callDeliveryAddressWithPayload:command completion:^(NSDictionary *result, NSError *error) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -2099,6 +2153,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         }
         NSInteger resultRevision = [result[@"addressRevision"] integerValue];
         if (resultRevision >= self.observedAddressRevision) {
+            BOOL routeChangedDuringSave = self.addressLookupToken != lookupAtSubmit;
             self.addressLookupToken += 1;
             self.addressEligibilityLoading = NO;
             self.addressEligibilityError = nil;
@@ -2106,7 +2161,9 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             self.observedAddressRevision = resultRevision;
             self.order.shippingAddressId = currentID;
             self.order.shippingAddressSnapshot = snapshot;
-            [self emitState];
+            // A departure observed after submission must win over eligibility in this response.
+            if (routeChangedDuringSave) [self refreshAddressEligibility];
+            else [self emitState];
         }
         BOOL destinationMatches = [self.order.shippingAddressId isEqualToString:identifier];
         completion(@{@"title": destinationMatches ? kLang(@"LocationUpdated") : kLang(@"DeliveryLocation"),

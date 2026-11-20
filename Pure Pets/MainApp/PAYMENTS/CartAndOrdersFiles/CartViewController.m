@@ -732,6 +732,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (BOOL)pp_isSavedForLaterDockIndexPath:(NSIndexPath *)indexPath;
 - (BOOL)pp_isSavedForLaterGridIndexPath:(NSIndexPath *)indexPath;
 - (CartItem *)pp_savedForLaterItemAtIndexPath:(NSIndexPath *)indexPath;
+- (void)pp_scrollToSavedForLaterDockAnimated:(BOOL)animated;
 - (void)pp_scrollToLastSavedForLaterRowAnimated:(BOOL)animated;
 - (void)pp_setSavedForLaterExpanded:(BOOL)expanded
                             animated:(BOOL)animated
@@ -2457,26 +2458,31 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     return [indexPaths copy];
 }
 
-- (void)pp_scrollToLastSavedForLaterRowAnimated:(BOOL)animated
+- (void)pp_scrollToSavedForLaterDockAnimated:(BOOL)animated
 {
     if (![self pp_shouldShowSavedForLaterInlineRows]) {
         return;
     }
 
-    NSArray<CartItem *> *savedItems = [self pp_savedForLaterItems];
-    if (savedItems.count == 0 || [self.cartTableView numberOfSections] == 0) {
+    if ([self.cartTableView numberOfSections] == 0) {
         return;
     }
 
-    NSInteger targetRow = [self pp_savedForLaterDockRowIndex] + ([self pp_savedForLaterGridMode] ? 1 : savedItems.count);
-    if (targetRow < 0 || targetRow >= [self.cartTableView numberOfRowsInSection:0]) {
+    NSInteger dockRow = [self pp_savedForLaterDockRowIndex];
+    if (dockRow < 0 || dockRow >= [self.cartTableView numberOfRowsInSection:0]) {
         return;
     }
 
-    NSIndexPath *targetIndexPath = [NSIndexPath indexPathForRow:targetRow inSection:0];
+    [self.cartTableView layoutIfNeeded];
+    NSIndexPath *targetIndexPath = [NSIndexPath indexPathForRow:dockRow inSection:0];
     [self.cartTableView scrollToRowAtIndexPath:targetIndexPath
-                              atScrollPosition:UITableViewScrollPositionBottom
+                              atScrollPosition:UITableViewScrollPositionTop
                                       animated:animated && !UIAccessibilityIsReduceMotionEnabled()];
+}
+
+- (void)pp_scrollToLastSavedForLaterRowAnimated:(BOOL)animated
+{
+    [self pp_scrollToSavedForLaterDockAnimated:animated];
 }
 
 - (UIView *)pp_snapshotForSourceView:(UIView *)sourceView
@@ -2710,7 +2716,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                                      completion:^{
             self.isPerformingTableMutation = NO;
             self.cartTableView.userInteractionEnabled = YES;
-            [self pp_scrollToLastSavedForLaterRowAnimated:animated];
+            [self pp_scrollToSavedForLaterDockAnimated:animated];
             [self pp_applyEmptyStateIfNeeded];
         }];
         return;

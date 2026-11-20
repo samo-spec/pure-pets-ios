@@ -4924,6 +4924,9 @@
 "order_mission_pinned_destination" = "Pinned location";
 "order_mission_checking_address_edit" = "Checking address options…";
 "order_mission_address_driver_started" = "The driver is on the way. The delivery address is locked.";
+"order_mission_address_locked_title" = "Address change locked";
+"order_mission_address_locked_delivering_desc" = "Delivery has already started. The delivery address cannot be changed once the driver is on the way to ensure fast and accurate delivery.";
+"order_mission_address_locked_delivering_hint" = "Delivery address modification is locked because the driver has already started delivering.";
 "order_mission_address_order_closed" = "This order is closed for address changes.";
 "order_mission_address_changed_elsewhere" = "This order’s address has changed. Review the current destination before choosing another address.";
 "order_mission_address_region_changed" = "Choose a saved address within this order’s delivery area.";

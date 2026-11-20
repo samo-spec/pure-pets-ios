@@ -443,6 +443,7 @@ struct PPOrderMissionState {
     let addressEditRetryable: Bool
     let addressEditable: Bool
     let addressEditMessage: String
+    let isDeliveryStarted: Bool
     let hasCoordinate: Bool
     let latitude: Double
     let longitude: Double
@@ -522,8 +523,25 @@ struct PPOrderMissionState {
         addressRevision = dictionary.missionInt("addressRevision")
         addressEditChecking = dictionary.missionBool("addressEditChecking")
         addressEditRetryable = dictionary.missionBool("addressEditRetryable")
-        addressEditable = dictionary.missionBool("addressEditable")
-        addressEditMessage = dictionary.missionString("addressEditMessage")
+        let rawDeliveryStarted = dictionary.missionBool("isDeliveryStarted")
+        let statusKeyLower = dictionary.missionString("statusKey").lowercased()
+        let rawStatusLower = dictionary.missionString("rawStatus").lowercased()
+        let deliveryStartedStatuses: Set<String> = [
+            "on_the_way", "in_transit", "out_for_delivery", "picked_up",
+            "handed_over", "delivered", "completed", "returned_to_store",
+            "payment_pending", "payment_confirmed"
+        ]
+        let inferredDeliveryStarted = deliveryStartedStatuses.contains(statusKeyLower) ||
+            rawStatusLower.contains("in_transit") || rawStatusLower.contains("shipped") ||
+            rawStatusLower.contains("out_for_delivery") || rawStatusLower.contains("delivering") ||
+            rawStatusLower.contains("on_the_way") || rawStatusLower.contains("picked_up") ||
+            rawStatusLower.contains("handed_over")
+        isDeliveryStarted = rawDeliveryStarted || inferredDeliveryStarted
+        addressEditable = !isDeliveryStarted && dictionary.missionBool("addressEditable")
+        let bridgedEditMessage = dictionary.missionString("addressEditMessage")
+        addressEditMessage = isDeliveryStarted && (bridgedEditMessage.isEmpty || bridgedEditMessage == PPOrderMissionText("order_mission_address_edit_hint"))
+            ? PPOrderMissionText("order_mission_address_driver_started")
+            : bridgedEditMessage
         hasCoordinate = dictionary.missionBool("hasCoordinate")
         latitude = dictionary.missionDouble("latitude")
         longitude = dictionary.missionDouble("longitude")
@@ -594,7 +612,6 @@ struct PPOrderMissionAddress: Identifiable, Hashable {
     let title: String
     let subtitle: String
     let isDefault: Bool
-    let isSelected: Bool
     let isSelectable: Bool
     let availabilityMessage: String
 
@@ -603,7 +620,6 @@ struct PPOrderMissionAddress: Identifiable, Hashable {
         title = dictionary.missionString("title")
         subtitle = dictionary.missionString("subtitle")
         isDefault = dictionary.missionBool("isDefault")
-        isSelected = dictionary.missionBool("isSelected")
         isSelectable = dictionary.missionBool("isSelectable")
         availabilityMessage = dictionary.missionString(
             "availabilityMessage"

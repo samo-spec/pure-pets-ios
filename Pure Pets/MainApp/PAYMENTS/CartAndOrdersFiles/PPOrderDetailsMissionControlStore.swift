@@ -468,7 +468,7 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
     }
 
     func presentAddresses() {
-        guard state.addressEditable || pendingAddressRetry != nil else { return }
+        guard (state.addressEditable && !state.isDeliveryStarted) || pendingAddressRetry != nil else { return }
         activeSheet = .addresses
         addressSaveError = ""
         if pendingAddressRetry != nil { return }
@@ -496,7 +496,7 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
     }
 
     func reviewAddress(_ address: PPOrderMissionAddress) -> PPOrderMissionAddressChange? {
-        guard state.addressEditable, !isCommandRunning, address.isSelectable,
+        guard state.addressEditable, !state.isDeliveryStarted, !isCommandRunning, address.isSelectable,
               address.id != state.currentShippingAddressID, pendingAddressRetry == nil else { return nil }
         addressSaveError = ""
         return PPOrderMissionAddressChange(
@@ -505,10 +505,39 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
         )
     }
 
+    func confirmAddressWithAlert(_ address: PPOrderMissionAddress) {
+        guard let change = reviewAddress(address) else { return }
+        let subtitle = [change.address.title, change.address.subtitle]
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+        let vc = self.presenter ?? AppManager.sharedInstance().topViewController()
+        PPAlertHelper.showConfirmation(
+            in: vc,
+            title: PPOrderMissionText("order_mission_confirm_address_title"),
+            subtitle: subtitle,
+            confirmButton: PPOrderMissionText("order_mission_use_address"),
+            cancelButton: PPOrderMissionText("Cancel"),
+            icon: UIImage(systemName: "mappin.circle.fill"),
+            confirmBlock: { [weak self] _, didConfirm in
+                guard didConfirm else { return }
+                Task { @MainActor in
+                    self?.confirmAddress(change)
+                }
+            },
+            cancelBlock: nil
+        )
+    }
+
     func confirmAddress(_ change: PPOrderMissionAddressChange) {
         let replay = pendingAddressRetry?.id == change.id
-        guard !isCommandRunning, state.isAuthorized, change.orderID == state.orderID,
-              state.addressEditable || replay else { return }
+        guard !isCommandRunning, state.isAuthorized, change.orderID == state.orderID else { return }
+        guard (state.addressEditable && !state.isDeliveryStarted) || replay else {
+            addressSaveError = state.addressEditMessage.isEmpty
+                ? PPOrderMissionText("order_mission_address_driver_started")
+                : state.addressEditMessage
+            return
+        }
+        pendingAddressRetry = change
         isCommandRunning = true
         addressSaveError = ""
         bridge.selectAddress(

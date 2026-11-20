@@ -1140,6 +1140,16 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
              callWithObject:payload
              completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable callableError) {
                 if (callableError || ![result.data isKindOfClass:NSDictionary.class]) {
+                    NSDictionary *details = [callableError.userInfo[@"details"] isKindOfClass:NSDictionary.class]
+                        ? callableError.userInfo[@"details"] : nil;
+                    NSString *reason = PPOrderTrimmedString(details[@"reason"]);
+                    if ([reason isEqualToString:@"address_changed"] || [reason isEqualToString:@"order_in_delivery"]) {
+                        NSString *message = [reason isEqualToString:@"address_changed"]
+                            ? kLang(@"order_mission_address_changed_elsewhere") : kLang(@"payment_backend_order_not_pending");
+                        if (completion) completion(nil, [NSError errorWithDomain:@"PPOrder" code:409
+                            userInfo:@{NSLocalizedDescriptionKey: message}]);
+                        return;
+                    }
                     // Fallback path: if callable is unavailable, create a new pending order.
                     PPORDERLog(@"prepareOrderForRetry unavailable, creating new pending order | orderId=%@ | error=%@",
                                bestMatch.orderId ?: @"",
@@ -1163,8 +1173,11 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 bestMatch.failureReason = nil;
                 bestMatch.transactionId = nil;
                 bestMatch.paymentResponse = nil;
+                NSDictionary *confirmed = [result.data[@"shippingAddressSnapshot"] isKindOfClass:NSDictionary.class]
+                    ? result.data[@"shippingAddressSnapshot"] : nil;
                 bestMatch.shippingAddressId = shippingAddressID ?: @"";
-                bestMatch.shippingAddressSnapshot = shippingSnapshot.copy;
+                bestMatch.shippingAddressSnapshot = [confirmed[@"addressID"] isEqual:shippingAddressID] &&
+                    [confirmed[@"userID"] isEqual:userId] ? confirmed : shippingSnapshot.copy;
                 bestMatch.updatedAt = NSDate.date;
                 PPORDERLog(@"Order updated via prepareOrderForRetry | orderId=%@ | paymentMethod=%@",
                            bestMatch.orderId ?: @"",

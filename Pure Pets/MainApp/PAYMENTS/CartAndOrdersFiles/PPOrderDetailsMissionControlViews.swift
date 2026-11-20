@@ -2018,7 +2018,7 @@ private struct PPOrderMissionDestinationCard: View {
             }
 
             if state.hasCoordinate || state.addressEditable || hasPendingChange || state.addressEditChecking ||
-                state.addressEditRetryable || !state.addressEditMessage.isEmpty {
+                state.addressEditRetryable || !state.addressEditMessage.isEmpty || state.isDeliveryStarted {
                 Divider().overlay(Color.ppSeparator)
                 VStack(alignment: .leading, spacing: PPSpace.xs) {
                     if hasPendingChange && !state.isOffline {
@@ -2035,6 +2035,8 @@ private struct PPOrderMissionDestinationCard: View {
                         .font(PPOrderMissionTypography.callout())
                         .foregroundStyle(Color.ppTextSecondary)
                         .padding(.vertical, PPSpace.xs)
+                    } else if state.isDeliveryStarted {
+                        deliveryLockedNotice
                     } else if !state.addressEditable && !state.addressEditMessage.isEmpty {
                         Label {
                             Text(state.addressEditMessage)
@@ -2069,6 +2071,41 @@ private struct PPOrderMissionDestinationCard: View {
         .modifier(PPOrderMissionGlassCard(accent: .ppPrimary))
     }
 
+    private var deliveryLockedNotice: some View {
+        HStack(alignment: .top, spacing: PPSpace.sm) {
+            Image(systemName: "box.truck.badge.clock.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.ppWarning)
+                .frame(width: 32, height: 32)
+                .background(Color.ppWarning.opacity(0.14), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(PPOrderMissionText("order_mission_address_locked_title"))
+                    .font(PPOrderMissionTypography.headline(14))
+                    .foregroundStyle(Color.ppTextPrimary)
+
+                Text(PPOrderMissionText("order_mission_address_locked_delivering_desc"))
+                    .font(PPOrderMissionTypography.caption(12.5))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, PPSpace.xs + 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(Color.ppWarning.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                        .stroke(Color.ppWarning.opacity(0.20), lineWidth: 1)
+                )
+        )
+        .padding(.vertical, PPSpace.xxs)
+        .accessibilityElement(children: .combine)
+    }
+
     private var recipientLayout: AnyLayout {
         if dynamicTypeSize.isAccessibilitySize {
             return AnyLayout(VStackLayout(alignment: .leading, spacing: PPSpace.xxs))
@@ -2095,6 +2132,24 @@ private struct PPOrderMissionDestinationCard: View {
             .buttonStyle(.plain)
             .accessibilityHint(hasPendingChange ? "" : state.addressEditMessage)
             .accessibilityIdentifier(hasPendingChange ? "order.destination.verifyChange" : "order.destination.change")
+        } else if state.isDeliveryStarted {
+            Button(action: {}) {
+                Label(
+                    PPOrderMissionText("order_mission_change_delivery_address"),
+                    systemImage: "lock.fill"
+                )
+                    .padding(.horizontal, PPSpace.md)
+                    .frame(minHeight: 44)
+                    .background(Color.ppTextTertiary.opacity(0.08), in: Capsule())
+                    .overlay(Capsule().stroke(Color.ppSeparator.opacity(0.6), lineWidth: 1))
+                    .contentShape(Rectangle())
+            }
+            .font(PPOrderMissionTypography.headline(15))
+            .foregroundStyle(Color.ppTextTertiary)
+            .buttonStyle(.plain)
+            .disabled(true)
+            .accessibilityHint(PPOrderMissionText("order_mission_address_locked_delivering_hint"))
+            .accessibilityIdentifier("order.destination.changeDisabled")
         } else if state.addressEditRetryable {
             Button(action: retryEligibility) {
                 Label(PPOrderMissionText("KLang_Retry"), systemImage: "arrow.clockwise")

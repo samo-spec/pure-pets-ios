@@ -4908,6 +4908,9 @@
 "order_mission_pinned_destination" = "الموقع المثبّت";
 "order_mission_checking_address_edit" = "جارٍ التحقق من إمكانية تغيير العنوان…";
 "order_mission_address_driver_started" = "السائق في طريقه إليك. لم يعد بالإمكان تغيير عنوان التسليم.";
+"order_mission_address_locked_title" = "لا يمكن تغيير العنوان";
+"order_mission_address_locked_delivering_desc" = "بدأت رحلة التوصيل بالفعل، ولا يمكن تعديل عنوان التسليم بعد انطلاق السائق لضمان دقة وسرعة وصول طلبك.";
+"order_mission_address_locked_delivering_hint" = "تم قفل تعديل العنوان لأن السائق بدأ التوصيل بالفعل.";
 "order_mission_address_order_closed" = "لم يعد تغيير عنوان هذا الطلب متاحًا.";
 "order_mission_address_changed_elsewhere" = "تغيّر عنوان هذا الطلب. راجع الوجهة الحالية قبل اختيار عنوان آخر.";
 "order_mission_address_region_changed" = "اختر عنوانًا محفوظًا ضمن منطقة توصيل هذا الطلب.";

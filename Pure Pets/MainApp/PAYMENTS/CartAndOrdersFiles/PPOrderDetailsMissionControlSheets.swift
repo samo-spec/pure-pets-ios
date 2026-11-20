@@ -1048,7 +1048,6 @@ private struct PPOrderMissionComposerSheet: View {
 private struct PPOrderMissionAddressesSheet: View {
     @ObservedObject var store: PPOrderDetailsMissionControlStore
     @Environment(\.dismiss) private var dismiss
-    @State private var review: PPOrderMissionAddressChange?
 
     var body: some View {
         NavigationStack {
@@ -1074,7 +1073,7 @@ private struct PPOrderMissionAddressesSheet: View {
                     } else if store.state.addressEditChecking {
                         ProgressView(PPOrderMissionText("order_mission_checking_address_edit"))
                             .frame(maxWidth: .infinity, minHeight: 120)
-                    } else if !store.state.addressEditable {
+                    } else if store.state.isDeliveryStarted || !store.state.addressEditable {
                         if store.state.addressEditRetryable {
                             PPOrderMissionSheetEmptyState(
                                 symbol: "wifi.exclamationmark", title: PPOrderMissionText("DeliveryLocation"),
@@ -1082,9 +1081,39 @@ private struct PPOrderMissionAddressesSheet: View {
                                 action: store.retryAddressEligibility
                             )
                         } else {
-                            Text(store.state.addressEditMessage)
-                                .font(PPOrderMissionTypography.body())
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            HStack(alignment: .top, spacing: PPSpace.sm) {
+                                Image(systemName: "box.truck.badge.clock.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(Color.ppWarning)
+                                    .frame(width: 32, height: 32)
+                                    .background(Color.ppWarning.opacity(0.14), in: Circle())
+                                    .accessibilityHidden(true)
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(PPOrderMissionText("order_mission_address_locked_title"))
+                                        .font(PPOrderMissionTypography.headline(14))
+                                        .foregroundStyle(Color.ppTextPrimary)
+
+                                    Text(store.state.isDeliveryStarted
+                                        ? PPOrderMissionText("order_mission_address_locked_delivering_desc")
+                                        : store.state.addressEditMessage)
+                                        .font(PPOrderMissionTypography.caption(12.5))
+                                        .foregroundStyle(Color.ppTextSecondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .padding(.horizontal, PPSpace.sm)
+                            .padding(.vertical, PPSpace.xs + 2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                                    .fill(Color.ppWarning.opacity(0.06))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                                            .stroke(Color.ppWarning.opacity(0.20), lineWidth: 1)
+                                    )
+                            )
+                            .padding(.vertical, PPSpace.xxs)
                         }
                     } else if store.addressesLoading {
                         ProgressView(PPOrderMissionText("Loading"))
@@ -1110,13 +1139,16 @@ private struct PPOrderMissionAddressesSheet: View {
                     } else {
                         ForEach(store.addresses) { address in
                             Button {
-                                review = store.reviewAddress(address)
+                                store.confirmAddressWithAlert(address)
                             } label: {
                                 PPOrderMissionAddressRow(address: address, isCurrent: address.id == store.state.currentShippingAddressID)
                             }
                             .buttonStyle(.plain)
                             .disabled(
-                                !address.isSelectable || address.id == store.state.currentShippingAddressID
+                                !address.isSelectable ||
+                                address.id == store.state.currentShippingAddressID ||
+                                store.state.isDeliveryStarted ||
+                                !store.state.addressEditable
                             )
                             .accessibilityValue(
                                 address.isSelectable
@@ -1144,6 +1176,7 @@ private struct PPOrderMissionAddressesSheet: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .disabled(store.state.isDeliveryStarted || !store.state.addressEditable)
                     }
                 }
                 .padding(PPSpace.base)
@@ -1159,16 +1192,6 @@ private struct PPOrderMissionAddressesSheet: View {
                         .font(PPOrderMissionTypography.callout())
                         .disabled(store.isCommandRunning)
                 }
-            }
-            .alert(item: $review) { change in
-                Alert(
-                    title: Text(PPOrderMissionText("order_mission_confirm_address_title")),
-                    message: Text([change.address.title, change.address.subtitle].filter { !$0.isEmpty }.joined(separator: "\n")),
-                    primaryButton: .default(Text(PPOrderMissionText("order_mission_use_address"))) {
-                        store.confirmAddress(change)
-                    },
-                    secondaryButton: .cancel(Text(PPOrderMissionText("Cancel")))
-                )
             }
         }
         .interactiveDismissDisabled(store.isCommandRunning)
