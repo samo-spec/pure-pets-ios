@@ -6490,13 +6490,25 @@ struct PureLensCardV2: View {
     let onMotionSettled: () -> Void
     let action: () -> Void
 
+    // MARK: - NextGen V10 Living Motion States
     @State private var pulseAura: Bool = false
+    @State private var beaconPulse: Bool = false
+    @State private var scanBeamOffset: CGFloat = -18.0
+    @State private var scanBeamOpacity: Double = 0.0
+    @State private var activePipelineStep: Int = 0
+    @State private var photonProgress1: CGFloat = 0.0
+    @State private var photonProgress2: CGFloat = 0.0
+    @State private var arrowFloat: Bool = false
+    @State private var iconPlateBreathe: Bool = false
+    @State private var glassAuraBreathe: Bool = false
+
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.homePureLensIsPressed) private var isPressed
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.scenePhase) private var scenePhase
 
     private var isDark: Bool {
         colorScheme == .dark
@@ -6518,10 +6530,10 @@ struct PureLensCardV2: View {
                         LinearGradient(
                             colors: [
                                 Color.ppSurfaceElevated,
-                                HomePureLensColors.signal.opacity(isDark ? 0.08 : 0.05)
+                                HomePureLensColors.signal.opacity(isDark ? (glassAuraBreathe ? 0.12 : 0.06) : (glassAuraBreathe ? 0.08 : 0.04))
                             ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                            startPoint: isRTL ? .topTrailing : .topLeading,
+                            endPoint: isRTL ? .bottomLeading : .bottomTrailing
                         )
                     )
                     .overlay(
@@ -6529,20 +6541,20 @@ struct PureLensCardV2: View {
                             .strokeBorder(
                                 LinearGradient(
                                     colors: [
-                                        HomePureLensColors.signal.opacity(pulseAura ? 0.20 : 0.08),
+                                        HomePureLensColors.signal.opacity(pulseAura ? 0.28 : 0.10),
                                         Color.ppSurfaceBorder.opacity(isDark ? 0.25 : 0.35)
                                     ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                                    startPoint: isRTL ? .topTrailing : .topLeading,
+                                    endPoint: isRTL ? .bottomLeading : .bottomTrailing
                                 ),
                                 lineWidth: 1.0
                             )
                     )
                     .shadow(
-                        color: HomePureLensColors.signal.opacity(isDark ? 0.12 : 0.08),
-                        radius: 16,
+                        color: HomePureLensColors.signal.opacity(isDark ? (glassAuraBreathe ? 0.16 : 0.08) : (glassAuraBreathe ? 0.10 : 0.05)),
+                        radius: glassAuraBreathe ? 20 : 14,
                         x: 0,
-                        y: 6
+                        y: glassAuraBreathe ? 8 : 5
                     )
 
                 VStack(spacing: 16) {
@@ -6564,23 +6576,32 @@ struct PureLensCardV2: View {
                         }
                     }
 
-                    // 3-step connected recognition pipeline
+                    // 3-step connected recognition pipeline with living signal wave
                     HStack(spacing: 6) {
                         stepPill(
+                            stepIndex: 0,
                             symbol: "camera.fill",
                             titleKey: "pure_lens_account_camera",
                             fallback: isRTL ? "كاميرا" : "Camera",
                             tint: HomePureLensColors.signal
                         )
-                        connectorLine
+                        connectorLine(
+                            progress: photonProgress1,
+                            tint: HomePureLensColors.recognition
+                        )
                         stepPill(
+                            stepIndex: 1,
                             symbol: "viewfinder",
                             titleKey: "pure_lens_account_recognize",
                             fallback: isRTL ? "تعرّف" : "Recognize",
                             tint: HomePureLensColors.recognition
                         )
-                        connectorLine
+                        connectorLine(
+                            progress: photonProgress2,
+                            tint: HomePureLensColors.discovery
+                        )
                         stepPill(
+                            stepIndex: 2,
                             symbol: "sparkles",
                             titleKey: "pure_lens_account_discover",
                             fallback: isRTL ? "اكتشف" : "Discover",
@@ -6593,15 +6614,32 @@ struct PureLensCardV2: View {
         }
         .buttonStyle(HomeLensPressStyle())
         .onAppear {
-            if !reduceMotion {
-                withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
-                    pulseAura = true
-                }
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true)) {
+                pulseAura = true
+                iconPlateBreathe = true
+                arrowFloat = true
+                glassAuraBreathe = true
+            }
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                beaconPulse = true
             }
         }
         .task(id: motionReady) {
             guard motionReady || motionAlreadyPlayed else { return }
             onMotionSettled()
+        }
+        .task(id: pipelineLoopID) {
+            await runPipelineMotionLoop()
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase != .active {
+                activePipelineStep = -1
+                scanBeamOffset = -18.0
+                scanBeamOpacity = 0.0
+                photonProgress1 = 0.0
+                photonProgress2 = 0.0
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(HomeModelAdapter.localized("home_pure_lens_a11y", fallback: "Open Pure Lens camera"))
@@ -6609,23 +6647,174 @@ struct PureLensCardV2: View {
         .accessibilityIdentifier("home.pureLens.open")
     }
 
-    // MARK: - AI Camera Scanner Icon Plate
+    // MARK: - Pipeline Choreography Loop (NextGen V10)
+    @MainActor
+    private func runPipelineMotionLoop() async {
+        guard !reduceMotion && scenePhase == .active else { return }
+
+        while !Task.isCancelled && !reduceMotion && scenePhase == .active {
+            // Step 0: Camera active (capture stage)
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
+                activePipelineStep = 0
+            }
+            // Trigger scanner beam sweep across icon plate
+            withAnimation(.easeInOut(duration: 0.75)) {
+                scanBeamOffset = 18.0
+                scanBeamOpacity = 0.85
+            }
+            do {
+                try await Task.sleep(nanoseconds: 750_000_000)
+            } catch { return }
+
+            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
+
+            withAnimation(.easeOut(duration: 0.25)) {
+                scanBeamOpacity = 0.0
+            }
+            scanBeamOffset = -18.0
+
+            // Pulse traveling through Connector 1 -> Step 1
+            withAnimation(.easeInOut(duration: 0.45)) {
+                photonProgress1 = 1.0
+            }
+            do {
+                try await Task.sleep(nanoseconds: 450_000_000)
+            } catch { return }
+
+            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
+
+            // Step 1: Recognize active (neural analysis)
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
+                activePipelineStep = 1
+                photonProgress1 = 0.0
+            }
+            do {
+                try await Task.sleep(nanoseconds: 700_000_000)
+            } catch { return }
+
+            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
+
+            // Pulse traveling through Connector 2 -> Step 2
+            withAnimation(.easeInOut(duration: 0.45)) {
+                photonProgress2 = 1.0
+            }
+            do {
+                try await Task.sleep(nanoseconds: 450_000_000)
+            } catch { return }
+
+            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
+
+            // Step 2: Discover active (personalized match)
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
+                activePipelineStep = 2
+                photonProgress2 = 0.0
+            }
+            do {
+                try await Task.sleep(nanoseconds: 850_000_000)
+            } catch { return }
+
+            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
+
+            // Rest phase between cycles
+            withAnimation(.easeInOut(duration: 0.4)) {
+                activePipelineStep = -1
+            }
+            do {
+                try await Task.sleep(nanoseconds: 1_200_000_000)
+            } catch { return }
+        }
+    }
+
+    private var pipelineLoopID: Int {
+        var hasher = Hasher()
+        hasher.combine(reduceMotion)
+        hasher.combine(scenePhase == .active)
+        return hasher.finalize()
+    }
+
+    // MARK: - AI Camera Scanner Icon Plate (NextGen V10 Living Instrument)
     private var scannerIconPlate: some View {
         ZStack {
+            // Ambient Aura Halo Ring behind the plate
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(
+                    HomePureLensColors.signal.opacity(
+                        reduceMotion ? 0.12 : (iconPlateBreathe ? 0.38 : 0.10)
+                    ),
+                    lineWidth: reduceMotion ? 1.0 : (iconPlateBreathe ? 2.5 : 1.0)
+                )
+                .frame(width: 56, height: 56)
+                .scaleEffect(reduceMotion ? 1.0 : (iconPlateBreathe ? 1.06 : 0.96))
+                .blur(radius: reduceMotion ? 0 : 2)
+
+            // Primary Plate Base
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [HomePureLensColors.signal, HomePureLensColors.signalPressed],
+                        colors: [
+                            HomePureLensColors.signal,
+                            HomePureLensColors.signalPressed
+                        ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .frame(width: 48, height: 48)
-                .shadow(color: HomePureLensColors.signal.opacity(0.35), radius: 8, x: 0, y: 4)
+                .shadow(
+                    color: HomePureLensColors.signal.opacity(
+                        reduceMotion ? 0.35 : (iconPlateBreathe ? 0.52 : 0.25)
+                    ),
+                    radius: iconPlateBreathe ? 12 : 8,
+                    x: 0,
+                    y: iconPlateBreathe ? 6 : 4
+                )
 
+            // Dynamic Laser Scan Line inside the plate
+            if !reduceMotion {
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.0),
+                                Color.white.opacity(scanBeamOpacity),
+                                Color.white.opacity(0.0)
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 36, height: 2)
+                    .offset(y: scanBeamOffset)
+                    .blur(radius: 0.5)
+                    .clipped()
+            }
+
+            // Viewfinder Camera Icon with Micro-Spring Scale
             Image(systemName: "camera.viewfinder")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.white)
+                .scaleEffect(
+                    reduceMotion ? 1.0 : (activePipelineStep == 0 ? 1.08 : (iconPlateBreathe ? 1.02 : 0.98))
+                )
+                .rotationEffect(
+                    .degrees(activePipelineStep == 0 && !reduceMotion ? (isRTL ? -3 : 3) : 0)
+                )
+
+            // Specular Edge Catch
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.45),
+                            Color.white.opacity(0.12),
+                            Color.clear
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.0
+                )
+                .frame(width: 48, height: 48)
         }
         .accessibilityHidden(true)
     }
@@ -6638,12 +6827,7 @@ struct PureLensCardV2: View {
                     .font(HomeFont.bold(19))
                     .foregroundColor(Color.ppTextPrimary)
 
-                Text(HomeModelAdapter.localized("pure_lens_account_live_vision", fallback: isRTL ? "رؤية ذكية مباشرة" : "LIVE AI VISION"))
-                    .font(HomeFont.bold(9.5))
-                    .foregroundColor(HomePureLensColors.signal)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(HomePureLensColors.signal.opacity(isDark ? 0.18 : 0.12)))
+                liveVisionBadge
             }
 
             Text(HomeModelAdapter.localized("home_pure_lens_subtitle", fallback: isRTL ? "تعرّف على الحيوان واكتشف ما يناسبه." : "Recognize an animal and discover what fits it."))
@@ -6653,23 +6837,88 @@ struct PureLensCardV2: View {
         }
     }
 
-    // MARK: - Action Arrow
-    private var actionArrow: some View {
-        Image(systemName: "arrow.up.forward.circle.fill")
-            .font(.system(size: 24, weight: .semibold))
+    // MARK: - Live Vision Beacon Badge (NextGen V10 Pulsing Beacon)
+    private var liveVisionBadge: some View {
+        HStack(spacing: 5) {
+            // Live Pulsing Optical Beacon Dot
+            ZStack {
+                // Expanding Aura Wave
+                Circle()
+                    .fill(HomePureLensColors.signal.opacity(beaconPulse && !reduceMotion ? 0.0 : 0.55))
+                    .frame(width: 6, height: 6)
+                    .scaleEffect(beaconPulse && !reduceMotion ? 2.6 : 1.0)
+
+                // Solid Core Dot
+                Circle()
+                    .fill(HomePureLensColors.signal)
+                    .frame(width: 5, height: 5)
+                    .shadow(color: HomePureLensColors.signal.opacity(0.8), radius: 2)
+            }
+            .frame(width: 8, height: 8)
+
+            Text(HomeModelAdapter.localized(
+                "pure_lens_account_live_vision",
+                fallback: isRTL ? "رؤية ذكية مباشرة" : "LIVE AI VISION"
+            ))
+            .font(HomeFont.bold(9.5))
             .foregroundColor(HomePureLensColors.signal)
-            .accessibilityHidden(true)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(
+            Capsule()
+                .fill(HomePureLensColors.signal.opacity(isDark ? 0.18 : 0.12))
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(
+                    HomePureLensColors.signal.opacity(beaconPulse && !reduceMotion ? 0.35 : 0.18),
+                    lineWidth: 0.75
+                )
+        )
     }
 
-    // MARK: - Step Pill
-    private func stepPill(symbol: String, titleKey: String, fallback: String, tint: Color) -> some View {
-        HStack(spacing: 5) {
+    // MARK: - Action Arrow (Kinetic Vector Floating)
+    private var actionArrow: some View {
+        ZStack {
+            // Radiant Halo
+            Circle()
+                .fill(HomePureLensColors.signal.opacity(arrowFloat && !reduceMotion ? 0.18 : 0.06))
+                .frame(width: 32, height: 32)
+                .scaleEffect(arrowFloat && !reduceMotion ? 1.15 : 0.95)
+
+            Image(systemName: "arrow.up.forward.circle.fill")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundColor(HomePureLensColors.signal)
+                .offset(
+                    x: isPressed && !reduceMotion ? (isRTL ? -3 : 3) : (arrowFloat && !reduceMotion ? (isRTL ? -1.5 : 1.5) : 0),
+                    y: isPressed && !reduceMotion ? -3 : (arrowFloat && !reduceMotion ? -1.5 : 0)
+                )
+        }
+        .accessibilityHidden(true)
+    }
+
+    // MARK: - Step Pill (Interactive Sequential Illumination)
+    private func stepPill(
+        stepIndex: Int,
+        symbol: String,
+        titleKey: String,
+        fallback: String,
+        tint: Color
+    ) -> some View {
+        let isActive = (activePipelineStep == stepIndex) && !reduceMotion
+        return HStack(spacing: 5) {
             Image(systemName: symbol)
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(tint)
+                .foregroundColor(isActive ? tint : tint.opacity(0.85))
+                .scaleEffect(isActive ? 1.18 : 1.0)
+                .rotationEffect(
+                    (stepIndex == 2 && isActive) ? .degrees(isRTL ? -14 : 14) : .zero
+                )
+
             Text(HomeModelAdapter.localized(titleKey, fallback: fallback))
-                .font(HomeFont.medium(11.5))
-                .foregroundColor(Color.ppTextSecondary)
+                .font(isActive ? HomeFont.bold(11.5) : HomeFont.medium(11.5))
+                .foregroundColor(isActive ? Color.ppTextPrimary : Color.ppTextSecondary)
                 .lineLimit(1)
         }
         .padding(.horizontal, 9)
@@ -6677,17 +6926,64 @@ struct PureLensCardV2: View {
         .fixedSize(horizontal: true, vertical: false)
         .background(
             Capsule()
-                .fill(Color.ppSurfaceBase.opacity(0.85))
-                .overlay(Capsule().strokeBorder(tint.opacity(0.12), lineWidth: 0.75))
+                .fill(
+                    isActive
+                        ? tint.opacity(isDark ? 0.22 : 0.14)
+                        : Color.ppSurfaceBase.opacity(0.85)
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(
+                            isActive ? tint.opacity(0.52) : tint.opacity(0.12),
+                            lineWidth: isActive ? 1.2 : 0.75
+                        )
+                )
         )
+        .shadow(
+            color: isActive ? tint.opacity(0.35) : .clear,
+            radius: isActive ? 6 : 0,
+            x: 0,
+            y: isActive ? 2 : 0
+        )
+        .scaleEffect(isActive ? 1.04 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.65), value: isActive)
     }
 
-    // MARK: - Connector Line
-    private var connectorLine: some View {
-        Rectangle()
-            .fill(HomePureLensColors.signal.opacity(0.2))
-            .frame(height: 1.5)
-            .frame(minWidth: 6, maxWidth: .infinity)
+    // MARK: - Connector Line with Traveling Photon Packet
+    private func connectorLine(progress: CGFloat, tint: Color) -> some View {
+        GeometryReader { proxy in
+            let lineWidth = proxy.size.width
+            let photonWidth: CGFloat = 8.0
+            let effectiveProgress = isRTL ? (1.0 - progress) : progress
+            let photonX = (lineWidth - photonWidth) * effectiveProgress
+
+            ZStack(alignment: isRTL ? .trailing : .leading) {
+                // Background track
+                Rectangle()
+                    .fill(HomePureLensColors.signal.opacity(0.18))
+                    .frame(height: 1.5)
+
+                // Traveling photon light packet
+                if progress > 0.01 && progress < 0.99 && !reduceMotion {
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.white,
+                                    tint
+                                ],
+                                startPoint: isRTL ? .trailing : .leading,
+                                endPoint: isRTL ? .leading : .trailing
+                            )
+                        )
+                        .frame(width: photonWidth, height: 3.5)
+                        .shadow(color: tint.opacity(0.8), radius: 3)
+                        .offset(x: photonX, y: -1)
+                }
+            }
+        }
+        .frame(height: 1.5)
+        .frame(minWidth: 8, maxWidth: .infinity)
     }
 }
 
