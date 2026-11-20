@@ -62,6 +62,7 @@ typedef NS_ENUM(NSInteger, PPOrderStatus) {
 @property (nonatomic, strong, nullable) NSDate *inTransitAt;
 @property (nonatomic, strong, nullable) NSDate *shippedAt;
 @property (nonatomic, strong, nullable) NSDate *deliveredAt;
+@property (nonatomic, strong, nullable) NSDate *deliveryAddressLockedAt;
 @property (nonatomic, strong, nullable) NSDate *paymentPendingAt;
 @property (nonatomic, strong, nullable) NSDate *paymentConfirmedAt;
 @property (nonatomic, strong, nullable) NSDate *completedAt;

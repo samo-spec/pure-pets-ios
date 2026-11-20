@@ -492,6 +492,7 @@ static BOOL PPOrderIsUncapturedQIBCheckoutCancellation(PPOrder *order)
     order.inTransitAt = [self parseDateFromValue:data[@"inTransitAt"]];
     order.shippedAt = [self parseDateFromValue:data[@"shippedAt"]];
     order.deliveredAt = [self parseDateFromValue:data[@"deliveredAt"]];
+    order.deliveryAddressLockedAt = [self parseDateFromValue:data[@"deliveryAddressLockedAt"]];
     order.paymentPendingAt = [self parseDateFromValue:data[@"paymentPendingAt"]];
     order.paymentConfirmedAt = [self parseDateFromValue:data[@"paymentConfirmedAt"]];
     order.completedAt = [self parseDateFromValue:data[@"completedAt"]];
