@@ -12,6 +12,10 @@
 #import "PPOrder.h"
 #import "OrderSupportFunc.h"
 
+@interface PPOrder (PPMissionAddressLocking)
+@property (nonatomic, strong, nullable) NSDate *deliveryAddressLockedAt;
+@end
+
 NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^PPOrderMissionStateUpdate)(NSDictionary *state);

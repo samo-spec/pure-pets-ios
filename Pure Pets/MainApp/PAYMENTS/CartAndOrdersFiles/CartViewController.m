@@ -805,7 +805,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.cartTableView.contentInset = UIEdgeInsetsMake(12.0, 0.0, kCartTableBottomInset, 0.0);
     self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, kCartTableBottomInset, 0.0);
     self.cartTableView.rowHeight = UITableViewAutomaticDimension;
-    self.cartTableView.estimatedRowHeight = 212.0;
+    self.cartTableView.estimatedRowHeight = 218.0;
     if (@available(iOS 15.0, *)) {
         self.cartTableView.sectionHeaderTopPadding = 0.0;
     }
@@ -4053,6 +4053,30 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     cell.layer.masksToBounds = NO;
     cell.clipsToBounds = NO;
     return cell;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    (void)tableView;
+    if ([self pp_isSavedForLaterDockIndexPath:indexPath]) {
+        BOOL isAccessibilitySize =
+        UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
+        BOOL hasActiveCartBoundary = [self pp_cartItemsCount] > 0;
+        if (!hasActiveCartBoundary) {
+            return isAccessibilitySize ? 110.0 : 88.0;
+        }
+        return isAccessibilitySize ? 142.0 : 100.0;
+    }
+
+    if ([self pp_isSavedForLaterGridIndexPath:indexPath]) {
+        BOOL isAccessibilitySize =
+        UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
+        return [PPSavedForLaterGridTableCell heightForWidth:tableView.bounds.size.width
+                                                 itemCount:[self pp_savedForLaterItems].count
+                                             accessibility:isAccessibilitySize];
+    }
+
+    return 218.0;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath

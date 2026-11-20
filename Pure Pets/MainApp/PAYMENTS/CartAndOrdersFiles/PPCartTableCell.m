@@ -641,8 +641,8 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 
     self.dividerHeightConstraint = [self.dividerView.heightAnchor constraintEqualToConstant:16];
 
-    NSLayoutConstraint *purchaseBottomConstraint = [self.purchaseSurfaceView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor];
-    purchaseBottomConstraint.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *purchaseBottomConstraint = [self.purchaseSurfaceView.bottomAnchor constraintEqualToAnchor:self.bottomRow.bottomAnchor];
+    purchaseBottomConstraint.priority = UILayoutPriorityDefaultLow;
 
     [NSLayoutConstraint activateConstraints:@[
         self.cardTopConstraint,
@@ -657,7 +657,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         [self.savedStateTintView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
         [self.savedStateTintView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
         [self.savedStateTintView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
-        [self.purchaseSurfaceView.topAnchor constraintEqualToAnchor:self.dividerView.topAnchor],
+        [self.purchaseSurfaceView.topAnchor constraintEqualToAnchor:self.dividerView.bottomAnchor],
         purchaseBottomConstraint,
         [self.purchaseSurfaceView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
         [self.purchaseSurfaceView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
@@ -1004,7 +1004,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 
     [self pp_updateLayoutForWidth:fittingWidth];
 
-    self.contentView.bounds = CGRectMake(0, 0, fittingWidth, self.contentView.bounds.size.height);
+    self.contentView.bounds = CGRectMake(0, 0, fittingWidth, 0);
     [self.contentView setNeedsLayout];
     [self.contentView layoutIfNeeded];
 

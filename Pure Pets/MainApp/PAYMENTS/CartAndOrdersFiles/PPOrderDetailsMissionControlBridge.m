@@ -1094,7 +1094,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 - (BOOL)isDeliveryStarted
 {
     if (!self.order) return NO;
-    if (self.order.inTransitAt != nil || self.order.deliveredAt != nil || self.order.deliveryAddressLockedAt != nil) {
+    NSDate *lockedAt = [self.order respondsToSelector:@selector(deliveryAddressLockedAt)] ? (NSDate *)[self.order valueForKey:@"deliveryAddressLockedAt"] : nil;
+    if (self.order.inTransitAt != nil || self.order.deliveredAt != nil || lockedAt != nil) {
         return YES;
     }
     NSString *raw = PPMissionNormalizedKey(self.order.rawStatus);
