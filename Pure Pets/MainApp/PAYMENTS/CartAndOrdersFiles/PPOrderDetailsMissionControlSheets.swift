@@ -1048,12 +1048,45 @@ private struct PPOrderMissionComposerSheet: View {
 private struct PPOrderMissionAddressesSheet: View {
     @ObservedObject var store: PPOrderDetailsMissionControlStore
     @Environment(\.dismiss) private var dismiss
+    @State private var review: PPOrderMissionAddressChange?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: PPSpace.md) {
-                    if store.addressesLoading {
+                    if !store.addressSaveError.isEmpty {
+                        Text(store.addressSaveError)
+                            .font(PPOrderMissionTypography.callout())
+                            .foregroundStyle(Color.ppTextPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityAddTraits(.isStaticText)
+                    }
+                    if store.isCommandRunning {
+                        ProgressView(PPOrderMissionText("order_mission_address_saving"))
+                            .frame(maxWidth: .infinity, minHeight: 100)
+                    } else if let pending = store.pendingAddressRetry {
+                        PPOrderMissionSheetEmptyState(
+                            symbol: "arrow.clockwise", title: pending.address.title,
+                            subtitle: pending.address.subtitle,
+                            actionTitle: PPOrderMissionText("order_mission_retry_address_change"),
+                            action: { store.confirmAddress(pending) }
+                        )
+                    } else if store.state.addressEditChecking {
+                        ProgressView(PPOrderMissionText("order_mission_checking_address_edit"))
+                            .frame(maxWidth: .infinity, minHeight: 120)
+                    } else if !store.state.addressEditable {
+                        if store.state.addressEditRetryable {
+                            PPOrderMissionSheetEmptyState(
+                                symbol: "wifi.exclamationmark", title: PPOrderMissionText("DeliveryLocation"),
+                                subtitle: store.state.addressEditMessage, actionTitle: PPOrderMissionText("KLang_Retry"),
+                                action: store.retryAddressEligibility
+                            )
+                        } else {
+                            Text(store.state.addressEditMessage)
+                                .font(PPOrderMissionTypography.body())
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } else if store.addressesLoading {
                         ProgressView(PPOrderMissionText("Loading"))
                             .font(PPOrderMissionTypography.body())
                             .tint(Color.ppPrimary)
@@ -1077,13 +1110,13 @@ private struct PPOrderMissionAddressesSheet: View {
                     } else {
                         ForEach(store.addresses) { address in
                             Button {
-                                store.selectAddress(address)
+                                review = store.reviewAddress(address)
                             } label: {
-                                PPOrderMissionAddressRow(address: address)
+                                PPOrderMissionAddressRow(address: address, isCurrent: address.id == store.state.currentShippingAddressID)
                             }
                             .buttonStyle(.plain)
                             .disabled(
-                                store.isCommandRunning || !address.isSelectable
+                                !address.isSelectable || address.id == store.state.currentShippingAddressID
                             )
                             .accessibilityValue(
                                 address.isSelectable
@@ -1117,16 +1150,28 @@ private struct PPOrderMissionAddressesSheet: View {
             }
             .background(Color.ppBackground)
             .navigationTitle(
-                PPOrderMissionText("Select Delivery Location")
+                PPOrderMissionText("order_mission_change_delivery_address")
             )
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(PPOrderMissionText("Done")) { dismiss() }
                         .font(PPOrderMissionTypography.callout())
+                        .disabled(store.isCommandRunning)
                 }
             }
+            .alert(item: $review) { change in
+                Alert(
+                    title: Text(PPOrderMissionText("order_mission_confirm_address_title")),
+                    message: Text([change.address.title, change.address.subtitle].filter { !$0.isEmpty }.joined(separator: "\n")),
+                    primaryButton: .default(Text(PPOrderMissionText("order_mission_use_address"))) {
+                        store.confirmAddress(change)
+                    },
+                    secondaryButton: .cancel(Text(PPOrderMissionText("Cancel")))
+                )
+            }
         }
+        .interactiveDismissDisabled(store.isCommandRunning)
         .presentationDetents([.medium, .large])
     }
 }
@@ -1424,10 +1469,11 @@ private struct PPOrderMissionSelectableItemRow: View {
 
 private struct PPOrderMissionAddressRow: View {
     let address: PPOrderMissionAddress
+    let isCurrent: Bool
 
     var body: some View {
         HStack(spacing: PPSpace.md) {
-            Image(systemName: address.isSelected ? "mappin.circle.fill" : "mappin.circle")
+            Image(systemName: isCurrent ? "mappin.circle.fill" : "mappin.circle")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(Color.ppPrimary)
                 .frame(width: 44, height: 44)
@@ -1441,7 +1487,7 @@ private struct PPOrderMissionAddressRow: View {
                     Text(address.subtitle)
                         .font(PPOrderMissionTypography.callout())
                         .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 if address.isDefault {
                     Text(PPOrderMissionText("Default"))
@@ -1456,7 +1502,7 @@ private struct PPOrderMissionAddressRow: View {
                 }
             }
             Spacer(minLength: 0)
-            if address.isSelected {
+            if isCurrent {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.ppSuccess)
                     .accessibilityHidden(true)
@@ -1466,7 +1512,7 @@ private struct PPOrderMissionAddressRow: View {
         .modifier(PPOrderMissionGlassCard(accent: Color.ppPrimary))
         .opacity(address.isSelectable ? 1 : 0.68)
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(address.isSelected ? .isSelected : [])
+        .accessibilityAddTraits(isCurrent ? .isSelected : [])
     }
 }
 

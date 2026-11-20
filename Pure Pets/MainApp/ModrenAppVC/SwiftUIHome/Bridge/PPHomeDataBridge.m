@@ -1466,9 +1466,6 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
             }
         }];
         BOOL visible = PPHomeBridgeBoolValue(row[@"visible"], YES);
-        if (sectionID == PPHomeSectionMarketplaceHero) {
-            visible = YES;
-        }
         NSString *type = [row[@"type"] isKindOfClass:NSString.class]
             ? row[@"type"]
             : [self defaultTypeForSectionID:sectionID];
@@ -1493,9 +1490,6 @@ static id _Nullable PPHomeBridgeConfigValue(id _Nullable value)
             continue;
         }
         BOOL visible = PPHomeBridgeBoolValue(row[@"visible"], YES);
-        if (sectionID.integerValue == PPHomeSectionMarketplaceHero) {
-            visible = YES;
-        }
         if (sectionID.integerValue == PPHomeSectionPremiumCare) {
             visible = visible && premiumCareVisible;
         }

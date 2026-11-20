@@ -18,7 +18,7 @@
 #import "UserManager.h"
 #import "ChManager.h"
 #import "CartManager.h"
-#import "CountryModel.h"
+#import "CitiesManager.h"
 #import "PPAlertHelper.h"
 
 #import <float.h>
@@ -27,6 +27,7 @@
 
 @import FirebaseAuth;
 @import FirebaseFirestore;
+@import FirebaseFunctions;
 
 static NSString * const PPMissionBridgeErrorDomain = @"com.purepets.order-mission-control";
 static NSString * const PPMissionSupportPhoneNumber = @"+97459997720";
@@ -41,6 +42,54 @@ static NSString *PPMissionSafeString(id value)
         return [[value stringValue] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     }
     return @"";
+}
+
+static NSString *PPMissionFirstText(NSDictionary *source, NSArray<NSString *> *keys)
+{
+    for (NSString *key in keys) {
+        NSString *text = PPMissionSafeString(source[key]);
+        if (text.length > 0) return text;
+    }
+    return @"";
+}
+
+static double PPMissionCoordinateNumber(id value)
+{
+    if ([value isKindOfClass:NSNumber.class] && CFGetTypeID((__bridge CFTypeRef)value) != CFBooleanGetTypeID()) {
+        return [value doubleValue];
+    }
+    if (![value isKindOfClass:NSString.class]) return NAN;
+    NSScanner *scanner = [NSScanner scannerWithString:PPMissionSafeString(value)];
+    scanner.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+    double result;
+    return [scanner scanDouble:&result] && scanner.isAtEnd ? result : NAN;
+}
+
+static NSString *PPMissionAddressReasonMessage(id value)
+{
+    NSDictionary *keys = @{@"delivery_started": @"order_mission_address_driver_started",
+                           @"order_closed": @"order_mission_address_order_closed",
+                           @"address_changed": @"order_mission_address_changed_elsewhere",
+                           @"idempotency_conflict": @"order_mission_address_changed_elsewhere",
+                           @"region_changed": @"order_mission_address_region_changed",
+                           @"address_unavailable": @"order_mission_address_not_selectable",
+                           @"account_unavailable": @"order_mission_permission_denied"};
+    return kLang(keys[PPMissionSafeString(value)] ?: @"order_mission_address_owner_unavailable");
+}
+
+// Only evidence relevant to the delivery-address decision should start a new lookup.
+static NSArray *PPMissionAddressLifecycleInputs(NSDictionary *document)
+{
+    NSMutableArray *inputs = [NSMutableArray arrayWithObjects:
+        PPMissionSafeString(document[@"status"]), PPMissionSafeString(document[@"deliveryStatus"]),
+        PPMissionSafeString(document[@"latestDeliveryEventType"]), nil];
+    for (NSString *key in @[@"inTransitAt", @"deliveredAt", @"deliveryAddressLockedAt"]) {
+        id stamp = document[key];
+        [inputs addObject:@(stamp != nil && stamp != NSNull.null)];
+    }
+    [inputs addObject:@([document[@"isDeleted"] respondsToSelector:@selector(boolValue)] && [document[@"isDeleted"] boolValue])];
+    [inputs addObject:@([document[@"deleted"] respondsToSelector:@selector(boolValue)] && [document[@"deleted"] boolValue])];
+    return inputs.copy;
 }
 
 static NSString *PPMissionNormalizedKey(id value)
@@ -123,15 +172,6 @@ static double PPMissionDouble(id value, double fallback)
 static NSInteger PPMissionInteger(id value, NSInteger fallback)
 {
     return [value respondsToSelector:@selector(integerValue)] ? [value integerValue] : fallback;
-}
-
-static BOOL PPMissionIsPositiveIntegerNumber(id value)
-{
-    if (![value isKindOfClass:NSNumber.class]) return NO;
-    CFTypeRef reference = (__bridge CFTypeRef)value;
-    if (CFGetTypeID(reference) == CFBooleanGetTypeID()) return NO;
-    double number = [value doubleValue];
-    return isfinite(number) && number > 0.0 && floor(number) == number;
 }
 
 static NSError *PPMissionError(NSInteger code, NSString *message)
@@ -328,13 +368,19 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 @property (nonatomic, copy) NSArray<PPOrderTimelineEvent *> *timelineEvents;
 @property (nonatomic, copy) NSArray<PPAddressModel *> *addresses;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, PPAddressModel *> *addressByID;
-@property (nonatomic, strong) NSMutableSet<NSString *> *selectableAddressIDs;
 @property (nonatomic, copy) NSString *resolvingAddressID;
 @property (nonatomic, assign) BOOL running;
 @property (nonatomic, assign) BOOL screenVisible;
 @property (nonatomic, assign) BOOL hasLoadedOrder;
 @property (nonatomic, assign) BOOL ownershipVerified;
-@property (nonatomic, assign) BOOL addressMutationContractSatisfied;
+@property (nonatomic, copy, nullable) NSDictionary *addressEligibility;
+@property (nonatomic, copy, nullable) NSArray *addressEligibilityInputs;
+@property (nonatomic, assign) NSInteger addressLookupToken;
+@property (nonatomic, assign) NSInteger observedAddressRevision;
+@property (nonatomic, copy) NSArray *parentAddressLifecycle;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSArray *> *childAddressLifecycle;
+@property (nonatomic, assign) BOOL addressEligibilityLoading;
+@property (nonatomic, copy, nullable) NSString *addressEligibilityError;
 @property (nonatomic, copy) NSString *verifiedOwnerUID;
 @property (nonatomic, strong, nullable) FIRAuthStateDidChangeListenerHandle authStateHandle;
 @property (nonatomic, assign) BOOL isOffline;
@@ -358,6 +404,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 - (NSString *)resolvedCurrencyCode;
 - (BOOL)hasCurrentOwnerAuthority;
 - (void)installAuthStateListenerIfNeeded;
+- (void)resetAddressEligibility;
+- (void)updateAddressEligibilityIfNeeded;
 - (BOOL)isSelectableAddressData:(NSDictionary *)data
                       documentID:(NSString *)documentID
                            model:(PPAddressModel *)model;
@@ -373,6 +421,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         _order = order;
         _orderManager = PPOrderManager.shared;
         _fulfillmentListeners = [NSMutableDictionary dictionary];
+        _childAddressLifecycle = [NSMutableDictionary dictionary];
         _fulfillmentByID = [NSMutableDictionary dictionary];
         _missingFulfillmentIDs = [NSMutableSet set];
         _accessoryCache = [NSMutableDictionary dictionary];
@@ -382,7 +431,6 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         _timelineEvents = @[];
         _addresses = @[];
         _addressByID = [NSMutableDictionary dictionary];
-        _selectableAddressIDs = [NSMutableSet set];
         _resolvingAddressID = @"";
         _verifiedOwnerUID = @"";
         _streamErrorMessage = @"";
@@ -409,7 +457,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     self.running = YES;
     self.hasLoadedOrder = NO;
     self.ownershipVerified = NO;
-    self.addressMutationContractSatisfied = NO;
+    [self resetAddressEligibility];
     self.verifiedOwnerUID = @"";
     self.supportLoading = YES;
     self.timelineLoading = YES;
@@ -437,7 +485,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     self.fulfillmentErrorMessage = @"";
     self.hasLoadedOrder = NO;
     self.ownershipVerified = NO;
-    self.addressMutationContractSatisfied = NO;
+    [self resetAddressEligibility];
     self.verifiedOwnerUID = @"";
     self.supportLoading = YES;
     self.timelineLoading = YES;
@@ -461,7 +509,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         self.authStateHandle = nil;
     }
     self.ownershipVerified = NO;
-    self.addressMutationContractSatisfied = NO;
+    [self resetAddressEligibility];
     self.verifiedOwnerUID = @"";
     self.stateUpdate = nil;
 }
@@ -494,7 +542,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             self.generation += 1;
             [self stopListeners];
             self.ownershipVerified = NO;
-            self.addressMutationContractSatisfied = NO;
+            [self resetAddressEligibility];
             self.verifiedOwnerUID = @"";
             self.hasLoadedOrder = YES;
             self.streamErrorMessage = kLang(@"order_mission_permission_denied");
@@ -506,8 +554,8 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             self.lineItems = @[];
             self.addresses = @[];
             [self.addressByID removeAllObjects];
-            [self.selectableAddressIDs removeAllObjects];
             [self.fulfillmentByID removeAllObjects];
+            [self.childAddressLifecycle removeAllObjects];
             [self.missingFulfillmentIDs removeAllObjects];
             [self.accessoryCache removeAllObjects];
             [self.accessoryLookups removeAllObjects];
@@ -571,7 +619,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                      ![currentUID isEqualToString:knownOwnerUID]);
                 if (permissionDenied || ownerChanged) {
                     self.ownershipVerified = NO;
-                    self.addressMutationContractSatisfied = NO;
+                    [self resetAddressEligibility];
                     self.verifiedOwnerUID = @"";
                     self.streamErrorMessage = kLang(@"order_mission_permission_denied");
                 } else {
@@ -590,7 +638,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                         : kLang(@"order_mission_offline_no_cache");
                 } else {
                     self.ownershipVerified = NO;
-                    self.addressMutationContractSatisfied = NO;
+                    [self resetAddressEligibility];
                     self.verifiedOwnerUID = @"";
                     self.streamErrorMessage = kLang(@"order_mission_not_found");
                 }
@@ -604,7 +652,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             if (authenticatedUID.length == 0 || ownerUID.length == 0 || ![authenticatedUID isEqualToString:ownerUID]) {
                 NSLog(@"PPBackend > ORDER_DETAILS : MissionControl owner mismatch | authUID=%@ | ownerUID=%@", authenticatedUID, ownerUID);
                 self.ownershipVerified = NO;
-                self.addressMutationContractSatisfied = NO;
+                [self resetAddressEligibility];
                 self.verifiedOwnerUID = @"";
                 self.streamErrorMessage = kLang(@"order_mission_permission_denied");
                 [self emitState];
@@ -615,7 +663,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             if (!updatedOrder) {
                 NSLog(@"PPBackend > ORDER_DETAILS : MissionControl failed to parse order | orderID=%@", orderID);
                 self.ownershipVerified = NO;
-                self.addressMutationContractSatisfied = NO;
+                [self resetAddressEligibility];
                 self.verifiedOwnerUID = @"";
                 self.streamErrorMessage = kLang(@"order_mission_load_error");
                 [self emitState];
@@ -630,15 +678,21 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                   updatedOrder.paymentStatus,
                   (unsigned long)updatedOrder.items.count,
                   statusChanged);
+            self.parentAddressLifecycle = @[PPMissionAddressLifecycleInputs(data),
+                PPMissionFirstText(data, @[@"deliveryRequestId", @"deliveryRequestID"]),
+                PPMissionSafeString(data[@"deliveryRequestFulfillmentOrderID"]),
+                [data[@"deliveryRequestFulfillmentOrderIDs"] isKindOfClass:NSArray.class] ? data[@"deliveryRequestFulfillmentOrderIDs"] : @[]];
+            NSInteger incomingRevision = PPMissionInteger(data[@"shippingAddressRevision"], 0);
+            if ([self hasCurrentOwnerAuthority] && incomingRevision < self.observedAddressRevision) {
+                // An earlier listener event can arrive after the callable's committed response.
+                updatedOrder.shippingAddressId = self.order.shippingAddressId;
+                updatedOrder.shippingAddressSnapshot = self.order.shippingAddressSnapshot;
+            } else {
+                self.observedAddressRevision = incomingRevision;
+            }
             self.order = updatedOrder;
             self.ownershipVerified = YES;
             self.verifiedOwnerUID = ownerUID;
-            NSString *canonicalOwnerUID = PPMissionSafeString(data[@"userId"]);
-            NSString *embeddedOrderID = PPMissionSafeString(data[@"orderId"]);
-            self.addressMutationContractSatisfied =
-                canonicalOwnerUID.length > 0 &&
-                [canonicalOwnerUID isEqualToString:ownerUID] &&
-                embeddedOrderID.length > 0 && data[@"createdAt"] != nil;
             self.streamErrorMessage = @"";
             self.isOffline = snapshot.metadata.isFromCache;
             if (statusChanged) {
@@ -651,6 +705,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             self.lastStatusKey = nextStatus;
             [self rebuildLineItems];
             [self resolveSelectedAddressIfNeededForGeneration:generation];
+            [self updateAddressEligibilityIfNeeded];
             [self installAuthorizedDetailListenersForGeneration:generation];
             [self emitState];
             [self resolveLineItemsIfNeeded];
@@ -718,7 +773,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             if (!self.hasLoadedOrder) {
                 self.hasLoadedOrder = YES;
                 self.ownershipVerified = NO;
-                self.addressMutationContractSatisfied = NO;
+                [self resetAddressEligibility];
                 self.verifiedOwnerUID = @"";
                 self.streamErrorMessage = kLang(@"order_mission_load_timeout");
                 shouldEmit = YES;
@@ -807,7 +862,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     NSArray *actions = [self actionDictionaries];
     NSArray *items = [self itemDictionaries];
     NSDictionary *summary = [self fulfillmentSummaryWithVisibleCount:fulfillments.count];
-    NSString *address = [self resolvedAddressText];
+    NSDictionary *destination = [self destinationAddressComponents];
     BOOL addressEditable = [self isAddressEditable];
     NSString *paymentMethod = order.isCashOnDelivery ? kLang(@"payment_method_name_cash") : kLang(@"order_payment_provider_default");
     NSString *paymentStatus = [self paymentStatusText];
@@ -833,7 +888,13 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         @"totalText": PPMissionMoneyText(total, currency),
         @"paymentText": payment ?: @"",
         @"currency": currency,
-        @"addressText": address.length > 0 ? address : kLang(@"order_mission_address_unavailable"),
+        @"destinationStreet": destination[@"street"],
+        @"destinationLocality": destination[@"locality"],
+        @"destinationRecipient": destination[@"recipient"],
+        @"currentShippingAddressID": PPMissionSafeString(self.addressEligibility[@"shippingAddressId"]),
+        @"addressRevision": self.addressEligibility[@"addressRevision"] ?: @0,
+        @"addressEditChecking": @(self.addressEligibilityLoading && !self.isOffline),
+        @"addressEditRetryable": @(self.addressEligibilityError.length > 0 && !self.isOffline),
         @"addressEditable": @(addressEditable),
         @"addressEditMessage": addressEditable ? kLang(@"order_mission_address_edit_hint") : [self addressEditBlockedMessage],
         @"hasCoordinate": coordinate[@"hasCoordinate"] ?: @NO,
@@ -879,52 +940,54 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     return @"";
 }
 
-- (NSString *)resolvedAddressText
+- (NSDictionary *)destinationAddressComponents
 {
-    NSDictionary *snapshot = [self.order.shippingAddressSnapshot isKindOfClass:NSDictionary.class]
-        ? self.order.shippingAddressSnapshot : @{};
-    for (NSString *key in @[@"displayName", @"address", @"locatioName", @"addressLine1"]) {
-        NSString *value = PPMissionSafeString(snapshot[key]);
-        if (value.length > 0) return value;
+    NSDictionary *snapshot = self.order.shippingAddressSnapshot ?: @{};
+    // A captured checkout address is historical. A saved entry can move independently.
+    if (snapshot.count == 0 && self.order.fulfillmentVersion != 1) {
+        snapshot = [self selectedSavedAddress].toDictionary ?: @{};
     }
-    if (self.order.fulfillmentVersion == 1) return @"";
-    PPAddressModel *savedAddress = [self selectedSavedAddress];
-    if (savedAddress.displayName.length > 0) return savedAddress.displayName;
-    if (savedAddress.locatioName.length > 0) return savedAddress.locatioName;
-    if (savedAddress.addressLine1.length > 0) return savedAddress.addressLine1;
-    return @"";
+    NSString *recipient = PPMissionFirstText(snapshot, @[@"fullName", @"recipientName", @"name"]);
+    NSString *street = PPMissionFirstText(snapshot, @[@"addressLine1", @"address", @"line1", @"street", @"fullAddress", @"formattedAddress"]);
+    NSString *unit = PPMissionFirstText(snapshot, @[@"addressLine2", @"line2"]);
+    NSString *place = PPMissionFirstText(snapshot, @[@"locatioName", @"locationName"]);
+    NSMutableOrderedSet<NSString *> *lines = [NSMutableOrderedSet orderedSet];
+    for (NSString *value in @[street, unit]) {
+        if (value.length && ![value isEqualToString:recipient]) [lines addObject:value];
+    }
+    NSMutableOrderedSet<NSString *> *area = [NSMutableOrderedSet orderedSet];
+    CityModel *city = [CitiesManager.shared cityByID:PPMissionInteger(snapshot[@"cityID"], 0)];
+    StateModel *state = [CitiesManager.shared stateByID:PPMissionInteger(snapshot[@"stateID"], 0)];
+    NSString *cityName = PPMissionFirstText(snapshot, @[@"city"]);
+    NSString *areaName = PPMissionFirstText(snapshot, @[@"area"]);
+    for (NSString *value in @[place, areaName.length ? areaName : PPMissionSafeString(Language.isRTL ? state.arName : state.enName),
+                              cityName.length ? cityName : PPMissionSafeString(Language.isRTL ? city.arName : city.enName),
+                              PPMissionSafeString(snapshot[@"postalCode"]), PPMissionSafeString(snapshot[@"country"])]) {
+        if (value.length && ![value isEqualToString:recipient] && ![lines containsObject:value]) [area addObject:value];
+    }
+    return @{@"street": [lines.array componentsJoinedByString:(Language.isRTL ? @"، " : @", ")],
+             @"locality": [area.array componentsJoinedByString:@" · "],
+             @"recipient": recipient};
 }
 
 - (NSDictionary *)deliveryCoordinate
 {
-    NSDictionary *snapshot = [self.order.shippingAddressSnapshot isKindOfClass:NSDictionary.class]
-        ? self.order.shippingAddressSnapshot : @{};
-    double latitude = PPMissionDouble(snapshot[@"latitude"] ?: snapshot[@"lat"], NAN);
-    double longitude = PPMissionDouble(snapshot[@"longitude"] ?: snapshot[@"lng"], NAN);
-    if (!isfinite(latitude) || !isfinite(longitude)) {
-        NSString *points = PPMissionSafeString(snapshot[@"locationPoints"]);
-        NSArray<NSString *> *parts = [points componentsSeparatedByString:@","];
-        if (parts.count >= 2) {
-            latitude = PPMissionDouble(parts[0], NAN);
-            longitude = PPMissionDouble(parts[1], NAN);
-        }
+    NSDictionary *snapshot = self.order.shippingAddressSnapshot ?: @{};
+    if (snapshot.count == 0 && self.order.fulfillmentVersion != 1) {
+        snapshot = [self selectedSavedAddress].toDictionary ?: @{};
     }
-    if ((!isfinite(latitude) || !isfinite(longitude)) && self.order.fulfillmentVersion != 1) {
-        NSString *points = PPMissionSafeString([self selectedSavedAddress].locationPoints);
-        NSArray<NSString *> *parts = [points componentsSeparatedByString:@","];
-        if (parts.count >= 2) {
-            latitude = PPMissionDouble(parts[0], NAN);
-            longitude = PPMissionDouble(parts[1], NAN);
+    double latitude = PPMissionCoordinateNumber(snapshot[@"latitude"] ?: snapshot[@"lat"]);
+    double longitude = PPMissionCoordinateNumber(snapshot[@"longitude"] ?: snapshot[@"lng"]);
+    if (!isfinite(latitude) || !isfinite(longitude)) {
+        NSArray<NSString *> *parts = [PPMissionSafeString(snapshot[@"locationPoints"]) componentsSeparatedByString:@","];
+        if (parts.count == 2) {
+            latitude = PPMissionCoordinateNumber(parts.firstObject);
+            longitude = PPMissionCoordinateNumber(parts.lastObject);
         }
     }
     BOOL valid = isfinite(latitude) && isfinite(longitude) &&
-        fabs(latitude) <= 90.0 && fabs(longitude) <= 180.0 &&
-        !(fabs(latitude) < DBL_EPSILON && fabs(longitude) < DBL_EPSILON);
-    return @{
-        @"hasCoordinate": @(valid),
-        @"latitude": @(valid ? latitude : 0.0),
-        @"longitude": @(valid ? longitude : 0.0)
-    };
+        fabs(latitude) <= 90 && fabs(longitude) <= 180 && (latitude != 0 || longitude != 0);
+    return @{@"hasCoordinate": @(valid), @"latitude": @(valid ? latitude : 0), @"longitude": @(valid ? longitude : 0)};
 }
 
 - (PPAddressModel *)selectedSavedAddress
@@ -941,7 +1004,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 
 - (void)resolveSelectedAddressIfNeededForGeneration:(NSInteger)generation
 {
-    if (self.order.fulfillmentVersion == 1) return;
+    if (self.order.fulfillmentVersion == 1 || self.order.shippingAddressSnapshot.count > 0) return;
     NSString *identifier = PPMissionSafeString(self.order.shippingAddressId);
     if (identifier.length == 0 &&
         [self.order.shippingAddressSnapshot isKindOfClass:NSDictionary.class]) {
@@ -981,30 +1044,105 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     }];
 }
 
+- (void)resetAddressEligibility
+{
+    self.addressLookupToken += 1;
+    self.addressEligibility = nil;
+    self.addressEligibilityInputs = nil;
+    self.addressEligibilityError = nil;
+    self.addressEligibilityLoading = NO;
+}
+
+- (void)refreshAddressEligibility
+{
+    self.addressEligibilityInputs = nil;
+    [self updateAddressEligibilityIfNeeded];
+    [self emitState];
+}
+
+- (void)updateAddressEligibilityIfNeeded
+{
+    if (![self hasCurrentOwnerAuthority] || self.isOffline) {
+        [self resetAddressEligibility];
+        return;
+    }
+    NSString *currentID = PPMissionSafeString(self.order.shippingAddressId);
+    if (!currentID.length) currentID = PPMissionSafeString(self.order.shippingAddressSnapshot[@"addressID"]);
+    NSArray *inputs = @[self.order.orderId, self.verifiedOwnerUID, self.parentAddressLifecycle ?: @[],
+                        self.order.paymentStatus ?: @"", self.order.fulfillmentOrderIDs ?: @[],
+                        currentID, @(self.observedAddressRevision)];
+    if ([inputs isEqual:self.addressEligibilityInputs]) return;
+    self.addressEligibilityInputs = inputs;
+    self.addressEligibilityLoading = YES;
+    self.addressEligibilityError = nil;
+    NSInteger token = ++self.addressLookupToken;
+    NSString *orderID = self.order.orderId;
+    __weak typeof(self) weakSelf = self;
+    [self callDeliveryAddressWithPayload:@{@"action": @"eligibility", @"orderId": orderID}
+                             completion:^(NSDictionary *decision, NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || token != self.addressLookupToken) return;
+        self.addressEligibilityLoading = NO;
+        self.addressEligibility = error ? nil : decision;
+        self.addressEligibilityError = error.localizedDescription;
+        [self emitState];
+    }];
+}
+
 - (BOOL)isAddressEditable
 {
-    NSString *status = PPMissionNormalizedKey(self.order.rawStatus);
-    return [self hasCurrentOwnerAuthority] &&
-        self.order.fulfillmentVersion != 1 &&
-        !self.isOffline && self.addressMutationContractSatisfied &&
-        ([status isEqualToString:@"pending"] || [status isEqualToString:@"failed"]);
+    return [self hasCurrentOwnerAuthority] && !self.isOffline && !self.addressEligibilityLoading &&
+        [self.addressEligibility[@"canChange"] boolValue];
 }
 
 - (NSString *)addressEditBlockedMessage
 {
-    if (![self hasCurrentOwnerAuthority]) {
-        return kLang(@"order_mission_permission_denied");
-    }
-    if (self.isOffline) {
-        return kLang(@"order_mission_address_online_required");
-    }
-    if (self.order.fulfillmentVersion == 1) {
-        return kLang(@"order_mission_address_snapshot_locked");
-    }
-    if (!self.addressMutationContractSatisfied) {
-        return kLang(@"order_mission_address_owner_unavailable");
-    }
-    return kLang(@"order_edit_location_pending_only");
+    if (![self hasCurrentOwnerAuthority]) return kLang(@"order_mission_permission_denied");
+    if (self.isOffline) return kLang(@"order_mission_address_online_required");
+    if (self.addressEligibilityLoading) return kLang(@"order_mission_checking_address_edit");
+    if (self.addressEligibilityError.length > 0) return self.addressEligibilityError;
+    return PPMissionAddressReasonMessage(self.addressEligibility[@"reason"]);
+}
+
+- (void)callDeliveryAddressWithPayload:(NSDictionary *)payload completion:(PPOrderMissionResult)completion
+{
+    NSInteger generation = self.generation;
+    NSString *uid = self.verifiedOwnerUID;
+    NSString *orderID = self.order.orderId;
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+                                  HTTPSCallableWithName:@"customerOrderDeliveryAddress"];
+    callable.timeoutInterval = 20;
+    __weak typeof(self) weakSelf = self;
+    [callable callWithObject:payload completion:^(FIRHTTPSCallableResult *response, NSError *error) {
+        PPMissionOnMain(^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || !self.running || self.generation != generation || ![self hasCurrentOwnerAuthority] ||
+                ![self.verifiedOwnerUID isEqual:uid] || ![self.order.orderId isEqual:orderID]) {
+                completion(nil, PPMissionError(403, kLang(@"order_mission_permission_denied")));
+                return;
+            }
+            if (error) {
+                NSDictionary *details = [error.userInfo[@"details"] isKindOfClass:NSDictionary.class] ? error.userInfo[@"details"] : nil;
+                NSString *reason = PPMissionSafeString(details[@"reason"]);
+                BOOL permission = error.code == FIRFunctionsErrorCodePermissionDenied || error.code == FIRFunctionsErrorCodeUnauthenticated;
+                NSString *message = permission ? kLang(@"order_mission_permission_denied") :
+                    (reason.length > 0 ? PPMissionAddressReasonMessage(reason) : kLang(@"order_mission_address_service_error"));
+                completion(nil, PPMissionError(permission ? 403 : (reason.length ? 409 : 503), message));
+                return;
+            }
+            NSDictionary *data = [response.data isKindOfClass:NSDictionary.class] ? response.data : nil;
+            id revision = data[@"addressRevision"];
+            id decision = data[@"canChange"];
+            if (![PPMissionSafeString(data[@"orderId"]) isEqual:orderID] ||
+                ![decision isKindOfClass:NSNumber.class] || CFGetTypeID((__bridge CFTypeRef)decision) != CFBooleanGetTypeID() ||
+                ![revision isKindOfClass:NSNumber.class] || CFGetTypeID((__bridge CFTypeRef)revision) == CFBooleanGetTypeID() ||
+                [revision doubleValue] < 0 || floor([revision doubleValue]) != [revision doubleValue]) {
+                completion(nil, PPMissionError(503, kLang(@"order_mission_address_service_error")));
+                return;
+            }
+            completion(data, nil);
+        });
+    }];
 }
 
 - (NSArray<NSDictionary *> *)actionDictionaries
@@ -1432,6 +1570,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         if (![desired containsObject:existing]) {
             [self.fulfillmentListeners[existing] remove];
             [self.fulfillmentListeners removeObjectForKey:existing];
+            [self.childAddressLifecycle removeObjectForKey:existing];
             [self.fulfillmentByID removeObjectForKey:existing];
             [self.missingFulfillmentIDs removeObject:existing];
         }
@@ -1475,7 +1614,13 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                     } else {
                         PPFulfillmentOrder *fulfillment = [PPFulfillmentOrder fromDictionary:snapshot.data ?: @{}
                                                                                  fulfillmentID:snapshot.documentID];
+                        NSArray *previous = self.childAddressLifecycle[identifier];
+                        NSArray *current = PPMissionAddressLifecycleInputs(snapshot.data ?: @{});
+                        self.childAddressLifecycle[identifier] = current;
                         if (fulfillment) self.fulfillmentByID[identifier] = fulfillment;
+                        if (previous && ![previous isEqual:current]) {
+                            [self refreshAddressEligibility];
+                        }
                         [self.missingFulfillmentIDs removeObject:identifier];
                     }
                 }
@@ -1813,14 +1958,16 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                       documentID:(NSString *)documentID
                            model:(PPAddressModel *)model
 {
-    NSString *rawOwnerUID = PPMissionSafeString(data[@"userID"]);
-    NSString *rawAddressID = PPMissionSafeString(data[@"addressID"]);
+    for (NSString *key in @[@"userID", @"userId", @"uid"]) {
+        NSString *owner = PPMissionSafeString(data[key]);
+        if (owner.length && ![owner isEqualToString:self.verifiedOwnerUID]) return NO;
+    }
+    for (NSString *key in @[@"addressID", @"addressId"]) {
+        NSString *identifier = PPMissionSafeString(data[key]);
+        if (identifier.length && ![identifier isEqualToString:documentID]) return NO;
+    }
     return [self hasCurrentOwnerAuthority] && model.isSemanticallyValid &&
-        documentID.length > 0 && [model.documentID isEqualToString:documentID] &&
-        [rawOwnerUID isEqualToString:self.verifiedOwnerUID] &&
-        [rawAddressID isEqualToString:documentID] &&
-        PPMissionIsPositiveIntegerNumber(data[@"cityID"]) &&
-        PPMissionIsPositiveIntegerNumber(data[@"stateID"]);
+        documentID.length > 0 && [model.documentID isEqualToString:documentID];
 }
 
 - (NSDictionary *)addressDictionary:(PPAddressModel *)address
@@ -1829,8 +1976,9 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
     NSString *identifier = [self addressIdentifier:address];
     return @{
         @"id": identifier,
-        @"title": address.displayName ?: address.locatioName ?: kLang(@"DeliveryAddress"),
-        @"subtitle": address.locatioName ?: address.addressLine1 ?: @"",
+        @"title": address.addressLine1.length ? address.addressLine1 : kLang(@"DeliveryAddress"),
+        @"subtitle": [[@[address.addressLine2 ?: @"", address.locatioName ?: @"", address.postalCode ?: @"", address.fullName ?: @""]
+                       filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"length > 0"]] componentsJoinedByString:@" · "],
         @"isDefault": @(address.isDefault),
         @"isSelected": @([identifier isEqualToString:PPMissionSafeString(self.order.shippingAddressId)]),
         @"isSelectable": @(selectable),
@@ -1846,6 +1994,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         return;
     }
     NSString *ownerUID = self.verifiedOwnerUID;
+    NSInteger generation = self.generation;
     FIRCollectionReference *collection = [[[
         FIRFirestore.firestore collectionWithPath:@"UsersCol"
     ] documentWithPath:ownerUID] collectionWithPath:@"Addresses"];
@@ -1856,7 +2005,7 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
         PPMissionOnMain(^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) return;
-            if (![self hasCurrentOwnerAuthority]) {
+            if (generation != self.generation || ![self hasCurrentOwnerAuthority] || ![self.verifiedOwnerUID isEqual:ownerUID]) {
                 if (completion) completion(@[], PPMissionError(403, kLang(@"order_mission_permission_denied")));
                 return;
             }
@@ -1878,6 +2027,14 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                 ]) {
                     safeData[key] = PPMissionSafeString(data[key]);
                 }
+                safeData[@"fullName"] = PPMissionFirstText(data, @[@"fullName", @"displayName", @"name", @"UserName"]);
+                safeData[@"addressLine1"] = PPMissionFirstText(data, @[@"addressLine1", @"address", @"address1"]);
+                safeData[@"addressLine2"] = PPMissionFirstText(data, @[@"addressLine2", @"address2"]);
+                safeData[@"postalCode"] = PPMissionFirstText(data, @[@"postalCode", @"zipCode", @"postal_code"]);
+                safeData[@"cityID"] = @(PPMissionInteger(data[@"cityID"] ?: data[@"cityId"], 0));
+                safeData[@"stateID"] = @(PPMissionInteger(data[@"stateID"] ?: data[@"stateId"], 0));
+                safeData[@"isDefault"] = @(PPMissionInteger(data[@"isDefault"], 0) != 0);
+                safeData[@"locatioName"] = PPMissionFirstText(data, @[@"locatioName", @"locationName", @"area", @"city"]);
                 PPAddressModel *model = [[PPAddressModel alloc] initWithDictionary:safeData
                                                                          documentID:documentID];
                 [addresses addObject:model];
@@ -1893,7 +2050,6 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
             }];
             self.addresses = addresses.copy;
             [self.addressByID removeAllObjects];
-            [self.selectableAddressIDs removeAllObjects];
             NSMutableArray *mapped = [NSMutableArray array];
             for (PPAddressModel *address in self.addresses) {
                 NSString *identifier = [self addressIdentifier:address];
@@ -1902,7 +2058,6 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
                 BOOL selectable = [self isSelectableAddressData:rawByID[identifier] ?: @{}
                                                      documentID:identifier
                                                           model:address];
-                if (selectable) [self.selectableAddressIDs addObject:identifier];
                 [mapped addObject:[self addressDictionary:address selectable:selectable]];
             }
             if (completion) completion(mapped.copy, nil);
@@ -1911,94 +2066,51 @@ static NSString *PPMissionActionSymbol(PPOrderCustomerActionType actionType)
 }
 
 - (void)selectAddressWithIdentifier:(NSString *)identifier
+                  previousAddressID:(NSString *)previousAddressID
+                           revision:(NSInteger)revision
+                     idempotencyKey:(NSString *)idempotencyKey
                          completion:(PPOrderMissionResult)completion
 {
-    if (![self isAddressEditable]) {
-        if (completion) completion(nil, PPMissionError(403, [self addressEditBlockedMessage]));
+    if (![self hasCurrentOwnerAuthority] || self.isOffline) {
+        completion(nil, PPMissionError(403, [self addressEditBlockedMessage]));
         return;
     }
-    NSString *safeIdentifier = PPMissionSafeString(identifier);
-    if (safeIdentifier.length == 0 ||
-        ![self.selectableAddressIDs containsObject:safeIdentifier]) {
-        if (completion) completion(nil, PPMissionError(422, kLang(@"order_mission_address_not_selectable")));
+    if (!identifier.length || !idempotencyKey.length) {
+        completion(nil, PPMissionError(422, kLang(@"order_mission_address_not_selectable")));
         return;
     }
-    NSString *ownerUID = self.verifiedOwnerUID;
-    FIRDocumentReference *addressReference = [[[[FIRFirestore.firestore
-        collectionWithPath:@"UsersCol"] documentWithPath:ownerUID]
-        collectionWithPath:@"Addresses"] documentWithPath:safeIdentifier];
+    NSDictionary *command = @{@"action": @"change", @"orderId": self.order.orderId,
+                              @"shippingAddressId": identifier, @"expectedShippingAddressId": previousAddressID,
+                              @"expectedAddressRevision": @(revision), @"idempotencyKey": idempotencyKey};
     __weak typeof(self) weakSelf = self;
-    [addressReference getDocumentWithSource:FIRFirestoreSourceServer
-                                  completion:^(FIRDocumentSnapshot * _Nullable document,
-                                               NSError * _Nullable fetchError) {
-        PPMissionOnMain(^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self) return;
-            if (![self hasCurrentOwnerAuthority]) {
-                if (completion) completion(nil, PPMissionError(403, kLang(@"order_mission_permission_denied")));
-                return;
-            }
-            if (![self isAddressEditable]) {
-                if (completion) completion(nil, PPMissionError(403, [self addressEditBlockedMessage]));
-                return;
-            }
-            if (fetchError || !document.exists) {
-                if (completion) completion(nil, fetchError ?: PPMissionError(404, kLang(@"order_mission_address_not_selectable")));
-                return;
-            }
-            NSDictionary *data = document.data ?: @{};
-            NSMutableDictionary *safeData = [data mutableCopy];
-            for (NSString *key in @[
-                @"addressID", @"userID", @"fullName", @"addressLine1",
-                @"addressLine2", @"postalCode", @"locatioName",
-                @"locationPoints", @"phoneNumber"
-            ]) {
-                safeData[key] = PPMissionSafeString(data[key]);
-            }
-            PPAddressModel *address = [[PPAddressModel alloc] initWithDictionary:safeData
-                                                                       documentID:document.documentID];
-            if (![self isSelectableAddressData:data documentID:safeIdentifier model:address]) {
-                if (completion) completion(nil, PPMissionError(422, kLang(@"order_mission_address_not_selectable")));
-                return;
-            }
-            NSMutableDictionary *snapshot = [[address toDictionary] mutableCopy];
-            snapshot[@"addressID"] = safeIdentifier;
-            snapshot[@"displayName"] = address.displayName ?: @"";
-            if (address.locatioName.length > 0) snapshot[@"address"] = address.locatioName;
-            NSString *points = PPMissionSafeString(address.locationPoints);
-            NSArray *parts = [points componentsSeparatedByString:@","];
-            if (parts.count >= 2) {
-                double latitude = PPMissionDouble(parts[0], NAN);
-                double longitude = PPMissionDouble(parts[1], NAN);
-                if (isfinite(latitude) && isfinite(longitude)) {
-                    snapshot[@"latitude"] = @(latitude);
-                    snapshot[@"longitude"] = @(longitude);
-                }
-            }
-            NSDictionary *payload = @{
-                @"shippingAddressId": safeIdentifier,
-                @"shippingAddressSnapshot": snapshot.copy,
-                @"updatedAt": [FIRTimestamp timestamp]
-            };
-            NSString *orderID = PPMissionSafeString(self.order.orderId);
-            FIRDocumentReference *orderReference = [[[FIRFirestore firestore]
-                collectionWithPath:@"Orders"] documentWithPath:orderID];
-            [orderReference updateData:payload completion:^(NSError * _Nullable updateError) {
-                PPMissionOnMain(^{
-                    if (![self hasCurrentOwnerAuthority]) {
-                        if (completion) completion(nil, PPMissionError(403, kLang(@"order_mission_permission_denied")));
-                    } else if (updateError) {
-                        if (completion) completion(nil, updateError);
-                    } else if (completion) {
-                        completion(@{
-                            @"outcome": @"updated",
-                            @"title": kLang(@"order_mission_command_complete"),
-                            @"message": kLang(@"LocationUpdated")
-                        }, nil);
-                    }
-                });
-            }];
-        });
+    [self callDeliveryAddressWithPayload:command completion:^(NSDictionary *result, NSError *error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (error) {
+            if (error.code == 409) [self refreshAddressEligibility];
+            completion(nil, error);
+            return;
+        }
+        NSDictionary *snapshot = [result[@"shippingAddressSnapshot"] isKindOfClass:NSDictionary.class] ? result[@"shippingAddressSnapshot"] : nil;
+        NSString *currentID = PPMissionSafeString(result[@"shippingAddressId"]);
+        if (!snapshot.count || ![PPMissionSafeString(snapshot[@"addressID"]) isEqualToString:currentID] ||
+            ![PPMissionSafeString(snapshot[@"userID"]) isEqualToString:self.verifiedOwnerUID]) {
+            completion(nil, PPMissionError(503, kLang(@"order_mission_address_service_error")));
+            return;
+        }
+        NSInteger resultRevision = [result[@"addressRevision"] integerValue];
+        if (resultRevision >= self.observedAddressRevision) {
+            self.addressLookupToken += 1;
+            self.addressEligibilityLoading = NO;
+            self.addressEligibilityError = nil;
+            self.addressEligibility = result;
+            self.observedAddressRevision = resultRevision;
+            self.order.shippingAddressId = currentID;
+            self.order.shippingAddressSnapshot = snapshot;
+            [self emitState];
+        }
+        BOOL destinationMatches = [self.order.shippingAddressId isEqualToString:identifier];
+        completion(@{@"title": destinationMatches ? kLang(@"LocationUpdated") : kLang(@"DeliveryLocation"),
+                     @"message": destinationMatches ? @"" : kLang(@"order_mission_address_changed_elsewhere")}, nil);
     }];
 }
 

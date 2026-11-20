@@ -168,9 +168,7 @@ enum HomeModelAdapter {
             }
             let configuredVisibility =
                 (row["visible"] as? NSNumber)?.boolValue ?? true
-            let isVisible = identifier == PPHomeSectionRegistry.marketplaceHero
-                ? true
-                : (configuredVisibility && (identifier != 9 || premiumCareVisible))
+            let isVisible = configuredVisibility && (identifier != 9 || premiumCareVisible)
             resolvedSections.append(
                 HomeConfigSection(
                     id: identifier,
@@ -186,9 +184,7 @@ enum HomeModelAdapter {
                 HomeConfigSection(
                     id: section.id,
                     type: section.type,
-                    isVisible: section.id == PPHomeSectionRegistry.marketplaceHero
-                        ? true
-                        : (section.isVisible && (section.id != 9 || premiumCareVisible)),
+                    isVisible: section.isVisible && (section.id != 9 || premiumCareVisible),
                     metadata: section.metadata
                 )
             }

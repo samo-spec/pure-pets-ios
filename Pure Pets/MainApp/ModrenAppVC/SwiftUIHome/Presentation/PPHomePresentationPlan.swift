@@ -372,10 +372,6 @@ enum PPHomePresentationResolver {
             $0.id == PPHomeSectionRegistry.quickActions
                 && !state.priorityActions.isEmpty
         }
-        let launcherHasFreeSlot =
-            launcherSection != nil
-            && state.priorityActions.count
-                < PPHomePresentationLimits.ecosystemLauncherActions
 
         // 6. Single care gateway among the duplicate care destinations.
         let careSection = eligibleOrder.first {
@@ -513,19 +509,13 @@ enum PPHomePresentationResolver {
                 }
 
             case PPHomeSectionRegistry.adopt:
-                if launcherHasFreeSlot {
-                    // Consumed by the ecosystem launcher; the standalone
-                    // gateway would duplicate the same single destination.
-                    suppress(section)
-                } else {
-                    commerceModules.append(
-                        PPHomeModule(
-                            rawID: section.id,
-                            type: section.type,
-                            kind: .adoptionGateway
-                        )
+                commerceModules.append(
+                    PPHomeModule(
+                        rawID: section.id,
+                        type: section.type,
+                        kind: .adoptionGateway
                     )
-                }
+                )
 
             case PPHomeSectionRegistry.petProfile:
                 commerceModules.append(

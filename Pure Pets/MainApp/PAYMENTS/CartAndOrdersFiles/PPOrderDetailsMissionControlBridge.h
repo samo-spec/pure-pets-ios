@@ -48,11 +48,15 @@ typedef void (^PPOrderMissionListResult)(NSArray<NSDictionary *> *items, NSError
            completion:(PPOrderMissionResult)completion
     NS_SWIFT_NAME(submit(action:reasonCode:reasonTitle:notes:selectedItemIDs:images:completion:));
 
+- (void)refreshAddressEligibility;
 - (void)loadAddressesWithCompletion:(PPOrderMissionListResult)completion
     NS_SWIFT_NAME(loadAddresses(completion:));
 - (void)selectAddressWithIdentifier:(NSString *)identifier
-                         completion:(PPOrderMissionResult)completion
-    NS_SWIFT_NAME(selectAddress(identifier:completion:));
+                   previousAddressID:(NSString *)previousAddressID
+                            revision:(NSInteger)revision
+                      idempotencyKey:(NSString *)idempotencyKey
+                          completion:(PPOrderMissionResult)completion
+    NS_SWIFT_NAME(selectAddress(identifier:previousAddressID:revision:idempotencyKey:completion:));
 
 - (void)startRequestEventsForRequestID:(NSString *)requestID
                                  update:(PPOrderMissionListResult)update

@@ -1,9 +1,15 @@
+//
+//  PPAlertHelper.h
+//  Pure Pets
+//
+//  Reinvented from absolute first principles for iPhone & iPad.
+//  Category-defining Apple modal architecture, unified reading axis,
+//  zero geometric clipping flaws, hardware keyboard & pointer support.
+//
 
 #import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
-
-
 
 typedef NS_ENUM(NSInteger, PPAlertType) {
     PPAlertTypeSuccess,
@@ -13,43 +19,51 @@ typedef NS_ENUM(NSInteger, PPAlertType) {
     PPAlertTypeConfirmation,
     PPAlertTypeTextInput
 };
+
+typedef NS_ENUM(NSInteger, PPAlertActionStyle) {
+    PPAlertActionStylePrimary = 0,
+    PPAlertActionStyleSecondary,
+    PPAlertActionStyleDestructive,
+    PPAlertActionStyleCancel
+};
+
 typedef void (^AlertCompletionBlock)(NSString * _Nullable text, BOOL didConfirm);
 typedef void (^PPAlertSimpleActionBlock)(void);
+
 @interface PPAlert : UIView
+
+/// When YES, the text field will automatically become first responder on presentation.
+/// Defaults to NO so optional note / prompt fields do not force the keyboard on screen unless tapped.
+@property (nonatomic, assign) BOOL autoFocusTextField;
 
 - (instancetype)initWithType:(PPAlertType)type
                       title:(NSString *)title
                    subtitle:(NSString *)subtitle
-                       icon:(UIImage *)icon
+                       icon:(UIImage * _Nullable)icon
                 confirmTitle:(NSString * _Nullable)confirmTitle
                  cancelTitle:(NSString * _Nullable)cancelTitle
                confirmAction:(AlertCompletionBlock _Nullable)confirmAction
                 cancelAction:(void(^ _Nullable)(void))cancelAction;
 
-- (void)showInViewController:(UIViewController *)vc;
+- (void)showInViewController:(UIViewController * _Nullable)vc;
  
 @end
 
-
-
-
-
-
-
 @interface PPAlertHelper : NSObject
 
-+ (void)showSuccessIn:(UIViewController *)vc
++ (void)showSuccessIn:(UIViewController * _Nullable)vc
                 title:(NSString *)title
              subtitle:(NSString *)subtitle
-             OKAction:(AlertCompletionBlock _Nullable)okAction;
+             OKAction:(AlertCompletionBlock _Nullable)okAction
+    NS_SWIFT_NAME(showSuccess(in:title:subtitle:OKAction:));
 
-
-+ (void)showFailIn:(UIViewController *)vc
++ (void)showFailIn:(UIViewController * _Nullable)vc
              title:(NSString *)title
           subtitle:(NSString * _Nullable)subtitle
-        completion:(void (^ _Nullable)(void))completion;
+        completion:(void (^ _Nullable)(void))completion
+    NS_SWIFT_NAME(showFail(in:title:subtitle:completion:));
 
-+ (void)showConfirmationIn:(UIViewController *)vc
++ (void)showConfirmationIn:(UIViewController * _Nullable)vc
                      title:(NSString *)title
                   subtitle:(NSString *)subtitle
              confirmButton:(NSString *)confirmTitle
@@ -59,7 +73,7 @@ typedef void (^PPAlertSimpleActionBlock)(void);
                 cancelBlock:(void(^ _Nullable)(void))cancelBlock
     NS_SWIFT_NAME(showConfirmation(in:title:subtitle:confirmButton:cancelButton:icon:confirmBlock:cancelBlock:));
 
-+ (void)showThreeActionConfirmationIn:(UIViewController *)vc
++ (void)showThreeActionConfirmationIn:(UIViewController * _Nullable)vc
                                 title:(NSString *)title
                              subtitle:(NSString * _Nullable)subtitle
                         primaryButton:(NSString *)primaryTitle
@@ -72,17 +86,28 @@ typedef void (^PPAlertSimpleActionBlock)(void);
                        secondaryBlock:(PPAlertSimpleActionBlock _Nullable)secondaryBlock
                         tertiaryBlock:(PPAlertSimpleActionBlock _Nullable)tertiaryBlock;
 
-+ (void)showTextFieldAlertIn:(UIViewController *)vc
-                   title:(NSString *)title
-                subtitle:(NSString * _Nullable)subtitle
-             placeholder:(NSString * _Nullable)placeholder
-             initialText:(NSString * _Nullable)initialText
-             confirmText:(NSString * _Nullable)confirmText
-              cancelText:(NSString * _Nullable)cancelText
-             completion:(AlertCompletionBlock)completion
++ (void)showTextFieldAlertIn:(UIViewController * _Nullable)vc
+                    title:(NSString *)title
+                 subtitle:(NSString * _Nullable)subtitle
+              placeholder:(NSString * _Nullable)placeholder
+              initialText:(NSString * _Nullable)initialText
+              confirmText:(NSString * _Nullable)confirmText
+               cancelText:(NSString * _Nullable)cancelText
+              completion:(AlertCompletionBlock)completion
     NS_SWIFT_NAME(showTextField(in:title:subtitle:placeholder:initialText:confirmText:cancelText:completion:));
 
-+ (void)showDestructiveTextFieldAlertIn:(UIViewController *)vc
++ (void)showTextFieldAlertIn:(UIViewController * _Nullable)vc
+                       title:(NSString *)title
+                    subtitle:(NSString * _Nullable)subtitle
+                 placeholder:(NSString * _Nullable)placeholder
+                 initialText:(NSString * _Nullable)initialText
+                 confirmText:(NSString * _Nullable)confirmText
+                  cancelText:(NSString * _Nullable)cancelText
+                 destructive:(BOOL)destructive
+                  completion:(AlertCompletionBlock)completion
+    NS_SWIFT_NAME(showTextField(in:title:subtitle:placeholder:initialText:confirmText:cancelText:destructive:completion:));
+
++ (void)showDestructiveTextFieldAlertIn:(UIViewController * _Nullable)vc
                                   title:(NSString *)title
                                subtitle:(NSString * _Nullable)subtitle
                             placeholder:(NSString * _Nullable)placeholder
@@ -93,33 +118,51 @@ typedef void (^PPAlertSimpleActionBlock)(void);
                              completion:(AlertCompletionBlock)completion
     NS_SWIFT_NAME(showDestructiveTextField(in:title:subtitle:placeholder:initialText:confirmText:cancelText:icon:completion:));
 
++ (void)showActionSheetIn:(UIViewController * _Nullable)vc
+                    title:(NSString *)title
+                 subtitle:(NSString * _Nullable)subtitle
+                  actions:(NSArray<NSString *> *)actionTitles
+             actionStyles:(NSArray<NSNumber *> * _Nullable)actionStyles
+              cancelTitle:(NSString *)cancelTitle
+               completion:(void(^ _Nullable)(NSInteger index))completion;
 
-+ (void)showSuccessIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle;
-+ (void)showErrorIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle;
-+ (void)showErrorIn:(UIViewController *)vc
++ (void)showSuccessIn:(UIViewController * _Nullable)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle
+    NS_SWIFT_NAME(showSuccess(in:title:subtitle:));
++ (void)showErrorIn:(UIViewController * _Nullable)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle
+    NS_SWIFT_NAME(showError(in:title:subtitle:));
++ (void)showErrorIn:(UIViewController * _Nullable)vc
               title:(NSString *)title
            subtitle:(NSString * _Nullable)subtitle
          completion:(void (^ _Nullable)(void))completion;
-+ (void)showWarningIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle;
-+ (void)showInfoIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle
++ (void)showWarningIn:(UIViewController * _Nullable)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle
+    NS_SWIFT_NAME(showWarning(in:title:subtitle:));
++ (void)showInfoIn:(UIViewController * _Nullable)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle
     NS_SWIFT_NAME(showInfo(in:title:subtitle:));
-+ (void)showSuccessIn:(UIViewController *)vc
+/// Two explicit actions. Tapping outside the alert never chooses either action.
++ (void)showInfoIn:(UIViewController * _Nullable)vc
+             title:(NSString *)title
+          subtitle:(NSString *)subtitle
+     primaryButton:(NSString *)primaryTitle
+   secondaryButton:(NSString *)secondaryTitle
+      primaryBlock:(PPAlertSimpleActionBlock)primaryBlock
+    secondaryBlock:(PPAlertSimpleActionBlock)secondaryBlock;
++ (void)showSuccessIn:(UIViewController * _Nullable)vc
                 title:(NSString *)title
              subtitle:(NSString *)subtitle
         confirmAction:(AlertCompletionBlock _Nullable)confirmAction
          cancelAction:(void (^)(void))cancelAction;
-+ (void)showWarningIn:(UIViewController *)vc
++ (void)showWarningIn:(UIViewController * _Nullable)vc
                 title:(NSString *)title
              subtitle:(NSString * _Nullable)subtitle
            completion:(void (^ _Nullable)(void))completion;
-+ (void)showInfoIn:(UIViewController *)vc
-             title:(NSString *)title
-          subtitle:(NSString * _Nullable)subtitle
-        completion:(void (^ _Nullable)(void))completion;
++ (void)showInfoIn:(UIViewController * _Nullable)vc
+              title:(NSString *)title
+           subtitle:(NSString * _Nullable)subtitle
+         completion:(void (^ _Nullable)(void))completion;
 
 #pragma mark - Backward-compatible (old AlertHelper API)
 
-+ (void)showConfirmationIn:(UIViewController *)vc
++ (void)showConfirmationIn:(UIViewController * _Nullable)vc
                      title:(NSString *)title
                   subtitle:(NSString *)subtitle
                placeholder:(NSString * _Nullable)placeholder
@@ -128,7 +171,7 @@ typedef void (^PPAlertSimpleActionBlock)(void);
               confirmBlock:(void(^_Nullable)(void))confirmBlock
                cancelBlock:(void(^_Nullable)(void))cancelBlock;
 
-+ (void)showConfirmationIn:(UIViewController *)vc
++ (void)showConfirmationIn:(UIViewController * _Nullable)vc
                      title:(NSString *)title
                   subtitle:(NSString *)subtitle
                placeholder:(NSString * _Nullable)placeholder
@@ -138,28 +181,26 @@ typedef void (^PPAlertSimpleActionBlock)(void);
               confirmBlock:(void(^_Nullable)(void))confirmBlock
                cancelBlock:(void(^_Nullable)(void))cancelBlock;
 
-+ (void)showTextPromptIn:(UIViewController *)vc
-                   title:(NSString *)title
-                subtitle:(NSString * _Nullable)subtitle
-             placeholder:(NSString * _Nullable)placeholder
-             initialText:(NSString * _Nullable)initialText
-             confirmText:(NSString * _Nullable)confirmText
-              cancelText:(NSString * _Nullable)cancelText
-              completion:(void(^)(NSString * _Nullable text))completion;
++ (void)showTextPromptIn:(UIViewController * _Nullable)vc
+                    title:(NSString *)title
+                 subtitle:(NSString * _Nullable)subtitle
+              placeholder:(NSString * _Nullable)placeholder
+              initialText:(NSString * _Nullable)initialText
+              confirmText:(NSString * _Nullable)confirmText
+               cancelText:(NSString * _Nullable)cancelText
+               completion:(void(^)(NSString * _Nullable text))completion;
 
-+ (void)showTextPromptIn:(UIViewController *)vc
-                   title:(NSString *)title
-                subtitle:(NSString * _Nullable)subtitle
-             placeholder:(NSString * _Nullable)placeholder
-             initialText:(NSString * _Nullable)initialText
-             confirmText:(NSString * _Nullable)confirmText
-              cancelText:(NSString * _Nullable)cancelText
-             secureEntry:(BOOL)secureEntry
-            keyboardType:(UIKeyboardType)keyboardType
-              completion:(void(^)(NSString * _Nullable text))completion;
++ (void)showTextPromptIn:(UIViewController * _Nullable)vc
+                    title:(NSString *)title
+                 subtitle:(NSString * _Nullable)subtitle
+              placeholder:(NSString * _Nullable)placeholder
+              initialText:(NSString * _Nullable)initialText
+              confirmText:(NSString * _Nullable)confirmText
+               cancelText:(NSString * _Nullable)cancelText
+              secureEntry:(BOOL)secureEntry
+             keyboardType:(UIKeyboardType)keyboardType
+               completion:(void(^)(NSString * _Nullable text))completion;
 
 @end
-
-
 
 NS_ASSUME_NONNULL_END

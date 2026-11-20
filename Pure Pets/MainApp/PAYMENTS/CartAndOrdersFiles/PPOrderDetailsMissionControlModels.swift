@@ -434,7 +434,13 @@ struct PPOrderMissionState {
     let shippingText: String
     let totalText: String
     let paymentText: String
-    let addressText: String
+    let destinationStreet: String
+    let destinationLocality: String
+    let destinationRecipient: String
+    let currentShippingAddressID: String
+    let addressRevision: Int
+    let addressEditChecking: Bool
+    let addressEditRetryable: Bool
     let addressEditable: Bool
     let addressEditMessage: String
     let hasCoordinate: Bool
@@ -509,7 +515,13 @@ struct PPOrderMissionState {
         shippingText = dictionary.missionString("shippingText")
         totalText = dictionary.missionString("totalText")
         paymentText = dictionary.missionString("paymentText")
-        addressText = dictionary.missionString("addressText")
+        destinationStreet = dictionary.missionString("destinationStreet")
+        destinationLocality = dictionary.missionString("destinationLocality")
+        destinationRecipient = dictionary.missionString("destinationRecipient")
+        currentShippingAddressID = dictionary.missionString("currentShippingAddressID")
+        addressRevision = dictionary.missionInt("addressRevision")
+        addressEditChecking = dictionary.missionBool("addressEditChecking")
+        addressEditRetryable = dictionary.missionBool("addressEditRetryable")
         addressEditable = dictionary.missionBool("addressEditable")
         addressEditMessage = dictionary.missionString("addressEditMessage")
         hasCoordinate = dictionary.missionBool("hasCoordinate")
@@ -597,6 +609,14 @@ struct PPOrderMissionAddress: Identifiable, Hashable {
             "availabilityMessage"
         )
     }
+}
+
+struct PPOrderMissionAddressChange: Identifiable {
+    let id = UUID()
+    let orderID: String
+    let address: PPOrderMissionAddress
+    let previousAddressID: String
+    let revision: Int
 }
 
 struct PPOrderMissionNotice: Identifiable, Equatable {

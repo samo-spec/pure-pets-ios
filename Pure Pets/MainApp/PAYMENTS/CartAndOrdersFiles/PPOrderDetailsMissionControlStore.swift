@@ -27,6 +27,9 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
     @Published private(set) var addresses: [PPOrderMissionAddress] = []
     @Published private(set) var addressesLoading = false
     @Published private(set) var addressesError = ""
+    @Published private(set) var addressSaveError = ""
+    @Published private(set) var pendingAddressRetry: PPOrderMissionAddressChange?
+    private var addressListRequest = 0
     @Published private(set) var requestEvents: [PPOrderMissionTimelineEvent] = []
     @Published private(set) var requestEventsLoading = false
     @Published private(set) var requestEventsError = ""
@@ -66,6 +69,10 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
                 )
                 if !nextState.isAuthorized && !nextState.isInitialLoading {
                     self.pendingPostDismissAction = nil
+                    self.addressListRequest += 1
+                    self.addresses = []
+                    self.pendingAddressRetry = nil
+                    self.addressSaveError = ""
                     self.activeSheet = nil
                 }
                 self.state = nextState
@@ -312,6 +319,7 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
     }
 
     func sheetDidDismiss() {
+        addressListRequest += 1
         requestEventsRevision += 1
         bridge.stopRequestEvents()
         requestEvents = []
@@ -455,71 +463,75 @@ final class PPOrderDetailsMissionControlStore: ObservableObject {
         }
     }
 
+    func retryAddressEligibility() {
+        bridge.refreshAddressEligibility()
+    }
+
     func presentAddresses() {
-        guard state.addressEditable else {
-            notice = PPOrderMissionNotice(
-                title: PPOrderMissionText("Select Delivery Location"),
-                message: state.addressEditMessage,
-                isError: false
-            )
-            return
-        }
+        guard state.addressEditable || pendingAddressRetry != nil else { return }
         activeSheet = .addresses
+        addressSaveError = ""
+        if pendingAddressRetry != nil { return }
+        bridge.refreshAddressEligibility()
+        addressListRequest += 1
+        let request = addressListRequest
+        let orderID = state.orderID
         addressesLoading = true
         addressesError = ""
+        addresses = []
         bridge.loadAddresses { [weak self] rawAddresses, error in
-            guard let self else { return }
             Task { @MainActor in
+                guard let self, request == self.addressListRequest,
+                      self.state.isAuthorized, self.state.orderID == orderID,
+                      case .addresses? = self.activeSheet else { return }
                 self.addressesLoading = false
                 self.addresses = rawAddresses.map {
                     PPOrderMissionAddress(dictionary: Self.dictionary($0))
                 }
-                if let error {
-                    NSLog(
-                        "[PPOrderMission] addresses failed: %@",
-                        error.localizedDescription
-                    )
-                    self.addressesError = PPOrderMissionText(
-                        "order_mission_addresses_load_error"
-                    )
-                } else {
-                    self.addressesError = ""
+                if error != nil {
+                    self.addressesError = PPOrderMissionText("order_mission_addresses_load_error")
                 }
             }
         }
     }
 
-    func selectAddress(_ address: PPOrderMissionAddress) {
-        guard address.isSelectable else {
-            notice = PPOrderMissionNotice(
-                title: PPOrderMissionText("Select Delivery Location"),
-                message: address.availabilityMessage.isEmpty
-                    ? PPOrderMissionText("order_mission_address_not_selectable")
-                    : address.availabilityMessage,
-                isError: false
-            )
-            return
-        }
+    func reviewAddress(_ address: PPOrderMissionAddress) -> PPOrderMissionAddressChange? {
+        guard state.addressEditable, !isCommandRunning, address.isSelectable,
+              address.id != state.currentShippingAddressID, pendingAddressRetry == nil else { return nil }
+        addressSaveError = ""
+        return PPOrderMissionAddressChange(
+            orderID: state.orderID, address: address,
+            previousAddressID: state.currentShippingAddressID, revision: state.addressRevision
+        )
+    }
+
+    func confirmAddress(_ change: PPOrderMissionAddressChange) {
+        let replay = pendingAddressRetry?.id == change.id
+        guard !isCommandRunning, state.isAuthorized, change.orderID == state.orderID,
+              state.addressEditable || replay else { return }
         isCommandRunning = true
+        addressSaveError = ""
         bridge.selectAddress(
-            identifier: address.id
+            identifier: change.address.id, previousAddressID: change.previousAddressID,
+            revision: change.revision, idempotencyKey: change.id.uuidString
         ) { [weak self] rawResult, error in
-            guard let self else { return }
             Task { @MainActor in
+                guard let self else { return }
                 self.isCommandRunning = false
+                guard self.state.isAuthorized, self.state.orderID == change.orderID else { return }
                 if let error {
-                    self.present(error: error)
+                    // A timeout can arrive after commit. Keep the entire original command for replay.
+                    self.pendingAddressRetry = (error as NSError).code == 503 ? change : nil
+                    self.addressSaveError = error.localizedDescription
                     return
                 }
+                self.pendingAddressRetry = nil
                 let result = Self.dictionary(rawResult)
                 let notice = PPOrderMissionNotice(
-                    title: result.missionString("title"),
-                    message: result.missionString("message"),
+                    title: result.missionString("title"), message: result.missionString("message"),
                     isError: false
                 )
-                self.dismissSheetThen { [weak self] in
-                    self?.notice = notice
-                }
+                self.dismissSheetThen { [weak self] in self?.notice = notice }
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
             }
         }

@@ -757,64 +757,13 @@ struct PPOrderDetailsMissionControlScreen: View {
     }
 
     private var destinationSection: some View {
-        PPOrderMissionSection(
-            eyebrow: PPOrderMissionText("order_mission_destination_eyebrow"),
-            title: PPOrderMissionText("DeliveryLocation"),
-            symbol: "mappin.and.ellipse",
-            accent: PPOrderMissionColorRole.location
-        ) {
-            if store.state.hasCoordinate {
-                PPOrderMissionMap(
-                    latitude: store.state.latitude,
-                    longitude: store.state.longitude,
-                    annotationTitle: PPOrderMissionText("DeliveryLocation")
-                )
-                .frame(height: 164)
-                .clipShape(
-                    RoundedRectangle(
-                        cornerRadius: PPCorner.medium,
-                        style: .continuous
-                    )
-                )
-                .overlay(alignment: .bottomTrailing) {
-                    Button(action: store.openMap) {
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 14, weight: .bold))
-                            .frame(width: 44, height: 44)
-                            .background(.regularMaterial, in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(PPSpace.sm)
-                    .accessibilityLabel(
-                        PPOrderMissionText("order_mission_open_maps")
-                    )
-                }
-            } else {
-                PPOrderMissionInlineEmpty(
-                    symbol: "location.slash",
-                    title: PPOrderMissionText(
-                        "order_mission_location_unavailable"
-                    )
-                )
-            }
-
-            Text(store.state.addressText)
-                .font(PPOrderMissionTypography.body())
-                .foregroundStyle(Color.ppTextPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if store.state.fulfillmentVersion != 1 {
-                Button(action: store.presentAddresses) {
-                    PPOrderMissionDisclosureLabel(
-                        title: PPOrderMissionText("Select Delivery Location"),
-                        symbol: store.state.addressEditable ? "pencil" : "lock"
-                    )
-                    .opacity(store.state.addressEditable ? 1 : 0.64)
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint(store.state.addressEditMessage)
-            }
-        }
+        PPOrderMissionDestinationCard(
+            state: store.state,
+            hasPendingChange: store.pendingAddressRetry != nil && store.state.isAuthorized,
+            changeAddress: store.presentAddresses,
+            openMap: store.openMap,
+            retryEligibility: store.retryAddressEligibility
+        )
     }
 
     @ViewBuilder
@@ -1994,10 +1943,205 @@ private struct PPOrderMissionCommandOverlay: View {
     }
 }
 
+@available(iOS 17.0, *)
+private struct PPOrderMissionDestinationCard: View {
+    let state: PPOrderMissionState
+    let hasPendingChange: Bool
+    let changeAddress: () -> Void
+    let openMap: () -> Void
+    let retryEligibility: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var primaryLine: String {
+        if !state.destinationStreet.isEmpty { return state.destinationStreet }
+        if !state.destinationLocality.isEmpty { return state.destinationLocality }
+        return PPOrderMissionText(state.hasCoordinate
+            ? "order_mission_pinned_destination"
+            : "order_mission_address_unavailable")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                Label {
+                    Text(PPOrderMissionText("DeliveryLocation"))
+                        .font(PPOrderMissionTypography.headline(15))
+                        .foregroundStyle(Color.ppTextSecondary)
+                } icon: {
+                    Image(systemName: "mappin.and.ellipse")
+                        .foregroundStyle(Color.ppPrimary)
+                }
+                .accessibilityAddTraits(.isHeader)
+
+                VStack(alignment: .leading, spacing: PPSpace.xs) {
+                    Text(primaryLine)
+                        .font(PPOrderMissionTypography.title(25))
+                        .foregroundStyle(Color.ppTextPrimary)
+                    if !state.destinationStreet.isEmpty && !state.destinationLocality.isEmpty {
+                        Text(state.destinationLocality)
+                            .font(PPOrderMissionTypography.body())
+                            .foregroundStyle(Color.ppTextSecondary)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+
+                if !state.destinationRecipient.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+                        Image(systemName: "person")
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .accessibilityHidden(true)
+                        recipientLayout {
+                            Text(PPOrderMissionText("Recipient"))
+                                .foregroundStyle(Color.ppTextSecondary)
+                            Text(state.destinationRecipient)
+                                .font(PPOrderMissionTypography.headline(15))
+                                .foregroundStyle(Color.ppTextPrimary)
+                        }
+                    }
+                    .font(PPOrderMissionTypography.callout())
+                    .accessibilityElement(children: .combine)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(PPSpace.lg)
+
+            if state.hasCoordinate {
+                PPOrderMissionMap(
+                    latitude: state.latitude,
+                    longitude: state.longitude,
+                    annotationTitle: primaryLine
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: 132)
+            }
+
+            if state.hasCoordinate || state.addressEditable || hasPendingChange || state.addressEditChecking ||
+                state.addressEditRetryable || !state.addressEditMessage.isEmpty {
+                Divider().overlay(Color.ppSeparator)
+                VStack(alignment: .leading, spacing: PPSpace.xs) {
+                    if hasPendingChange && !state.isOffline {
+                        Label(PPOrderMissionText("order_mission_address_service_error"), systemImage: "info.circle")
+                            .font(PPOrderMissionTypography.callout())
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.vertical, PPSpace.xs)
+                    } else if state.addressEditChecking {
+                        HStack(spacing: PPSpace.sm) {
+                            ProgressView().controlSize(.small).accessibilityHidden(true)
+                            Text(PPOrderMissionText("order_mission_checking_address_edit"))
+                        }
+                        .font(PPOrderMissionTypography.callout())
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .padding(.vertical, PPSpace.xs)
+                    } else if !state.addressEditable && !state.addressEditMessage.isEmpty {
+                        Label {
+                            Text(state.addressEditMessage)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: state.isOffline ? "wifi.slash" :
+                                (state.addressEditRetryable ? "info.circle" : "lock"))
+                        }
+                        .font(PPOrderMissionTypography.callout())
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .padding(.vertical, PPSpace.xs)
+                    }
+
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: PPSpace.xs) { actions }
+                    } else {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: PPSpace.base) { actions }
+                                .fixedSize(horizontal: true, vertical: false)
+                            VStack(alignment: .leading, spacing: PPSpace.xs) { actions }
+                        }
+                    }
+                }
+                .padding(.horizontal, PPSpace.base)
+                .padding(.vertical, PPSpace.sm)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .multilineTextAlignment(.leading)
+        .labelStyle(.titleAndIcon)
+        .clipShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
+        .modifier(PPOrderMissionGlassCard(accent: .ppPrimary))
+    }
+
+    private var recipientLayout: AnyLayout {
+        if dynamicTypeSize.isAccessibilitySize {
+            return AnyLayout(VStackLayout(alignment: .leading, spacing: PPSpace.xxs))
+        }
+        return AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: PPSpace.sm))
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        if state.addressEditable || (hasPendingChange && !state.isOffline) {
+            Button(action: changeAddress) {
+                Label(
+                    PPOrderMissionText(hasPendingChange
+                        ? "order_mission_retry_address_change" : "order_mission_change_delivery_address"),
+                    systemImage: hasPendingChange ? "arrow.clockwise" : "pencil"
+                )
+                    .padding(.horizontal, PPSpace.md)
+                    .frame(minHeight: 44)
+                    .background(Color.ppPrimary.opacity(0.09), in: Capsule())
+                    .contentShape(Rectangle())
+            }
+            .font(PPOrderMissionTypography.headline(15))
+            .foregroundStyle(Color.ppPrimary)
+            .buttonStyle(.plain)
+            .accessibilityHint(hasPendingChange ? "" : state.addressEditMessage)
+            .accessibilityIdentifier(hasPendingChange ? "order.destination.verifyChange" : "order.destination.change")
+        } else if state.addressEditRetryable {
+            Button(action: retryEligibility) {
+                Label(PPOrderMissionText("KLang_Retry"), systemImage: "arrow.clockwise")
+                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .font(PPOrderMissionTypography.headline(15))
+            .foregroundStyle(Color.ppPrimary)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("order.destination.retry")
+        }
+        if state.hasCoordinate {
+            Button(action: openMap) {
+                Label(PPOrderMissionText("order_mission_open_maps"), systemImage: "map")
+                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .font(PPOrderMissionTypography.callout())
+            .foregroundStyle(Color.ppTextPrimary)
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("order.destination.openMaps")
+        }
+    }
+}
+
+@available(iOS 17.0, *)
 private struct PPOrderMissionMap: UIViewRepresentable {
     let latitude: Double
     let longitude: Double
     let annotationTitle: String
+
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        let destination = MKPointAnnotation()
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard annotation === destination else { return nil }
+            let marker = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: nil)
+            marker.markerTintColor = .ppPrimary
+            marker.glyphImage = UIImage(systemName: "shippingbox.fill")
+            marker.titleVisibility = .hidden
+            marker.subtitleVisibility = .hidden
+            marker.animatesWhenAdded = false
+            return marker
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView(frame: .zero)
@@ -2005,8 +2149,10 @@ private struct PPOrderMissionMap: UIViewRepresentable {
         map.isZoomEnabled = false
         map.isRotateEnabled = false
         map.isPitchEnabled = false
-        map.pointOfInterestFilter = .excludingAll
-        map.isAccessibilityElement = true
+        let configuration = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .muted)
+        configuration.pointOfInterestFilter = .excludingAll
+        map.preferredConfiguration = configuration
+        map.delegate = context.coordinator
         return map
     }
 
@@ -2015,19 +2161,20 @@ private struct PPOrderMissionMap: UIViewRepresentable {
             latitude: latitude,
             longitude: longitude
         )
-        map.removeAnnotations(map.annotations)
-        let annotation = MKPointAnnotation()
+        let annotation = context.coordinator.destination
+        if annotation.title != annotationTitle { annotation.title = annotationTitle }
+        let isInstalled = map.annotations.contains { $0 === annotation }
+        guard !isInstalled || annotation.coordinate.latitude != latitude ||
+            annotation.coordinate.longitude != longitude else { return }
         annotation.coordinate = coordinate
-        annotation.title = annotationTitle
-        map.addAnnotation(annotation)
+        if !isInstalled { map.addAnnotation(annotation) }
         map.setRegion(
             MKCoordinateRegion(
                 center: coordinate,
-                latitudinalMeters: 1_200,
-                longitudinalMeters: 1_200
+                latitudinalMeters: 720,
+                longitudinalMeters: 720
             ),
             animated: false
         )
-        map.accessibilityLabel = annotationTitle
     }
 }
