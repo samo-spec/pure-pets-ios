@@ -1148,6 +1148,82 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
     tap.cancelsTouchesInView = NO;
     [self.view addGestureRecognizer:tap];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillShow:)
+                                                 name:UIKeyboardWillShowNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillHide:)
+                                                 name:UIKeyboardWillHideNotification
+                                               object:nil];
+}
+
+- (void)pp_keyboardWillShow:(NSNotification *)note {
+    NSDictionary *info = note.userInfo;
+    CGRect kbFrame = [info[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGRect convertedFrame = [self.view convertRect:kbFrame fromView:nil];
+    CGFloat kbHeight = CGRectGetHeight(self.view.bounds) - convertedFrame.origin.y;
+    if (kbHeight < 0) kbHeight = 0;
+
+    CGFloat bottomInset = kbHeight + 20.0;
+    NSTimeInterval duration = [info[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationOptions curve = [info[UIKeyboardAnimationCurveUserInfoKey] unsignedIntegerValue] << 16;
+
+    [UIView animateWithDuration:duration delay:0.0 options:curve animations:^{
+        self.scrollView.contentInset = UIEdgeInsetsMake(6.0, 0.0, bottomInset, 0.0);
+        self.scrollView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, bottomInset, 0.0);
+    } completion:nil];
+}
+
+- (void)pp_keyboardWillHide:(NSNotification *)note {
+    NSDictionary *info = note.userInfo;
+    CGFloat dockHeight = CGRectGetHeight(self.studioFloatingDockView.bounds);
+    if (dockHeight <= 0) dockHeight = 120.0;
+    CGFloat bottomInset = dockHeight + 20.0;
+    NSTimeInterval duration = [info[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationOptions curve = [info[UIKeyboardAnimationCurveUserInfoKey] unsignedIntegerValue] << 16;
+
+    [UIView animateWithDuration:duration delay:0.0 options:curve animations:^{
+        self.scrollView.contentInset = UIEdgeInsetsMake(6.0, 0.0, bottomInset, 0.0);
+        self.scrollView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, bottomInset, 0.0);
+    } completion:nil];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_updateDynamicBorderColors];
+        }
+    }
+}
+
+- (void)pp_updateDynamicBorderColors {
+    UIColor *borderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.08]
+            : [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.06];
+    }];
+    CGColorRef resolvedBorder = [borderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+
+    for (UIView *card in self.contentStack.arrangedSubviews) {
+        if (card.layer.cornerRadius > 0) {
+            card.layer.borderColor = resolvedBorder;
+        }
+    }
+    if (self.studioRadarCardView) {
+        self.studioRadarCardView.layer.borderColor = resolvedBorder;
+    }
+    if (self.studioMediaCardView) {
+        self.studioMediaCardView.layer.borderColor = resolvedBorder;
+    }
+    if (self.studioDockGuidancePill) {
+        UIColor *pillBg = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark ? [UIColor colorWithWhite:0.2 alpha:0.85] : UIColor.whiteColor;
+        }];
+        self.studioDockGuidancePill.backgroundColor = [pillBg resolvedColorWithTraitCollection:self.traitCollection];
+    }
 }
 
 - (void)pp_dismissKeyboard {
@@ -2752,6 +2828,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         return;
     }
 
+    if (self.presentingViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+        return;
+    }
+
     [self.navigationController popViewControllerAnimated:YES];
 }
 
@@ -4343,13 +4424,16 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     UIButton *heroBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     heroBtn.translatesAutoresizingMaskIntoConstraints = NO;
     heroBtn.layer.cornerRadius = 18.0;
-    heroBtn.layer.masksToBounds = YES;
+    heroBtn.layer.masksToBounds = NO;
+    heroBtn.clipsToBounds = NO;
     heroBtn.layer.shadowColor = [UIColor colorWithRed:0.98 green:0.45 blue:0.25 alpha:0.35].CGColor;
     heroBtn.layer.shadowOpacity = 0.35;
     heroBtn.layer.shadowRadius = 12.0;
     heroBtn.layer.shadowOffset = CGSizeMake(0.0, 5.0);
 
     CAGradientLayer *btnGrad = [CAGradientLayer layer];
+    btnGrad.cornerRadius = 18.0;
+    btnGrad.masksToBounds = YES;
     btnGrad.colors = @[
         (id)[UIColor colorWithRed:1.0 green:0.48 blue:0.27 alpha:1.0].CGColor,
         (id)[UIColor colorWithRed:0.96 green:0.33 blue:0.22 alpha:1.0].CGColor
@@ -4802,6 +4886,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     }
     if (self.studioFloatingDockView) {
         [self.view bringSubviewToFront:self.studioFloatingDockView];
+        CGFloat dockHeight = CGRectGetHeight(self.studioFloatingDockView.bounds);
+        if (dockHeight > 10.0 && self.scrollView.contentInset.bottom < dockHeight + 10.0) {
+            self.scrollView.contentInset = UIEdgeInsetsMake(6.0, 0.0, dockHeight + 20.0, 0.0);
+            self.scrollView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, dockHeight + 20.0, 0.0);
+        }
     }
     if (self.uploadProgressOverlay) {
         [self.view bringSubviewToFront:self.uploadProgressOverlay];
@@ -4842,6 +4931,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     if (self.isSubmittingAd) {
         return;
     }
+
+    [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium] impactOccurred];
 
     if (self.mode == AdEditorModeEdit && self.isPrefillInProgress) {
         NSString *title = [self pp_localizedStringForKey:@"loading_images" fallback:@"Loading images..."];
@@ -4971,6 +5062,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     [self.basicFormView validate];
     [self.petFormView validate];
     [self.listingFormView validate];
+    [[[UINotificationFeedbackGenerator alloc] init] notificationOccurred:UINotificationFeedbackTypeError];
     NSString *title = [self pp_localizedStringForKey:@"error" fallback:@"Error"];
     NSString *subtitle = [self pp_localizedStringForKey:@"validation_fill_required"
                                                 fallback:@"Please fill in all required fields."];
@@ -4980,6 +5072,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 - (void)pp_animateInvalidFormRow:(PPFormFieldRowView *)row
 {
     if (!row) return;
+    [[[UINotificationFeedbackGenerator alloc] init] notificationOccurred:UINotificationFeedbackTypeError];
     if (UIAccessibilityIsReduceMotionEnabled()) {
         row.alpha = 0.72;
         [UIView animateWithDuration:0.18 animations:^{
@@ -5248,6 +5341,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 - (void)pp_finishCreateSuccess
 {
     dispatch_async(dispatch_get_main_queue(), ^{
+        [[[UINotificationFeedbackGenerator alloc] init] notificationOccurred:UINotificationFeedbackTypeSuccess];
         self.createFlowAdID = nil;
         [[NSNotificationCenter defaultCenter]
          postNotificationName:PPAdDidFinishUploadNotification
@@ -5270,6 +5364,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 - (void)pp_finishUpdateSuccess
 {
     dispatch_async(dispatch_get_main_queue(), ^{
+        [[[UINotificationFeedbackGenerator alloc] init] notificationOccurred:UINotificationFeedbackTypeSuccess];
         self.didMutateMediaAfterPrefill = NO;
         [[NSNotificationCenter defaultCenter]
          postNotificationName:PPAdDidFinishUploadNotification

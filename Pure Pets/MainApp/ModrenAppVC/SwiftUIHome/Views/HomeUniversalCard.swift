@@ -137,14 +137,14 @@ private struct HomeProductInformationRegionModifier: ViewModifier {
 /// stays stable; long titles, larger text and quantity controls grow the rail.
 struct HomeUniversalCardSizing: DynamicProperty {
     static let productMediaHeight: CGFloat = 134
-    static let advertisementMediaHeight: CGFloat = 120
+    static let advertisementMediaHeight: CGFloat = 134
     static let serviceMediaHeight: CGFloat = 116
     // Renderer inset (3), card inset (6), compact information padding (8).
     private static let productInformationInsets: CGFloat = 16
 
     @Environment(\.homeProductInformationHeight) private var measuredInformationHeight
     @ScaledMetric(relativeTo: .body) private var productInformationHeight: CGFloat = 142
-    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 124
+    @ScaledMetric(relativeTo: .body) private var advertisementInformationHeight: CGFloat = 110
     @ScaledMetric(relativeTo: .body) private var serviceInformationHeight: CGFloat = 208
 
     func height(isAdvertisement: Bool, isService: Bool = false, measuredProductInformationHeight: CGFloat? = nil) -> CGFloat {
@@ -349,11 +349,35 @@ private struct HomeUniversalCompatibilityCard: View {
                         .minimumScaleFactor(0.85)
                         .frame(maxWidth: .infinity, minHeight: isAdvertisement ? titleMinimumHeight : nil, alignment: .topLeading)
 
-                    if !viewModel.subtitle.isEmpty {
-                        Text(viewModel.subtitle)
-                            .font(HomeFont.caption1())
-                            .foregroundStyle(Color.ppTextSecondary)
-                            .lineLimit(1)
+                    let adSubtitle: String = {
+                        if isAdvertisement {
+                            let loc = viewModel.location.trimmingCharacters(in: .whitespacesAndNewlines)
+                            return !loc.isEmpty ? loc : HomeModelAdapter.localized("ad_no_location_placeholder", fallback: "Location not specified")
+                        }
+                        return viewModel.subtitle
+                    }()
+
+                    if !adSubtitle.isEmpty {
+                        if isAdvertisement {
+                            let loc = viewModel.location.trimmingCharacters(in: .whitespacesAndNewlines)
+                            let isPlaceholder = loc.isEmpty
+                            HStack(spacing: 4) {
+                                Image(systemName: isPlaceholder ? "mappin.slash" : "mappin.and.ellipse")
+                                    .font(.system(size: 10.5, weight: .bold))
+                                    .foregroundColor(isPlaceholder ? Color.ppTextSecondary : .ppPrimary)
+                                Text(isPlaceholder
+                                    ? adSubtitle
+                                    : "\(HomeModelAdapter.localized("location", fallback: "Location")): \(adSubtitle)")
+                                    .font(HomeFont.caption1())
+                                    .foregroundStyle(isPlaceholder ? Color.ppTextSecondary : Color.ppTextPrimary)
+                                    .lineLimit(1)
+                            }
+                        } else {
+                            Text(adSubtitle)
+                                .font(HomeFont.caption1())
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .lineLimit(1)
+                        }
                     }
 
                     HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {

@@ -1274,17 +1274,15 @@ private final class PPUniversalCardStore: ObservableObject {
             showsSubtitle: showsSubtitle
         )
         var resolvedSubtitle: String? = nil
-        if dataViewPresentation {
-            if isAdLike {
-                let loc = viewModel.location
-                if !loc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    resolvedSubtitle = loc
-                } else {
-                    resolvedSubtitle = Self.localized("ad_no_location_placeholder", fallback: "Location not specified")
-                }
+        if isAdLike {
+            let loc = viewModel.location.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !loc.isEmpty {
+                resolvedSubtitle = loc
             } else {
-                resolvedSubtitle = subtitle
+                resolvedSubtitle = Self.localized("ad_no_location_placeholder", fallback: "Location not specified")
             }
+        } else if dataViewPresentation || showsSubtitle {
+            resolvedSubtitle = subtitle
         }
         let availabilityText = PPUniversalCellSwiftUIBridge.availabilityText(
             for: viewModel,
@@ -4393,7 +4391,7 @@ private struct PPUniversalCardRenderer: View {
                         .font(.system(size: store.isHomePresentation ? 10.5 : 11, weight: .bold))
                         .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : semanticAccent)
 
-                    Text("\(PPUniversalCardStore.localized("location", fallback: "Location")): \(subtitle)")
+                    Text(isPlaceholder ? subtitle : "\(PPUniversalCardStore.localized("location", fallback: "Location")): \(subtitle)")
                         .font(
                             .custom(
                                 "Beiruti-Medium",

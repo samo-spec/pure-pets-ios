@@ -38,11 +38,11 @@ final class AdoptPetsViewController: UIViewController {
         navigationController?.navigationBar.semanticContentAttribute = attr
 
         let isRTL = Language.isRTL()
-        let communityScreen = PPCommunityGatewayScreen(
-            onSelectAdoption: { [weak self] pet in
+        let adoptScreen = AdoptPetListScreen(
+            onSelectPet: { [weak self] pet in
                 self?.openDetails(for: pet)
             },
-            onCreateAdoption: { [weak self] in
+            onAddPet: { [weak self] in
                 self?.openAddPetForm()
             },
             onClose: { [weak self] in
@@ -51,7 +51,7 @@ final class AdoptPetsViewController: UIViewController {
         )
 
         let directionalRoot = AnyView(
-            communityScreen
+            adoptScreen
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
                 .environment(\.locale, Locale(identifier: isRTL ? "ar" : "en"))
         )

@@ -399,7 +399,7 @@ private struct AdoptPetList_iPhone: View {
                 // Dynamic Kinds from MainKindsArrayManager
                 if let kinds = MainKindsArrayManager.shared().mainKindsArray as? [MainKindsModel] {
                     ForEach(kinds, id: \.id) { kind in
-                        let name = kind.kindName
+                        let name = kind.localizedName
                         if !name.isEmpty {
                             let count = store.pets.filter { $0.visibility == 0 && $0.kindID == kind.id }.count
                             speciesChip(
@@ -987,7 +987,7 @@ private struct AdoptPetCockpitSidebar: View {
             }
 
             ForEach(kinds, id: \.id) { kind in
-                let name = kind.kindName
+                let name = kind.localizedName
                 if !name.isEmpty {
                     let count = store.pets.filter { $0.visibility == 0 && $0.kindID == kind.id }.count
                     speciesTile(
@@ -2035,9 +2035,13 @@ private func adoptPetFacts(_ pet: AdoptPetModel) -> [AdoptListFact] {
 
 private func symbolForKind(name: String) -> String {
     let lower = name.lowercased()
-    if lower.contains("طير") || lower.contains("طيور") || lower.contains("bird") || lower.contains("صقر") || lower.contains("صقور") {
+    if lower.contains("قط") || lower.contains("قطط") || lower.contains("cat") {
+        return "cat.fill"
+    } else if lower.contains("كلب") || lower.contains("كلاب") || lower.contains("dog") {
+        return "dog.fill"
+    } else if lower.contains("طير") || lower.contains("طيور") || lower.contains("bird") || lower.contains("صقر") || lower.contains("صقور") {
         return "bird.fill"
-    } else if lower.contains("سمك") || lower.contains("اسماك") || lower.contains("fish") {
+    } else if lower.contains("سمك") || lower.contains("اسماك") || lower.contains("أسماك") || lower.contains("fish") {
         return "fish.fill"
     } else if lower.contains("أرنب") || lower.contains("ارانب") || lower.contains("rabbit") {
         return "hare.fill"

@@ -632,12 +632,12 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     [self.bottomRow setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
 
     self.cardTopConstraint = [self.cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceSM];
-    self.cardBottomConstraint = [self.cardContainer.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceSM];
+    self.cardBottomConstraint = [self.contentView.bottomAnchor constraintEqualToAnchor:self.cardContainer.bottomAnchor constant:PPSpaceSM];
     self.cardBottomConstraint.priority = UILayoutPriorityRequired - 1;
 
     self.contentTopConstraint = [self.contentStack.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceBase];
-    self.contentBottomConstraint = [self.contentStack.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceBase];
-    self.contentBottomConstraint.priority = UILayoutPriorityRequired - 1;
+    self.contentBottomConstraint = [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.contentStack.bottomAnchor constant:PPSpaceBase];
+    self.contentBottomConstraint.priority = UILayoutPriorityRequired;
 
     self.dividerHeightConstraint = [self.dividerView.heightAnchor constraintEqualToConstant:16];
 
@@ -720,9 +720,9 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         self.textStack.spacing = 3.0;
         self.priceRow.spacing = 2.0;
         self.cardTopConstraint.constant = 4.0;
-        self.cardBottomConstraint.constant = -4.0;
+        self.cardBottomConstraint.constant = 4.0;
         self.contentTopConstraint.constant = 10.0;
-        self.contentBottomConstraint.constant = -10.0;
+        self.contentBottomConstraint.constant = 10.0;
         self.dividerHeightConstraint.constant = 12.0;
         self.imageWidthConstraint.constant = 62.0;
     } else {
@@ -730,9 +730,9 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         self.textStack.spacing = PPSpaceXS;
         self.priceRow.spacing = PPSpaceXXS;
         self.cardTopConstraint.constant = PPSpaceSM;
-        self.cardBottomConstraint.constant = -PPSpaceSM;
+        self.cardBottomConstraint.constant = PPSpaceSM;
         self.contentTopConstraint.constant = PPSpaceBase;
-        self.contentBottomConstraint.constant = -PPSpaceBase;
+        self.contentBottomConstraint.constant = PPSpaceBase;
         self.dividerHeightConstraint.constant = 16.0;
         self.imageWidthConstraint.constant = 88.0;
     }
@@ -778,6 +778,12 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     }
     self.dividerView.imageAxisOffset = self.imageWidthConstraint.constant / 2;
     [self.dividerView setNeedsDisplay];
+
+    CGFloat imageW = self.imageWidthConstraint.constant;
+    CGFloat textWidth = verticalIdentity ? available : MAX(0, available - imageW - PPSpaceMD);
+    self.nameLabel.preferredMaxLayoutWidth = textWidth;
+    self.variantOptionsLabel.preferredMaxLayoutWidth = textWidth;
+
     CGFloat quantityWidth = MAX(30, ceil(self.quantityLabel.intrinsicContentSize.width));
     CGFloat totalWidth = MAX(96, ceil(self.lineTotalLabel.attributedText.length
         ? self.lineTotalLabel.attributedText.size.width
@@ -1004,13 +1010,13 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 
     [self pp_updateLayoutForWidth:fittingWidth];
 
-    self.contentView.bounds = CGRectMake(0, 0, fittingWidth, 0);
+    self.contentView.frame = CGRectMake(0, 0, fittingWidth, self.contentView.frame.size.height > 0 ? self.contentView.frame.size.height : 180.0);
     [self.contentView setNeedsLayout];
     [self.contentView layoutIfNeeded];
 
-    CGSize size = [self.contentView systemLayoutSizeFittingSize:CGSizeMake(fittingWidth, 0)
-                                  withHorizontalFittingPriority:UILayoutPriorityRequired
-                                        verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGSize size = [super systemLayoutSizeFittingSize:CGSizeMake(fittingWidth, 0)
+                       withHorizontalFittingPriority:UILayoutPriorityRequired
+                             verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
 
     size.width = targetSize.width;
     size.height = ceil(size.height);
