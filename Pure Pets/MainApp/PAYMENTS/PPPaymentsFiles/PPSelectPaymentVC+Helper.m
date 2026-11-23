@@ -244,16 +244,13 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
 - (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView
            viewForSupplementaryElementOfKind:(NSString *)kind
                                  atIndexPath:(NSIndexPath *)indexPath {
-    if ([kind isEqualToString:UICollectionElementKindSectionHeader]) {
-        PPPaymentSectionHeaderView *header =
-        [collectionView dequeueReusableSupplementaryViewOfKind:kind
-                                           withReuseIdentifier:@"PPPaymentSectionHeaderView"
-                                                  forIndexPath:indexPath];
-        [self pp_configurePaymentHeader:header];
-        return header;
-    }
-    
-    return [UICollectionReusableView new];
+    NSString *identifier = [kind isEqualToString:UICollectionElementKindSectionHeader]
+        ? @"PPPaymentSectionHeaderView" : @"FooterView";
+    UICollectionReusableView *view = [collectionView dequeueReusableSupplementaryViewOfKind:kind
+                                                                        withReuseIdentifier:identifier
+                                                                               forIndexPath:indexPath];
+    [self pp_configurePaymentSection:view ofKind:kind];
+    return view;
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView
@@ -261,7 +258,8 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
 referenceSizeForFooterInSection:(NSInteger)section {
     (void)collectionViewLayout;
     (void)section;
-    return CGSizeZero;
+    CGFloat width = CGRectGetWidth(collectionView.bounds);
+    return CGSizeMake(width, [self pp_paymentSectionHeightForKind:UICollectionElementKindSectionFooter width:width]);
 }
 
 #pragma mark - Section Header
@@ -272,7 +270,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     (void)collectionViewLayout;
     (void)section;
     CGFloat width = collectionView.bounds.size.width;
-    return CGSizeMake(width, [self pp_paymentHeaderHeightForWidth:width]);
+    return CGSizeMake(width, [self pp_paymentSectionHeightForKind:UICollectionElementKindSectionHeader width:width]);
 }
 
 #pragma mark - CollectionView Data Source
@@ -298,6 +296,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     if (!method) {
         return cell;
     }
+    cell.usesPocketLayout = [self pp_usesPairedPocketsInCollection:collectionView count:displayed.count];
     [cell configureWithInstrument:instrument method:method indexPath:indexPath];
 
     NSString *selectedID = PPCurrentUser.SelectedInstrument.instrumentID;
@@ -365,6 +364,18 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 #pragma mark - Layout Delegate
 
+- (BOOL)pp_usesPairedPocketsInCollection:(UICollectionView *)collection count:(NSUInteger)count
+{
+    if (count != 2 || UIContentSizeCategoryIsAccessibilityCategory(collection.traitCollection.preferredContentSizeCategory)) {
+        return NO;
+    }
+    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)collection.collectionViewLayout;
+    CGFloat available = CGRectGetWidth(collection.bounds) - layout.sectionInset.left - layout.sectionInset.right;
+    CGFloat minWidth = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+        scaledValueForValue:156.0 compatibleWithTraitCollection:collection.traitCollection];
+    return available >= 2.0 * minWidth + layout.minimumInteritemSpacing;
+}
+
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     UIEdgeInsets sectionInset = UIEdgeInsetsZero;
@@ -374,10 +385,23 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     CGFloat width = MAX(1.0, collectionView.bounds.size.width - sectionInset.left - sectionInset.right);
     NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
     if (indexPath.item >= displayed.count) { return CGSizeMake(width, 88.0); }
-    UserPaymentInstrument *instrument = displayed[indexPath.item];
-    PaymentMethod *method = [self pp_displayMethodForInstrument:instrument];
-    CGFloat height = [PPPaymentMethodCell heightForInstrument:instrument method:method width:width
-                                              traitCollection:collectionView.traitCollection];
+    BOOL paired = [self pp_usesPairedPocketsInCollection:collectionView count:displayed.count];
+    if (paired) {
+        CGFloat gap = ((UICollectionViewFlowLayout *)collectionViewLayout).minimumInteritemSpacing;
+        width = floor((width - gap) / 2.0);
+    }
+    // Share the taller measurement across the pair, including multi-line Arabic and saved-card masks.
+    NSArray<UserPaymentInstrument *> *row = paired ? displayed : @[displayed[indexPath.item]];
+    if (!self.methodSizingCell) {
+        self.methodSizingCell = [[PPPaymentMethodCell alloc] initWithFrame:CGRectZero];
+    }
+    CGFloat height = 0;
+    for (UserPaymentInstrument *instrument in row) {
+        PaymentMethod *method = [self pp_displayMethodForInstrument:instrument];
+        CGFloat needed = [self.methodSizingCell heightForInstrument:instrument method:method width:width
+                                                   usesPocketLayout:paired traitCollection:collectionView.traitCollection];
+        height = MAX(height, needed);
+    }
     return CGSizeMake(width, height);
 }
 

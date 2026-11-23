@@ -55,6 +55,15 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
 #pragma mark - ViewController
 
+// Flow layout authors a row in collection order. Mirror that row for the app's Arabic locale.
+@interface PPPaymentWalletLayout : UICollectionViewFlowLayout
+@end
+
+@implementation PPPaymentWalletLayout
+- (UIUserInterfaceLayoutDirection)developmentLayoutDirection { return UIUserInterfaceLayoutDirectionLeftToRight; }
+- (BOOL)flipsHorizontallyInOppositeLayoutDirection { return YES; }
+@end
+
 @interface PPSelectPaymentVC () <AddressFormVCDelegate>
 @property (nonatomic, strong, nullable) UIVisualEffectView *dimOverlay;
 @property (nonatomic, strong) UILabel *collectionHintLabel;
@@ -70,7 +79,10 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 @property (nonatomic, strong) UIStackView *navTitleSubtitleStack;
 @property (nonatomic, strong) UIButton *heroBackButton;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
+@property (nonatomic, strong) UILabel *heroSubtitleLabel;
 @property (nonatomic, strong) UIStackView *paymentPreludeView;
+@property (nonatomic, strong) UIStackView *deliveryDetailsView;
+@property (nonatomic, strong) UIView *contactDivider;
 @property (nonatomic, strong) UIStackView *methodStatusStack;
 @property (nonatomic, strong) UIStackView *methodStatusLine;
 @property (nonatomic, strong) UILabel *methodStatusLabel;
@@ -261,7 +273,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     self.navigationItem.title = nil;
 
     [self pp_setupHeroSection];
-    [self setlocViewViewAtTop];
+    [self pp_setupPaymentSections];
     [self setSummuryViewAtBottom];
     [self setupPaymentCollection];
     [self pp_applyDefaultSelectionIfNeeded];
@@ -314,6 +326,9 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         ![previousTraitCollection.preferredContentSizeCategory
             isEqualToString:self.traitCollection.preferredContentSizeCategory];
     if (contentSizeChanged) {
+        if (self.paymentContactButton) {
+            [self pp_configurePaymentContactWithPhone:[self pp_validQIBPhoneForAddress:self.selectedAddress]];
+        }
         [self pp_updatePaymentLayoutMetrics];
         [self pp_applyAdaptiveSummaryPresentation];
         [self.paymentCollection.collectionViewLayout invalidateLayout];
@@ -399,39 +414,43 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
 - (void)pp_setupHeroSection
 {
-    self.heroTitleLabel = [self pp_reviewLabelWithText:kLang(@"payment_review_navigation")
+    self.heroTitleLabel = [self pp_reviewLabelWithText:kLang(@"payment_review_title")
                                                 font:[GM boldFontWithSize:PPFontHeadline]
                                                style:UIFontTextStyleHeadline color:AppPrimaryTextClr];
     self.heroTitleLabel.numberOfLines = 1;
-    // The full-size heading lives in the scroll content; the navigation bar is fixed-height.
+    self.heroTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.heroTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
-        scaledFontForFont:[GM boldFontWithSize:PPFontHeadline] maximumPointSize:24.0];
+        scaledFontForFont:[GM boldFontWithSize:PPFontHeadline] maximumPointSize:22.0];
     self.heroTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
-    self.navTitleSubtitleStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.heroTitleLabel]];
+    self.heroTitleLabel.accessibilityIdentifier = @"paymentSelection.title";
+
+    self.heroSubtitleLabel = [self pp_reviewLabelWithText:kLang(@"payment_review_subtitle")
+                                                   font:[GM MidFontWithSize:PPFontCaption1]
+                                                  style:UIFontTextStyleCaption1 color:AppSecondaryTextClr];
+    self.heroSubtitleLabel.numberOfLines = 1;
+    self.heroSubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.heroSubtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+        scaledFontForFont:[GM MidFontWithSize:PPFontCaption1] maximumPointSize:14.0];
+    self.heroSubtitleLabel.accessibilityIdentifier = @"paymentSelection.subtitle";
+
+    self.navTitleSubtitleStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.heroTitleLabel, self.heroSubtitleLabel]];
     self.navTitleSubtitleStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.navTitleSubtitleStack.axis = UILayoutConstraintAxisVertical;
+    self.navTitleSubtitleStack.alignment = UIStackViewAlignmentFill;
+    self.navTitleSubtitleStack.distribution = UIStackViewDistributionFill;
+    self.navTitleSubtitleStack.spacing = 1.0;
+    self.navTitleSubtitleStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
-    UILabel *title = [self pp_reviewLabelWithText:kLang(@"payment_review_title")
-                                           font:[GM boldFontWithSize:PPFontTitle1]
-                                          style:UIFontTextStyleTitle1 color:AppPrimaryTextClr];
-    title.accessibilityTraits = UIAccessibilityTraitHeader;
-    title.accessibilityIdentifier = @"paymentSelection.title";
-    UILabel *subtitle = [self pp_reviewLabelWithText:kLang(@"payment_review_subtitle")
-                                              font:[GM MidFontWithSize:PPFontCallout]
-                                             style:UIFontTextStyleCallout color:AppSecondaryTextClr];
-    UIStackView *intro = [[UIStackView alloc] initWithArrangedSubviews:@[title, subtitle]];
-    intro.axis = UILayoutConstraintAxisVertical;
-    intro.spacing = PPSpaceSM;
-
-    self.paymentPreludeView = [[UIStackView alloc] initWithArrangedSubviews:@[intro]];
+    self.paymentPreludeView = [UIStackView new];
     self.paymentPreludeView.translatesAutoresizingMaskIntoConstraints = NO;
     self.paymentPreludeView.axis = UILayoutConstraintAxisVertical;
     self.paymentPreludeView.alignment = UIStackViewAlignmentFill;
-    self.paymentPreludeView.spacing = PPSpaceXL;
+    self.paymentPreludeView.spacing = PPSpaceSM;
     self.paymentPreludeView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     [self pp_applyPaymentHeroNavBar];
 }
 
-- (void)setlocViewViewAtTop
+- (void)pp_setupPaymentSections
 {
     self.locView = [PPAddressPickerView new];
     [self.locView configureForInlineCheckout];
@@ -441,8 +460,6 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     self.locView.onLayoutHeightChange = ^{
         [weakSelf.paymentCollection.collectionViewLayout invalidateLayout];
     };
-    [self.paymentPreludeView addArrangedSubview:self.locView];
-
     self.checkoutNoticeLabel = [self pp_reviewLabelWithText:@""
         font:[GM MidFontWithSize:PPFontFootnote] style:UIFontTextStyleFootnote color:AppSecondaryTextClr];
     self.checkoutNoticeLabel.accessibilityIdentifier = @"checkout.reviewNotice";
@@ -452,15 +469,35 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     self.addressStatusStack = addressStatus;
     addressStatus.axis = UILayoutConstraintAxisVertical;
     addressStatus.spacing = PPSpaceXS;
-    [self.paymentPreludeView addArrangedSubview:addressStatus];
-
-    self.paymentContactButton = [self pp_reviewActionButtonWithTitle:@"" action:@selector(pp_editPaymentContact)];
+    self.paymentContactButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.paymentContactButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.paymentContactButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
     self.paymentContactButton.accessibilityIdentifier = @"checkout.paymentContact";
-    [self.paymentPreludeView addArrangedSubview:self.paymentContactButton];
+    [self.paymentContactButton addTarget:self action:@selector(pp_editPaymentContact) forControlEvents:UIControlEventTouchUpInside];
+    NSLayoutConstraint *contactHeight = [self.paymentContactButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin];
+    contactHeight.priority = UILayoutPriorityRequired - 1;
+    contactHeight.active = YES;
 
-    UILabel *methodsTitle = [self pp_reviewLabelWithText:kLang(@"payment_section_methods_title")
-                                                  font:[GM boldFontWithSize:PPFontTitle3]
-                                                 style:UIFontTextStyleTitle3 color:AppPrimaryTextClr];
+    self.contactDivider = [UIView new];
+    self.contactDivider.isAccessibilityElement = NO;
+    self.contactDivider.backgroundColor = [UIColor ppSurfaceBorder];
+    NSLayoutConstraint *hairline = [self.contactDivider.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale];
+    hairline.priority = UILayoutPriorityRequired - 1;
+    hairline.active = YES;
+
+    self.deliveryDetailsView = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.paymentContactButton, self.contactDivider, self.locView
+    ]];
+    self.deliveryDetailsView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.deliveryDetailsView.axis = UILayoutConstraintAxisVertical;
+    self.deliveryDetailsView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.deliveryDetailsView.backgroundColor = AppSurfColor;
+    PPApplyContinuousCorners(self.deliveryDetailsView, PPCornerCard);
+    self.deliveryDetailsView.clipsToBounds = YES;
+
+    UILabel *methodsTitle = [self pp_reviewLabelWithText:kLang(@"checkout_payment_question")
+                                                  font:[GM boldFontWithSize:PPFontTitle1]
+                                                 style:UIFontTextStyleTitle1 color:AppPrimaryTextClr];
     methodsTitle.accessibilityTraits = UIAccessibilityTraitHeader;
     methodsTitle.accessibilityIdentifier = @"paymentSelection.methodsTitle";
     self.methodStatusLabel = [self pp_reviewLabelWithText:@""
@@ -496,10 +533,9 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     self.methodStatusStack = [[UIStackView alloc] initWithArrangedSubviews:@[statusLine, self.retryMethodsButton]];
     self.methodStatusStack.axis = UILayoutConstraintAxisVertical;
     self.methodStatusStack.spacing = PPSpaceXS;
-    UIStackView *methodHeading = [[UIStackView alloc] initWithArrangedSubviews:@[methodsTitle, self.methodStatusStack]];
-    methodHeading.axis = UILayoutConstraintAxisVertical;
-    methodHeading.spacing = PPSpaceSM;
-    [self.paymentPreludeView addArrangedSubview:methodHeading];
+    [self.paymentPreludeView addArrangedSubview:methodsTitle];
+    [self.paymentPreludeView addArrangedSubview:self.methodStatusStack];
+    [self.paymentPreludeView addArrangedSubview:addressStatus];
     [self pp_updateMethodStatus];
     [self pp_setupInitialAddressState];
 }
@@ -567,7 +603,9 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         ? [NSString stringWithFormat:kLang(@"checkout_payment_contact_format"),
            [NSString stringWithFormat:@"\u2066%@\u2069", phone]]
         : kLang(@"checkout_payment_contact_missing");
-    [self.paymentContactButton setTitle:contact forState:UIControlStateNormal];
+    self.contactDivider.hidden = self.paymentContactButton.hidden;
+    [self pp_configurePaymentContactWithPhone:phone];
+    self.paymentContactButton.accessibilityLabel = contact;
     self.paymentContactButton.accessibilityHint = kLang(@"checkout_payment_contact_hint");
     BOOL locked = [self pp_checkoutInteractionLocked];
     self.paymentCollection.userInteractionEnabled = !locked;
@@ -575,6 +613,33 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     self.retryAddressButton.enabled = !locked;
     [self pp_refreshCheckoutCallToAction];
     [self.paymentCollection.collectionViewLayout invalidateLayout];
+}
+
+- (void)pp_configurePaymentContactWithPhone:(NSString *)phone
+{
+    UIButtonConfiguration *row = [UIButtonConfiguration plainButtonConfiguration];
+    row.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMD, PPSpaceBase, PPSpaceMD, PPSpaceBase);
+    row.image = [UIImage systemImageNamed:phone.length ? @"pencil.circle" : @"plus.circle"];
+    row.preferredSymbolConfigurationForImage = [UIImageSymbolConfiguration configurationWithPointSize:22 weight:UIImageSymbolWeightRegular];
+    row.imagePadding = PPSpaceMD;
+    row.baseForegroundColor = AppPrimaryClr;
+    row.titleAlignment = UIButtonConfigurationTitleAlignmentLeading;
+    row.titleLineBreakMode = NSLineBreakByWordWrapping;
+    row.subtitleLineBreakMode = NSLineBreakByWordWrapping;
+    UIFont *label = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+        scaledFontForFont:[GM MidFontWithSize:PPFontSubheadline]];
+    UIFont *value = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+        scaledFontForFont:[GM boldFontWithSize:PPFontBody]];
+    NSString *title = kLang(phone.length ? @"checkout_payment_contact_title" : @"checkout_payment_contact_missing");
+    row.attributedTitle = [[NSAttributedString alloc] initWithString:title attributes:@{
+        NSFontAttributeName: phone.length ? label : value,
+        NSForegroundColorAttributeName: phone.length ? AppSecondaryTextClr : AppPrimaryTextClr
+    }];
+    if (phone.length) {
+        row.attributedSubtitle = [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"\u2066%@\u2069", phone]
+            attributes:@{NSFontAttributeName: value, NSForegroundColorAttributeName: AppPrimaryTextClr}];
+    }
+    self.paymentContactButton.configuration = row;
 }
 
 - (void)pp_retryAddresses
@@ -648,28 +713,29 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     }
 }
 
-- (CGFloat)pp_paymentHeaderHeightForWidth:(CGFloat)width
+- (CGFloat)pp_paymentSectionHeightForKind:(NSString *)kind width:(CGFloat)width
 {
+    UIStackView *stack = [kind isEqualToString:UICollectionElementKindSectionHeader] ? self.paymentPreludeView : self.deliveryDetailsView;
     CGFloat contentWidth = MAX(1.0, MIN(680.0, width - 2.0 * PPScreenMargin));
-    CGSize size = [self.paymentPreludeView systemLayoutSizeFittingSize:CGSizeMake(contentWidth, UILayoutFittingCompressedSize.height)
+    CGSize size = [stack systemLayoutSizeFittingSize:CGSizeMake(contentWidth, UILayoutFittingCompressedSize.height)
                                       withHorizontalFittingPriority:UILayoutPriorityRequired
                                             verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
     return ceil(size.height) + PPSpaceBase + PPSpaceSM;
 }
 
-- (void)pp_configurePaymentHeader:(PPPaymentSectionHeaderView *)header
+- (void)pp_configurePaymentSection:(UICollectionReusableView *)section ofKind:(NSString *)kind
 {
-    if (self.paymentPreludeView.superview == header) return;
-    [self.paymentPreludeView removeFromSuperview];
-    [header addSubview:self.paymentPreludeView];
-    NSLayoutConstraint *preferredWidth = [self.paymentPreludeView.widthAnchor constraintEqualToAnchor:header.widthAnchor constant:-2.0 * PPScreenMargin];
+    UIStackView *stack = [kind isEqualToString:UICollectionElementKindSectionHeader] ? self.paymentPreludeView : self.deliveryDetailsView;
+    if (stack.superview == section) return;
+    [stack removeFromSuperview];
+    [section addSubview:stack];
+    NSLayoutConstraint *preferredWidth = [stack.widthAnchor constraintEqualToAnchor:section.widthAnchor constant:-2.0 * PPScreenMargin];
     preferredWidth.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        [self.paymentPreludeView.topAnchor constraintEqualToAnchor:header.topAnchor constant:PPSpaceBase],
-        [self.paymentPreludeView.centerXAnchor constraintEqualToAnchor:header.centerXAnchor],
-        [self.paymentPreludeView.widthAnchor constraintLessThanOrEqualToConstant:680.0],
-        preferredWidth,
-        [self.paymentPreludeView.bottomAnchor constraintLessThanOrEqualToAnchor:header.bottomAnchor constant:-PPSpaceSM]
+        [stack.topAnchor constraintEqualToAnchor:section.topAnchor constant:PPSpaceBase],
+        [stack.centerXAnchor constraintEqualToAnchor:section.centerXAnchor],
+        [stack.widthAnchor constraintLessThanOrEqualToConstant:680.0],
+        preferredWidth
     ]];
 }
 
@@ -681,6 +747,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
         ? kLang(@"payment_review_loading")
         : kLang(empty ? @"payment_review_unavailable" : @"payment_load_methods_failed");
     self.retryMethodsButton.hidden = self.isLoadingPaymentInstruments || (!self.paymentInstrumentsLoadFailed && !empty);
+    self.methodStatusStack.hidden = self.methodStatusLine.hidden && self.retryMethodsButton.hidden;
     self.methodLoadingIndicator.hidden = !self.isLoadingPaymentInstruments;
     if (self.isLoadingPaymentInstruments) [self.methodLoadingIndicator startAnimating];
     else [self.methodLoadingIndicator stopAnimating];
@@ -694,7 +761,9 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     self.paymentContentWidth = width;
     UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.paymentCollection.collectionViewLayout;
     CGFloat margin = MAX(PPScreenMargin, (width - 680.0) / 2.0);
-    layout.sectionInset = UIEdgeInsetsMake(PPSpaceXS, margin, PPSpaceXL, margin);
+    layout.sectionInset = UIEdgeInsetsMake(PPSpaceXS, margin, 0, margin);
+    BOOL paired = [self pp_usesPairedPocketsInCollection:self.paymentCollection count:[self pp_displayedInstruments].count];
+    for (PPPaymentMethodCell *cell in self.paymentCollection.visibleCells) cell.usesPocketLayout = paired;
     [layout invalidateLayout];
 }
 
@@ -721,6 +790,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 {
     self.view.backgroundColor = AppBackgroundClr;
     self.heroTitleLabel.textColor = AppPrimaryTextClr;
+    self.heroSubtitleLabel.textColor = AppSecondaryTextClr;
 }
 
 - (NSString *)pp_trimmedAddressString:(id)value
@@ -740,9 +810,11 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 - (NSString *)pp_bestAddressDisplayText:(PPAddressModel *)address
 {
     if (!address) return @"";
+    // displayName already includes both street lines, locality, postcode and the default marker.
+    NSString *destination = [self pp_trimmedAddressString:address.displayName];
+    if (!destination.length) destination = [self pp_trimmedAddressString:address.locatioName];
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    for (id raw in @[address.fullName ?: @"", address.addressLine1 ?: @"",
-                     address.addressLine2 ?: @"", address.displayName ?: address.locatioName ?: @""]) {
+    for (id raw in @[address.fullName ?: @"", destination]) {
         NSString *part = [self pp_trimmedAddressString:raw];
         if (part.length > 0 && ![parts containsObject:part]) [parts addObject:part];
     }
@@ -942,7 +1014,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 - (void)setupPaymentCollection {
     if (self.paymentCollection) return;
 
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+    UICollectionViewFlowLayout *layout = [PPPaymentWalletLayout new];
     layout.scrollDirection = UICollectionViewScrollDirectionVertical;
     layout.minimumInteritemSpacing = PPSpaceMD;
     layout.minimumLineSpacing = PPSpaceMD;

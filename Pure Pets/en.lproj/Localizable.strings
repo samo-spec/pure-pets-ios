@@ -2129,6 +2129,7 @@
 "payment_section_delivery" = "Delivery address";
 "payment_section_delivery_subtitle" = "This address will be used for shipping and checkout validation.";
 "payment_section_methods_title" = "Payment options";
+"checkout_payment_question" = "How would you like to pay?";
 "payment_section_methods_subtitle" = "Saved methods and built-in checkout options";
 "payment_add_method" = "Add method";
 "payment_add_method_subtitle" = "Save a new card for faster checkout next time.";
@@ -3050,6 +3051,7 @@
 "home_premium_care_subtitle" = "Pet medicine and veterinarian care in one refined place.";
 "home_premium_care_cta" = "Open care center";
 "pet_care_title" = "Pet Care";
+"home_pet_care_card_summary" = "Vets, clinics and medicines";
 "pet_care_eyebrow" = "Premium care";
 "pet_care_medicines" = "Medicines";
 "pet_care_veterinarians" = "Veterinarians";

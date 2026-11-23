@@ -26,6 +26,10 @@ typedef void (^PPPaymentCompletion)(NSDictionary * _Nullable response,
 - (nullable NSString *)normalizedCheckoutPhoneForAddress:(nullable PPAddressModel *)address;
 - (nullable NSString *)normalizedCheckoutPhoneFromString:(nullable NSString *)phone;
 
+/// Sanitizes customer text fields (name, address, city) for the QIB gateway HTML form.
+/// Transliterates Arabic to Latin, strips illegal characters, and enforces length bounds.
++ (NSString *)sanitizedQIBText:(nullable NSString *)rawText fallback:(NSString *)fallback maxLength:(NSUInteger)maxLength;
+
 /**
  Starts QIB payment flow for a pending order.
  This method ONLY launches the SDK and returns its response.

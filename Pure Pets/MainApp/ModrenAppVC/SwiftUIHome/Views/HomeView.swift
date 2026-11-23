@@ -851,60 +851,12 @@ struct HomeView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityHint(HomeModelAdapter.localized("home_care_reminder_action", fallback: "Open care schedule in the pet profile"))
             }
-            PPHomeServiceGateway(
-                // No eyebrow: the care gateway is the only banded row, and brand
-                // text measures 4.45:1 on the dark section band. The title already
-                // carries the same meaning.
-                eyebrow: nil,
-                title: variant == .premiumCare
-                    ? PPHomeZoneCopy.careGatewayTitle
-                    : HomeModelAdapter.localized(
-                        "home_provider_navigation_title",
-                        fallback: "Trusted care"
-                    ),
-                subtitle: variant == .premiumCare
-                    ? PPHomeZoneCopy.careGatewaySubtitle
-                    : HomeModelAdapter.localized(
-                        "home_provider_navigation_subtitle",
-                        fallback: "Choose the care destination you need"
-                    ),
-                destinations: careDestinations,
-                onSelect: { destination in
-                    store.openProviderCategory(destination.id)
-                }
+            PPHomePetCareCard(
+                title: HomeModelAdapter.localized("pet_care_title", fallback: "Pet Care"),
+                summary: PPHomeZoneCopy.petCareCardSummary,
+                open: { store.openProviderCategory("veterinarians") }
             )
         }
-    }
-
-    private var careDestinations: [PPHomeServiceDestination] {
-        [
-            PPHomeServiceDestination(
-                id: "veterinarians",
-                title: HomeModelAdapter.localized(
-                    "provider_vets_title",
-                    fallback: "Veterinarians"
-                ),
-                subtitle: HomeModelAdapter.localized(
-                    "provider_vets_subtitle",
-                    fallback: ""
-                ),
-                symbol: "stethoscope",
-                accent: HomeSemanticTone.health
-            ),
-            PPHomeServiceDestination(
-                id: "pharmacy",
-                title: HomeModelAdapter.localized(
-                    "provider_pharmacies_title",
-                    fallback: "Pharmacies"
-                ),
-                subtitle: HomeModelAdapter.localized(
-                    "provider_pharmacies_subtitle",
-                    fallback: ""
-                ),
-                symbol: "cross.case.fill",
-                accent: HomeSemanticTone.health
-            ),
-        ]
     }
 
     // MARK: Explore more

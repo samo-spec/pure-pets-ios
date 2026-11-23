@@ -834,6 +834,7 @@
 		F2EDCB272D6ED9DC00C83328 /* ArchCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EDCB252D6ED9DC00C83328 /* ArchCell.m */; };
 		F2EDCB282D6ED9DC00C83328 /* ArchCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */; };
 		F2EE19992DDF2DC100C62390 /* PetAccessoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E1345C2DDC6E04006770E5 /* PetAccessoryManager.m */; };
+		ED9EC26032BE7677CB6AAA3D /* PPStoreBranchManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 148C209B3FDA29A52230E8B3 /* PPStoreBranchManager.m */; };
 		F2EE91DC2FD2687B00940729 /* SearchingLottile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */; };
 		F2EF8EDF2F87754B00A797B3 /* PPProfileTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */; };
 		F2EF8EE22F8775A300A797B3 /* PPProfilePhoneCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE12F8775A300A797B3 /* PPProfilePhoneCell.m */; };
@@ -2280,6 +2281,8 @@
 		F2E134572DDC6C93006770E5 /* PetAccessory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetAccessory.m; sourceTree = "<group>"; };
 		F2E1345B2DDC6DB3006770E5 /* PetAccessoryManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PetAccessoryManager.h; sourceTree = "<group>"; };
 		F2E1345C2DDC6E04006770E5 /* PetAccessoryManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetAccessoryManager.m; sourceTree = "<group>"; };
+		007A72FD2FE30D16C657EBC1 /* PPStoreBranchManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPStoreBranchManager.h; sourceTree = "<group>"; };
+		148C209B3FDA29A52230E8B3 /* PPStoreBranchManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPStoreBranchManager.m; sourceTree = "<group>"; };
 		F2E1345D2DDC6F40006770E5 /* AddNewAccessory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddNewAccessory.h; sourceTree = "<group>"; };
 		F2E1345E2DDC6F40006770E5 /* AddNewAccessory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddNewAccessory.m; sourceTree = "<group>"; };
 		F2E144572EAB3E3E0076C04A /* CollectionViewAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CollectionViewAnimation.h; sourceTree = "<group>"; };
@@ -4096,6 +4099,8 @@
 				F2E1345E2DDC6F40006770E5 /* AddNewAccessory.m */,
 				F2E1345B2DDC6DB3006770E5 /* PetAccessoryManager.h */,
 				F2E1345C2DDC6E04006770E5 /* PetAccessoryManager.m */,
+				007A72FD2FE30D16C657EBC1 /* PPStoreBranchManager.h */,
+				148C209B3FDA29A52230E8B3 /* PPStoreBranchManager.m */,
 				F2E134562DDC6C41006770E5 /* PetAccessory.h */,
 				F2E134572DDC6C93006770E5 /* PetAccessory.m */,
 			);
@@ -6285,6 +6290,7 @@
 				F21E09322E451A4B00690BC5 /* Language.m in Sources */,
 				F2A2F1B02EB13C6000BD1261 /* PPAddressModel.m in Sources */,
 				F2EE19992DDF2DC100C62390 /* PetAccessoryManager.m in Sources */,
+				ED9EC26032BE7677CB6AAA3D /* PPStoreBranchManager.m in Sources */,
 				F2BA97562DCE7C66007DE482 /* AddNewAd.m in Sources */,
 				F2B6F7B22E37CFB300AC0DAE /* ChatMessageModel.m in Sources */,
 				F2C100112025000100000001 /* ChCell.m in Sources */,

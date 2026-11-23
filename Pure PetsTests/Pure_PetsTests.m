@@ -581,4 +581,51 @@
     XCTAssertEqualObjects(decoded.permissions[@"moderate"], @NO);
 }
 
+- (void)testQIBPhoneNormalizationStripsLeadingPlusAndNonDigits {
+    PPPaymentManager *mgr = [PPPaymentManager shared];
+
+    // Phone with leading + must return pure digits without + (crucial for QIB HTML form POST)
+    XCTAssertEqualObjects([mgr normalizedCheckoutPhoneFromString:@"+201022563409"], @"201022563409");
+    XCTAssertEqualObjects([mgr normalizedCheckoutPhoneFromString:@"+97455123456"], @"97455123456");
+
+    // Phone with spaces, dashes, or parentheses
+    XCTAssertEqualObjects([mgr normalizedCheckoutPhoneFromString:@"+974 (55) 12-3456"], @"97455123456");
+    XCTAssertEqualObjects([mgr normalizedCheckoutPhoneFromString:@" +20 10 2256 3409 "], @"201022563409");
+
+    // Egypt local format 010... -> becomes 2010...
+    XCTAssertEqualObjects([mgr normalizedCheckoutPhoneFromString:@"01022563409"], @"201022563409");
+
+    // Invalid phones (too short, too long, empty)
+    XCTAssertNil([mgr normalizedCheckoutPhoneFromString:@""]);
+    XCTAssertNil([mgr normalizedCheckoutPhoneFromString:@"123"]);
+    XCTAssertNil([mgr normalizedCheckoutPhoneFromString:@"+974"]);
+    XCTAssertNil([mgr normalizedCheckoutPhoneFromString:@"abcdefgh"]);
+}
+
+- (void)testQIBSanitizedTextTransliteratesArabicAndNormalizesNumerals {
+    // Address with Arabic text and numbers: must become pure safe ASCII
+    NSString *cleanAddr = [PPPaymentManager sanitizedQIBText:@"52 الطبري" fallback:@"Doha, Qatar" maxLength:64];
+    XCTAssertTrue(cleanAddr.length > 0);
+    XCTAssertFalse([cleanAddr containsString:@"\""]);
+    XCTAssertFalse([cleanAddr containsString:@"<"]);
+
+    // City with Eastern Arabic numerals ۳٧: must normalize and produce safe ASCII
+    NSString *cleanCity = [PPPaymentManager sanitizedQIBText:@"منطقة ۳٧, الدوحة" fallback:@"Doha" maxLength:32];
+    XCTAssertTrue(cleanCity.length > 0);
+    XCTAssertTrue(cleanCity.length <= 32);
+
+    // Name in Arabic
+    NSString *cleanName = [PPPaymentManager sanitizedQIBText:@"سامو" fallback:@"Pure Pets Customer" maxLength:64];
+    XCTAssertTrue(cleanName.length > 0);
+
+    // Empty or punctuation-only returns fallback
+    XCTAssertEqualObjects([PPPaymentManager sanitizedQIBText:@"" fallback:@"Doha" maxLength:32], @"Doha");
+    XCTAssertEqualObjects([PPPaymentManager sanitizedQIBText:nil fallback:@"Pure Pets Customer" maxLength:64], @"Pure Pets Customer");
+    XCTAssertEqualObjects([PPPaymentManager sanitizedQIBText:@"   " fallback:@"Doha" maxLength:32], @"Doha");
+
+    // Max length constraint is strictly respected
+    NSString *longText = [PPPaymentManager sanitizedQIBText:@"This is a very long text that exceeds thirty two characters limit" fallback:@"Doha" maxLength:10];
+    XCTAssertEqual(longText.length, 10);
+}
+
 @end

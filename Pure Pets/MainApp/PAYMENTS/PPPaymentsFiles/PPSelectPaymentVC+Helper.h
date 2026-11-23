@@ -16,15 +16,17 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSArray<PaymentMethod *> *availableMethods;
 @property (nonatomic, strong) PPContextAwareCheckoutView *summaryView;
 @property (nonatomic, strong) UICollectionView *paymentCollection;
+@property (nonatomic, strong) PPPaymentMethodCell *methodSizingCell;
 @property (nonatomic, strong) UserPaymentInstrumentManager *instrumentManager;
 @property (nonatomic, strong) NSArray<UserPaymentInstrument *> *userInstruments;
 @property (nonatomic, assign) BOOL paymentSelectionWasExplicit;
 @property (nonatomic, copy, nullable) NSString *initialPaymentSelectionID;
 
-- (void)pp_configurePaymentHeader:(PPPaymentSectionHeaderView *)header;
-- (CGFloat)pp_paymentHeaderHeightForWidth:(CGFloat)width;
+- (void)pp_configurePaymentSection:(UICollectionReusableView *)view ofKind:(NSString *)kind;
+- (CGFloat)pp_paymentSectionHeightForKind:(NSString *)kind width:(CGFloat)width;
 - (void)pp_updateCheckoutReview;
 - (BOOL)pp_checkoutInteractionLocked;
+- (void)setSummuryViewAtBottom;
 - (nullable NSString *)pp_checkoutRequiredActionTitle;
 
 @end
@@ -39,11 +41,11 @@ NS_ASSUME_NONNULL_BEGIN
                                                 PaymentHeightDelegate,
                                                 PPPaymentMethodCellDelegate>
 
-- (void)setSummuryViewAtBottom;
 - (PaymentMethod *)method:(NSString *)title icon:(NSString *)icon color:(UIColor *)color;
 - (void)onSelectPayment:(UIButton *)sender;
 - (void)pp_applyDefaultSelectionIfNeeded;
 - (NSArray<UserPaymentInstrument *> *)pp_displayedInstruments;
+- (BOOL)pp_usesPairedPocketsInCollection:(UICollectionView *)collection count:(NSUInteger)count;
 - (nullable UserPaymentInstrument *)pp_resolvedSelectedInstrument;
 - (NSString *)pp_selectedCheckoutPaymentMethodID;
 - (void)pp_refreshCheckoutCallToAction;

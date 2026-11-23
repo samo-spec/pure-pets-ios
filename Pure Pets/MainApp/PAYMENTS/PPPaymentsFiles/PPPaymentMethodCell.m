@@ -5,8 +5,41 @@
 
 #import "PPPaymentMethodCell.h"
 
+// The lip separates the payment mark from the instrument details, like the opening of a wallet pocket.
+@interface PPPaymentPocketLip : UIView
+@end
+
+@implementation PPPaymentPocketLip
+- (void)tintColorDidChange
+{
+    [super tintColorDidChange];
+    [self setNeedsDisplay];
+}
+
+- (void)drawRect:(CGRect)rect
+{
+    CGFloat width = CGRectGetWidth(self.bounds);
+    CGFloat mid = CGRectGetMidX(self.bounds);
+    CGFloat lip = CGRectGetHeight(self.bounds) - PPSpaceMDHalf;
+    UIBezierPath *band = [UIBezierPath bezierPath];
+    [band moveToPoint:CGPointZero];
+    [band addLineToPoint:CGPointMake(width, 0)];
+    [band addLineToPoint:CGPointMake(width, lip)];
+    [band addLineToPoint:CGPointMake(mid + PPSpaceXL, lip)];
+    [band addCurveToPoint:CGPointMake(mid, lip + PPSpaceMDHalf)
+            controlPoint1:CGPointMake(mid + PPSpaceMD, lip) controlPoint2:CGPointMake(mid + PPSpaceMD, lip + PPSpaceMDHalf)];
+    [band addCurveToPoint:CGPointMake(mid - PPSpaceXL, lip)
+            controlPoint1:CGPointMake(mid - PPSpaceMD, lip + PPSpaceMDHalf) controlPoint2:CGPointMake(mid - PPSpaceMD, lip)];
+    [band addLineToPoint:CGPointMake(0, lip)];
+    [band closePath];
+    [self.tintColor setFill];
+    [band fill];
+}
+@end
+
 @interface PPPaymentMethodCell ()
 @property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) PPPaymentPocketLip *pocketLip;
 @property (nonatomic, strong) UIView *iconContainerView;
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
@@ -42,6 +75,7 @@
     self.method = nil;
     self.addNewStyle = NO;
     self.currentSelectionState = NO;
+    self.usesPocketLayout = NO;
     self.titleLabel.text = nil;
     self.subtitleLabel.text = nil;
     self.iconView.image = nil;
@@ -73,13 +107,22 @@
     self.surfaceView = [UIView new];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     PPApplyContinuousCorners(self.surfaceView, PPCornerCard);
+    self.surfaceView.clipsToBounds = YES;
     [self.contentView addSubview:self.surfaceView];
+
+    self.pocketLip = [PPPaymentPocketLip new];
+    self.pocketLip.translatesAutoresizingMaskIntoConstraints = NO;
+    self.pocketLip.userInteractionEnabled = NO;
+    self.pocketLip.opaque = NO;
+    self.pocketLip.backgroundColor = UIColor.clearColor;
+    self.pocketLip.contentMode = UIViewContentModeRedraw;
+    self.pocketLip.hidden = YES;
+    [self.surfaceView addSubview:self.pocketLip];
 
     // Payment marks keep their own colors on a quiet, neutral plate.
     self.iconContainerView = [UIView new];
     self.iconContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.iconContainerView.backgroundColor = UIColor.tertiarySystemBackgroundColor;
-    PPApplyContinuousCorners(self.iconContainerView, 12.0);
+    PPApplyContinuousCorners(self.iconContainerView, PPCornerSmall);
     [self.surfaceView addSubview:self.iconContainerView];
 
     self.iconView = [UIImageView new];
@@ -123,7 +166,7 @@
     self.textStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.textStack.axis = UILayoutConstraintAxisVertical;
     self.textStack.alignment = UIStackViewAlignmentFill;
-    self.textStack.spacing = 6.0;
+    self.textStack.spacing = PPSpaceXS;
     [self.surfaceView addSubview:self.textStack];
 
     [self.surfaceView addGestureRecognizer:[[UITapGestureRecognizer alloc]
@@ -133,15 +176,19 @@
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
         [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [self.surfaceView.heightAnchor constraintGreaterThanOrEqualToConstant:88.0],
-        [self.iconContainerView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0],
+        [self.surfaceView.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin + PPSpaceXXL],
+        [self.pocketLip.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
+        [self.pocketLip.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
+        [self.pocketLip.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [self.pocketLip.heightAnchor constraintEqualToConstant:PPSpaceMD + PPTouchTargetMin + PPSpaceMD],
+        [self.iconContainerView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSpaceBase],
         [self.iconContainerView.widthAnchor constraintEqualToConstant:52.0],
         [self.iconContainerView.heightAnchor constraintEqualToConstant:44.0],
-        [self.iconView.leadingAnchor constraintEqualToAnchor:self.iconContainerView.leadingAnchor constant:8.0],
-        [self.iconView.trailingAnchor constraintEqualToAnchor:self.iconContainerView.trailingAnchor constant:-8.0],
-        [self.iconView.topAnchor constraintEqualToAnchor:self.iconContainerView.topAnchor constant:8.0],
-        [self.iconView.bottomAnchor constraintEqualToAnchor:self.iconContainerView.bottomAnchor constant:-8.0],
-        [self.selectionView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
+        [self.iconView.leadingAnchor constraintEqualToAnchor:self.iconContainerView.leadingAnchor constant:PPSpaceXS],
+        [self.iconView.trailingAnchor constraintEqualToAnchor:self.iconContainerView.trailingAnchor constant:-PPSpaceXS],
+        [self.iconView.topAnchor constraintEqualToAnchor:self.iconContainerView.topAnchor constant:PPSpaceXS],
+        [self.iconView.bottomAnchor constraintEqualToAnchor:self.iconContainerView.bottomAnchor constant:-PPSpaceXS],
+        [self.selectionView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSpaceBase],
         [self.selectionView.centerYAnchor constraintEqualToAnchor:self.iconContainerView.centerYAnchor],
         [self.selectionView.widthAnchor constraintEqualToConstant:24.0],
         [self.selectionView.heightAnchor constraintEqualToConstant:24.0],
@@ -149,29 +196,36 @@
         [self.selectionImageView.centerYAnchor constraintEqualToAnchor:self.selectionView.centerYAnchor],
         [self.disclosureView.centerXAnchor constraintEqualToAnchor:self.selectionView.centerXAnchor],
         [self.disclosureView.centerYAnchor constraintEqualToAnchor:self.selectionView.centerYAnchor],
-        [self.textStack.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-20.0],
+        [self.textStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceBase],
     ]];
     self.inlineConstraints = @[
         [self.iconContainerView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.textStack.leadingAnchor constraintEqualToAnchor:self.iconContainerView.trailingAnchor constant:16.0],
-        [self.textStack.trailingAnchor constraintEqualToAnchor:self.selectionView.leadingAnchor constant:-12.0],
-        [self.textStack.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:20.0],
+        [self.textStack.leadingAnchor constraintEqualToAnchor:self.iconContainerView.trailingAnchor constant:PPSpaceMD],
+        [self.textStack.trailingAnchor constraintEqualToAnchor:self.selectionView.leadingAnchor constant:-PPSpaceMD],
+        [self.textStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
     ];
     self.expandedConstraints = @[
-        [self.iconContainerView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:20.0],
-        [self.textStack.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0],
-        [self.textStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
-        [self.textStack.topAnchor constraintEqualToAnchor:self.iconContainerView.bottomAnchor constant:16.0],
+        [self.iconContainerView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceMD],
+        [self.textStack.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSpaceBase],
+        [self.textStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSpaceBase],
+        [self.textStack.topAnchor constraintEqualToAnchor:self.pocketLip.bottomAnchor constant:PPSpaceMD],
     ];
     [NSLayoutConstraint activateConstraints:self.inlineConstraints];
     [self pp_applyTypographyForTraits:self.traitCollection];
     [self updateSelectionState:NO animated:NO];
 }
 
+- (void)setUsesPocketLayout:(BOOL)usesPocketLayout
+{
+    if (_usesPocketLayout == usesPocketLayout) return;
+    _usesPocketLayout = usesPocketLayout;
+    [self pp_applyTypographyForTraits:self.traitCollection];
+}
+
 - (void)pp_applyTypographyForTraits:(UITraitCollection *)traits
 {
-    UIFont *titleFont = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
-    UIFont *subtitleFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightRegular];
+    UIFont *titleFont = [GM boldFontWithSize:PPFontTitle3] ?: [UIFont systemFontOfSize:PPFontTitle3 weight:UIFontWeightSemibold];
+    UIFont *subtitleFont = [GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightRegular];
     self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
         scaledFontForFont:titleFont compatibleWithTraitCollection:traits];
     self.subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
@@ -182,7 +236,8 @@
     self.textStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    BOOL expanded = UIContentSizeCategoryIsAccessibilityCategory(traits.preferredContentSizeCategory);
+    BOOL expanded = self.usesPocketLayout || UIContentSizeCategoryIsAccessibilityCategory(traits.preferredContentSizeCategory);
+    self.pocketLip.hidden = !expanded;
     if (expanded != self.expandedTextLayout) {
         [NSLayoutConstraint deactivateConstraints:self.expandedTextLayout ? self.expandedConstraints : self.inlineConstraints];
         self.expandedTextLayout = expanded;
@@ -190,20 +245,27 @@
     }
 }
 
-+ (CGFloat)heightForInstrument:(UserPaymentInstrument *)instrument
+- (void)pp_bindTextForInstrument:(UserPaymentInstrument *)instrument method:(PaymentMethod *)method
+{
+    self.titleLabel.text = kLang(method.displayName);
+    self.subtitleLabel.text = [self pp_subtitleForInstrument:instrument method:method];
+    self.subtitleLabel.hidden = self.subtitleLabel.text.length == 0;
+}
+
+- (CGFloat)heightForInstrument:(UserPaymentInstrument *)instrument
                        method:(PaymentMethod *)method
                         width:(CGFloat)width
+             usesPocketLayout:(BOOL)usesPocketLayout
               traitCollection:(UITraitCollection *)traitCollection
 {
-    // The sizing cell uses the exact same labels, constraints and font traits as a visible row.
-    // No category-based height table: long translations and AX5 are allowed their full height.
-    PPPaymentMethodCell *sizingCell = [[self alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 88.0)];
-    [sizingCell configureWithInstrument:instrument method:method indexPath:[NSIndexPath indexPathForItem:0 inSection:0]];
-    [sizingCell pp_applyTypographyForTraits:traitCollection];
-    CGSize size = [sizingCell.contentView systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
+    // The controller reuses one offscreen cell. Only text and geometry participate in measurement.
+    self.usesPocketLayout = usesPocketLayout;
+    [self pp_applyTypographyForTraits:traitCollection];
+    [self pp_bindTextForInstrument:instrument method:method];
+    CGSize size = [self.contentView systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
                                      withHorizontalFittingPriority:UILayoutPriorityRequired
                                            verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
-    return ceil(MAX(88.0, size.height));
+    return ceil(size.height);
 }
 
 #pragma mark - Configuration
@@ -217,9 +279,7 @@
     self.method = method;
     self.addNewStyle = NO;
     [self pp_applyTypographyForTraits:self.traitCollection];
-    self.titleLabel.text = kLang(method.displayName);
-    self.subtitleLabel.text = [self pp_subtitleForInstrument:instrument method:method];
-    self.subtitleLabel.hidden = self.subtitleLabel.text.length == 0;
+    [self pp_bindTextForInstrument:instrument method:method];
     self.iconView.image = [self pp_iconForMethod:method];
     self.iconView.tintColor = AppPrimaryTextClr;
     self.disclosureView.hidden = YES;
@@ -250,15 +310,21 @@
 - (void)updateSelectionState:(BOOL)isSelected animated:(BOOL)animated
 {
     self.currentSelectionState = !self.addNewStyle && isSelected;
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *paper = AppForgroundColr;
+    UIColor *ink = AppPrimaryTextClr;
     void (^changes)(void) = ^{
-        self.surfaceView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
-        [self.surfaceView pp_setBorderColor:self.currentSelectionState ? accent : [UIColor ppSurfaceBorder]];
-        self.surfaceView.layer.borderWidth = self.currentSelectionState ? 2.0 : (UIAccessibilityDarkerSystemColorsEnabled() ? 1.5 : 1.0);
-        self.selectionView.backgroundColor = self.currentSelectionState ? accent : UIColor.clearColor;
-        [self.selectionView pp_setBorderColor:self.currentSelectionState ? accent : UIColor.tertiaryLabelColor];
+        BOOL chosen = self.currentSelectionState;
+        self.surfaceView.backgroundColor = chosen ? ink : paper;
+        self.pocketLip.tintColor = [AppPrimaryClr colorWithAlphaComponent:chosen ? 0.32 : 0.08];
+        self.iconContainerView.backgroundColor = paper;
+        self.titleLabel.textColor = chosen ? paper : ink;
+        self.subtitleLabel.textColor = chosen ? [paper colorWithAlphaComponent:0.88] : AppSecondaryTextClr;
+        [self.surfaceView pp_setBorderColor:chosen ? ink : [UIColor ppSurfaceBorder]];
+        self.surfaceView.layer.borderWidth = UIAccessibilityDarkerSystemColorsEnabled() ? 1.5 : 1.0;
+        self.selectionView.backgroundColor = chosen ? paper : UIColor.clearColor;
+        [self.selectionView pp_setBorderColor:chosen ? paper : AppSecondaryTextClr];
         self.selectionView.layer.borderWidth = self.currentSelectionState ? 0.0 : 1.5;
-        self.selectionImageView.tintColor = UIColor.whiteColor;
+        self.selectionImageView.tintColor = ink;
         self.selectionImageView.alpha = self.currentSelectionState ? 1.0 : 0.0;
     };
     if (animated && !UIAccessibilityIsReduceMotionEnabled()) {

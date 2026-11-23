@@ -27,15 +27,17 @@
 @property (nonatomic, strong, nullable) NSIndexPath *indexPath;
 @property (nonatomic, strong, nullable) UserPaymentInstrument *instrument;
 @property (nonatomic, strong, nullable) PaymentMethod *method;
+@property (nonatomic) BOOL usesPocketLayout;
 
 - (void)configureWithInstrument:(UserPaymentInstrument *)instrument
                          method:(PaymentMethod *)method
                       indexPath:(NSIndexPath *)indexPath;
 - (void)configureAsAddNewIndexPath:(NSIndexPath *)indexPath;
 - (void)updateSelectionState:(BOOL)isSelected animated:(BOOL)animated;
-+ (CGFloat)heightForInstrument:(UserPaymentInstrument *)instrument
+- (CGFloat)heightForInstrument:(UserPaymentInstrument *)instrument
                        method:(PaymentMethod *)method
                         width:(CGFloat)width
+             usesPocketLayout:(BOOL)usesPocketLayout
               traitCollection:(UITraitCollection *)traitCollection;
 + (UIColor *)accentColorForMethod:(nullable PaymentMethod *)method;
 

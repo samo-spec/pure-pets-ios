@@ -763,6 +763,46 @@ static NSDictionary *PPPaymentHostedCheckoutClosedResponse(void)
     };
 }
 
+static NSString *PPPaymentSanitizedQIBText(NSString *rawText, NSString *fallback, NSUInteger maxLength)
+{
+    if (![rawText isKindOfClass:NSString.class]) {
+        return fallback ?: @"";
+    }
+    NSString *trimmed = [rawText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (trimmed.length == 0) {
+        return fallback ?: @"";
+    }
+
+    // Transliterate Arabic to Latin (e.g. "الطبري" -> "al-tbry") and normalize diacritics
+    NSMutableString *transliterated = [trimmed mutableCopy];
+    CFStringTransform((__bridge CFMutableStringRef)transliterated, NULL, kCFStringTransformToLatin, false);
+    CFStringTransform((__bridge CFMutableStringRef)transliterated, NULL, kCFStringTransformStripCombiningMarks, false);
+
+    // Keep only safe ASCII alphanumeric, space, dot, comma, hyphen
+    NSMutableString *clean = [NSMutableString new];
+    for (NSUInteger i = 0; i < transliterated.length; i++) {
+        unichar c = [transliterated characterAtIndex:i];
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+            c == ' ' || c == '.' || c == ',' || c == '-') {
+            [clean appendFormat:@"%C", c];
+        }
+    }
+
+    NSString *result = [clean stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSRegularExpression *spacesRegex = [NSRegularExpression regularExpressionWithPattern:@"\\s+" options:0 error:nil];
+    if (spacesRegex) {
+        result = [spacesRegex stringByReplacingMatchesInString:result options:0 range:NSMakeRange(0, result.length) withTemplate:@" "];
+    }
+
+    if (result.length == 0) {
+        return fallback ?: @"";
+    }
+    if (maxLength > 0 && result.length > maxLength) {
+        result = [result substringToIndex:maxLength];
+    }
+    return result;
+}
+
 #if !TARGET_OS_SIMULATOR
 static void PPQIBTryLoadFrameworkBundle(void)
 {
@@ -1329,6 +1369,14 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
         NSString *countryISO = PPPaymentResolvedCountryISOCode();
 
+        NSString *rawAddressCandidate = addressLine1.length > 0 ? addressLine1 : (fallbackLocation.length > 0 ? fallbackLocation : @"Address");
+        NSString *rawCityCandidate = fallbackLocation.length > 0 ? fallbackLocation : (displayName.length > 0 ? displayName : @"Doha");
+        NSString *rawNameCandidate = PPCurrentUser.UserName.length > 0 ? PPCurrentUser.UserName : @"Pure Pets Customer";
+
+        NSString *safeAddress = PPPaymentSanitizedQIBText(rawAddressCandidate, @"Doha, Qatar", 64);
+        NSString *safeCity = PPPaymentSanitizedQIBText(rawCityCandidate, @"Doha", 32);
+        NSString *safeName = PPPaymentSanitizedQIBText(rawNameCandidate, @"Pure Pets Customer", 64);
+
         NSNumber *amountNumber = @((order.totalAmount > 0 ? order.totalAmount : order.amount));
         PPPaymentSetValueForCandidateKeys(params, @[@"gatewayId", @"gatewayID", @"GatewayId", @"gateway_id"], gatewayId);
         PPPaymentSetValueForCandidateKeys(params, @[@"secretKey", @"secret", @"SecretKey", @"secret_key"], secretKey);
@@ -1337,12 +1385,12 @@ static void PPQIBTryLoadFrameworkBundle(void)
         PPPaymentSetValueForCandidateKeys(params, @[@"currency", @"currencyCode"], sessionCurrency);
         PPPaymentSetValueForCandidateKeys(params, @[@"referenceId", @"referenceID", @"reference_id"], order.orderId ?: @"");
         PPPaymentSetValueForCandidateKeys(params, @[@"productDescription", @"productDesc"], @"Pure Pets Order");
-        PPPaymentSetValueForCandidateKeys(params, @[@"name"], PPCurrentUser.UserName ?: @"Pure Pets");
+        PPPaymentSetValueForCandidateKeys(params, @[@"name"], safeName);
         NSString *sdkEmail = PPPaymentTrimmedString(PPCurrentUser.UserEmail);
         PPPaymentSetValueForCandidateKeys(params, @[@"email"], sdkEmail.length > 0 ? sdkEmail : PPPaymentOfficialEmailFallback);
         PPPaymentSetValueForCandidateKeys(params, @[@"phone"], phone ?: @"");
-        PPPaymentSetValueForCandidateKeys(params, @[@"address"], (addressLine1.length > 0 ? addressLine1 : (fallbackLocation.length > 0 ? fallbackLocation : @"Address")));
-        PPPaymentSetValueForCandidateKeys(params, @[@"city"], (fallbackLocation.length > 0 ? fallbackLocation : (displayName.length > 0 ? displayName : @"City")));
+        PPPaymentSetValueForCandidateKeys(params, @[@"address"], safeAddress);
+        PPPaymentSetValueForCandidateKeys(params, @[@"city"], safeCity);
         PPPaymentSetValueForCandidateKeys(params, @[@"state"], countryISO);
         PPPaymentSetValueForCandidateKeys(params, @[@"country"], countryISO);
 
@@ -1635,11 +1683,18 @@ static void PPQIBTryLoadFrameworkBundle(void)
         }
     }
 
-    // E.164 payloads must be real-sized phone numbers. This rejects values like +974123.
+    // Digits-only payload (8..15 digits) without leading '+'.
+    // QIB form POSTs application/x-www-form-urlencoded where '+' decodes
+    // to a space, causing the bank gateway regex validator to return "Error Handling Payment".
     if (digits.length >= 8 && digits.length <= 15) {
-        return [NSString stringWithFormat:@"+%@", digits];
+        return digits;
     }
     return nil;
+}
+
++ (NSString *)sanitizedQIBText:(nullable NSString *)rawText fallback:(NSString *)fallback maxLength:(NSUInteger)maxLength
+{
+    return PPPaymentSanitizedQIBText(rawText, fallback, maxLength);
 }
 
 - (void)failWithMessage:(NSString *)msg

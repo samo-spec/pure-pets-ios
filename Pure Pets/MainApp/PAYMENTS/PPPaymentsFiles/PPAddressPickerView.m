@@ -51,6 +51,7 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 @property (nonatomic, strong) UIView *statusDotView;
 @property (nonatomic, strong) UILabel *hintLabel;
 @property (nonatomic, strong) UILabel *addressLabel;
+@property (nonatomic, strong) UILabel *inlineAddressDetailsLabel;
 @property (nonatomic, strong) UIView *actionChipView;
 @property (nonatomic, strong) UILabel *actionTitleLabel;
 @property (nonatomic, strong) UIImageView *actionChevronView;
@@ -155,14 +156,14 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
     [NSLayoutConstraint deactivateConstraints:self.floatingContentConstraints];
     [NSLayoutConstraint deactivateConstraints:self.actionInsetConstraints];
 
-    self.iconPlateWidthConstraint.constant = 24.0;
-    self.iconPlateHeightConstraint.constant = 24.0;
+    self.iconPlateWidthConstraint.constant = PPSpaceXXL;
+    self.iconPlateHeightConstraint.constant = PPSpaceXXL;
     self.iconWidthConstraint.constant = 19.0;
     self.iconHeightConstraint.constant = 19.0;
     self.iconView.image = [UIImage systemImageNamed:@"mappin.and.ellipse"];
     self.contentStack.alignment = UIStackViewAlignmentTop;
     self.contentStack.spacing = PPSpaceMD;
-    self.textStack.spacing = PPSpaceSM;
+    self.textStack.spacing = PPSpaceXS;
     self.hintLabel.numberOfLines = 0;
     self.actionTitleLabel.numberOfLines = 0;
     self.actionTitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
@@ -176,6 +177,10 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
     [self.actionChipView removeFromSuperview];
     [self.textStack removeArrangedSubview:self.hintLabel];
     [self.hintLabel removeFromSuperview];
+    self.inlineAddressDetailsLabel = [UILabel new];
+    self.inlineAddressDetailsLabel.adjustsFontForContentSizeCategory = YES;
+    self.inlineAddressDetailsLabel.numberOfLines = 0;
+    [self.textStack addArrangedSubview:self.inlineAddressDetailsLabel];
     self.inlineHeadingStack = [[UIStackView alloc] init];
     self.inlineHeadingStack.axis = UILayoutConstraintAxisHorizontal;
     self.inlineHeadingStack.alignment = UIStackViewAlignmentFirstBaseline;
@@ -428,17 +433,17 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 {
     if (self.inlineCheckout) {
         self.blurView.effect = nil;
-        self.tintView.backgroundColor = PPAddressPickerSurfaceColor();
-        self.containerView.layer.borderWidth = UIAccessibilityDarkerSystemColorsEnabled() ? 1.5 : 1.0;
-        [self.containerView pp_setBorderColor:PPAddressPickerStrokeColor()];
-        self.iconPlateView.backgroundColor = UIColor.clearColor;
-        self.iconView.tintColor = PPAddressPickerSecondaryTextColor();
+        self.tintView.backgroundColor = UIColor.clearColor;
+        self.containerView.layer.borderWidth = 0;
+        self.iconPlateView.backgroundColor = [PPAddressPickerBrandColor() colorWithAlphaComponent:0.10];
+        self.iconView.tintColor = PPAddressPickerBrandColor();
         self.statusDotView.hidden = YES;
         self.hintLabel.textColor = PPAddressPickerSecondaryTextColor();
         self.addressLabel.textColor = PPAddressPickerPrimaryTextColor();
+        self.inlineAddressDetailsLabel.textColor = PPAddressPickerSecondaryTextColor();
         self.actionTitleLabel.text = kLang([self pp_hasSelectedAddress] ? @"Change" : @"Select");
-        self.actionTitleLabel.textColor = PPAddressPickerPrimaryTextColor();
-        self.actionChevronView.tintColor = PPAddressPickerSecondaryTextColor();
+        self.actionTitleLabel.textColor = PPAddressPickerBrandColor();
+        self.actionChevronView.tintColor = PPAddressPickerBrandColor();
         self.actionChipView.backgroundColor = UIColor.clearColor;
         self.layer.shadowOpacity = 0.0;
         return;
@@ -505,8 +510,8 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
     UITraitCollection *traits = self.traitCollection;
     UIFont *hintFont = [GM MidFontWithSize:PPFontSubheadline]
         ?: [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightMedium];
-    UIFont *addressFont = [GM boldFontWithSize:PPFontBody]
-        ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightSemibold];
+    UIFont *addressFont = [GM boldFontWithSize:PPFontTitle3]
+        ?: [UIFont systemFontOfSize:PPFontTitle3 weight:UIFontWeightSemibold];
     UIFont *actionFont = [GM boldFontWithSize:PPFontSubheadline]
         ?: [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightSemibold];
     self.hintLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
@@ -515,13 +520,22 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
         scaledFontForFont:addressFont compatibleWithTraitCollection:traits];
     self.actionTitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
         scaledFontForFont:actionFont compatibleWithTraitCollection:traits];
-    for (UILabel *label in @[self.hintLabel, self.addressLabel, self.actionTitleLabel]) {
+    self.inlineAddressDetailsLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+        scaledFontForFont:hintFont compatibleWithTraitCollection:traits];
+    NSString *fullText = [self pp_hasSelectedAddress] ? self.addressText : [self pp_addressPlaceholderText];
+    NSRange lineBreak = [fullText rangeOfString:@"\n"];
+    self.addressLabel.text = lineBreak.location == NSNotFound ? fullText : [fullText substringToIndex:lineBreak.location];
+    self.inlineAddressDetailsLabel.text = lineBreak.location == NSNotFound ? nil : [fullText substringFromIndex:NSMaxRange(lineBreak)];
+    self.inlineAddressDetailsLabel.hidden = self.inlineAddressDetailsLabel.text.length == 0;
+    for (UILabel *label in @[self.hintLabel, self.addressLabel, self.inlineAddressDetailsLabel, self.actionTitleLabel]) {
         label.textAlignment = Language.alignmentForCurrentLanguage;
         label.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
         [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     }
     self.textStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     BOOL expanded = UIContentSizeCategoryIsAccessibilityCategory(traits.preferredContentSizeCategory);
+    self.iconPlateWidthConstraint.constant = expanded ? 0 : PPSpaceXXL;
+    self.iconPlateView.hidden = expanded;
     for (UIView *view in self.inlineHeadingStack.arrangedSubviews.copy) {
         [self.inlineHeadingStack removeArrangedSubview:view];
         [view removeFromSuperview];
@@ -546,7 +560,7 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
 
 - (void)pp_updateAccessibility
 {
-    NSString *text = self.addressLabel.text ?: [self pp_addressPlaceholderText];
+    NSString *text = [self pp_hasSelectedAddress] ? self.addressText : [self pp_addressPlaceholderText];
     self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", kLang(@"DeliverTo"), text];
     self.accessibilityHint = kLang(@"order_change_delivery_address");
     self.accessibilityValue = nil;

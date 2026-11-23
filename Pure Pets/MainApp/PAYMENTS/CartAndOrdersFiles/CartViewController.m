@@ -147,15 +147,19 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     UIView *boundaryLineView = [[UIView alloc] init];
     boundaryLineView.translatesAutoresizingMaskIntoConstraints = NO;
     boundaryLineView.userInteractionEnabled = NO;
-    boundaryLineView.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.34];
+    boundaryLineView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [UIColor colorWithWhite:1.0 alpha:0.22]
+            : [UIColor colorWithWhite:0.0 alpha:0.16];
+    }];
     [self.contentView addSubview:boundaryLineView];
     self.boundaryLineView = boundaryLineView;
 
     UIView *boundaryAccentView = [[UIView alloc] init];
     boundaryAccentView.translatesAutoresizingMaskIntoConstraints = NO;
     boundaryAccentView.userInteractionEnabled = NO;
-    boundaryAccentView.backgroundColor = [accentColor colorWithAlphaComponent:0.70];
-    boundaryAccentView.layer.cornerRadius = 1.0;
+    boundaryAccentView.backgroundColor = [accentColor colorWithAlphaComponent:0.85];
+    boundaryAccentView.layer.cornerRadius = 1.25;
     [self.contentView addSubview:boundaryAccentView];
     self.boundaryAccentView = boundaryAccentView;
 
@@ -303,8 +307,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
         [boundaryAccentView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
         [boundaryAccentView.centerYAnchor constraintEqualToAnchor:boundaryLineView.centerYAnchor],
-        [boundaryAccentView.widthAnchor constraintEqualToConstant:34.0],
-        [boundaryAccentView.heightAnchor constraintEqualToConstant:2.0],
+        [boundaryAccentView.widthAnchor constraintEqualToConstant:36.0],
+        [boundaryAccentView.heightAnchor constraintEqualToConstant:2.5],
 
         self.dockTopConstraint,
         self.dockBottomConstraint,
@@ -793,7 +797,9 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self pp_installPremiumCartBackgroundViewIfNeeded];
     [self pp_updatePremiumCartBackgroundAppearance];
 
-    self.cartTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    CGFloat initialTableWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
+    CGFloat initialTableHeight = CGRectGetHeight(UIScreen.mainScreen.bounds);
+    self.cartTableView = [[UITableView alloc] initWithFrame:CGRectMake(0, 0, initialTableWidth, initialTableHeight) style:UITableViewStylePlain];
     self.cartTableView.dataSource = self;
     self.cartTableView.delegate = self;
     self.cartTableView.backgroundColor = UIColor.clearColor;
@@ -803,10 +809,10 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.cartTableView.showsHorizontalScrollIndicator = NO;
     self.cartTableView.showsVerticalScrollIndicator = NO;
     self.cartTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    self.cartTableView.contentInset = UIEdgeInsetsMake(20.0, 0.0, kCartTableBottomInset, 0.0);
-    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(20.0, 0.0, kCartTableBottomInset, 0.0);
+    self.cartTableView.contentInset = UIEdgeInsetsMake(28.0, 0.0, kCartTableBottomInset, 0.0);
+    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(28.0, 0.0, kCartTableBottomInset, 0.0);
     self.cartTableView.rowHeight = UITableViewAutomaticDimension;
-    self.cartTableView.estimatedRowHeight = 180.0;
+    self.cartTableView.estimatedRowHeight = 220.0;
     if (@available(iOS 15.0, *)) {
         self.cartTableView.sectionHeaderTopPadding = 0.0;
     }
@@ -940,13 +946,10 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
     if (!self.didPrimeInitialCartLayout && self.cartTableView && CGRectGetWidth(self.cartTableView.bounds) > 0) {
         self.didPrimeInitialCartLayout = YES;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (!self.isViewLoaded || self.cartTableView.hasUncommittedUpdates) return;
-            [UIView performWithoutAnimation:^{
-                [self.cartTableView beginUpdates];
-                [self.cartTableView endUpdates];
-            }];
-        });
+        [UIView performWithoutAnimation:^{
+            [self.cartTableView reloadData];
+            [self.cartTableView layoutIfNeeded];
+        }];
     }
 }
 
@@ -4037,8 +4040,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         BOOL hasActiveCartBoundary = [self pp_cartItemsCount] > 0;
         dockCell.boundaryLineView.hidden = !hasActiveCartBoundary;
         dockCell.boundaryAccentView.hidden = !hasActiveCartBoundary;
-        dockCell.boundaryTopConstraint.constant = hasActiveCartBoundary ? 26.0 : 8.0;
-        dockCell.dockTopConstraint.constant = hasActiveCartBoundary ? 46.0 : 9.0;
+        dockCell.boundaryTopConstraint.constant = hasActiveCartBoundary ? 24.0 : 8.0;
+        dockCell.dockTopConstraint.constant = hasActiveCartBoundary ? 48.0 : 10.0;
         dockCell.dockBottomConstraint.constant = hasActiveCartBoundary ? -2.0 : -9.0;
         dockCell.layer.masksToBounds = NO;
         dockCell.clipsToBounds = NO;
@@ -4109,12 +4112,12 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     if ([self pp_savedForLaterItemAtIndexPath:indexPath]) {
         BOOL isAccessibilitySize =
         UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
-        return isAccessibilitySize ? 172.0 : 142.0;
+        return isAccessibilitySize ? 180.0 : 148.0;
     }
 
     BOOL isAccessibilitySize =
     UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
-    return isAccessibilitySize ? 240.0 : 180.0;
+    return isAccessibilitySize ? 260.0 : 220.0;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -4317,8 +4320,8 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
         tableWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
     }
     BOOL hasActiveCartBoundary = [self pp_cartItemsCount] > 0;
-    CGFloat boundarySpacing = hasActiveCartBoundary ? 18.0 : 0.0;
-    CGFloat footerHeight = (isAccessibilitySize ? 112.0 : 92.0) + boundarySpacing;
+    CGFloat boundarySpacing = hasActiveCartBoundary ? 28.0 : 0.0;
+    CGFloat footerHeight = (isAccessibilitySize ? 116.0 : 96.0) + boundarySpacing;
     CGFloat pillHeight = isAccessibilitySize ? 80.0 : 72.0;
     CGFloat availableCompactWidth = MAX(0.0, tableWidth - (isAccessibilitySize ? 56.0 : 104.0));
     CGFloat pillWidth = MIN(MAX(isAccessibilitySize ? 318.0 : 282.0, availableCompactWidth),
@@ -4338,15 +4341,19 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
     UIView *boundaryLineView = [[UIView alloc] init];
     boundaryLineView.translatesAutoresizingMaskIntoConstraints = NO;
     boundaryLineView.userInteractionEnabled = NO;
-    boundaryLineView.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.34];
+    boundaryLineView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [UIColor colorWithWhite:1.0 alpha:0.22]
+            : [UIColor colorWithWhite:0.0 alpha:0.16];
+    }];
     boundaryLineView.hidden = !hasActiveCartBoundary;
     [footerView addSubview:boundaryLineView];
 
     UIView *boundaryAccentView = [[UIView alloc] init];
     boundaryAccentView.translatesAutoresizingMaskIntoConstraints = NO;
     boundaryAccentView.userInteractionEnabled = NO;
-    boundaryAccentView.backgroundColor = [accentColor colorWithAlphaComponent:0.70];
-    boundaryAccentView.layer.cornerRadius = 1.0;
+    boundaryAccentView.backgroundColor = [accentColor colorWithAlphaComponent:0.85];
+    boundaryAccentView.layer.cornerRadius = 1.25;
     boundaryAccentView.hidden = !hasActiveCartBoundary;
     [footerView addSubview:boundaryAccentView];
 
@@ -4518,18 +4525,18 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
         [tintView.topAnchor constraintEqualToAnchor:materialView.contentView.topAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:materialView.contentView.bottomAnchor],
 
-        [boundaryLineView.leadingAnchor constraintEqualToAnchor:footerView.leadingAnchor constant:34.0],
-        [boundaryLineView.trailingAnchor constraintEqualToAnchor:footerView.trailingAnchor constant:-34.0],
-        [boundaryLineView.topAnchor constraintEqualToAnchor:footerView.topAnchor constant:4.0],
+        [boundaryLineView.leadingAnchor constraintEqualToAnchor:footerView.leadingAnchor constant:32.0],
+        [boundaryLineView.trailingAnchor constraintEqualToAnchor:footerView.trailingAnchor constant:-32.0],
+        [boundaryLineView.topAnchor constraintEqualToAnchor:footerView.topAnchor constant:12.0],
         [boundaryLineView.heightAnchor constraintEqualToConstant:1.0],
 
         [boundaryAccentView.centerXAnchor constraintEqualToAnchor:footerView.centerXAnchor],
         [boundaryAccentView.centerYAnchor constraintEqualToAnchor:boundaryLineView.centerYAnchor],
-        [boundaryAccentView.widthAnchor constraintEqualToConstant:34.0],
-        [boundaryAccentView.heightAnchor constraintEqualToConstant:2.0],
+        [boundaryAccentView.widthAnchor constraintEqualToConstant:36.0],
+        [boundaryAccentView.heightAnchor constraintEqualToConstant:2.5],
 
         [pillButton.centerXAnchor constraintEqualToAnchor:footerView.centerXAnchor],
-        [pillButton.topAnchor constraintEqualToAnchor:boundaryLineView.bottomAnchor constant:hasActiveCartBoundary ? 14.0 : 4.0],
+        [pillButton.topAnchor constraintEqualToAnchor:boundaryLineView.bottomAnchor constant:hasActiveCartBoundary ? 16.0 : 6.0],
         [pillButton.leadingAnchor constraintGreaterThanOrEqualToAnchor:footerView.leadingAnchor constant:horizontalInset],
         [pillButton.trailingAnchor constraintLessThanOrEqualToAnchor:footerView.trailingAnchor constant:-horizontalInset],
         [pillButton.heightAnchor constraintEqualToConstant:pillHeight],

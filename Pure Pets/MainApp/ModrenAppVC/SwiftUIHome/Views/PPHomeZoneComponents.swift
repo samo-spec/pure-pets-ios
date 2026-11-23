@@ -5568,173 +5568,88 @@ struct PPHomeStatusCard: View {
     }
 }
 
-// MARK: - Service gateway
+// MARK: - Pet Care
 
-struct PPHomeServiceDestination: Identifiable {
-    let id: String
-    let title: String
-    let subtitle: String
-    let symbol: String
-    let accent: Color
-}
-
-/// The single care/service gateway keeps Vet and Pharmacy independently
-/// reachable while using one quiet, native list surface.
 @available(iOS 15.0, *)
-struct PPHomeServiceGateway: View {
-    let eyebrow: String?
+struct PPHomePetCareCard: View {
     let title: String
-    let subtitle: String?
-    let destinations: [PPHomeServiceDestination]
-    let onSelect: (PPHomeServiceDestination) -> Void
+    let summary: String
+    let open: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private let windowWidth: CGFloat = 116
+
     var body: some View {
-        VStack(
-            alignment: .leading,
-            spacing: PPHomeSectionHeaderMetrics.contentSpacing
-        ) {
-            PPHomeSectionHeading(
-                eyebrow: eyebrow,
-                title: title,
-                subtitle: subtitle
-            )
-
-            gatewaySurface
-        }
-        .accessibilityElement(children: .contain)
-    }
-
-    private var gatewaySurface: some View {
-        let shape = RoundedRectangle(
-            cornerRadius: HomeVisualTokens.cardCorner,
-            style: .continuous
-        )
-
-        return VStack(spacing: 0) {
-            ForEach(Array(destinations.enumerated()), id: \.element.id) {
-                index, destination in
-                if index > 0 {
-                    separator
+        Button(action: open) {
+            Group {
+                if dynamicTypeSize >= .xxxLarge {
+                    copy
+                } else {
+                    PPHomeCompanionInvitationLayout(artworkSide: windowWidth) {
+                        copy
+                    } artwork: {
+                        consultationWindow
+                    }
                 }
-
-                Button { onSelect(destination) } label: {
-                    destinationRow(destination)
-                }
-                .buttonStyle(
-                    PPHomeSurfacePressStyle(reduceMotion: reduceMotion)
-                )
-                .accessibilityLabel(destination.title)
-                .accessibilityHint(destination.subtitle)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, PPSpace.lg)
+            .padding(.trailing, PPSpace.base)
+            .padding(.vertical, PPSpace.md)
+            .background(HomeSemanticTone.health.opacity(colorScheme == .dark ? 0.13 : 0.07))
+            .modifier(PPHomeCompanionInvitationSurface())
         }
-        .background(Color.homeSurface)
-        .clipShape(shape)
-        .overlay {
-            shape.strokeBorder(
-                HomeVisualTokens.cardBorder(
-                    colorScheme: colorScheme,
-                    contrast: contrast
-                ),
-                lineWidth: HomeVisualTokens.cardBorderWidth(
-                    contrast: contrast
-                )
-            )
-            .allowsHitTesting(false)
-        }
-        .shadow(
-            color: contrast == .increased ? .clear : PPShadow.subtle.color,
-            radius: contrast == .increased ? 0 : PPShadow.subtle.radius,
-            x: PPShadow.subtle.x,
-            y: contrast == .increased ? 0 : PPShadow.subtle.y
-        )
-        .contentShape(shape)
+        .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(Text(summary))
+        .accessibilityIdentifier("home.petCare")
     }
 
-    private func destinationRow(
-        _ destination: PPHomeServiceDestination
-    ) -> some View {
-        HStack(
-            alignment: .center,
-            spacing: HomeVisualTokens.destinationTileSpacing
-        ) {
-            symbolPlate(destination)
-
-            destinationCopy(destination)
-
-            Spacer(minLength: PPSpace.sm)
-
-            disclosure
-        }
-        .padding(.horizontal, HomeVisualTokens.destinationTileContentInset)
-        .padding(.vertical, PPSpace.sm)
-        .frame(
-            maxWidth: .infinity,
-            minHeight: HomeVisualTokens.destinationTileHeight,
-            alignment: .leading
-        )
-        .contentShape(Rectangle())
-    }
-
-    private func symbolPlate(
-        _ destination: PPHomeServiceDestination
-    ) -> some View {
-        Image(systemName: destination.symbol)
-            .font(.system(size: 18, weight: .bold))
-            .foregroundStyle(destination.accent)
-            .frame(
-                width: HomeVisualTokens.iconContainerSize,
-                height: HomeVisualTokens.iconContainerSize
-            )
-            .background(
-                destination.accent.opacity(0.12),
-                in: RoundedRectangle(
-                    cornerRadius: HomeVisualTokens.iconContainerCorner,
-                    style: .continuous
-                )
-            )
-            .accessibilityHidden(true)
-    }
-
-    private func destinationCopy(
-        _ destination: PPHomeServiceDestination
-    ) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.xxs) {
-            Text(destination.title)
-                .font(HomeFont.headline())
+    private var copy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Text(title)
+                .font(HomeFont.title1())
                 .foregroundStyle(Color.homeTextPrimary)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
 
-            if !destination.subtitle.isEmpty {
-                Text(destination.subtitle)
-                    .font(HomeFont.footnote())
-                    .foregroundStyle(Color.homeTextSecondary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(summary)
+                .font(HomeFont.callout())
+                .foregroundStyle(Color.homeTextSecondary)
+
+            Image(systemName: "arrow.forward")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.homeTextPrimary)
+                .frame(width: 32, height: 32)
+                .background(Color.homeSurface, in: Circle())
+                .padding(.top, PPSpace.sm)
+                .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .multilineTextAlignment(.leading)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var disclosure: some View {
-        Image(systemName: "chevron.forward")
-            .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(Color.homeTextSecondary)
-            .flipsForRightToLeftLayoutDirection(true)
-            .frame(width: PPSpace.lg, height: PPHomeZoneMetrics.minimumTarget)
+    private var consultationWindow: some View {
+        Image(decorative: "homePetCareConsultation")
+            .resizable()
+            .scaledToFill()
+            .frame(width: windowWidth, height: windowWidth * 1.25)
+            .clipShape(PPHomeCareWindow())
             .accessibilityHidden(true)
     }
+}
 
-    private var separator: some View {
-        Rectangle()
-            .fill(Color.homeSeparator.opacity(contrast == .increased ? 1 : 0.75))
-            .frame(height: contrast == .increased ? 1.5 : 1)
-            .padding(.horizontal, PPSpace.base)
-            .accessibilityHidden(true)
+/// An arched opening keeps the exam in view down to the stethoscope.
+private struct PPHomeCareWindow: Shape {
+    func path(in rect: CGRect) -> Path {
+        let radius = min(rect.width, rect.height) / 2
+        let arch = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: [.topLeft, .topRight],
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(arch.cgPath)
     }
 }
 
@@ -6743,10 +6658,10 @@ enum PPHomeZoneCopy {
         )
     }
 
-    static var careGatewaySubtitle: String {
+    static var petCareCardSummary: String {
         HomeModelAdapter.localized(
-            "home_premium_care_subtitle",
-            fallback: "Pet medicine and veterinarian care in one refined place."
+            "home_pet_care_card_summary",
+            fallback: "Vets, clinics and medicines"
         )
     }
 

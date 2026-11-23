@@ -10,6 +10,7 @@
 // PetAccessoryManager.m
 
 #import "PetAccessoryManager.h"
+#import "PPStoreBranchManager.h"
 #import "PetAdManager.h"
 #import "UserManager.h"
 #import "UserModel.h"
@@ -607,8 +608,21 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         sharedInstance.firestore = [FIRFirestore firestore];
         sharedInstance.accessoriesArray = [NSMutableArray array];
         [PetAccessoryManager pp_loadExpiryThresholdIfNeeded];
+        [[PPStoreBranchManager sharedManager] startObservingStoreBranch];
+        [[NSNotificationCenter defaultCenter] addObserver:sharedInstance
+                                                 selector:@selector(pp_storeBranchDidChange:)
+                                                     name:PPStoreBranchDidChangeNotification
+                                                   object:nil];
     });
     return sharedInstance;
+}
+
+- (void)pp_storeBranchDidChange:(NSNotification *)notification {
+    NSLog(@"[PetAccessoryManager] Store branch changed -> refreshing active accessories");
+    [self.accessoriesArray removeAllObjects];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"PPAccessoriesNeedRefreshNotification" object:nil];
+    });
 }
 
 

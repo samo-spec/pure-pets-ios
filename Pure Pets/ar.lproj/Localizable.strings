@@ -2107,6 +2107,7 @@
 "payment_section_delivery" = "عنوان التوصيل";
 "payment_section_delivery_subtitle" = "سيتم استخدام هذا العنوان للشحن والتحقق من بيانات الطلب.";
 "payment_section_methods_title" = "خيارات الدفع";
+"checkout_payment_question" = "كيف تفضّل الدفع؟";
 "payment_section_methods_subtitle" = "طرق الدفع المحفوظة وخيارات الدفع المدمجة";
 "payment_add_method" = "إضافة طريقة";
 "payment_add_method_subtitle" = "احفظ بطاقة جديدة لتجربة دفع أسرع في المرات القادمة.";
@@ -3027,6 +3028,7 @@
 "home_premium_care_subtitle" = "أدوية الحيوانات والرعاية البيطرية في مكان واحد أنيق.";
 "home_premium_care_cta" = "استكشف العيادات والصيدليات";
 "pet_care_title" = "رعاية الحيوانات";
+"home_pet_care_card_summary" = "أطباء بيطريون وعيادات وأدوية";
 "pet_care_eyebrow" = "رعاية مميزة";
 "pet_care_medicines" = "الأدوية";
 "pet_care_veterinarians" = "الأطباء";

@@ -631,8 +631,8 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     [self.textStack setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self.bottomRow setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
 
-    self.cardTopConstraint = [self.cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceSM];
-    self.cardBottomConstraint = [self.contentView.bottomAnchor constraintEqualToAnchor:self.cardContainer.bottomAnchor constant:PPSpaceSM];
+    self.cardTopConstraint = [self.cardContainer.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:10.0];
+    self.cardBottomConstraint = [self.contentView.bottomAnchor constraintEqualToAnchor:self.cardContainer.bottomAnchor constant:10.0];
     self.cardBottomConstraint.priority = UILayoutPriorityRequired - 1;
 
     self.contentTopConstraint = [self.contentStack.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceBase];
@@ -729,8 +729,8 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         self.contentStack.spacing = PPSpaceMD;
         self.textStack.spacing = PPSpaceXS;
         self.priceRow.spacing = PPSpaceXXS;
-        self.cardTopConstraint.constant = PPSpaceSM;
-        self.cardBottomConstraint.constant = PPSpaceSM;
+        self.cardTopConstraint.constant = 10.0;
+        self.cardBottomConstraint.constant = 10.0;
         self.contentTopConstraint.constant = PPSpaceBase;
         self.contentBottomConstraint.constant = PPSpaceBase;
         self.dividerHeightConstraint.constant = 16.0;
@@ -763,9 +763,19 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 - (void)pp_updateLayoutForWidth:(CGFloat)width
 {
     BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    if (width <= 0.0 || width <= 320.0) {
+        if (self.superview && CGRectGetWidth(self.superview.bounds) > 320.0) {
+            width = CGRectGetWidth(self.superview.bounds);
+        } else {
+            CGFloat screenWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
+            if (screenWidth > 320.0) {
+                width = screenWidth;
+            }
+        }
+    }
     // A real width is supplied by table fitting, including edit-mode indentation.
     CGFloat available = MAX(0, width - 2 * (PPSpaceBase + PPSpaceBase));
-    BOOL verticalIdentity = accessibility || (available > 0 && available < 240);
+    BOOL verticalIdentity = accessibility || (available > 0 && available < 220);
     if (self.textWidthConstraint.active != verticalIdentity) {
         self.textWidthConstraint.active = verticalIdentity;
     }
@@ -792,7 +802,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     BOOL verticalFooter = accessibility || available < totalWidth + actionsWidth + PPSpaceMD;
     self.bottomRow.axis = verticalFooter ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
     self.bottomRow.alignment = verticalFooter ? UIStackViewAlignmentFill : UIStackViewAlignmentCenter;
-    self.savedActionsRow.axis = (accessibility || available < 280) ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    self.savedActionsRow.axis = (accessibility || available < 260) ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
     // The quantity stays centred when its control expands to the whole footer.
     self.stepperStack.distribution = UIStackViewDistributionFill;
 }
@@ -999,33 +1009,58 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
                 verticalFittingPriority:(UILayoutPriority)verticalFittingPriority
 {
     CGFloat width = targetSize.width;
-    if (width <= 0) {
+    if (width <= 0.0 && self.superview) {
+        width = CGRectGetWidth(self.superview.bounds);
+    }
+    if (width <= 0.0) {
         width = CGRectGetWidth(self.bounds);
     }
-    if (width <= 0) {
-        width = UIScreen.mainScreen.bounds.size.width;
+    if (width <= 0.0 || width <= 320.0) {
+        CGFloat screenWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
+        if (screenWidth > 320.0) {
+            width = screenWidth;
+        }
     }
-    CGFloat editingInset = MAX(0, CGRectGetWidth(self.bounds) - CGRectGetWidth(self.contentView.bounds));
-    CGFloat fittingWidth = MAX(0, width - editingInset);
+    CGFloat editingInset = MAX(0.0, CGRectGetWidth(self.bounds) - CGRectGetWidth(self.contentView.bounds));
+    CGFloat fittingWidth = MAX(0.0, width - editingInset);
 
     [self pp_updateLayoutForWidth:fittingWidth];
 
-    self.contentView.frame = CGRectMake(0, 0, fittingWidth, self.contentView.frame.size.height > 0 ? self.contentView.frame.size.height : 180.0);
+    // Reset contentView to fittingWidth with zero height so Auto Layout is NOT anchored by previous frame height
+    self.contentView.bounds = CGRectMake(0, 0, fittingWidth, 0);
+    self.contentView.frame = CGRectMake(0, 0, fittingWidth, 0);
     [self.contentView setNeedsLayout];
     [self.contentView layoutIfNeeded];
 
-    CGSize size = [super systemLayoutSizeFittingSize:CGSizeMake(fittingWidth, 0)
-                       withHorizontalFittingPriority:UILayoutPriorityRequired
-                             verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGSize size = [self.contentView systemLayoutSizeFittingSize:CGSizeMake(fittingWidth, UILayoutFittingCompressedSize.height)
+                                  withHorizontalFittingPriority:UILayoutPriorityRequired
+                                        verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
 
-    size.width = targetSize.width;
+    if (size.height <= 0.0) {
+        size = [super systemLayoutSizeFittingSize:CGSizeMake(fittingWidth, 0)
+                    withHorizontalFittingPriority:UILayoutPriorityRequired
+                          verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    }
+
+    size.width = (targetSize.width > 0.0) ? targetSize.width : fittingWidth;
     size.height = ceil(size.height);
     return size;
 }
 
 - (void)layoutSubviews
 {
-    [self pp_updateLayoutForWidth:CGRectGetWidth(self.contentView.bounds)];
+    CGFloat width = CGRectGetWidth(self.contentView.bounds);
+    if (width <= 0.0 || width <= 320.0) {
+        if (self.superview && CGRectGetWidth(self.superview.bounds) > 320.0) {
+            width = CGRectGetWidth(self.superview.bounds);
+        } else {
+            CGFloat screenWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
+            if (screenWidth > 320.0) {
+                width = screenWidth;
+            }
+        }
+    }
+    [self pp_updateLayoutForWidth:width];
     [super layoutSubviews];
     self.cardContainer.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.cardContainer.bounds
                                                                    cornerRadius:PPCornerCard].CGPath;
