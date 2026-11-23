@@ -6673,14 +6673,14 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets uses the camera to search with a pet or product photo. يستخدم بيور بيتس الكاميرا للبحث بصورة حيوان أو منتج.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets uses the camera to capture pet photos and videos for pet listings, visual search, and profile updates. يستخدم بيور بيتس الكاميرا لالتقاط صور وفيديوهات الحيوانات الأليفة لنشر الإعلانات والبحث المرئي وتحديث الملف الشخصي.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "The app needs to access your location so you can share it with users within the app.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Pure Pets uses your location to place a private missing or found pet report and shows only a coarse area publicly. يستخدم بيور بيتس موقعك لتسجيل بلاغ خاص عن حيوان مفقود أو معثور عليه، ولا يعرض للعامة إلا منطقة تقريبية.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk to PURA using your microphone. تحدث مع بيورا باستخدام الميكروفون.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Pure Pets may save selected media when you choose to keep shared photos. قد يحفظ بيور بيتس الوسائط عند اختيارك الاحتفاظ بالصور المشتركة.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library so you can choose an image for visual search. يستخدم بيور بيتس مكتبة الصور لاختيار صورة للبحث المرئي.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Pure Pets saves photos and receipts to your photo library when you choose to keep them. قد يحفظ بيور بيتس الصور والفواتير في مكتبة الصور عند اختيارك الاحتفاظ بها.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library to select photos and videos for pet listings, visual search, and profile updates. يستخدم بيور بيتس مكتبة الصور لاختيار صور وفيديوهات الحيوانات الأليفة لنشر الإعلانات والبحث المرئي وتحديث الملف الشخصي.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert your speech into text so PURA can answer you. تحويل صوتك إلى نص لترد عليك بيورا.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -6785,14 +6785,14 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets uses the camera to search with a pet or product photo. يستخدم بيور بيتس الكاميرا للبحث بصورة حيوان أو منتج.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets uses the camera to capture pet photos and videos for pet listings, visual search, and profile updates. يستخدم بيور بيتس الكاميرا لالتقاط صور وفيديوهات الحيوانات الأليفة لنشر الإعلانات والبحث المرئي وتحديث الملف الشخصي.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "The app needs to access your location so you can share it with users within the app.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Pure Pets uses your location to place a private missing or found pet report and shows only a coarse area publicly. يستخدم بيور بيتس موقعك لتسجيل بلاغ خاص عن حيوان مفقود أو معثور عليه، ولا يعرض للعامة إلا منطقة تقريبية.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Talk to PURA using your microphone. تحدث مع بيورا باستخدام الميكروفون.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Pure Pets may save selected media when you choose to keep shared photos. قد يحفظ بيور بيتس الوسائط عند اختيارك الاحتفاظ بالصور المشتركة.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library so you can choose an image for visual search. يستخدم بيور بيتس مكتبة الصور لاختيار صورة للبحث المرئي.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Pure Pets saves photos and receipts to your photo library when you choose to keep them. قد يحفظ بيور بيتس الصور والفواتير في مكتبة الصور عند اختيارك الاحتفاظ بها.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library to select photos and videos for pet listings, visual search, and profile updates. يستخدم بيور بيتس مكتبة الصور لاختيار صور وفيديوهات الحيوانات الأليفة لنشر الإعلانات والبحث المرئي وتحديث الملف الشخصي.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Convert your speech into text so PURA can answer you. تحويل صوتك إلى نص لترد عليك بيورا.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;

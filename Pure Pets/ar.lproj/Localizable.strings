@@ -3029,6 +3029,7 @@
 "home_premium_care_cta" = "استكشف العيادات والصيدليات";
 "pet_care_title" = "رعاية الحيوانات";
 "home_pet_care_card_summary" = "أطباء بيطريون وعيادات وأدوية";
+"home_pet_care_card_action" = "استكشف الرعاية";
 "pet_care_eyebrow" = "رعاية مميزة";
 "pet_care_medicines" = "الأدوية";
 "pet_care_veterinarians" = "الأطباء";
@@ -4846,6 +4847,18 @@
 "location_picker_move_west" = "حرّك النقطة غربًا";
 "location_picker_alert_title" = "اختر موقعًا";
 "location_picker_alert_message" = "حرّك الخريطة حتى تصبح علامة الكف فوق المكان الصحيح.";
+"location_picker_search_placeholder" = "ابحث عن منطقة، شارع، أو معلم...";
+"location_picker_search_no_results" = "لا توجد نتائج مطابقة للبحث";
+"location_picker_map_type_standard" = "خريطة";
+"location_picker_map_type_satellite" = "قمر صناعي";
+"location_picker_map_type_hybrid" = "هجين";
+"location_picker_copy_coordinates" = "نسخ الإحداثيات";
+"location_picker_coordinates_copied" = "تم نسخ الإحداثيات إلى الحافظة";
+"location_picker_share_location" = "مشاركة الموقع";
+"location_picker_zoom_in" = "تكبير";
+"location_picker_zoom_out" = "تصغير";
+"location_picker_quick_areas" = "المناطق السريعة";
+"location_picker_search_results" = "نتائج البحث";
 /* مركز قيادة الطلب — SwiftUI */
 "OrderID" = "معرّف الطلب";
 "OrderCannotBeCanceled" = "لا يمكن إلغاء هذا الطلب في مرحلته الحالية.";

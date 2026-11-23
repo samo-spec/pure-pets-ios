@@ -5574,82 +5574,225 @@ struct PPHomeStatusCard: View {
 struct PPHomePetCareCard: View {
     let title: String
     let summary: String
+    let categoryTitle: String?
     let open: () -> Void
 
+    private struct Service: Identifiable {
+        let id: String
+        let fallbackTitle: String
+        let symbol: String
+        let accent: Color
+    }
+
+    private let services = [
+        Service(
+            id: "pet_care_veterinarians",
+            fallbackTitle: "Veterinarians",
+            symbol: "stethoscope",
+            accent: .ppCareAccent
+        ),
+        Service(
+            id: "pet_care_clinics",
+            fallbackTitle: "Clinics",
+            symbol: "cross.case.fill",
+            accent: .ppQuickActionAnimals
+        ),
+        Service(
+            id: "pet_care_medicines",
+            fallbackTitle: "Medicines",
+            symbol: "pills.fill",
+            accent: .ppPremiumAccent
+        )
+    ]
+
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.displayScale) private var displayScale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let windowWidth: CGFloat = 116
+    private var showsPortrait: Bool { dynamicTypeSize < .xxLarge }
+    private var portraitWidth: CGFloat { horizontalSizeClass == .regular ? 192 : 148 }
+    private var hairline: CGFloat { 1 / max(displayScale, 1) }
+    private var serviceTintOpacity: Double { colorScheme == .dark ? 0.24 : 0.18 }
 
     var body: some View {
         Button(action: open) {
-            Group {
-                if dynamicTypeSize >= .xxxLarge {
-                    copy
-                } else {
-                    PPHomeCompanionInvitationLayout(artworkSide: windowWidth) {
-                        copy
-                    } artwork: {
-                        consultationWindow
-                    }
-                }
+            VStack(spacing: 0) {
+                hero
+                serviceIndex
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, PPSpace.lg)
-            .padding(.trailing, PPSpace.base)
-            .padding(.vertical, PPSpace.md)
-            .background(HomeSemanticTone.health.opacity(colorScheme == .dark ? 0.13 : 0.07))
             .modifier(PPHomeCompanionInvitationSurface())
+            .overlay { bottomHighlight }
         }
         .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(Text(title))
-        .accessibilityValue(Text(summary))
+        .accessibilityValue(Text(spokenSummary))
         .accessibilityIdentifier("home.petCare")
     }
 
-    private var copy: some View {
+    private var hero: some View {
+        HStack(spacing: 0) {
+            heroCopy
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, PPSpace.lg)
+                .padding(.trailing, PPSpace.sm)
+                .padding(.vertical, PPSpace.base)
+
+            if showsPortrait {
+                Color.clear.frame(width: portraitWidth, height: 0)
+            }
+        }
+        .frame(minHeight: showsPortrait ? 112 : nil)
+        .background(alignment: .trailing) {
+            if showsPortrait {
+                portrait
+            }
+        }
+        .background(Color(hex: 0x163A35))
+    }
+
+    private var heroCopy: some View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
             Text(title)
-                .font(HomeFont.title1())
-                .foregroundStyle(Color.homeTextPrimary)
+                .font(HomeFont.bold(32))
+                .foregroundStyle(Color.white)
 
-            Text(summary)
-                .font(HomeFont.callout())
-                .foregroundStyle(Color.homeTextSecondary)
+            if let categoryTitle, !categoryTitle.isEmpty {
+                Label(categoryTitle, systemImage: "pawprint")
+                    .font(HomeFont.medium(14))
+                    .foregroundStyle(Color.white.opacity(0.84))
+            }
 
-            Image(systemName: "arrow.forward")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.homeTextPrimary)
-                .frame(width: 32, height: 32)
-                .background(Color.homeSurface, in: Circle())
-                .padding(.top, PPSpace.sm)
-                .accessibilityHidden(true)
+            HStack(spacing: PPSpace.sm) {
+                Text(PPHomeZoneCopy.petCareCardAction)
+                    .font(HomeFont.bold(16))
+                Image(systemName: "arrow.forward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .flipsForRightToLeftLayoutDirection(true)
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(Color.ppPremiumAccent)
+            .padding(.top, PPSpace.xs)
         }
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var consultationWindow: some View {
-        Image(decorative: "homePetCareConsultation")
-            .resizable()
-            .scaledToFill()
-            .frame(width: windowWidth, height: windowWidth * 1.25)
-            .clipShape(PPHomeCareWindow())
+    private var portrait: some View {
+        GeometryReader { proxy in
+            Image(decorative: "homePetCareConsultation")
+                .resizable()
+                .scaledToFill()
+                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
+                .clipShape(PPHomeCarePhotoEdge(mirrored: layoutDirection == .rightToLeft))
+        }
+        .frame(width: portraitWidth)
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+    }
+
+    private var serviceIndex: some View {
+        Group {
+            if dynamicTypeSize >= .xxLarge {
+                Text(summary)
+                    .font(HomeFont.callout())
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, PPSpace.base)
+                    .padding(.vertical, PPSpace.md)
+                    .background(Color.ppCareAccent.opacity(serviceTintOpacity))
+            } else {
+                HStack(spacing: 0) {
+                    ForEach(services) { service in
+                        serviceLabel(service)
+                    }
+                }
+                .background { serviceTints }
+            }
+        }
+        .foregroundStyle(Color.homeTextPrimary)
+        .accessibilityHidden(true)
+    }
+
+    private func serviceLabel(_ service: Service) -> some View {
+        HStack(spacing: PPSpace.xs) {
+            Image(systemName: service.symbol)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(colorScheme == .dark ? service.accent : Color.homeTextPrimary.opacity(0.8))
+            Text(HomeModelAdapter.localized(service.id, fallback: service.fallbackTitle))
+                .font(HomeFont.medium(15))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, PPSpace.md)
+        .frame(minWidth: 0, maxWidth: .infinity)
+    }
+
+    private var serviceTints: some View {
+        HStack(spacing: 0) {
+            ForEach(services) { service in
+                Rectangle()
+                    .fill(service.accent.opacity(serviceTintOpacity))
+                    .overlay(alignment: .trailing) {
+                        if service.id != services.last?.id {
+                            Rectangle()
+                                .fill(Color.white.opacity(colorScheme == .dark ? 0.27 : 0.92))
+                                .frame(width: hairline)
+                        }
+                    }
+            }
+        }
+    }
+
+    private var bottomHighlight: some View {
+        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
+            .inset(by: hairline * 2)
+            .strokeBorder(
+                Color.white.opacity(colorScheme == .dark ? 0.45 : 0.96),
+                lineWidth: hairline * 2
+            )
+            .mask(alignment: .bottom) {
+                LinearGradient(colors: [.clear, .white], startPoint: .top, endPoint: .bottom)
+                    .frame(height: PPCorner.card)
+            }
+            .allowsHitTesting(false)
             .accessibilityHidden(true)
+    }
+
+    private var spokenSummary: String {
+        guard let categoryTitle, !categoryTitle.isEmpty else { return summary }
+        return "\(HomeModelAdapter.isolated(categoryTitle)). \(summary)"
     }
 }
 
-/// An arched opening keeps the exam in view down to the stethoscope.
-private struct PPHomeCareWindow: Shape {
+/// Curve the inner edge of the photograph toward the copy at the bottom.
+private struct PPHomeCarePhotoEdge: Shape {
+    let mirrored: Bool
+
+    @available(iOS 17.0, *)
+    var layoutDirectionBehavior: LayoutDirectionBehavior { .fixed }
+
     func path(in rect: CGRect) -> Path {
-        let radius = min(rect.width, rect.height) / 2
-        let arch = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: [.topLeft, .topRight],
-            cornerRadii: CGSize(width: radius, height: radius)
+        let inset = min(PPSpace.xxl, rect.width / 4)
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: mirrored ? rect.maxX - x : rect.minX + x, y: rect.minY + y)
+        }
+
+        var path = Path()
+        path.move(to: point(inset, 0))
+        path.addLine(to: point(rect.width, 0))
+        path.addLine(to: point(rect.width, rect.height))
+        path.addLine(to: point(0, rect.height))
+        path.addQuadCurve(
+            to: point(inset, 0),
+            control: point(inset, rect.height * 0.55)
         )
-        return Path(arch.cgPath)
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -6663,6 +6806,10 @@ enum PPHomeZoneCopy {
             "home_pet_care_card_summary",
             fallback: "Vets, clinics and medicines"
         )
+    }
+
+    static var petCareCardAction: String {
+        HomeModelAdapter.localized("home_pet_care_card_action", fallback: "Explore care")
     }
 
     static var exploreMarketplace: String {

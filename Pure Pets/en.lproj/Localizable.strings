@@ -3052,6 +3052,7 @@
 "home_premium_care_cta" = "Open care center";
 "pet_care_title" = "Pet Care";
 "home_pet_care_card_summary" = "Vets, clinics and medicines";
+"home_pet_care_card_action" = "Explore care";
 "pet_care_eyebrow" = "Premium care";
 "pet_care_medicines" = "Medicines";
 "pet_care_veterinarians" = "Veterinarians";
@@ -4862,6 +4863,18 @@
 "location_picker_move_west" = "Move point west";
 "location_picker_alert_title" = "Select a location";
 "location_picker_alert_message" = "Move the map until the paw is over the right spot.";
+"location_picker_search_placeholder" = "Search area, street, or landmark...";
+"location_picker_search_no_results" = "No matching places found";
+"location_picker_map_type_standard" = "Default";
+"location_picker_map_type_satellite" = "Satellite";
+"location_picker_map_type_hybrid" = "Hybrid";
+"location_picker_copy_coordinates" = "Copy Coordinates";
+"location_picker_coordinates_copied" = "Coordinates copied to clipboard";
+"location_picker_share_location" = "Share Location";
+"location_picker_zoom_in" = "Zoom in";
+"location_picker_zoom_out" = "Zoom out";
+"location_picker_quick_areas" = "Quick Areas";
+"location_picker_search_results" = "Search Results";
 /* Order Mission Control — SwiftUI */
 "OrderID" = "Order ID";
 "OrderCannotBeCanceled" = "This order cannot be cancelled at its current stage.";

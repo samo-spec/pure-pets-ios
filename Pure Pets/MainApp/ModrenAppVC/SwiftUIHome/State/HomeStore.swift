@@ -420,6 +420,10 @@ final class HomeStore: ObservableObject {
         }
     }
 
+    var petCareCategoryTitle: String? {
+        selectedCategory?.title
+    }
+
     func openProviderCategory(_ identifier: String) {
         switch identifier {
         case "veterinarians":

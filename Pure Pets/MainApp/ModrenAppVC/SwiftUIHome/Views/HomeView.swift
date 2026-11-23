@@ -854,6 +854,7 @@ struct HomeView: View {
             PPHomePetCareCard(
                 title: HomeModelAdapter.localized("pet_care_title", fallback: "Pet Care"),
                 summary: PPHomeZoneCopy.petCareCardSummary,
+                categoryTitle: store.petCareCategoryTitle,
                 open: { store.openProviderCategory("veterinarians") }
             )
         }

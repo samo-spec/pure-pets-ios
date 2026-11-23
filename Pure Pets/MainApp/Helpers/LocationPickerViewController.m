@@ -1,8 +1,20 @@
+//
+//  LocationPickerViewController.m
+//  Pure Pets
+//
+//  Next-Gen V10 Location Picker — First-Principles Architecture
+//  Living map canvas, floating cockpit search & autocomplete, quick area chips,
+//  ergonomic telemetry rail, tactile spring paw pin, and glass precision dock.
+//
+
 #import "LocationPickerViewController.h"
 #import "CitiesManager.h"
+#import "CityModel.h"
 #import "CountryModel.h"
 #import "PPAlertHelper.h"
+#import "PPHUD.h"
 #import <CoreLocation/CoreLocation.h>
+#import <MapKit/MapKit.h>
 #import <float.h>
 #import <math.h>
 
@@ -66,7 +78,16 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     PPLocationPickerDisplayStateError
 };
 
-@interface LocationPickerViewController ()
+@interface PPLocationSearchResultItem : NSObject
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy) NSString *subtitle;
+@property (nonatomic, assign) CLLocationCoordinate2D coordinate;
+@end
+
+@implementation PPLocationSearchResultItem
+@end
+
+@interface LocationPickerViewController () <UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate>
 
 @property (nonatomic, strong) GMSMapView *mapView;
 @property (nonatomic, strong) GMSGeocoder *geocoder;
@@ -86,35 +107,39 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 @property (nonatomic, assign) NSUInteger geocodeGeneration;
 @property (nonatomic, assign) NSUInteger appleResolvedGeneration;
 
-@property (nonatomic, strong) UIView *instructionContainerView;
-@property (nonatomic, strong) UIVisualEffectView *instructionChromeView;
-@property (nonatomic, strong) UIStackView *instructionStackView;
+// Top Cockpit HUD: Search & Area Chips
+@property (nonatomic, strong) UIView *topCockpitContainerView;
+@property (nonatomic, strong) UIVisualEffectView *topCockpitChromeView;
+@property (nonatomic, strong) UIStackView *topCockpitStackView;
+@property (nonatomic, strong) UIView *searchBarContainerView;
 @property (nonatomic, strong) UIButton *inlineCloseButton;
-@property (nonatomic, strong) UIView *instructionGlyphView;
-@property (nonatomic, strong) UIImageView *instructionGlyphImageView;
-@property (nonatomic, strong) UILabel *instructionLabel;
+@property (nonatomic, strong) UIImageView *searchIconImageView;
+@property (nonatomic, strong) UITextField *searchTextField;
+@property (nonatomic, strong) UIButton *clearSearchButton;
+@property (nonatomic, strong) UIActivityIndicatorView *searchSpinner;
 
-@property (nonatomic, strong) UIView *dockContainerView;
-@property (nonatomic, strong) UIVisualEffectView *dockChromeView;
-@property (nonatomic, strong) UIScrollView *dockScrollView;
-@property (nonatomic, strong) UIStackView *dockStackView;
-@property (nonatomic, strong) UIView *statusPillView;
-@property (nonatomic, strong) UIStackView *statusStackView;
-@property (nonatomic, strong) UILabel *statusLabel;
-@property (nonatomic, strong) UIActivityIndicatorView *spinner;
-@property (nonatomic, strong) UIImageView *statusIconImageView;
-@property (nonatomic, strong) UILabel *addressLabel;
-@property (nonatomic, strong) UILabel *coordinatesLabel;
-@property (nonatomic, strong) UILabel *selectionHintLabel;
-@property (nonatomic, strong) UIStackView *permissionStackView;
-@property (nonatomic, strong) UIStackView *permissionMessageStackView;
-@property (nonatomic, strong) UIImageView *permissionIconImageView;
-@property (nonatomic, strong) UILabel *permissionLabel;
-@property (nonatomic, strong) UIButton *permissionButton;
+@property (nonatomic, strong) UIScrollView *areasScrollView;
+@property (nonatomic, strong) UIStackView *areasStackView;
+
+// Search Results Dropdown Overlay
+@property (nonatomic, strong) UIView *searchResultsContainerView;
+@property (nonatomic, strong) UIVisualEffectView *searchResultsChromeView;
+@property (nonatomic, strong) UITableView *searchResultsTableView;
+@property (nonatomic, strong) NSArray<PPLocationSearchResultItem *> *searchResults;
+@property (nonatomic, strong) MKLocalSearch *activeLocalSearch;
+@property (nonatomic, copy) dispatch_block_t searchDebounceBlock;
+@property (nonatomic, strong) NSLayoutConstraint *searchResultsHeightConstraint;
+
+// Floating Telemetry Rail (Right / Trailing Edge)
+@property (nonatomic, strong) UIView *telemetryRailContainerView;
+@property (nonatomic, strong) UIVisualEffectView *telemetryRailChromeView;
+@property (nonatomic, strong) UIStackView *telemetryRailStackView;
 @property (nonatomic, strong) UIButton *recenterButton;
-@property (nonatomic, strong) UIButton *confirmButton;
-@property (nonatomic, strong) NSLayoutConstraint *dockHeightConstraint;
+@property (nonatomic, strong) UIButton *mapTypeButton;
+@property (nonatomic, strong) UIButton *zoomInButton;
+@property (nonatomic, strong) UIButton *zoomOutButton;
 
+// Precision Paw Pin
 @property (nonatomic, strong) UIView *pinTargetRingView;
 @property (nonatomic, strong) UIView *pinContainerView;
 @property (nonatomic, strong) UIView *pinHeadView;
@@ -122,6 +147,35 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 @property (nonatomic, strong) UIImageView *pinPawImageView;
 @property (nonatomic, strong) UIViewPropertyAnimator *pinAnimator;
 @property (nonatomic, strong) NSLayoutConstraint *pinCenterYConstraint;
+
+// Bottom Precision Dock
+@property (nonatomic, strong) UIView *dockContainerView;
+@property (nonatomic, strong) UIVisualEffectView *dockChromeView;
+@property (nonatomic, strong) UIScrollView *dockScrollView;
+@property (nonatomic, strong) UIStackView *dockStackView;
+
+@property (nonatomic, strong) UIView *statusPillView;
+@property (nonatomic, strong) UIStackView *statusStackView;
+@property (nonatomic, strong) UILabel *statusLabel;
+@property (nonatomic, strong) UIActivityIndicatorView *spinner;
+@property (nonatomic, strong) UIImageView *statusIconImageView;
+
+@property (nonatomic, strong) UIStackView *quickActionsStackView;
+@property (nonatomic, strong) UIButton *coordinatesCopyButton;
+@property (nonatomic, strong) UIButton *shareLocationButton;
+
+@property (nonatomic, strong) UILabel *addressLabel;
+@property (nonatomic, strong) UILabel *coordinatesLabel;
+@property (nonatomic, strong) UILabel *selectionHintLabel;
+
+@property (nonatomic, strong) UIStackView *permissionStackView;
+@property (nonatomic, strong) UIStackView *permissionMessageStackView;
+@property (nonatomic, strong) UIImageView *permissionIconImageView;
+@property (nonatomic, strong) UILabel *permissionLabel;
+@property (nonatomic, strong) UIButton *permissionButton;
+
+@property (nonatomic, strong) UIButton *confirmButton;
+@property (nonatomic, strong) NSLayoutConstraint *dockHeightConstraint;
 
 @property (nonatomic, assign) PPLocationPickerDisplayState displayState;
 @property (nonatomic, assign) BOOL managesHomeBottomNavigationVisibility;
@@ -133,17 +187,40 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 @property (nonatomic, strong) UINavigationBarAppearance *savedCompactAppearance;
 @property (nonatomic, strong) UINavigationBarAppearance *savedCompactScrollEdgeAppearance;
 
+// Tactile Feedback
+@property (nonatomic, strong) UIImpactFeedbackGenerator *lightImpact;
+@property (nonatomic, strong) UIImpactFeedbackGenerator *mediumImpact;
+@property (nonatomic, strong) UISelectionFeedbackGenerator *selectionFeedback;
+
 @end
 
 @implementation LocationPickerViewController
 
 @synthesize rowDescriptor;
 
-#pragma mark - Lifecycle
+#pragma mark - Initialization
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
+- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
 
 - (instancetype)initWithRowDescriptor:(XLFormRowDescriptor *)rowDescriptor
 {
-    self = [super init];
+    self = [self init];
     if (self) {
         self.rowDescriptor = rowDescriptor;
     }
@@ -159,7 +236,14 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     if (self.pinAnimator.state == UIViewAnimatingStateActive) {
         [self.pinAnimator stopAnimation:YES];
     }
+    if (self.searchDebounceBlock) {
+        dispatch_block_cancel(self.searchDebounceBlock);
+        self.searchDebounceBlock = nil;
+    }
+    [self.activeLocalSearch cancel];
 }
+
+#pragma mark - Lifecycle
 
 - (void)viewDidLoad
 {
@@ -168,6 +252,11 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.extendedLayoutIncludesOpaqueBars = YES;
     self.view.backgroundColor = UIColor.systemBackgroundColor;
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    self.lightImpact = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    self.mediumImpact = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+    self.selectionFeedback = [[UISelectionFeedbackGenerator alloc] init];
+
     self.geocoder = [[GMSGeocoder alloc] init];
     self.appleGeocoder = [[CLGeocoder alloc] init];
     self.lastKnownCoordinate = kCLLocationCoordinate2DInvalid;
@@ -175,7 +264,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     self.hasExplicitInitialCoordinate =
         PPLocationPickerCoordinateIsUsable(self.initialCoordinate);
-    self.shouldCenterOnNextLocationUpdate = NO; // Location assistance starts only from its explicit control.
+    self.shouldCenterOnNextLocationUpdate = NO;
     CLLocationCoordinate2D startCoordinate = self.hasExplicitInitialCoordinate
         ? self.initialCoordinate
         : [self pp_dohaCoordinate];
@@ -183,9 +272,13 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     [self pp_setupMapCanvasWithCoordinate:startCoordinate];
     [self pp_setupPrecisionPin];
-    [self pp_setupLocationChrome];
+    [self pp_setupTopCockpit];
+    [self pp_setupSearchResultsOverlay];
+    [self pp_setupTelemetryRail];
+    [self pp_setupPrecisionDock];
     [self pp_configureAccessibilityActions];
     [self pp_setupLocationManager];
+    [self pp_populateQuickAreas];
 
     if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
         [self applyDarkModeToMapView:self.mapView];
@@ -205,12 +298,9 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     [self pp_captureNavigationAppearanceIfNeeded];
     [self pp_setupNavigationChrome];
-    self.inlineCloseButton.hidden = (self.navigationController != nil);
 
-    self.managesHomeBottomNavigationVisibility = [self pp_isPushedFromHomeViewController];
-    if (self.managesHomeBottomNavigationVisibility) {
-        [self pp_setHomeBottomNavigationHidden:YES animated:animated];
-    }
+    // Bulletproof: unconditionally ensure bottom navigation bar is hidden across all presentation modes
+    [self pp_setBottomNavigationHidden:YES animated:animated];
 
     [self pp_handleLocationAuthorizationStatus:[self pp_locationAuthorizationStatus]];
 }
@@ -235,9 +325,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     }
     self.pinAnimator = nil;
 
-    if (self.managesHomeBottomNavigationVisibility) {
-        [self pp_setHomeBottomNavigationHidden:NO animated:animated];
-    }
+    [self pp_setBottomNavigationHidden:NO animated:animated];
     [self pp_restoreNavigationAppearance];
 
     id<UIViewControllerTransitionCoordinator> coordinator = self.transitionCoordinator;
@@ -247,7 +335,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     __weak typeof(self) weakSelf = self;
     [coordinator animateAlongsideTransition:nil
-                                completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+                                 completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
         if (!context.isCancelled) {
             return;
         }
@@ -258,9 +346,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
         [self pp_setupNavigationChrome];
         [self pp_setPinLifted:NO animated:NO];
         [self pp_scheduleReverseGeocodeForPosition:self.mapView.camera];
-        if (self.managesHomeBottomNavigationVisibility) {
-            [self pp_setHomeBottomNavigationHidden:YES animated:YES];
-        }
+        [self pp_setBottomNavigationHidden:YES animated:YES];
     }];
 }
 
@@ -279,21 +365,21 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     [self pp_updateDockHeightIfNeeded];
     [self pp_updateMapInsetsAndPinPosition];
 
-    self.instructionContainerView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.instructionContainerView.bounds
-                                   cornerRadius:PPCornerCard].CGPath;
+    self.topCockpitContainerView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.topCockpitContainerView.bounds
+                                   cornerRadius:24.0].CGPath;
     self.dockContainerView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.dockContainerView.bounds
                                    cornerRadius:PPCornerHero].CGPath;
-    self.recenterButton.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.recenterButton.bounds
-                                   cornerRadius:CGRectGetHeight(self.recenterButton.bounds) * 0.5].CGPath;
+    self.telemetryRailContainerView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.telemetryRailContainerView.bounds
+                                   cornerRadius:24.0].CGPath;
     self.confirmButton.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.confirmButton.bounds
                                    cornerRadius:PPCornerMedium].CGPath;
 }
 
-#pragma mark - UI Construction
+#pragma mark - UI Chrome Helpers
 
 - (UIVisualEffectView *)pp_makeChromePanelWithCornerRadius:(CGFloat)cornerRadius
 {
@@ -304,7 +390,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     PPApplyContinuousCorners(panel, cornerRadius);
     panel.layer.borderWidth = PPLocationPickerHairlineWidth();
     panel.contentView.backgroundColor =
-        [UIColor.systemBackgroundColor colorWithAlphaComponent:0.48];
+        [UIColor.systemBackgroundColor colorWithAlphaComponent:0.62];
     return panel;
 }
 
@@ -325,11 +411,11 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.tintColor = PPLocationPickerPrimaryTextColor();
     button.backgroundColor =
-        [UIColor.systemBackgroundColor colorWithAlphaComponent:0.88];
+        [UIColor.systemBackgroundColor colorWithAlphaComponent:0.92];
     PPApplyContinuousCorners(button, PPTouchTargetMin * 0.5);
     PPApplyButtonShadow(button);
     button.layer.shadowOpacity = 0.08;
-    button.layer.shadowRadius = 10.0;
+    button.layer.shadowRadius = 8.0;
     button.layer.shadowOffset = CGSizeMake(0.0, PPSpaceXS);
     button.layer.borderWidth = PPLocationPickerHairlineWidth();
     UIImageSymbolConfiguration *symbolConfiguration =
@@ -348,31 +434,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     return button;
 }
 
-- (UIButton *)pp_makePrimaryConfirmButton
-{
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-    button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.backgroundColor = PPLocationPickerAccentColor();
-    PPApplyContinuousCorners(button, PPCornerMedium);
-    PPApplyButtonShadow(button);
-    button.titleLabel.font =
-        PPLocationPickerScaledFont([GM boldFontWithSize:PPFontHeadline] ?:
-                                   [UIFont systemFontOfSize:PPFontHeadline weight:UIFontWeightSemibold],
-                                   UIFontTextStyleHeadline);
-    button.titleLabel.adjustsFontForContentSizeCategory = YES;
-    button.titleLabel.numberOfLines = 0;
-    button.titleLabel.textAlignment = NSTextAlignmentCenter;
-    [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [button setTitle:kLang(@"location_picker_confirm") forState:UIControlStateNormal];
-    button.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceMD, PPSpaceBase, PPSpaceMD,
-                                                PPSpaceBase);
-    [button addTarget:self
-               action:@selector(confirmLocationTapped)
-     forControlEvents:UIControlEventTouchUpInside];
-    [button.heightAnchor constraintGreaterThanOrEqualToConstant:PPButtonHeightLG].active = YES;
-    button.accessibilityHint = kLang(@"location_picker_confirm_hint");
-    return button;
-}
+#pragma mark - Navigation Setup
 
 - (void)pp_setupNavigationChrome
 {
@@ -383,23 +445,8 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.navigationItem.title = @"";
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
 
-    BOOL isPresentedRoot =
-        self.navigationController.viewControllers.firstObject == self &&
-        self.navigationController.presentingViewController != nil;
-    NSString *backSymbolName = Language.isRTL ? @"chevron.right" : @"chevron.left";
-    UIImageSymbolConfiguration *backSymbolConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:16.0
-                                                        weight:UIImageSymbolWeightSemibold
-                                                         scale:UIImageSymbolScaleMedium];
-    UIImage *backImage = [UIImage systemImageNamed:backSymbolName
-                                  withConfiguration:backSymbolConfiguration];
-    UIBarButtonItem *backItem =
-        [[UIBarButtonItem alloc] initWithImage:backImage
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(pp_closePicker)];
-    backItem.accessibilityLabel = isPresentedRoot ? kLang(@"Close") : kLang(@"Back");
-    self.navigationItem.leftBarButtonItem = backItem;
+    // Use floating cockpit close button for cleaner edge-to-edge immersion
+    self.navigationItem.leftBarButtonItem = nil;
     self.navigationItem.rightBarButtonItem = nil;
 
     UINavigationBar *navBar = self.navigationController.navigationBar;
@@ -409,9 +456,6 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     [appearance configureWithTransparentBackground];
     appearance.backgroundColor = UIColor.clearColor;
     appearance.shadowColor = UIColor.clearColor;
-    appearance.titleTextAttributes = @{
-        NSForegroundColorAttributeName: PPLocationPickerPrimaryTextColor()
-    };
     navBar.standardAppearance = appearance;
     navBar.scrollEdgeAppearance = appearance;
     navBar.compactAppearance = appearance;
@@ -420,18 +464,22 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     }
 }
 
+#pragma mark - Map Canvas Setup
+
 - (void)pp_setupMapCanvasWithCoordinate:(CLLocationCoordinate2D)startCoordinate
 {
     GMSCameraPosition *camera =
         [GMSCameraPosition cameraWithLatitude:startCoordinate.latitude
-                                    longitude:startCoordinate.longitude
-                                         zoom:15.0];
+                                     longitude:startCoordinate.longitude
+                                          zoom:15.5];
     self.mapView = [GMSMapView mapWithFrame:CGRectZero camera:camera];
     self.mapView.delegate = self;
     self.mapView.myLocationEnabled = NO;
     self.mapView.settings.myLocationButton = NO;
     self.mapView.settings.compassButton = NO;
     self.mapView.settings.indoorPicker = NO;
+    self.mapView.settings.rotateGestures = YES;
+    self.mapView.settings.tiltGestures = YES;
     self.mapView.paddingAdjustmentBehavior =
         kGMSMapViewPaddingAdjustmentBehaviorNever;
     self.mapView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -446,6 +494,8 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     ]];
 }
 
+#pragma mark - Precision Paw Pin Setup
+
 - (void)pp_setupPrecisionPin
 {
     UIColor *accentColor = PPLocationPickerAccentColor();
@@ -455,9 +505,10 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.pinTargetRingView.userInteractionEnabled = NO;
     self.pinTargetRingView.isAccessibilityElement = NO;
     self.pinTargetRingView.backgroundColor =
-        [UIColor.systemBackgroundColor colorWithAlphaComponent:0.58];
+        [UIColor.systemBackgroundColor colorWithAlphaComponent:0.65];
     self.pinTargetRingView.layer.cornerRadius = PPSpaceSM;
-    self.pinTargetRingView.layer.borderWidth = PPLocationPickerHairlineWidth();
+    self.pinTargetRingView.layer.borderWidth = 1.5;
+    self.pinTargetRingView.layer.borderColor = [accentColor colorWithAlphaComponent:0.35].CGColor;
     [self.view addSubview:self.pinTargetRingView];
 
     self.pinContainerView = [[UIView alloc] init];
@@ -477,11 +528,12 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.pinHeadView.translatesAutoresizingMaskIntoConstraints = NO;
     self.pinHeadView.backgroundColor = accentColor;
     PPApplyContinuousCorners(self.pinHeadView, 26.0);
-    self.pinHeadView.layer.borderWidth = PPLocationPickerHairlineWidth();
+    self.pinHeadView.layer.borderWidth = 1.5;
+    self.pinHeadView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.35].CGColor;
     self.pinHeadView.layer.shadowColor = accentColor.CGColor;
-    self.pinHeadView.layer.shadowOpacity = 0.28;
-    self.pinHeadView.layer.shadowRadius = PPSpaceMD;
-    self.pinHeadView.layer.shadowOffset = CGSizeMake(0.0, PPSpaceSM);
+    self.pinHeadView.layer.shadowOpacity = 0.35;
+    self.pinHeadView.layer.shadowRadius = 14.0;
+    self.pinHeadView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     [self.pinContainerView addSubview:self.pinHeadView];
 
     UIImageSymbolConfiguration *pawConfiguration =
@@ -498,6 +550,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     self.pinCenterYConstraint =
         [self.pinTargetRingView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor];
+
     [NSLayoutConstraint activateConstraints:@[
         [self.pinTargetRingView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         self.pinCenterYConstraint,
@@ -528,123 +581,239 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     ]];
 }
 
-- (void)pp_setupLocationChrome
+#pragma mark - Top Cockpit HUD (Search & Area Chips)
+
+- (void)pp_setupTopCockpit
 {
-    [self pp_setupInstructionChrome];
-    [self pp_setupPrecisionDock];
+    self.topCockpitContainerView = [self pp_makeShadowContainerWithCornerRadius:24.0];
+    [self.view addSubview:self.topCockpitContainerView];
 
-    self.recenterButton =
-        [self pp_makeRoundChromeButtonWithSymbol:@"location.fill"
-                                          action:@selector(centerToUserLocation)];
-    self.recenterButton.accessibilityLabel = kLang(@"location_picker_recenter");
-    [self.view addSubview:self.recenterButton];
+    self.topCockpitChromeView = [self pp_makeChromePanelWithCornerRadius:24.0];
+    [self.topCockpitContainerView addSubview:self.topCockpitChromeView];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.recenterButton.trailingAnchor constraintEqualToAnchor:self.dockContainerView.trailingAnchor],
-        [self.recenterButton.bottomAnchor constraintEqualToAnchor:self.dockContainerView.topAnchor
-                                                         constant:-PPSpaceMD]
-    ]];
-    [self pp_updateAdaptiveChromeColors];
-}
+    self.topCockpitStackView = [[UIStackView alloc] init];
+    self.topCockpitStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.topCockpitStackView.axis = UILayoutConstraintAxisVertical;
+    self.topCockpitStackView.alignment = UIStackViewAlignmentFill;
+    self.topCockpitStackView.spacing = PPSpaceSM;
+    self.topCockpitStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.topCockpitChromeView.contentView addSubview:self.topCockpitStackView];
 
-- (void)pp_setupInstructionChrome
-{
-    self.instructionContainerView =
-        [self pp_makeShadowContainerWithCornerRadius:PPCornerCard];
-    [self.view addSubview:self.instructionContainerView];
+    // Search Row (Close button + Search Bar)
+    UIStackView *searchRow = [[UIStackView alloc] init];
+    searchRow.translatesAutoresizingMaskIntoConstraints = NO;
+    searchRow.axis = UILayoutConstraintAxisHorizontal;
+    searchRow.alignment = UIStackViewAlignmentCenter;
+    searchRow.spacing = PPSpaceSM;
+    searchRow.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.topCockpitStackView addArrangedSubview:searchRow];
 
-    self.instructionChromeView =
-        [self pp_makeChromePanelWithCornerRadius:PPCornerCard];
-    [self.instructionContainerView addSubview:self.instructionChromeView];
-
-    self.instructionStackView = [[UIStackView alloc] init];
-    self.instructionStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.instructionStackView.axis = UILayoutConstraintAxisHorizontal;
-    self.instructionStackView.alignment = UIStackViewAlignmentCenter;
-    self.instructionStackView.spacing = PPSpaceMD;
-    self.instructionStackView.semanticContentAttribute =
-        [Language semanticAttributeForCurrentLanguage];
-    [self.instructionChromeView.contentView addSubview:self.instructionStackView];
-
-    self.instructionGlyphView = [[UIView alloc] init];
-    self.instructionGlyphView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.instructionGlyphView.backgroundColor =
-        [PPLocationPickerAccentColor() colorWithAlphaComponent:0.14];
-    PPApplyContinuousCorners(self.instructionGlyphView, PPCornerSmall);
-    [NSLayoutConstraint activateConstraints:@[
-        [self.instructionGlyphView.widthAnchor constraintEqualToConstant:36.0],
-        [self.instructionGlyphView.heightAnchor constraintEqualToConstant:36.0]
-    ]];
-
-    UIImageSymbolConfiguration *pawConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:17.0
-                                                        weight:UIImageSymbolWeightSemibold
-                                                         scale:UIImageSymbolScaleMedium];
-    UIImage *pawImage = [UIImage systemImageNamed:@"pawprint"
-                                 withConfiguration:pawConfiguration];
-    self.instructionGlyphImageView = [[UIImageView alloc] initWithImage:pawImage];
-    self.instructionGlyphImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.instructionGlyphImageView.contentMode = UIViewContentModeScaleAspectFit;
-    self.instructionGlyphImageView.tintColor = PPLocationPickerAccentColor();
-    self.instructionGlyphImageView.isAccessibilityElement = NO;
-    [self.instructionGlyphView addSubview:self.instructionGlyphImageView];
-
-    self.instructionLabel = [[UILabel alloc] init];
-    self.instructionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.instructionLabel.font =
-        PPLocationPickerScaledFont([GM boldFontWithSize:PPFontSubheadline] ?:
-                                   [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightSemibold],
-                                   UIFontTextStyleSubheadline);
-    self.instructionLabel.adjustsFontForContentSizeCategory = YES;
-    self.instructionLabel.numberOfLines = 0;
-    self.instructionLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.instructionLabel.textColor = PPLocationPickerPrimaryTextColor();
-    self.instructionLabel.text = kLang(@"location_picker_instruction");
-
-    self.inlineCloseButton =
-        [self pp_makeRoundChromeButtonWithSymbol:@"xmark"
-                                          action:@selector(pp_closePicker)];
+    NSString *closeSymbolName = (self.navigationController.viewControllers.firstObject == self && self.navigationController.presentingViewController != nil) || !self.navigationController
+        ? @"xmark"
+        : (Language.isRTL ? @"chevron.right" : @"chevron.left");
+    self.inlineCloseButton = [self pp_makeRoundChromeButtonWithSymbol:closeSymbolName action:@selector(pp_closePicker)];
     self.inlineCloseButton.accessibilityLabel = kLang(@"Close");
+    [searchRow addArrangedSubview:self.inlineCloseButton];
 
-    [self.instructionStackView addArrangedSubview:self.instructionGlyphView];
-    [self.instructionStackView addArrangedSubview:self.instructionLabel];
-    [self.instructionStackView addArrangedSubview:self.inlineCloseButton];
-    [self.instructionLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
-                                                           forAxis:UILayoutConstraintAxisHorizontal];
+    // Search Bar Input Container
+    self.searchBarContainerView = [[UIView alloc] init];
+    self.searchBarContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.searchBarContainerView.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.75];
+    PPApplyContinuousCorners(self.searchBarContainerView, 20.0);
+    self.searchBarContainerView.layer.borderWidth = PPLocationPickerHairlineWidth();
+    self.searchBarContainerView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
+    [searchRow addArrangedSubview:self.searchBarContainerView];
+
+    UIStackView *searchFieldStack = [[UIStackView alloc] init];
+    searchFieldStack.translatesAutoresizingMaskIntoConstraints = NO;
+    searchFieldStack.axis = UILayoutConstraintAxisHorizontal;
+    searchFieldStack.alignment = UIStackViewAlignmentCenter;
+    searchFieldStack.spacing = PPSpaceSM;
+    searchFieldStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.searchBarContainerView addSubview:searchFieldStack];
+
+    self.searchIconImageView = [[UIImageView alloc] init];
+    self.searchIconImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.searchIconImageView.contentMode = UIViewContentModeScaleAspectFit;
+    self.searchIconImageView.tintColor = PPLocationPickerAccentColor();
+    UIImageSymbolConfiguration *searchIconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightSemibold];
+    self.searchIconImageView.image = [UIImage systemImageNamed:@"magnifyingglass" withConfiguration:searchIconConfig];
+    [searchFieldStack addArrangedSubview:self.searchIconImageView];
+
+    self.searchTextField = [[UITextField alloc] init];
+    self.searchTextField.translatesAutoresizingMaskIntoConstraints = NO;
+    self.searchTextField.delegate = self;
+    self.searchTextField.placeholder = kLang(@"location_picker_search_placeholder");
+    self.searchTextField.textAlignment = Language.alignmentForCurrentLanguage;
+    self.searchTextField.font = PPLocationPickerScaledFont([GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium], UIFontTextStyleSubheadline);
+    self.searchTextField.textColor = PPLocationPickerPrimaryTextColor();
+    self.searchTextField.returnKeyType = UIReturnKeySearch;
+    self.searchTextField.clearButtonMode = UITextFieldViewModeNever;
+    [self.searchTextField addTarget:self action:@selector(pp_searchFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
+    [searchFieldStack addArrangedSubview:self.searchTextField];
+
+    self.searchSpinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    self.searchSpinner.color = PPLocationPickerAccentColor();
+    self.searchSpinner.hidesWhenStopped = YES;
+    [searchFieldStack addArrangedSubview:self.searchSpinner];
+
+    self.clearSearchButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.clearSearchButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.clearSearchButton.tintColor = UIColor.secondaryLabelColor;
+    UIImage *clearImage = [UIImage systemImageNamed:@"xmark.circle.fill" withConfiguration:searchIconConfig];
+    [self.clearSearchButton setImage:clearImage forState:UIControlStateNormal];
+    [self.clearSearchButton addTarget:self action:@selector(pp_clearSearchTapped) forControlEvents:UIControlEventTouchUpInside];
+    self.clearSearchButton.hidden = YES;
+    [searchFieldStack addArrangedSubview:self.clearSearchButton];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.instructionContainerView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor
-                                                                    constant:PPSpaceBase],
-        [self.instructionContainerView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor
-                                                                     constant:-PPSpaceBase],
-        [self.instructionContainerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor
-                                                                constant:PPSpaceSM],
+        [searchFieldStack.leadingAnchor constraintEqualToAnchor:self.searchBarContainerView.leadingAnchor constant:PPSpaceMD],
+        [searchFieldStack.trailingAnchor constraintEqualToAnchor:self.searchBarContainerView.trailingAnchor constant:-PPSpaceMD],
+        [searchFieldStack.topAnchor constraintEqualToAnchor:self.searchBarContainerView.topAnchor constant:PPSpaceXS],
+        [searchFieldStack.bottomAnchor constraintEqualToAnchor:self.searchBarContainerView.bottomAnchor constant:-PPSpaceXS],
+        [self.searchBarContainerView.heightAnchor constraintEqualToConstant:44.0],
+        [self.searchIconImageView.widthAnchor constraintEqualToConstant:20.0],
+        [self.clearSearchButton.widthAnchor constraintEqualToConstant:24.0]
+    ]];
 
-        [self.instructionChromeView.leadingAnchor constraintEqualToAnchor:self.instructionContainerView.leadingAnchor],
-        [self.instructionChromeView.trailingAnchor constraintEqualToAnchor:self.instructionContainerView.trailingAnchor],
-        [self.instructionChromeView.topAnchor constraintEqualToAnchor:self.instructionContainerView.topAnchor],
-        [self.instructionChromeView.bottomAnchor constraintEqualToAnchor:self.instructionContainerView.bottomAnchor],
+    // Area Chips Horizontal Carousel
+    self.areasScrollView = [[UIScrollView alloc] init];
+    self.areasScrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.areasScrollView.showsHorizontalScrollIndicator = NO;
+    self.areasScrollView.alwaysBounceHorizontal = YES;
+    [self.topCockpitStackView addArrangedSubview:self.areasScrollView];
 
-        [self.instructionStackView.leadingAnchor constraintEqualToAnchor:self.instructionChromeView.contentView.leadingAnchor
-                                                                constant:PPSpaceMD],
-        [self.instructionStackView.trailingAnchor constraintEqualToAnchor:self.instructionChromeView.contentView.trailingAnchor
-                                                                 constant:-PPSpaceMD],
-        [self.instructionStackView.topAnchor constraintEqualToAnchor:self.instructionChromeView.contentView.topAnchor
-                                                            constant:PPSpaceSM],
-        [self.instructionStackView.bottomAnchor constraintEqualToAnchor:self.instructionChromeView.contentView.bottomAnchor
-                                                               constant:-PPSpaceSM],
+    self.areasStackView = [[UIStackView alloc] init];
+    self.areasStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.areasStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.areasStackView.alignment = UIStackViewAlignmentCenter;
+    self.areasStackView.spacing = PPSpaceSM;
+    self.areasStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.areasScrollView addSubview:self.areasStackView];
 
-        [self.instructionGlyphImageView.centerXAnchor constraintEqualToAnchor:self.instructionGlyphView.centerXAnchor],
-        [self.instructionGlyphImageView.centerYAnchor constraintEqualToAnchor:self.instructionGlyphView.centerYAnchor],
-        [self.instructionGlyphImageView.widthAnchor constraintEqualToConstant:PPSpaceLG],
-        [self.instructionGlyphImageView.heightAnchor constraintEqualToConstant:PPSpaceLG]
+    [NSLayoutConstraint activateConstraints:@[
+        [self.topCockpitContainerView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:PPSpaceMD],
+        [self.topCockpitContainerView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-PPSpaceMD],
+        [self.topCockpitContainerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceXS],
+
+        [self.topCockpitChromeView.leadingAnchor constraintEqualToAnchor:self.topCockpitContainerView.leadingAnchor],
+        [self.topCockpitChromeView.trailingAnchor constraintEqualToAnchor:self.topCockpitContainerView.trailingAnchor],
+        [self.topCockpitChromeView.topAnchor constraintEqualToAnchor:self.topCockpitContainerView.topAnchor],
+        [self.topCockpitChromeView.bottomAnchor constraintEqualToAnchor:self.topCockpitContainerView.bottomAnchor],
+
+        [self.topCockpitStackView.leadingAnchor constraintEqualToAnchor:self.topCockpitChromeView.contentView.leadingAnchor constant:PPSpaceSM],
+        [self.topCockpitStackView.trailingAnchor constraintEqualToAnchor:self.topCockpitChromeView.contentView.trailingAnchor constant:-PPSpaceSM],
+        [self.topCockpitStackView.topAnchor constraintEqualToAnchor:self.topCockpitChromeView.contentView.topAnchor constant:PPSpaceSM],
+        [self.topCockpitStackView.bottomAnchor constraintEqualToAnchor:self.topCockpitChromeView.contentView.bottomAnchor constant:-PPSpaceSM],
+
+        [self.areasScrollView.heightAnchor constraintEqualToConstant:34.0],
+        [self.areasStackView.leadingAnchor constraintEqualToAnchor:self.areasScrollView.contentLayoutGuide.leadingAnchor],
+        [self.areasStackView.trailingAnchor constraintEqualToAnchor:self.areasScrollView.contentLayoutGuide.trailingAnchor],
+        [self.areasStackView.topAnchor constraintEqualToAnchor:self.areasScrollView.contentLayoutGuide.topAnchor],
+        [self.areasStackView.bottomAnchor constraintEqualToAnchor:self.areasScrollView.contentLayoutGuide.bottomAnchor],
+        [self.areasStackView.heightAnchor constraintEqualToAnchor:self.areasScrollView.frameLayoutGuide.heightAnchor]
     ]];
 }
+
+#pragma mark - Search Results Overlay Setup
+
+- (void)pp_setupSearchResultsOverlay
+{
+    self.searchResults = @[];
+
+    self.searchResultsContainerView = [self pp_makeShadowContainerWithCornerRadius:20.0];
+    self.searchResultsContainerView.hidden = YES;
+    [self.view addSubview:self.searchResultsContainerView];
+
+    self.searchResultsChromeView = [self pp_makeChromePanelWithCornerRadius:20.0];
+    [self.searchResultsContainerView addSubview:self.searchResultsChromeView];
+
+    self.searchResultsTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    self.searchResultsTableView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.searchResultsTableView.delegate = self;
+    self.searchResultsTableView.dataSource = self;
+    self.searchResultsTableView.backgroundColor = UIColor.clearColor;
+    self.searchResultsTableView.separatorColor = [UIColor.separatorColor colorWithAlphaComponent:0.25];
+    self.searchResultsTableView.separatorInset = UIEdgeInsetsMake(0.0, 52.0, 0.0, 16.0);
+    self.searchResultsTableView.showsVerticalScrollIndicator = YES;
+    [self.searchResultsChromeView.contentView addSubview:self.searchResultsTableView];
+
+    self.searchResultsHeightConstraint =
+        [self.searchResultsContainerView.heightAnchor constraintEqualToConstant:0.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.searchResultsContainerView.leadingAnchor constraintEqualToAnchor:self.topCockpitContainerView.leadingAnchor],
+        [self.searchResultsContainerView.trailingAnchor constraintEqualToAnchor:self.topCockpitContainerView.trailingAnchor],
+        [self.searchResultsContainerView.topAnchor constraintEqualToAnchor:self.topCockpitContainerView.bottomAnchor constant:PPSpaceSM],
+        self.searchResultsHeightConstraint,
+
+        [self.searchResultsChromeView.leadingAnchor constraintEqualToAnchor:self.searchResultsContainerView.leadingAnchor],
+        [self.searchResultsChromeView.trailingAnchor constraintEqualToAnchor:self.searchResultsContainerView.trailingAnchor],
+        [self.searchResultsChromeView.topAnchor constraintEqualToAnchor:self.searchResultsContainerView.topAnchor],
+        [self.searchResultsChromeView.bottomAnchor constraintEqualToAnchor:self.searchResultsContainerView.bottomAnchor],
+
+        [self.searchResultsTableView.leadingAnchor constraintEqualToAnchor:self.searchResultsChromeView.contentView.leadingAnchor],
+        [self.searchResultsTableView.trailingAnchor constraintEqualToAnchor:self.searchResultsChromeView.contentView.trailingAnchor],
+        [self.searchResultsTableView.topAnchor constraintEqualToAnchor:self.searchResultsChromeView.contentView.topAnchor constant:PPSpaceXS],
+        [self.searchResultsTableView.bottomAnchor constraintEqualToAnchor:self.searchResultsChromeView.contentView.bottomAnchor constant:-PPSpaceXS]
+    ]];
+}
+
+#pragma mark - Floating Telemetry Rail Setup
+
+- (void)pp_setupTelemetryRail
+{
+    self.telemetryRailContainerView = [self pp_makeShadowContainerWithCornerRadius:24.0];
+    [self.view addSubview:self.telemetryRailContainerView];
+
+    self.telemetryRailChromeView = [self pp_makeChromePanelWithCornerRadius:24.0];
+    [self.telemetryRailContainerView addSubview:self.telemetryRailChromeView];
+
+    self.telemetryRailStackView = [[UIStackView alloc] init];
+    self.telemetryRailStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.telemetryRailStackView.axis = UILayoutConstraintAxisVertical;
+    self.telemetryRailStackView.alignment = UIStackViewAlignmentCenter;
+    self.telemetryRailStackView.spacing = PPSpaceSM;
+    [self.telemetryRailChromeView.contentView addSubview:self.telemetryRailStackView];
+
+    self.recenterButton = [self pp_makeRoundChromeButtonWithSymbol:@"location.fill" action:@selector(centerToUserLocation)];
+    self.recenterButton.accessibilityLabel = kLang(@"location_picker_recenter");
+    [self.telemetryRailStackView addArrangedSubview:self.recenterButton];
+
+    self.mapTypeButton = [self pp_makeRoundChromeButtonWithSymbol:@"square.2.layers.3d" action:@selector(pp_cycleMapType)];
+    self.mapTypeButton.accessibilityLabel = kLang(@"location_picker_map_type_standard");
+    [self.telemetryRailStackView addArrangedSubview:self.mapTypeButton];
+
+    self.zoomInButton = [self pp_makeRoundChromeButtonWithSymbol:@"plus" action:@selector(pp_zoomInTapped)];
+    self.zoomInButton.accessibilityLabel = kLang(@"location_picker_zoom_in");
+    [self.telemetryRailStackView addArrangedSubview:self.zoomInButton];
+
+    self.zoomOutButton = [self pp_makeRoundChromeButtonWithSymbol:@"minus" action:@selector(pp_zoomOutTapped)];
+    self.zoomOutButton.accessibilityLabel = kLang(@"location_picker_zoom_out");
+    [self.telemetryRailStackView addArrangedSubview:self.zoomOutButton];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.telemetryRailContainerView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-PPSpaceMD],
+        [self.telemetryRailContainerView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-PPSpaceLG],
+
+        [self.telemetryRailChromeView.leadingAnchor constraintEqualToAnchor:self.telemetryRailContainerView.leadingAnchor],
+        [self.telemetryRailChromeView.trailingAnchor constraintEqualToAnchor:self.telemetryRailContainerView.trailingAnchor],
+        [self.telemetryRailChromeView.topAnchor constraintEqualToAnchor:self.telemetryRailContainerView.topAnchor],
+        [self.telemetryRailChromeView.bottomAnchor constraintEqualToAnchor:self.telemetryRailContainerView.bottomAnchor],
+
+        [self.telemetryRailStackView.leadingAnchor constraintEqualToAnchor:self.telemetryRailChromeView.contentView.leadingAnchor constant:PPSpaceXS],
+        [self.telemetryRailStackView.trailingAnchor constraintEqualToAnchor:self.telemetryRailChromeView.contentView.trailingAnchor constant:-PPSpaceXS],
+        [self.telemetryRailStackView.topAnchor constraintEqualToAnchor:self.telemetryRailChromeView.contentView.topAnchor constant:PPSpaceSM],
+        [self.telemetryRailStackView.bottomAnchor constraintEqualToAnchor:self.telemetryRailChromeView.contentView.bottomAnchor constant:-PPSpaceSM]
+    ]];
+}
+
+#pragma mark - Bottom Precision Dock Setup
 
 - (void)pp_setupPrecisionDock
 {
-    self.dockContainerView =
-        [self pp_makeShadowContainerWithCornerRadius:PPCornerHero];
+    self.dockContainerView = [self pp_makeShadowContainerWithCornerRadius:PPCornerHero];
     [self.view addSubview:self.dockContainerView];
 
     self.dockChromeView = [self pp_makeChromePanelWithCornerRadius:PPCornerHero];
@@ -662,26 +831,22 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.dockStackView.axis = UILayoutConstraintAxisVertical;
     self.dockStackView.alignment = UIStackViewAlignmentFill;
     self.dockStackView.spacing = PPSpaceMD;
-    self.dockStackView.semanticContentAttribute =
-        [Language semanticAttributeForCurrentLanguage];
+    self.dockStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.dockScrollView addSubview:self.dockStackView];
 
-    [self pp_buildStatusRow];
+    [self pp_buildStatusAndQuickActionsRow];
     [self pp_buildSelectionLabels];
     [self pp_buildPermissionState];
 
     self.confirmButton = [self pp_makePrimaryConfirmButton];
     [self.dockStackView addArrangedSubview:self.confirmButton];
 
-    self.dockHeightConstraint =
-        [self.dockContainerView.heightAnchor constraintEqualToConstant:248.0];
+    self.dockHeightConstraint = [self.dockContainerView.heightAnchor constraintEqualToConstant:254.0];
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.dockContainerView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor
-                                                             constant:PPSpaceBase],
-        [self.dockContainerView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor
-                                                              constant:-PPSpaceBase],
-        [self.dockContainerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor
-                                                            constant:-PPSpaceMD],
+        [self.dockContainerView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:PPSpaceBase],
+        [self.dockContainerView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-PPSpaceBase],
+        [self.dockContainerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceMD],
         self.dockHeightConstraint,
 
         [self.dockChromeView.leadingAnchor constraintEqualToAnchor:self.dockContainerView.leadingAnchor],
@@ -694,39 +859,41 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
         [self.dockScrollView.topAnchor constraintEqualToAnchor:self.dockChromeView.contentView.topAnchor],
         [self.dockScrollView.bottomAnchor constraintEqualToAnchor:self.dockChromeView.contentView.bottomAnchor],
 
-        [self.dockStackView.leadingAnchor constraintEqualToAnchor:self.dockScrollView.contentLayoutGuide.leadingAnchor
-                                                         constant:PPSpaceBase],
-        [self.dockStackView.trailingAnchor constraintEqualToAnchor:self.dockScrollView.contentLayoutGuide.trailingAnchor
-                                                          constant:-PPSpaceBase],
-        [self.dockStackView.topAnchor constraintEqualToAnchor:self.dockScrollView.contentLayoutGuide.topAnchor
-                                                     constant:PPSpaceBase],
-        [self.dockStackView.bottomAnchor constraintEqualToAnchor:self.dockScrollView.contentLayoutGuide.bottomAnchor
-                                                        constant:-PPSpaceBase],
-        [self.dockStackView.widthAnchor constraintEqualToAnchor:self.dockScrollView.frameLayoutGuide.widthAnchor
-                                                       constant:-(PPSpaceBase * 2.0)]
+        [self.dockStackView.leadingAnchor constraintEqualToAnchor:self.dockScrollView.contentLayoutGuide.leadingAnchor constant:PPSpaceBase],
+        [self.dockStackView.trailingAnchor constraintEqualToAnchor:self.dockScrollView.contentLayoutGuide.trailingAnchor constant:-PPSpaceBase],
+        [self.dockStackView.topAnchor constraintEqualToAnchor:self.dockScrollView.contentLayoutGuide.topAnchor constant:PPSpaceBase],
+        [self.dockStackView.bottomAnchor constraintEqualToAnchor:self.dockScrollView.contentLayoutGuide.bottomAnchor constant:-PPSpaceBase],
+        [self.dockStackView.widthAnchor constraintEqualToAnchor:self.dockScrollView.frameLayoutGuide.widthAnchor constant:-(PPSpaceBase * 2.0)]
     ]];
 }
 
-- (void)pp_buildStatusRow
+- (void)pp_buildStatusAndQuickActionsRow
 {
+    UIStackView *headerRow = [[UIStackView alloc] init];
+    headerRow.translatesAutoresizingMaskIntoConstraints = NO;
+    headerRow.axis = UILayoutConstraintAxisHorizontal;
+    headerRow.alignment = UIStackViewAlignmentCenter;
+    headerRow.spacing = PPSpaceSM;
+    headerRow.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.dockStackView addArrangedSubview:headerRow];
+
+    // Status Pill
     self.statusPillView = [[UIView alloc] init];
     self.statusPillView.translatesAutoresizingMaskIntoConstraints = NO;
     PPApplyContinuousCorners(self.statusPillView, PPCornerSmall);
     self.statusPillView.layer.borderWidth = PPLocationPickerHairlineWidth();
     self.statusPillView.isAccessibilityElement = YES;
-    [self.dockStackView addArrangedSubview:self.statusPillView];
+    [headerRow addArrangedSubview:self.statusPillView];
 
     self.statusStackView = [[UIStackView alloc] init];
     self.statusStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusStackView.axis = UILayoutConstraintAxisHorizontal;
     self.statusStackView.alignment = UIStackViewAlignmentCenter;
     self.statusStackView.spacing = PPSpaceSM;
-    self.statusStackView.semanticContentAttribute =
-        [Language semanticAttributeForCurrentLanguage];
+    self.statusStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.statusPillView addSubview:self.statusStackView];
 
-    self.spinner = [[UIActivityIndicatorView alloc]
-        initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    self.spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     self.spinner.color = PPLocationPickerAccentColor();
     self.spinner.hidesWhenStopped = YES;
     self.spinner.isAccessibilityElement = NO;
@@ -736,36 +903,74 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.statusIconImageView.contentMode = UIViewContentModeScaleAspectFit;
     self.statusIconImageView.isAccessibilityElement = NO;
     [NSLayoutConstraint activateConstraints:@[
-        [self.statusIconImageView.widthAnchor constraintEqualToConstant:PPSpaceBase],
-        [self.statusIconImageView.heightAnchor constraintEqualToConstant:PPSpaceBase]
+        [self.statusIconImageView.widthAnchor constraintEqualToConstant:16.0],
+        [self.statusIconImageView.heightAnchor constraintEqualToConstant:16.0]
     ]];
 
     self.statusLabel = [[UILabel alloc] init];
-    self.statusLabel.font =
-        PPLocationPickerScaledFont([GM boldFontWithSize:PPFontCaption1] ?:
-                                   [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightSemibold],
-                                   UIFontTextStyleCaption1);
+    self.statusLabel.font = PPLocationPickerScaledFont([GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightSemibold], UIFontTextStyleCaption1);
     self.statusLabel.adjustsFontForContentSizeCategory = YES;
-    self.statusLabel.numberOfLines = 0;
+    self.statusLabel.numberOfLines = 1;
     self.statusLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.statusLabel.isAccessibilityElement = NO;
 
     [self.statusStackView addArrangedSubview:self.spinner];
     [self.statusStackView addArrangedSubview:self.statusIconImageView];
     [self.statusStackView addArrangedSubview:self.statusLabel];
-    [self.statusLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
-                                                      forAxis:UILayoutConstraintAxisHorizontal];
+    [self.statusLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.statusStackView.leadingAnchor constraintEqualToAnchor:self.statusPillView.leadingAnchor
-                                                           constant:PPSpaceMD],
-        [self.statusStackView.trailingAnchor constraintEqualToAnchor:self.statusPillView.trailingAnchor
-                                                            constant:-PPSpaceMD],
-        [self.statusStackView.topAnchor constraintEqualToAnchor:self.statusPillView.topAnchor
-                                                       constant:PPSpaceSM],
-        [self.statusStackView.bottomAnchor constraintEqualToAnchor:self.statusPillView.bottomAnchor
-                                                          constant:-PPSpaceSM],
-        [self.statusPillView.heightAnchor constraintGreaterThanOrEqualToConstant:36.0]
+        [self.statusStackView.leadingAnchor constraintEqualToAnchor:self.statusPillView.leadingAnchor constant:PPSpaceMD],
+        [self.statusStackView.trailingAnchor constraintEqualToAnchor:self.statusPillView.trailingAnchor constant:-PPSpaceMD],
+        [self.statusStackView.topAnchor constraintEqualToAnchor:self.statusPillView.topAnchor constant:PPSpaceXS],
+        [self.statusStackView.bottomAnchor constraintEqualToAnchor:self.statusPillView.bottomAnchor constant:-PPSpaceXS],
+        [self.statusPillView.heightAnchor constraintGreaterThanOrEqualToConstant:32.0]
+    ]];
+
+    UIView *spacer = [[UIView alloc] init];
+    [headerRow addArrangedSubview:spacer];
+
+    // Quick Utility Buttons: Copy & Share
+    self.quickActionsStackView = [[UIStackView alloc] init];
+    self.quickActionsStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.quickActionsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.quickActionsStackView.alignment = UIStackViewAlignmentCenter;
+    self.quickActionsStackView.spacing = PPSpaceXS;
+    self.quickActionsStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [headerRow addArrangedSubview:self.quickActionsStackView];
+
+    UIImageSymbolConfiguration *quickActionConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:14.0 weight:UIImageSymbolWeightMedium];
+
+    self.coordinatesCopyButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.coordinatesCopyButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.coordinatesCopyButton.tintColor = PPLocationPickerPrimaryTextColor();
+    self.coordinatesCopyButton.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.75];
+    PPApplyContinuousCorners(self.coordinatesCopyButton, 16.0);
+    self.coordinatesCopyButton.layer.borderWidth = PPLocationPickerHairlineWidth();
+    self.coordinatesCopyButton.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.2].CGColor;
+    [self.coordinatesCopyButton setImage:[UIImage systemImageNamed:@"doc.on.doc" withConfiguration:quickActionConfig] forState:UIControlStateNormal];
+    [self.coordinatesCopyButton addTarget:self action:@selector(pp_copyCoordinatesTapped) forControlEvents:UIControlEventTouchUpInside];
+    self.coordinatesCopyButton.accessibilityLabel = kLang(@"location_picker_copy_coordinates");
+    [self.quickActionsStackView addArrangedSubview:self.coordinatesCopyButton];
+
+    self.shareLocationButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.shareLocationButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.shareLocationButton.tintColor = PPLocationPickerPrimaryTextColor();
+    self.shareLocationButton.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.75];
+    PPApplyContinuousCorners(self.shareLocationButton, 16.0);
+    self.shareLocationButton.layer.borderWidth = PPLocationPickerHairlineWidth();
+    self.shareLocationButton.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.2].CGColor;
+    [self.shareLocationButton setImage:[UIImage systemImageNamed:@"square.and.arrow.up" withConfiguration:quickActionConfig] forState:UIControlStateNormal];
+    [self.shareLocationButton addTarget:self action:@selector(pp_shareLocationTapped) forControlEvents:UIControlEventTouchUpInside];
+    self.shareLocationButton.accessibilityLabel = kLang(@"location_picker_share_location");
+    [self.quickActionsStackView addArrangedSubview:self.shareLocationButton];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.coordinatesCopyButton.widthAnchor constraintEqualToConstant:34.0],
+        [self.coordinatesCopyButton.heightAnchor constraintEqualToConstant:34.0],
+        [self.shareLocationButton.widthAnchor constraintEqualToConstant:34.0],
+        [self.shareLocationButton.heightAnchor constraintEqualToConstant:34.0]
     ]];
 }
 
@@ -787,17 +992,12 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     self.coordinatesLabel = [[UILabel alloc] init];
     self.coordinatesLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    UIFont *coordinateFont =
-        [UIFont monospacedDigitSystemFontOfSize:PPFontFootnote weight:UIFontWeightMedium];
-    self.coordinatesLabel.font =
-        PPLocationPickerScaledFont(coordinateFont, UIFontTextStyleFootnote);
+    UIFont *coordinateFont = [UIFont monospacedDigitSystemFontOfSize:PPFontFootnote weight:UIFontWeightMedium];
+    self.coordinatesLabel.font = PPLocationPickerScaledFont(coordinateFont, UIFontTextStyleFootnote);
     self.coordinatesLabel.adjustsFontForContentSizeCategory = YES;
     self.coordinatesLabel.numberOfLines = 0;
-    self.coordinatesLabel.textAlignment = Language.isRTL
-        ? NSTextAlignmentRight
-        : NSTextAlignmentLeft;
-    self.coordinatesLabel.semanticContentAttribute =
-        UISemanticContentAttributeForceLeftToRight;
+    self.coordinatesLabel.textAlignment = Language.isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    self.coordinatesLabel.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     self.coordinatesLabel.textColor = PPLocationPickerSecondaryTextColor();
     self.coordinatesLabel.isAccessibilityElement = YES;
     [self.dockStackView addArrangedSubview:self.coordinatesLabel];
@@ -830,12 +1030,10 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.permissionMessageStackView.axis = UILayoutConstraintAxisHorizontal;
     self.permissionMessageStackView.alignment = UIStackViewAlignmentTop;
     self.permissionMessageStackView.spacing = PPSpaceSM;
-    self.permissionMessageStackView.semanticContentAttribute =
-        [Language semanticAttributeForCurrentLanguage];
+    self.permissionMessageStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.permissionStackView addArrangedSubview:self.permissionMessageStackView];
 
-    UIImage *permissionImage =
-        [UIImage systemImageNamed:@"location.slash.fill"];
+    UIImage *permissionImage = [UIImage systemImageNamed:@"location.slash.fill"];
     self.permissionIconImageView = [[UIImageView alloc] initWithImage:permissionImage];
     self.permissionIconImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.permissionIconImageView.tintColor = AppWarningClr ?: UIColor.systemOrangeColor;
@@ -860,8 +1058,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     self.permissionButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.permissionButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.permissionButton.backgroundColor =
-        [PPLocationPickerAccentColor() colorWithAlphaComponent:0.12];
+    self.permissionButton.backgroundColor = [PPLocationPickerAccentColor() colorWithAlphaComponent:0.12];
     self.permissionButton.tintColor = PPLocationPickerAccentColor();
     PPApplyContinuousCorners(self.permissionButton, PPCornerSmall);
     self.permissionButton.titleLabel.font =
@@ -871,38 +1068,397 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.permissionButton.titleLabel.adjustsFontForContentSizeCategory = YES;
     self.permissionButton.titleLabel.numberOfLines = 0;
     [self.permissionButton setTitle:kLang(@"Open Settings") forState:UIControlStateNormal];
-    self.permissionButton.contentEdgeInsets =
-        UIEdgeInsetsMake(PPSpaceSM, PPSpaceMD, PPSpaceSM, PPSpaceMD);
-    [self.permissionButton addTarget:self
-                              action:@selector(pp_openLocationSettings)
-                    forControlEvents:UIControlEventTouchUpInside];
-    [self.permissionButton.heightAnchor
-        constraintGreaterThanOrEqualToConstant:PPTouchTargetMin].active = YES;
+    self.permissionButton.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceSM, PPSpaceMD, PPSpaceSM, PPSpaceMD);
+    [self.permissionButton addTarget:self action:@selector(pp_openLocationSettings) forControlEvents:UIControlEventTouchUpInside];
+    [self.permissionButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin].active = YES;
     [self.permissionStackView addArrangedSubview:self.permissionButton];
 }
 
-#pragma mark - Layout
+- (UIButton *)pp_makePrimaryConfirmButton
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.backgroundColor = PPLocationPickerAccentColor();
+    PPApplyContinuousCorners(button, PPCornerMedium);
+    PPApplyButtonShadow(button);
+    button.titleLabel.font =
+        PPLocationPickerScaledFont([GM boldFontWithSize:PPFontHeadline] ?:
+                                   [UIFont systemFontOfSize:PPFontHeadline weight:UIFontWeightSemibold],
+                                   UIFontTextStyleHeadline);
+    button.titleLabel.adjustsFontForContentSizeCategory = YES;
+    button.titleLabel.numberOfLines = 0;
+    button.titleLabel.textAlignment = NSTextAlignmentCenter;
+    [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [button setTitle:kLang(@"location_picker_confirm") forState:UIControlStateNormal];
+    button.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceMD, PPSpaceBase, PPSpaceMD, PPSpaceBase);
+    [button addTarget:self action:@selector(confirmLocationTapped) forControlEvents:UIControlEventTouchUpInside];
+    [button.heightAnchor constraintGreaterThanOrEqualToConstant:PPButtonHeightLG].active = YES;
+    button.accessibilityHint = kLang(@"location_picker_confirm_hint");
+    return button;
+}
+
+#pragma mark - Quick Areas Carousel Population
+
+- (void)pp_populateQuickAreas
+{
+    for (UIView *view in self.areasStackView.arrangedSubviews) {
+        [view removeFromSuperview];
+    }
+
+    CountryModel *currentCountry = CitiesManager.shared.CurrentCountry ?: [CitiesManager.shared qatarCountry];
+    NSArray<CityModel *> *cities = [CitiesManager.shared citiesForCountryCode:currentCountry.iso];
+    if (cities.count == 0) {
+        cities = [CitiesManager.shared citiesForCurrentCountry];
+    }
+
+    NSMutableArray<NSDictionary *> *areaItems = [NSMutableArray array];
+    for (CityModel *city in cities) {
+        NSString *name = Language.isRTL ? (city.arName.length > 0 ? city.arName : city.name) : (city.enName.length > 0 ? city.enName : city.name);
+        if (name.length > 0 && PPLocationPickerCoordinateIsUsable(CLLocationCoordinate2DMake(city.latitude, city.longitude))) {
+            [areaItems addObject:@{
+                @"name": name,
+                @"lat": @(city.latitude),
+                @"lng": @(city.longitude)
+            }];
+        }
+    }
+
+    // Default regional key hubs fallback if cities list is empty
+    if (areaItems.count == 0) {
+        NSArray *defaultHubs = @[
+            @{@"name": Language.isRTL ? @"الدوحة" : @"Doha", @"lat": @(25.2854), @"lng": @(51.5310)},
+            @{@"name": Language.isRTL ? @"لوسيل" : @"Lusail", @"lat": @(25.4207), @"lng": @(51.4900)},
+            @{@"name": Language.isRTL ? @"الوكرة" : @"Al Wakrah", @"lat": @(25.1768), @"lng": @(51.6034)},
+            @{@"name": Language.isRTL ? @"الخور" : @"Al Khor", @"lat": @(25.6839), @"lng": @(51.5058)},
+            @{@"name": Language.isRTL ? @"الريان" : @"Al Rayyan", @"lat": @(25.2919), @"lng": @(51.4244)},
+            @{@"name": Language.isRTL ? @"اللؤلؤة" : @"The Pearl", @"lat": @(25.3713), @"lng": @(51.5516)}
+        ];
+        [areaItems addObjectsFromArray:defaultHubs];
+    }
+
+    UIImageSymbolConfiguration *chipSymbolConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:11.0 weight:UIImageSymbolWeightSemibold];
+    UIImage *chipPinImage = [UIImage systemImageNamed:@"mappin" withConfiguration:chipSymbolConfig];
+
+    for (NSDictionary *area in areaItems) {
+        UIButton *chip = [UIButton buttonWithType:UIButtonTypeSystem];
+        chip.translatesAutoresizingMaskIntoConstraints = NO;
+        chip.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.80];
+        chip.tintColor = PPLocationPickerPrimaryTextColor();
+        PPApplyContinuousCorners(chip, 14.0);
+        chip.layer.borderWidth = PPLocationPickerHairlineWidth();
+        chip.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.2].CGColor;
+        [chip setImage:chipPinImage forState:UIControlStateNormal];
+        chip.imageView.tintColor = PPLocationPickerAccentColor();
+        [chip setTitle:area[@"name"] forState:UIControlStateNormal];
+        chip.titleLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
+        chip.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceXS, PPSpaceSM, PPSpaceXS, PPSpaceSM);
+        chip.titleEdgeInsets = UIEdgeInsetsMake(0.0, 4.0, 0.0, -4.0);
+
+        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([area[@"lat"] doubleValue], [area[@"lng"] doubleValue]);
+        __weak typeof(self) weakSelf = self;
+        UIAction *action = [UIAction actionWithHandler:^(__kindof UIAction * _Nonnull actionHandler) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            [self.lightImpact impactOccurred];
+            [self pp_moveCameraToCoordinate:coord zoom:15.5];
+        }];
+        [chip addAction:action forControlEvents:UIControlEventTouchUpInside];
+
+        [self.areasStackView addArrangedSubview:chip];
+    }
+}
+
+#pragma mark - Search Field & Autocomplete Logic
+
+- (void)pp_searchFieldDidChange:(UITextField *)textField
+{
+    NSString *query = [textField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    self.clearSearchButton.hidden = (query.length == 0);
+
+    if (self.searchDebounceBlock) {
+        dispatch_block_cancel(self.searchDebounceBlock);
+        self.searchDebounceBlock = nil;
+    }
+    [self.activeLocalSearch cancel];
+
+    if (query.length < 2) {
+        [self.searchSpinner stopAnimating];
+        [self pp_dismissSearchResultsAnimated:YES];
+        return;
+    }
+
+    [self.searchSpinner startAnimating];
+
+    __weak typeof(self) weakSelf = self;
+    self.searchDebounceBlock = dispatch_block_create(0, ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_performSearchWithQuery:query];
+    });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), self.searchDebounceBlock);
+}
+
+- (void)pp_clearSearchTapped
+{
+    [self.lightImpact impactOccurred];
+    self.searchTextField.text = @"";
+    self.clearSearchButton.hidden = YES;
+    [self.searchSpinner stopAnimating];
+    [self pp_dismissSearchResultsAnimated:YES];
+    [self.searchTextField resignFirstResponder];
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
+{
+    [textField resignFirstResponder];
+    NSString *query = [textField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (query.length >= 2) {
+        [self pp_performSearchWithQuery:query];
+    }
+    return YES;
+}
+
+- (void)pp_performSearchWithQuery:(NSString *)query
+{
+    NSMutableArray<PPLocationSearchResultItem *> *results = [NSMutableArray array];
+
+    // 1. Instant local matching against registered cities
+    CountryModel *country = CitiesManager.shared.CurrentCountry ?: [CitiesManager.shared qatarCountry];
+    NSArray<CityModel *> *cities = [CitiesManager.shared citiesForCountryCode:country.iso];
+    for (CityModel *city in cities) {
+        NSString *ar = city.arName ?: @"";
+        NSString *en = city.enName ?: @"";
+        if ([ar localizedCaseInsensitiveContainsString:query] || [en localizedCaseInsensitiveContainsString:query]) {
+            PPLocationSearchResultItem *item = [[PPLocationSearchResultItem alloc] init];
+            item.title = Language.isRTL ? (ar.length > 0 ? ar : en) : (en.length > 0 ? en : ar);
+            item.subtitle = country.name ?: @"";
+            item.coordinate = CLLocationCoordinate2DMake(city.latitude, city.longitude);
+            [results addObject:item];
+        }
+    }
+
+    // 2. High-performance Apple MapKit Local POI & Landmark search
+    MKLocalSearchRequest *request = [[MKLocalSearchRequest alloc] init];
+    request.naturalLanguageQuery = query;
+    CLLocationCoordinate2D center = self.mapView.camera.target;
+    if (PPLocationPickerCoordinateIsUsable(center)) {
+        request.region = MKCoordinateRegionMakeWithDistance(center, 60000, 60000);
+    }
+
+    MKLocalSearch *search = [[MKLocalSearch alloc] initWithRequest:request];
+    self.activeLocalSearch = search;
+
+    __weak typeof(self) weakSelf = self;
+    [search startWithCompletionHandler:^(MKLocalSearchResponse *response, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            [self.searchSpinner stopAnimating];
+
+            if (!error && response.mapItems.count > 0) {
+                for (MKMapItem *mapItem in response.mapItems) {
+                    PPLocationSearchResultItem *item = [[PPLocationSearchResultItem alloc] init];
+                    item.title = mapItem.name ?: @"";
+                    item.subtitle = mapItem.placemark.title ?: @"";
+                    item.coordinate = mapItem.placemark.coordinate;
+                    [results addObject:item];
+                }
+            }
+
+            self.searchResults = [results copy];
+            [self.searchResultsTableView reloadData];
+            [self pp_presentSearchResultsAnimated:YES];
+        });
+    }];
+}
+
+- (void)pp_presentSearchResultsAnimated:(BOOL)animated
+{
+    if (self.searchResults.count == 0) {
+        [self pp_dismissSearchResultsAnimated:animated];
+        return;
+    }
+
+    CGFloat rowHeight = 54.0;
+    CGFloat targetHeight = MIN(260.0, (CGFloat)self.searchResults.count * rowHeight + 10.0);
+    self.searchResultsHeightConstraint.constant = targetHeight;
+    self.searchResultsContainerView.hidden = NO;
+
+    void (^animations)(void) = ^{
+        self.searchResultsContainerView.alpha = 1.0;
+        self.searchResultsContainerView.transform = CGAffineTransformIdentity;
+        [self.view layoutIfNeeded];
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        animations();
+    } else {
+        self.searchResultsContainerView.alpha = 0.0;
+        self.searchResultsContainerView.transform = CGAffineTransformMakeTranslation(0.0, -10.0);
+        [UIView animateWithDuration:PPAnimDurationNormal
+                              delay:0.0
+             usingSpringWithDamping:0.8
+              initialSpringVelocity:0.5
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:animations
+                         completion:nil];
+    }
+}
+
+- (void)pp_dismissSearchResultsAnimated:(BOOL)animated
+{
+    if (self.searchResultsContainerView.hidden) return;
+
+    void (^animations)(void) = ^{
+        self.searchResultsContainerView.alpha = 0.0;
+        self.searchResultsContainerView.transform = CGAffineTransformMakeTranslation(0.0, -8.0);
+    };
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        self.searchResultsContainerView.hidden = YES;
+        self.searchResultsHeightConstraint.constant = 0.0;
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        animations();
+        completion(YES);
+    } else {
+        [UIView animateWithDuration:PPAnimDurationFast animations:animations completion:completion];
+    }
+}
+
+#pragma mark - UITableView DataSource & Delegate
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    return self.searchResults.count;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    return 54.0;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    static NSString *cellID = @"PPSearchResultCell";
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellID];
+    if (!cell) {
+        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:cellID];
+        cell.backgroundColor = UIColor.clearColor;
+        cell.textLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+        cell.textLabel.textColor = PPLocationPickerPrimaryTextColor();
+        cell.detailTextLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightRegular];
+        cell.detailTextLabel.textColor = PPLocationPickerSecondaryTextColor();
+        cell.imageView.tintColor = PPLocationPickerAccentColor();
+    }
+
+    if (indexPath.row < (NSInteger)self.searchResults.count) {
+        PPLocationSearchResultItem *item = self.searchResults[indexPath.row];
+        cell.textLabel.text = item.title;
+        cell.detailTextLabel.text = item.subtitle;
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightMedium];
+        cell.imageView.image = [UIImage systemImageNamed:@"mappin.circle.fill" withConfiguration:config];
+    }
+    return cell;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    if (indexPath.row >= (NSInteger)self.searchResults.count) return;
+
+    [self.mediumImpact impactOccurred];
+    PPLocationSearchResultItem *item = self.searchResults[indexPath.row];
+    [self.searchTextField resignFirstResponder];
+    [self pp_dismissSearchResultsAnimated:YES];
+
+    [self pp_moveCameraToCoordinate:item.coordinate zoom:16.5];
+}
+
+#pragma mark - Telemetry Actions
+
+- (void)pp_cycleMapType
+{
+    [self.lightImpact impactOccurred];
+    if (self.mapView.mapType == kGMSTypeNormal) {
+        self.mapView.mapType = kGMSTypeSatellite;
+        [PPHUD showInfo:kLang(@"location_picker_map_type_satellite")];
+    } else if (self.mapView.mapType == kGMSTypeSatellite) {
+        self.mapView.mapType = kGMSTypeHybrid;
+        [PPHUD showInfo:kLang(@"location_picker_map_type_hybrid")];
+    } else {
+        self.mapView.mapType = kGMSTypeNormal;
+        [PPHUD showInfo:kLang(@"location_picker_map_type_standard")];
+    }
+}
+
+- (void)pp_zoomInTapped
+{
+    [self.lightImpact impactOccurred];
+    float targetZoom = MIN(self.mapView.maxZoom, self.mapView.camera.zoom + 1.0f);
+    [self.mapView animateToZoom:targetZoom];
+}
+
+- (void)pp_zoomOutTapped
+{
+    [self.lightImpact impactOccurred];
+    float targetZoom = MAX(self.mapView.minZoom, self.mapView.camera.zoom - 1.0f);
+    [self.mapView animateToZoom:targetZoom];
+}
+
+- (void)pp_copyCoordinatesTapped
+{
+    CLLocationCoordinate2D coord = self.mapView.camera.target;
+    if (!PPLocationPickerCoordinateIsUsable(coord)) {
+        coord = self.lastKnownCoordinate;
+    }
+    if (!PPLocationPickerCoordinateIsUsable(coord)) return;
+
+    [self.mediumImpact impactOccurred];
+    NSString *coordStr = [NSString stringWithFormat:@"%.6f, %.6f", coord.latitude, coord.longitude];
+    [UIPasteboard generalPasteboard].string = coordStr;
+    [PPHUD showSuccess:kLang(@"location_picker_coordinates_copied")];
+}
+
+- (void)pp_shareLocationTapped
+{
+    CLLocationCoordinate2D coord = self.mapView.camera.target;
+    if (!PPLocationPickerCoordinateIsUsable(coord)) {
+        coord = self.lastKnownCoordinate;
+    }
+    if (!PPLocationPickerCoordinateIsUsable(coord)) return;
+
+    [self.lightImpact impactOccurred];
+    NSString *title = self.selectedLocationTitle.length > 0 ? self.selectedLocationTitle : kLang(@"location_picker_pinned_point");
+    NSString *mapURLStr = [NSString stringWithFormat:@"https://maps.google.com/?q=%.6f,%.6f", coord.latitude, coord.longitude];
+    NSURL *url = [NSURL URLWithString:mapURLStr];
+
+    NSArray *items = url ? @[title, url] : @[title];
+    UIActivityViewController *activityVC = [[UIActivityViewController alloc] initWithActivityItems:items applicationActivities:nil];
+    if (activityVC.popoverPresentationController) {
+        activityVC.popoverPresentationController.sourceView = self.shareLocationButton;
+        activityVC.popoverPresentationController.sourceRect = self.shareLocationButton.bounds;
+    }
+    [self presentViewController:activityVC animated:YES completion:nil];
+}
+
+#pragma mark - Layout Dynamics
 
 - (void)pp_updateDockHeightIfNeeded
 {
-    CGFloat contentWidth = CGRectGetWidth(self.dockScrollView.bounds) -
-        (PPSpaceBase * 2.0);
-    if (contentWidth <= 0.0) {
-        return;
-    }
+    CGFloat contentWidth = CGRectGetWidth(self.dockScrollView.bounds) - (PPSpaceBase * 2.0);
+    if (contentWidth <= 0.0) return;
 
     CGSize fittingSize = CGSizeMake(contentWidth, UILayoutFittingCompressedSize.height);
     CGSize contentSize =
         [self.dockStackView systemLayoutSizeFittingSize:fittingSize
                          withHorizontalFittingPriority:UILayoutPriorityRequired
                                verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
-    CGFloat desiredHeight = MAX(196.0, contentSize.height + (PPSpaceBase * 2.0));
+    CGFloat desiredHeight = MAX(200.0, contentSize.height + (PPSpaceBase * 2.0));
     CGFloat safeHeight = CGRectGetHeight(self.view.safeAreaLayoutGuide.layoutFrame);
-    CGFloat heightRatio =
-        self.traitCollection.verticalSizeClass == UIUserInterfaceSizeClassCompact
-            ? 0.58
-            : 0.52;
-    CGFloat maximumHeight = MAX(176.0, floor(safeHeight * heightRatio));
+    CGFloat heightRatio = self.traitCollection.verticalSizeClass == UIUserInterfaceSizeClassCompact ? 0.60 : 0.54;
+    CGFloat maximumHeight = MAX(180.0, floor(safeHeight * heightRatio));
     CGFloat resolvedHeight = MIN(desiredHeight, maximumHeight);
     if (fabs(self.dockHeightConstraint.constant - resolvedHeight) > 0.5) {
         self.dockHeightConstraint.constant = resolvedHeight;
@@ -912,14 +1468,12 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
 - (void)pp_updateMapInsetsAndPinPosition
 {
-    if (CGRectIsEmpty(self.instructionContainerView.frame) ||
-        CGRectIsEmpty(self.dockContainerView.frame)) {
+    if (CGRectIsEmpty(self.topCockpitContainerView.frame) || CGRectIsEmpty(self.dockContainerView.frame)) {
         return;
     }
 
-    CGFloat topInset = CGRectGetMaxY(self.instructionContainerView.frame) + PPSpaceMD;
-    CGFloat bottomInset = CGRectGetHeight(self.view.bounds) -
-        CGRectGetMinY(self.dockContainerView.frame) + PPSpaceMD;
+    CGFloat topInset = CGRectGetMaxY(self.topCockpitContainerView.frame) + PPSpaceSM;
+    CGFloat bottomInset = CGRectGetHeight(self.view.bounds) - CGRectGetMinY(self.dockContainerView.frame) + PPSpaceSM;
     UIEdgeInsets padding = UIEdgeInsetsMake(topInset, 0.0, bottomInset, 0.0);
     if (!UIEdgeInsetsEqualToEdgeInsets(self.mapView.padding, padding)) {
         self.mapView.padding = padding;
@@ -931,15 +1485,14 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     }
 }
 
-#pragma mark - Presentation State
+#pragma mark - Presentation States
 
 - (NSString *)pp_coordinateStringForCoordinate:(CLLocationCoordinate2D)coordinate
 {
     if (!PPLocationPickerCoordinateIsUsable(coordinate)) {
         return kLang(@"location_picker_coordinates_unavailable");
     }
-    return [NSString stringWithFormat:@"%.6f, %.6f",
-            coordinate.latitude, coordinate.longitude];
+    return [NSString stringWithFormat:@"%.6f, %.6f", coordinate.latitude, coordinate.longitude];
 }
 
 - (void)pp_setConfirmButtonEnabled:(BOOL)enabled
@@ -960,10 +1513,8 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     self.statusLabel.text = statusText;
     self.statusLabel.textColor = resolvedTint;
-    self.statusPillView.backgroundColor =
-        [resolvedTint colorWithAlphaComponent:loading ? 0.14 : 0.10];
-    self.statusPillView.layer.borderColor =
-        [resolvedTint colorWithAlphaComponent:0.20].CGColor;
+    self.statusPillView.backgroundColor = [resolvedTint colorWithAlphaComponent:loading ? 0.14 : 0.10];
+    self.statusPillView.layer.borderColor = [resolvedTint colorWithAlphaComponent:0.25].CGColor;
     self.statusPillView.accessibilityLabel = statusText;
 
     if (loading) {
@@ -981,15 +1532,12 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
                                    coordinate:(CLLocationCoordinate2D)coordinate
                                       hintKey:(NSString *)hintKey
 {
-    NSString *resolvedTitle = title.length > 0
-        ? title
-        : kLang(@"location_picker_choose_point");
+    NSString *resolvedTitle = title.length > 0 ? title : kLang(@"location_picker_choose_point");
     NSString *coordinateText = [self pp_coordinateStringForCoordinate:coordinate];
     self.addressLabel.text = resolvedTitle;
     self.coordinatesLabel.text = coordinateText;
     self.coordinatesLabel.accessibilityLabel =
-        [NSString stringWithFormat:@"%@: %@",
-         kLang(@"location_picker_coordinates_label"), coordinateText];
+        [NSString stringWithFormat:@"%@: %@", kLang(@"location_picker_coordinates_label"), coordinateText];
     self.selectionHintLabel.text = kLang(hintKey);
     [self pp_setConfirmButtonEnabled:PPLocationPickerCoordinateIsUsable(coordinate)];
 }
@@ -1038,9 +1586,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
 - (void)updateMapCardWithGMSAddress:(GMSAddress *)address
 {
-    if (!address) {
-        return;
-    }
+    if (!address) return;
 
     NSString *fullAddress = [self pp_compactAddressTitleFromGMSAddress:address];
     if (fullAddress.length == 0) {
@@ -1055,8 +1601,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
                     symbolName:@"checkmark.circle.fill"
                      tintColor:(AppSuccessClr ?: UIColor.systemGreenColor)
                        loading:NO];
-    [self pp_announceResolvedLocationIfNeeded:fullAddress
-                                    statusKey:@"location_picker_status_address_ready"];
+    [self pp_announceResolvedLocationIfNeeded:fullAddress statusKey:@"location_picker_status_address_ready"];
 }
 
 - (void)pp_updateMapCardWithResolvedTitle:(NSString *)resolvedTitle
@@ -1071,8 +1616,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
                     symbolName:@"mappin.and.ellipse"
                      tintColor:(AppSuccessClr ?: UIColor.systemGreenColor)
                        loading:NO];
-    [self pp_announceResolvedLocationIfNeeded:self.selectedLocationTitle
-                                    statusKey:@"location_picker_status_area_ready"];
+    [self pp_announceResolvedLocationIfNeeded:self.selectedLocationTitle statusKey:@"location_picker_status_area_ready"];
 }
 
 - (void)pp_showInvalidCoordinateState
@@ -1092,25 +1636,20 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 - (void)pp_announceResolvedLocationIfNeeded:(NSString *)locationTitle
                                   statusKey:(NSString *)statusKey
 {
-    if (!UIAccessibilityIsVoiceOverRunning() || locationTitle.length == 0 ||
-        !self.view.window) {
+    if (!UIAccessibilityIsVoiceOverRunning() || locationTitle.length == 0 || !self.view.window) {
         return;
     }
-    NSString *announcement =
-        [NSString stringWithFormat:@"%@: %@",
-         kLang(statusKey), locationTitle];
-    UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification,
-                                    announcement);
+    NSString *announcement = [NSString stringWithFormat:@"%@: %@", kLang(statusKey), locationTitle];
+    UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, announcement);
 }
 
-#pragma mark - Location Defaults
+#pragma mark - Defaults & Geocoder Helpers
 
 - (CLLocationCoordinate2D)pp_dohaCoordinate
 {
     CountryModel *qatar = [CitiesManager.shared qatarCountry];
     CityModel *doha = [CitiesManager.shared defaultCityForCountry:qatar];
-    CLLocationCoordinate2D coordinate =
-        CLLocationCoordinate2DMake(doha.latitude, doha.longitude);
+    CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake(doha.latitude, doha.longitude);
     if (PPLocationPickerCoordinateIsUsable(coordinate)) {
         return coordinate;
     }
@@ -1126,12 +1665,8 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     if (cityName.length > 0 && countryName.length > 0) {
         return [NSString stringWithFormat:@"%@, %@", cityName, countryName];
     }
-    if (cityName.length > 0) {
-        return cityName;
-    }
-    if (countryName.length > 0) {
-        return countryName;
-    }
+    if (cityName.length > 0) return cityName;
+    if (countryName.length > 0) return countryName;
     return kLang(@"location_picker_doha_fallback");
 }
 
@@ -1144,39 +1679,29 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
     GMSCameraPosition *camera =
         [GMSCameraPosition cameraWithLatitude:coordinate.latitude
-                                    longitude:coordinate.longitude
-                                         zoom:15.0];
+                                     longitude:coordinate.longitude
+                                          zoom:15.5];
     if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
         [self.mapView animateToCameraPosition:camera];
     } else {
         self.mapView.camera = camera;
     }
-    [self pp_updateMapCardWithResolvedTitle:self.selectedLocationTitle
-                                 coordinate:coordinate];
+    [self pp_updateMapCardWithResolvedTitle:self.selectedLocationTitle coordinate:coordinate];
 }
 
 - (NSString *)pp_compactAddressTitleFromGMSAddress:(GMSAddress *)address
 {
-    if (!address) {
-        return @"";
-    }
+    if (!address) return @"";
     NSString *title = [LocationPickerViewController titleFromAddress:address];
-    if (title.length > 0) {
-        return title;
-    }
-    NSString *fullAddress = [address.lines componentsJoinedByString:@", "];
-    return fullAddress ?: @"";
+    if (title.length > 0) return title;
+    return [address.lines componentsJoinedByString:@", "] ?: @"";
 }
 
 - (NSString *)pp_compactTitleFromPlacemark:(CLPlacemark *)placemark
 {
-    if (!placemark) {
-        return @"";
-    }
-    NSString *primary =
-        placemark.subLocality ?: placemark.locality ?: placemark.thoroughfare ?: @"";
-    NSString *secondary =
-        placemark.locality ?: placemark.administrativeArea ?: placemark.country ?: @"";
+    if (!placemark) return @"";
+    NSString *primary = placemark.subLocality ?: placemark.locality ?: placemark.thoroughfare ?: @"";
+    NSString *secondary = placemark.locality ?: placemark.administrativeArea ?: placemark.country ?: @"";
     if ([primary isEqualToString:secondary]) {
         secondary = @"";
     }
@@ -1186,7 +1711,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     return primary.length > 0 ? primary : secondary;
 }
 
-#pragma mark - Location Authorization
+#pragma mark - Location Authorization & GPS
 
 - (void)pp_setupLocationManager
 {
@@ -1217,11 +1742,15 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 {
     [self pp_updatePermissionPresentationForStatus:status];
     if (status == kCLAuthorizationStatusNotDetermined) {
-        if (self.shouldCenterOnNextLocationUpdate) [self.locationManager requestWhenInUseAuthorization];
+        if (self.shouldCenterOnNextLocationUpdate) {
+            [self.locationManager requestWhenInUseAuthorization];
+        }
         return;
     }
     if ([self pp_locationAuthorizationAllowsUpdates:status]) {
-        if (self.shouldCenterOnNextLocationUpdate) [self pp_requestCurrentLocation];
+        if (self.shouldCenterOnNextLocationUpdate) {
+            [self pp_requestCurrentLocation];
+        }
     } else {
         self.shouldCenterOnNextLocationUpdate = NO;
         [self.locationManager stopUpdatingLocation];
@@ -1248,8 +1777,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     [self.view setNeedsLayout];
 }
 
-- (void)locationManager:(CLLocationManager *)manager
-      didUpdateLocations:(NSArray<CLLocation *> *)locations
+- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations
 {
     CLLocation *location = locations.lastObject;
     if (!location || !PPLocationPickerCoordinateIsUsable(location.coordinate) ||
@@ -1268,11 +1796,9 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.recenterButton.alpha = 1.0;
     self.recenterButton.accessibilityValue = nil;
 
-    if (!self.shouldCenterOnNextLocationUpdate) {
-        return;
-    }
+    if (!self.shouldCenterOnNextLocationUpdate) return;
     self.shouldCenterOnNextLocationUpdate = NO;
-    [self pp_moveCameraToCoordinate:location.coordinate zoom:15.0];
+    [self pp_moveCameraToCoordinate:location.coordinate zoom:16.0];
 }
 
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
@@ -1281,8 +1807,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.shouldCenterOnNextLocationUpdate = NO;
     [manager stopUpdatingLocation];
     NSLog(@"[LocationPicker] location update failed: %@", error.localizedDescription);
-    BOOL canRetry = [self pp_locationAuthorizationAllowsUpdates:
-                     [self pp_locationAuthorizationStatus]];
+    BOOL canRetry = [self pp_locationAuthorizationAllowsUpdates:[self pp_locationAuthorizationStatus]];
     self.recenterButton.enabled = canRetry;
     self.recenterButton.alpha = canRetry ? 1.0 : 0.52;
     self.recenterButton.accessibilityValue = nil;
@@ -1293,24 +1818,23 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     }
 }
 
-- (void)locationManager:(CLLocationManager *)manager
-didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
 {
     if (@available(iOS 14.0, *)) return;
     [self pp_handleLocationAuthorizationStatus:status];
 }
 
-- (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager
-    API_AVAILABLE(ios(14.0))
+- (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager API_AVAILABLE(ios(14.0))
 {
     [self pp_handleLocationAuthorizationStatus:manager.authorizationStatus];
 }
 
-#pragma mark - Map Events
+#pragma mark - Map Events & Tactile Pin Physics
 
 - (void)mapView:(GMSMapView *)mapView willMove:(BOOL)gesture
 {
     if (gesture) {
+        [self.selectionFeedback selectionChanged];
         self.shouldCenterOnNextLocationUpdate = NO;
         [self.locationManager stopUpdatingLocation];
         CLAuthorizationStatus status = [self pp_locationAuthorizationStatus];
@@ -1330,10 +1854,10 @@ didChangeAuthorizationStatus:(CLAuthorizationStatus)status
     [self pp_setPinLifted:YES animated:YES];
 }
 
-- (void)mapView:(GMSMapView *)mapView
-idleAtCameraPosition:(GMSCameraPosition *)position
+- (void)mapView:(GMSMapView *)mapView idleAtCameraPosition:(GMSCameraPosition *)position
 {
     (void)mapView;
+    [self.mediumImpact impactOccurred];
     [self pp_setPinLifted:NO animated:YES];
     if (!PPLocationPickerCoordinateIsUsable(position.target)) {
         [self pp_showInvalidCoordinateState];
@@ -1358,19 +1882,17 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     __weak typeof(self) weakSelf = self;
     void (^changes)(void) = ^{
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
-            return;
-        }
-        self.pinTargetRingView.alpha = lifted ? 0.38 : 1.0;
-        self.pinTargetRingView.transform =
-            (!reduceMotion && lifted)
-                ? CGAffineTransformMakeScale(0.76, 0.76)
-                : CGAffineTransformIdentity;
-        self.pinContainerView.transform =
-            (!reduceMotion && lifted)
-                ? CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -12.0),
-                                          CGAffineTransformMakeScale(1.03, 1.03))
-                : CGAffineTransformIdentity;
+        if (!self) return;
+        self.pinTargetRingView.alpha = lifted ? 0.35 : 1.0;
+        self.pinTargetRingView.transform = (!reduceMotion && lifted)
+            ? CGAffineTransformMakeScale(0.72, 0.72)
+            : CGAffineTransformIdentity;
+        self.pinContainerView.transform = (!reduceMotion && lifted)
+            ? CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -16.0),
+                                      CGAffineTransformMakeScale(1.06, 1.06))
+            : CGAffineTransformIdentity;
+        self.pinHeadView.layer.shadowRadius = lifted ? 20.0 : 14.0;
+        self.pinHeadView.layer.shadowOpacity = lifted ? 0.45 : 0.35;
     };
 
     if (!animated || reduceMotion || !self.view.window) {
@@ -1379,8 +1901,8 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     }
 
     UISpringTimingParameters *timing =
-        [[UISpringTimingParameters alloc] initWithDampingRatio:(lifted ? 0.92 : 0.72)
-                                         initialVelocity:CGVectorMake(0.0, lifted ? -0.2 : 0.45)];
+        [[UISpringTimingParameters alloc] initWithDampingRatio:(lifted ? 0.90 : 0.65)
+                                         initialVelocity:CGVectorMake(0.0, lifted ? -0.3 : 0.55)];
     self.pinAnimator = [[UIViewPropertyAnimator alloc] initWithDuration:PPAnimDurationNormal
                                                       timingParameters:timing];
     [self.pinAnimator addAnimations:changes];
@@ -1402,23 +1924,19 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     __weak typeof(self) weakSelf = self;
     dispatch_block_t debounceBlock = dispatch_block_create(0, ^{
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self || generation != self.geocodeGeneration) {
-            return;
-        }
+        if (!self || generation != self.geocodeGeneration) return;
         self.geocodeDebounceBlock = nil;
         [self startReverseGeocodeForCoordinate:target generation:generation];
     });
     self.geocodeDebounceBlock = debounceBlock;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
-                                 (int64_t)(PPAnimDurationNormal * NSEC_PER_SEC)),
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(PPAnimDurationNormal * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), debounceBlock);
 }
 
 - (void)startReverseGeocodeForCoordinate:(CLLocationCoordinate2D)target
                               generation:(NSUInteger)generation
 {
-    if (!PPLocationPickerCoordinateIsUsable(target) ||
-        generation != self.geocodeGeneration) {
+    if (!PPLocationPickerCoordinateIsUsable(target) || generation != self.geocodeGeneration) {
         return;
     }
 
@@ -1441,13 +1959,11 @@ idleAtCameraPosition:(GMSCameraPosition *)position
         [self pp_tryAppleReverseGeocodeForCoordinate:target generation:generation];
     });
     self.geocodeTimeoutBlock = timeoutBlock;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
-                                 (int64_t)(2.0 * NSEC_PER_SEC)),
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), timeoutBlock);
 
     [self.geocoder reverseGeocodeCoordinate:target
-                          completionHandler:^(GMSReverseGeocodeResponse *response,
-                                              NSError *error) {
+                          completionHandler:^(GMSReverseGeocodeResponse *response, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self || generation != self.geocodeGeneration ||
@@ -1465,12 +1981,9 @@ idleAtCameraPosition:(GMSCameraPosition *)position
                 return;
             }
 
-            if (self.appleResolvedGeneration == generation) {
-                return;
-            }
+            if (self.appleResolvedGeneration == generation) return;
 
-            NSLog(@"[LocationPicker] reverse geocode fallback: %@",
-                  error.localizedDescription ?: @"No result");
+            NSLog(@"[LocationPicker] reverse geocode fallback: %@", error.localizedDescription ?: @"No result");
             self.selectedAddress = nil;
             [self pp_updateMapCardWithFallbackCoordinate:target];
             [self pp_tryAppleReverseGeocodeForCoordinate:target generation:generation];
@@ -1487,13 +2000,11 @@ idleAtCameraPosition:(GMSCameraPosition *)position
         return;
     }
 
-    CLLocation *location =
-        [[CLLocation alloc] initWithLatitude:coordinate.latitude
-                                  longitude:coordinate.longitude];
+    CLLocation *location = [[CLLocation alloc] initWithLatitude:coordinate.latitude
+                                                      longitude:coordinate.longitude];
     __weak typeof(self) weakSelf = self;
     [self.appleGeocoder reverseGeocodeLocation:location
-                             completionHandler:^(NSArray<CLPlacemark *> *placemarks,
-                                                 NSError *error) {
+                             completionHandler:^(NSArray<CLPlacemark *> *placemarks, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self || generation != self.geocodeGeneration || error ||
@@ -1501,15 +2012,11 @@ idleAtCameraPosition:(GMSCameraPosition *)position
                 ![self pp_cameraStillTargetsCoordinate:coordinate]) {
                 return;
             }
-            NSString *resolvedTitle =
-                [self pp_compactTitleFromPlacemark:placemarks.firstObject];
-            if (resolvedTitle.length == 0) {
-                return;
-            }
+            NSString *resolvedTitle = [self pp_compactTitleFromPlacemark:placemarks.firstObject];
+            if (resolvedTitle.length == 0) return;
             self.appleResolvedGeneration = generation;
             self.selectedLocationTitle = resolvedTitle;
-            [self pp_updateMapCardWithResolvedTitle:resolvedTitle
-                                         coordinate:coordinate];
+            [self pp_updateMapCardWithResolvedTitle:resolvedTitle coordinate:coordinate];
         });
     }];
 }
@@ -1521,18 +2028,14 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 
 - (void)pp_cancelPendingGeocodeDebounce
 {
-    if (!self.geocodeDebounceBlock) {
-        return;
-    }
+    if (!self.geocodeDebounceBlock) return;
     dispatch_block_cancel(self.geocodeDebounceBlock);
     self.geocodeDebounceBlock = nil;
 }
 
 - (void)pp_cancelPendingGeocodeTimeout
 {
-    if (!self.geocodeTimeoutBlock) {
-        return;
-    }
+    if (!self.geocodeTimeoutBlock) return;
     dispatch_block_cancel(self.geocodeTimeoutBlock);
     self.geocodeTimeoutBlock = nil;
 }
@@ -1547,7 +2050,7 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     }
 }
 
-#pragma mark - Accessibility Precision Actions
+#pragma mark - Accessibility Actions
 
 - (void)pp_configureAccessibilityActions
 {
@@ -1591,16 +2094,12 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     return [self pp_nudgeCameraLatitude:0.0 longitude:-0.00025];
 }
 
-- (BOOL)pp_nudgeCameraLatitude:(CLLocationDegrees)latitudeDelta
-                     longitude:(CLLocationDegrees)longitudeDelta
+- (BOOL)pp_nudgeCameraLatitude:(CLLocationDegrees)latitudeDelta longitude:(CLLocationDegrees)longitudeDelta
 {
     CLLocationCoordinate2D current = self.mapView.camera.target;
-    CLLocationCoordinate2D next =
-        CLLocationCoordinate2DMake(current.latitude + latitudeDelta,
-                                   current.longitude + longitudeDelta);
-    if (!PPLocationPickerCoordinateIsUsable(next)) {
-        return NO;
-    }
+    CLLocationCoordinate2D next = CLLocationCoordinate2DMake(current.latitude + latitudeDelta, current.longitude + longitudeDelta);
+    if (!PPLocationPickerCoordinateIsUsable(next)) return NO;
+
     self.shouldCenterOnNextLocationUpdate = NO;
     [self.locationManager stopUpdatingLocation];
     [self pp_moveCameraToCoordinate:next zoom:self.mapView.camera.zoom];
@@ -1611,6 +2110,7 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 
 - (void)centerToUserLocation
 {
+    [self.lightImpact impactOccurred];
     CLAuthorizationStatus status = [self pp_locationAuthorizationStatus];
     if (status == kCLAuthorizationStatusNotDetermined) {
         self.shouldCenterOnNextLocationUpdate = YES;
@@ -1627,7 +2127,7 @@ idleAtCameraPosition:(GMSCameraPosition *)position
         fabs(mapLocation.timestamp.timeIntervalSinceNow) <= 30.0;
     CLLocationCoordinate2D coordinate = fresh ? mapLocation.coordinate : kCLLocationCoordinate2DInvalid;
     if (PPLocationPickerCoordinateIsUsable(coordinate)) {
-        [self pp_moveCameraToCoordinate:coordinate zoom:15.0];
+        [self pp_moveCameraToCoordinate:coordinate zoom:16.0];
         return;
     }
 
@@ -1639,8 +2139,7 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     self.shouldCenterOnNextLocationUpdate = YES;
     self.recenterButton.enabled = NO;
     self.recenterButton.alpha = 0.52;
-    self.recenterButton.accessibilityValue =
-        kLang(@"location_picker_finding_current_location");
+    self.recenterButton.accessibilityValue = kLang(@"location_picker_finding_current_location");
     NSUInteger generation = ++self.locationRequestGeneration;
     [self.locationManager requestLocation];
     __weak typeof(self) weakSelf = self;
@@ -1656,13 +2155,12 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 
 - (void)pp_moveCameraToCoordinate:(CLLocationCoordinate2D)coordinate zoom:(float)zoom
 {
-    if (!PPLocationPickerCoordinateIsUsable(coordinate)) {
-        return;
-    }
+    if (!PPLocationPickerCoordinateIsUsable(coordinate)) return;
+
     GMSCameraPosition *camera =
         [GMSCameraPosition cameraWithLatitude:coordinate.latitude
-                                    longitude:coordinate.longitude
-                                         zoom:zoom];
+                                     longitude:coordinate.longitude
+                                          zoom:zoom];
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.mapView.camera = camera;
     } else {
@@ -1674,14 +2172,13 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 {
     NSURL *settingsURL = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
     if ([[UIApplication sharedApplication] canOpenURL:settingsURL]) {
-        [[UIApplication sharedApplication] openURL:settingsURL
-                                           options:@{}
-                                 completionHandler:nil];
+        [[UIApplication sharedApplication] openURL:settingsURL options:@{} completionHandler:nil];
     }
 }
 
 - (void)pp_closePicker
 {
+    [self.lightImpact impactOccurred];
     if (self.navigationController) {
         BOOL isRootOfPresentedNavigation =
             self.navigationController.viewControllers.firstObject == self &&
@@ -1698,30 +2195,27 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 
 - (void)confirmLocationTapped
 {
+    [self.mediumImpact impactOccurred];
+
     if (self.selectedAddress) {
         if (self.onLocationConfirmed) {
             self.onLocationConfirmed(self.selectedAddress);
         }
         if (self.onCoordinateConfirmed) {
-            NSString *resolvedTitle =
-                [LocationPickerViewController titleFromAddress:self.selectedAddress];
+            NSString *resolvedTitle = [LocationPickerViewController titleFromAddress:self.selectedAddress];
             if (resolvedTitle.length == 0) {
                 resolvedTitle = self.selectedLocationTitle;
             }
-            self.onCoordinateConfirmed(self.selectedAddress.coordinate,
-                                       resolvedTitle ?: @"");
+            self.onCoordinateConfirmed(self.selectedAddress.coordinate, resolvedTitle ?: @"");
         }
         if (self.rowDescriptor) {
-            NSString *rowTitle =
-                [LocationPickerViewController titleFromAddress:self.selectedAddress];
+            NSString *rowTitle = [LocationPickerViewController titleFromAddress:self.selectedAddress];
             if (rowTitle.length == 0) {
                 rowTitle = self.selectedLocationTitle;
             }
             self.rowDescriptor.value = rowTitle ?: @"";
-            if ([self.delegate respondsToSelector:
-                 @selector(didSelectGMSAddress:forRowDescriptor:)]) {
-                [self.delegate didSelectGMSAddress:self.selectedAddress
-                                  forRowDescriptor:self.rowDescriptor];
+            if ([self.delegate respondsToSelector:@selector(didSelectGMSAddress:forRowDescriptor:)]) {
+                [self.delegate didSelectGMSAddress:self.selectedAddress forRowDescriptor:self.rowDescriptor];
             }
         }
         [self pp_closePicker];
@@ -1760,14 +2254,9 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 
 + (NSString *)titleFromAddress:(GMSAddress *)address
 {
-    if (!address) {
-        return @"";
-    }
-
-    NSString *primary =
-        address.subLocality ?: address.locality ?: address.thoroughfare ?: @"";
-    NSString *secondary =
-        address.locality ?: address.administrativeArea ?: address.country ?: @"";
+    if (!address) return @"";
+    NSString *primary = address.subLocality ?: address.locality ?: address.thoroughfare ?: @"";
+    NSString *secondary = address.locality ?: address.administrativeArea ?: address.country ?: @"";
     if ([primary isEqualToString:secondary]) {
         secondary = @"";
     }
@@ -1779,9 +2268,7 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 
 - (void)shakeView:(UIView *)view
 {
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        return;
-    }
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
     CABasicAnimation *shake = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
     shake.duration = 0.06;
     shake.repeatCount = 3;
@@ -1791,14 +2278,12 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     [view.layer addAnimation:shake forKey:@"pp.location.invalid-selection"];
 }
 
-#pragma mark - Navigation Ownership
+#pragma mark - Navigation & TabBar Ownership
 
 - (void)pp_captureNavigationAppearanceIfNeeded
 {
     UINavigationBar *navigationBar = self.navigationController.navigationBar;
-    if (!navigationBar || self.capturedNavigationAppearance) {
-        return;
-    }
+    if (!navigationBar || self.capturedNavigationAppearance) return;
     self.capturedNavigationAppearance = YES;
     self.navigationBarWasTranslucent = navigationBar.translucent;
     self.savedNavigationTintColor = navigationBar.tintColor;
@@ -1806,17 +2291,14 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     self.savedScrollEdgeAppearance = [navigationBar.scrollEdgeAppearance copy];
     self.savedCompactAppearance = [navigationBar.compactAppearance copy];
     if (@available(iOS 15.0, *)) {
-        self.savedCompactScrollEdgeAppearance =
-            [navigationBar.compactScrollEdgeAppearance copy];
+        self.savedCompactScrollEdgeAppearance = [navigationBar.compactScrollEdgeAppearance copy];
     }
 }
 
 - (void)pp_restoreNavigationAppearance
 {
     UINavigationBar *navigationBar = self.navigationController.navigationBar;
-    if (!navigationBar || !self.capturedNavigationAppearance) {
-        return;
-    }
+    if (!navigationBar || !self.capturedNavigationAppearance) return;
     navigationBar.translucent = self.navigationBarWasTranslucent;
     navigationBar.tintColor = self.savedNavigationTintColor;
     if (self.savedStandardAppearance) {
@@ -1825,42 +2307,20 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     navigationBar.scrollEdgeAppearance = self.savedScrollEdgeAppearance;
     navigationBar.compactAppearance = self.savedCompactAppearance;
     if (@available(iOS 15.0, *)) {
-        navigationBar.compactScrollEdgeAppearance =
-            self.savedCompactScrollEdgeAppearance;
+        navigationBar.compactScrollEdgeAppearance = self.savedCompactScrollEdgeAppearance;
     }
 }
 
-- (BOOL)pp_isPushedFromHomeViewController
-{
-    NSArray<UIViewController *> *viewControllers =
-        self.navigationController.viewControllers ?: @[];
-    NSUInteger currentIndex = [viewControllers indexOfObject:self];
-    if (currentIndex == NSNotFound || currentIndex == 0) {
-        return NO;
-    }
-    Class homeClass = NSClassFromString(@"PPHomeViewController");
-    UIViewController *previousViewController = viewControllers[currentIndex - 1];
-    return homeClass != Nil &&
-        [previousViewController isKindOfClass:homeClass];
-}
-
-- (void)pp_setHomeBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
+- (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
     UITabBarController *tabBarController = self.tabBarController;
-    if ([tabBarController respondsToSelector:
-         @selector(pp_setBottomNavigationHidden:animated:)]) {
-        [(id<PPBottomNavigationVisibilityControlling>)tabBarController
-            pp_setBottomNavigationHidden:hidden animated:animated];
-        return;
+    if ([tabBarController respondsToSelector:@selector(pp_setBottomNavigationHidden:animated:)]) {
+        [(id<PPBottomNavigationVisibilityControlling>)tabBarController pp_setBottomNavigationHidden:hidden animated:animated];
     }
 
     UITabBar *tabBar = tabBarController.tabBar;
-    if (!tabBar) {
-        return;
-    }
-    if (!hidden) {
-        tabBar.hidden = NO;
-    }
+    if (!tabBar) return;
+    if (!hidden) tabBar.hidden = NO;
 
     void (^changes)(void) = ^{
         tabBar.alpha = hidden ? 0.0 : 1.0;
@@ -1868,39 +2328,24 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     void (^completion)(BOOL) = ^(__unused BOOL finished) {
         tabBar.hidden = hidden;
     };
+
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
         changes();
         completion(YES);
-        return;
+    } else {
+        [UIView animateWithDuration:PPAnimDurationNormal
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                         animations:changes
+                         completion:completion];
     }
-    [UIView animateWithDuration:PPAnimDurationNormal
-                          delay:0.0
-                        options:UIViewAnimationOptionBeginFromCurrentState |
-                                UIViewAnimationOptionCurveEaseInOut
-                     animations:changes
-                     completion:completion];
 }
 
-#pragma mark - Appearance
-
-- (void)pp_updateAdaptiveChromeColors
-{
-    UIColor *hairlineColor =
-        [UIColor.separatorColor colorWithAlphaComponent:0.20];
-    self.instructionChromeView.layer.borderColor = hairlineColor.CGColor;
-    self.dockChromeView.layer.borderColor = hairlineColor.CGColor;
-    self.inlineCloseButton.layer.borderColor = hairlineColor.CGColor;
-    self.recenterButton.layer.borderColor = hairlineColor.CGColor;
-    self.pinTargetRingView.layer.borderColor =
-        [PPLocationPickerAccentColor() colorWithAlphaComponent:0.24].CGColor;
-    self.pinHeadView.layer.borderColor =
-        [UIColor.whiteColor colorWithAlphaComponent:0.28].CGColor;
-}
+#pragma mark - Dark Mode & Appearance
 
 - (void)applyDarkModeToMapView:(GMSMapView *)mapView
 {
-    NSString *stylePath =
-        [[NSBundle mainBundle] pathForResource:@"map_dark_style" ofType:@"json"];
+    NSString *stylePath = [[NSBundle mainBundle] pathForResource:@"map_dark_style" ofType:@"json"];
     if (stylePath.length == 0) {
         NSLog(@"[LocationPicker] map_dark_style.json is missing from the app bundle.");
         mapView.mapStyle = nil;
@@ -1909,11 +2354,9 @@ idleAtCameraPosition:(GMSCameraPosition *)position
 
     NSError *error = nil;
     NSURL *url = [NSURL fileURLWithPath:stylePath];
-    GMSMapStyle *mapStyle =
-        [GMSMapStyle styleWithContentsOfFileURL:url error:&error];
+    GMSMapStyle *mapStyle = [GMSMapStyle styleWithContentsOfFileURL:url error:&error];
     if (!mapStyle) {
-        NSLog(@"[LocationPicker] failed to load map style: %@",
-              error.localizedDescription);
+        NSLog(@"[LocationPicker] failed to load map style: %@", error.localizedDescription);
         mapView.mapStyle = nil;
         return;
     }
@@ -1928,7 +2371,6 @@ idleAtCameraPosition:(GMSCameraPosition *)position
     } else {
         self.mapView.mapStyle = nil;
     }
-    [self pp_updateAdaptiveChromeColors];
     [self.view setNeedsLayout];
 }
 

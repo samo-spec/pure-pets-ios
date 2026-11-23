@@ -1133,7 +1133,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.photoBrowserBridge.useArabic = Language.isRTL;
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(pp_handleLanguageDidChange:)
-                                               name:PPAddNewAdLanguageDidChangeNotification
+                                                 name:PPAddNewAdLanguageDidChangeNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_rebuildSpeciesChips)
+                                                 name:PPMainKindsUpdatedNotification
                                                object:nil];
     [self pp_refreshMediaLocalizedText];
     if (![self restoreDraftIfNeeded]) {
