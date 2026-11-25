@@ -10,8 +10,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PPAdSharingHelper : NSObject
-+ (void)sharePetAd:(PetAd *)petAd fromViewController:(UIViewController *)viewController;
-+ (void)shareItem:(id)item fromViewController:(UIViewController *)viewController;
++ (void)sharePetAd:(PetAd *)petAd fromViewController:(UIViewController *)viewController NS_SWIFT_NAME(sharePetAd(_:from:));
++ (void)shareItem:(id)item fromViewController:(UIViewController *)viewController NS_SWIFT_NAME(shareItem(_:from:));
 @end
 
 NS_ASSUME_NONNULL_END

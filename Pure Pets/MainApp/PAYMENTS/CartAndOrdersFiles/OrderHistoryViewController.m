@@ -362,8 +362,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     BOOL showBack = (self.navigationController.viewControllers.count > 1);
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"OrderHistory") showBack:showBack];
 
-    UIButton *supportButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"headphones.dots" target:self action:@selector(contactSupportTapped)];
-    UIButton *refreshButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"arrow.clockwise" target:self action:@selector(refreshOrders)];
+    UIButton *supportButton = [self pp_ButtonWithSystemName:@"headphones.dots" action:@selector(contactSupportTapped)];
+    UIButton *refreshButton = [self pp_ButtonWithSystemName:@"arrow.clockwise" action:@selector(refreshOrders)];
     UIBarButtonItem *supportItem = [[UIBarButtonItem alloc] initWithCustomView:supportButton];
     UIBarButtonItem *refreshItem = [[UIBarButtonItem alloc] initWithCustomView:refreshButton];
     self.navigationItem.rightBarButtonItems = @[refreshItem, supportItem];

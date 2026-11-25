@@ -99,12 +99,8 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     self.view.backgroundColor = editorBackgroundColor;
     self.title = kLang(@"story_edit_title");
     [self pp_applyNavigationAppearance];
-    self.navigationItem.leftBarButtonItem =
-        [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"xmark"]
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(pp_cancelTapped)];
-    self.navigationItem.leftBarButtonItem.tintColor = UIColor.labelColor;
+    UIButton *cancelBtn = [self pp_ButtonWithSystemName:@"xmark" action:@selector(pp_cancelTapped)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cancelBtn];
 
     UIButton *saveButton = [UIButton buttonWithType:UIButtonTypeSystem];
     saveButton.frame = CGRectMake(0, 0, 102.0, 38.0);

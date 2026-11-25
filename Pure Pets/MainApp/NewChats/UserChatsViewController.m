@@ -18,6 +18,7 @@
 #import "PPSelectOptionViewController.h"
 #import "PPStoriesViewController.h"
 #import "PPAlertHelper.h"
+#import "PPFirebaseSessionBridge.h"
 
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <UIKit/UIKit.h>
@@ -1721,8 +1722,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     NSString *targetUID = [selectedUserClass.ID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] ?: @"";
     if (targetUID.length == 0) {
         [PPAlertHelper showErrorIn:self
-                             title:kLang(@"Error")
-                          subtitle:kLang(@"SomethingWentWrong")];
+                             title:kLang(@"chat_start_failed_title")
+                          subtitle:kLang(@"chat_start_failed_message")];
         return;
     }
 
@@ -1730,7 +1731,7 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     if ([targetUID isEqualToString:currentUID]) {
         [PPAlertHelper showWarningIn:self
                                title:kLang(@"Warning")
-                            subtitle:kLang(@"CannotChatWithSelf") ?: @"Cannot chat with yourself."];
+                            subtitle:kLang(@"CannotChatWithSelf")];
         return;
     }
 
@@ -1745,19 +1746,17 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
             if (!self) return;
 
             if (error) {
-                NSString *errorMsg = error.localizedDescription.length > 0
-                    ? error.localizedDescription
-                    : kLang(@"SomethingWentWrong");
                 [PPAlertHelper showErrorIn:self
-                                     title:kLang(@"Error")
-                                  subtitle:errorMsg];
+                                     title:[PPFirebaseSessionBridge publicChatTitleForError:error]
+                                  subtitle:[PPFirebaseSessionBridge publicChatMessageForError:error
+                                                                                  fallbackKey:@"chat_start_failed_message"]];
                 return;
             }
 
             if (!chatThread) {
                 [PPAlertHelper showErrorIn:self
-                                     title:kLang(@"Error")
-                                  subtitle:kLang(@"SomethingWentWrong")];
+                                     title:kLang(@"chat_start_failed_title")
+                                  subtitle:kLang(@"chat_start_failed_message")];
                 return;
             }
 
@@ -1776,8 +1775,8 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
                                                                         fromVC:topPresenter];
                         if (!retried) {
                             [PPAlertHelper showErrorIn:self
-                                                 title:kLang(@"Error")
-                                              subtitle:kLang(@"SomethingWentWrong")];
+                                                 title:kLang(@"chat_start_failed_title")
+                                              subtitle:kLang(@"chat_start_failed_message")];
                         }
                     });
                 }
@@ -1838,8 +1837,22 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     NSString *currentUID = [self pp_currentChatIdentity];
     NSArray<UserModel *> *options =
     [AppMgr.usersArray filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(UserModel *user, __unused NSDictionary *bindings) {
-        return ![user.ID isEqualToString:currentUID];
+        if (![user isKindOfClass:UserModel.class]) {
+            return NO;
+        }
+        NSString *candidateID = [user.ID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] ?: @"";
+        if (candidateID.length == 0 || [candidateID isEqualToString:currentUID]) {
+            return NO;
+        }
+        return !user.isChatEffectivelyBlocked && user.canUseChatFeature;
     }]];
+
+    if (options.count == 0) {
+        [PPAlertHelper showInfoIn:self
+                            title:kLang(@"chat_no_available_users_title")
+                         subtitle:kLang(@"chat_no_available_users_message")];
+        return;
+    }
 
     __weak typeof(self) weakSelf = self;
     PPSelectOptionViewController *picker =

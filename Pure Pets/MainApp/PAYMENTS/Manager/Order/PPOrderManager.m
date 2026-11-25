@@ -1218,6 +1218,20 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         NSInteger requestedQty = [entry[@"requestedQty"] integerValue];
         NSString *name = entry[@"name"] ?: @"";
         if (requestedQty <= 0) continue;
+        if (itemID.length == 0 || [itemID containsString:@"/"] ||
+            [itemID isEqualToString:@"."] || [itemID isEqualToString:@".."]) {
+            dispatch_group_enter(group);
+            dispatch_async(syncQueue, ^{
+                [issues addObject:@{
+                    @"itemID": itemID ?: @"",
+                    @"name": name ?: @"",
+                    @"requestedQty": @(requestedQty),
+                    @"availableQty": @0
+                }];
+                dispatch_group_leave(group);
+            });
+            continue;
+        }
 
         dispatch_group_enter(group);
         FIRDocumentReference *ref = [[db collectionWithPath:@"petAccessories"] documentWithPath:itemID];

@@ -874,13 +874,8 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     self.saveBarButton = [[UIBarButtonItem alloc] initWithCustomView:saveBtn];
     self.navigationItem.rightBarButtonItem = self.saveBarButton;
 
-    UIImage *backImg = [UIImage systemImageNamed:Language.isRTL ? @"chevron.right" : @"chevron.left"];
-    UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithImage:backImg
-                                                                 style:UIBarButtonItemStylePlain
-                                                                target:self
-                                                                action:@selector(backTapped)];
-    backItem.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    self.navigationItem.leftBarButtonItem = backItem;
+    UIButton *backBtn = [self pp_ButtonWithSystemName:PPChevronName action:@selector(backTapped)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backBtn];
 }
 
 - (void)backTapped {

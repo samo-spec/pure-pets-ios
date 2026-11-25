@@ -1,4 +1,5 @@
 #import "PPPetCareDiscoveryView.h"
+#import "PetCareHelpers.h"
 #import "PPDesignTokens.h"
 #import "AppClasses.h"
 
@@ -46,6 +47,8 @@ static UIButton *PPCareButton(NSString *identifier)
     UIImageView *_careMark;
     LOTAnimationView *_careLottieView;
     BOOL _careLottieLoaded;
+    NSDictionary *_rawCareLottieJSON;
+    UIUserInterfaceStyle _lastCareLottieStyle;
     UIView *_stateSurface;
     UIStackView *_stateStack;
     UIImageView *_stateIcon;
@@ -110,7 +113,7 @@ static UIButton *PPCareButton(NSString *identifier)
     _careMark.translatesAutoresizingMaskIntoConstraints = NO;
     _careMark.contentMode = UIViewContentModeScaleAspectFit;
     _careMark.isAccessibilityElement = NO;
-    _careMark.tintColor = AppPrimaryClr;
+    _careMark.tintColor = PPPetCareBrandPrimaryColor();
     [_careContainer addSubview:_careMark];
 
     _careLottieView = [[LOTAnimationView alloc] initWithFrame:CGRectMake(0, 0, 124.0, 62.0)];
@@ -285,8 +288,8 @@ static UIButton *PPCareButton(NSString *identifier)
     configuration.imagePadding = PPSpaceSM;
     configuration.titleAlignment = UIButtonConfigurationTitleAlignmentLeading;
     configuration.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMD, PPSpaceMD, PPSpaceMD, PPSpaceMD);
-    configuration.baseForegroundColor = selected ? AppPrimaryClr : AppPrimaryTextClr;
-    configuration.background.backgroundColor = filled ? [AppPrimaryClr colorWithAlphaComponent:0.08] : UIColor.clearColor;
+    configuration.baseForegroundColor = selected ? PPPetCareAccentTextColor() : PPPetCareSecondaryTextColor();
+    configuration.background.backgroundColor = filled ? PPPetCareActiveChipBackgroundColor() : UIColor.clearColor;
     configuration.background.cornerRadius = PPCornerSmall;
     UIFont *font = PPCareFont(PPFontCallout, UIFontTextStyleCallout, selected, self.traitCollection);
     configuration.titleTextAttributesTransformer = ^NSDictionary *(NSDictionary *attributes) {
@@ -294,6 +297,9 @@ static UIButton *PPCareButton(NSString *identifier)
         result[NSFontAttributeName] = font;
         return result;
     };
+    button.backgroundColor = UIColor.clearColor;
+    button.layer.borderWidth = 0.0;
+    button.layer.borderColor = nil;
     button.configuration = configuration;
     button.titleLabel.numberOfLines = 0;
     button.titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
@@ -348,22 +354,36 @@ static UIButton *PPCareButton(NSString *identifier)
     _stateMessage.font = PPCareFont(PPFontBody, UIFontTextStyleBody, NO, self.traitCollection);
     for (UILabel *label in @[_title, _subtitle, _resultLabel, _retainedLabel, _stateTitle, _stateMessage]) {
         label.textAlignment = [Language alignmentForCurrentLanguage];
-        label.textColor = (label == _title || label == _stateTitle) ? AppPrimaryTextClr : AppSecondaryTextClr;
+        if (label == _title || label == _stateTitle) {
+            label.textColor = PPPetCareTextColor();
+        } else if (label == _retainedLabel) {
+            label.textColor = PPPetCareBrandAccentTextColor();
+        } else {
+            label.textColor = PPPetCareSecondaryTextColor();
+        }
     }
-    _careMark.tintColor = AppPrimaryClr;
-    _stateIcon.tintColor = AppSecondaryTextClr;
-    _modeSeparator.backgroundColor = UIColor.separatorColor;
-    _selectionLine.backgroundColor = AppPrimaryClr;
-    _searchSurface.backgroundColor = AppForgroundColr;
-    _stateSurface.backgroundColor = AppForgroundColr;
-    _searchIcon.tintColor = AppSecondaryTextClr;
-    _searchField.textColor = AppPrimaryTextClr;
-    _searchField.tintColor = AppPrimaryClr;
+    _careMark.tintColor = PPPetCareBrandPrimaryColor();
+    _stateIcon.tintColor = (state == PPPetCareDiscoveryStateError)
+        ? PPPetCareDynamicHex(255.0, 59.0, 48.0, 1.0, 255.0, 69.0, 58.0, 1.0)
+        : PPPetCareAccentColor();
+    _modeSeparator.backgroundColor = PPPetCareSeparatorColor();
+    _selectionLine.backgroundColor = PPPetCareAccentColor();
+    _searchSurface.backgroundColor = PPPetCareSurfaceColor();
+    [_searchSurface pp_setBorderColor:PPPetCareBorderColor()];
+    _searchSurface.layer.borderWidth = self.traitCollection.accessibilityContrast == UIAccessibilityContrastHigh ? 1.5 : 1.0;
+    _searchSurface.layer.cornerRadius = PPCornerSmall;
+    _stateSurface.backgroundColor = PPPetCareSurfaceColor();
+    [_stateSurface pp_setBorderColor:PPPetCareBorderColor()];
+    _stateSurface.layer.borderWidth = self.traitCollection.accessibilityContrast == UIAccessibilityContrastHigh ? 1.5 : 1.0;
+    _stateSurface.layer.cornerRadius = PPCornerSmall;
+    _searchIcon.tintColor = PPPetCareAccentColor();
+    _searchField.textColor = PPPetCareTextColor();
+    _searchField.tintColor = PPPetCareAccentColor();
     _searchField.font = PPCareFont(PPFontBody, UIFontTextStyleBody, NO, self.traitCollection);
     _searchField.textAlignment = [Language alignmentForCurrentLanguage];
     _searchField.semanticContentAttribute = self.semanticContentAttribute;
     NSString *placeholder = kLang(medicines ? @"pet_care_search_medicines" : (clinics ? @"pet_care_search_clinics" : @"pet_care_search_vets"));
-    _searchField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:placeholder attributes:@{NSForegroundColorAttributeName: AppSecondaryTextClr}];
+    _searchField.attributedPlaceholder = [[NSAttributedString alloc] initWithString:placeholder attributes:@{NSForegroundColorAttributeName: [PPPetCareSecondaryTextColor() colorWithAlphaComponent:0.85]}];
     _searchField.accessibilityLabel = placeholder;
 
     NSArray<UIButton *> *sectionButtons = @[_medicineButton, _vetsButton, _clinicsButton];
@@ -375,6 +395,7 @@ static UIButton *PPCareButton(NSString *identifier)
         [self styleButton:button title:kLang(sectionTitles[index]) symbol:accessibility && selected ? @"checkmark.circle.fill" : sectionSymbols[index] selected:selected filled:NO];
         // Stacked symbols leave room for three translated titles on compact phones.
         UIButtonConfiguration *configuration = button.configuration;
+        configuration.baseForegroundColor = selected ? PPPetCareAccentTextColor() : PPPetCareSecondaryTextColor();
         configuration.imagePlacement = accessibility ? NSDirectionalRectEdgeLeading : NSDirectionalRectEdgeTop;
         configuration.titleAlignment = accessibility ? UIButtonConfigurationTitleAlignmentLeading : UIButtonConfigurationTitleAlignmentCenter;
         configuration.imagePadding = PPSpaceXS;
@@ -385,13 +406,38 @@ static UIButton *PPCareButton(NSString *identifier)
         button.accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
         button.selected = selected;
     }
-    [self styleButton:_kindButton title:kindName.length ? kindName : kLang(@"pet_care_all_pets") symbol:@"pawprint" selected:NO filled:NO];
-    [self styleButton:_filterButton title:filterName.length ? filterName : kLang(@"pet_care_filter_by") symbol:@"slider.horizontal.3" selected:filterName.length > 0 filled:NO];
+    CGFloat chipStrokeWidth = self.traitCollection.accessibilityContrast == UIAccessibilityContrastHigh ? 1.5 : 1.0;
+
+    BOOL kindActive = kindName.length > 0;
+    [self styleButton:_kindButton title:kindName.length ? kindName : kLang(@"pet_care_all_pets") symbol:@"pawprint" selected:kindActive filled:kindActive];
+    UIButtonConfiguration *kindConfig = _kindButton.configuration;
+    kindConfig.baseForegroundColor = kindActive ? PPPetCareActiveChipTextColor() : PPPetCareTextColor();
+    kindConfig.background.backgroundColor = kindActive ? PPPetCareActiveChipBackgroundColor() : PPPetCareSurfaceColor();
+    kindConfig.background.strokeColor = kindActive ? PPPetCareActiveChipBorderColor() : PPPetCareBorderColor();
+    kindConfig.background.strokeWidth = chipStrokeWidth;
+    kindConfig.background.cornerRadius = PPCornerSmall;
+    _kindButton.configuration = kindConfig;
+
+    BOOL filterActive = filterName.length > 0;
+    [self styleButton:_filterButton title:filterName.length ? filterName : kLang(@"pet_care_filter_by") symbol:@"slider.horizontal.3" selected:filterActive filled:filterActive];
+    UIButtonConfiguration *filterConfig = _filterButton.configuration;
+    filterConfig.baseForegroundColor = filterActive ? PPPetCareActiveChipTextColor() : PPPetCareTextColor();
+    filterConfig.background.backgroundColor = filterActive ? PPPetCareActiveChipBackgroundColor() : PPPetCareSurfaceColor();
+    filterConfig.background.strokeColor = filterActive ? PPPetCareActiveChipBorderColor() : PPPetCareBorderColor();
+    filterConfig.background.strokeWidth = chipStrokeWidth;
+    filterConfig.background.cornerRadius = PPCornerSmall;
+    _filterButton.configuration = filterConfig;
+
     _kindButton.accessibilityLabel = kLang(@"pet_care_kind_filter");
     _kindButton.accessibilityValue = kindName.length ? kindName : kLang(@"pet_care_all_pets");
     _filterButton.accessibilityValue = filterName.length ? filterName : kLang(@"pet_care_filter_all");
 
     [self styleButton:_refreshButton title:@"" symbol:@"arrow.clockwise" selected:NO filled:NO];
+    _refreshButton.tintColor = PPPetCareAccentColor();
+    UIButtonConfiguration *refreshConfig = _refreshButton.configuration;
+    refreshConfig.baseForegroundColor = PPPetCareAccentColor();
+    _refreshButton.configuration = refreshConfig;
+    _activity.color = PPPetCareAccentColor();
     _refreshButton.accessibilityLabel = kLang(@"pet_care_refresh");
     _refreshButton.enabled = !loading;
     _refreshButton.hidden = loading;
@@ -435,8 +481,21 @@ static UIButton *PPCareButton(NSString *identifier)
     _stateTitle.text = kLang(titleKey);
     _stateMessage.text = kLang(messageKey);
     [self styleButton:_primaryButton title:kLang(actionKey) symbol:state == PPPetCareDiscoveryStateNoMatches ? @"line.3.horizontal.decrease" : @"arrow.clockwise" selected:YES filled:YES];
+    UIButtonConfiguration *primaryConfig = _primaryButton.configuration;
+    primaryConfig.baseForegroundColor = UIColor.whiteColor;
+    primaryConfig.background.backgroundColor = PPPetCareBrandPrimaryColor();
+    primaryConfig.background.cornerRadius = PPCornerSmall;
+    _primaryButton.configuration = primaryConfig;
+
     NSString *alternateKey = section == PPPetCareInitialSectionVeterinarians ? @"pet_care_explore_medicines" : @"pet_care_explore_vets";
     [self styleButton:_alternateButton title:kLang(alternateKey) symbol:Language.isRTL ? @"arrow.left" : @"arrow.right" selected:NO filled:NO];
+    UIButtonConfiguration *alternateConfig = _alternateButton.configuration;
+    alternateConfig.baseForegroundColor = PPPetCareTextColor();
+    alternateConfig.background.backgroundColor = PPPetCareSecondarySurfaceColor();
+    alternateConfig.background.strokeColor = PPPetCareBorderColor();
+    alternateConfig.background.strokeWidth = chipStrokeWidth;
+    alternateConfig.background.cornerRadius = PPCornerSmall;
+    _alternateButton.configuration = alternateConfig;
     _primaryButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
 
     UIButton *selection = medicines ? _medicineButton : (clinics ? _clinicsButton : _vetsButton);
@@ -464,6 +523,9 @@ static UIButton *PPCareButton(NSString *identifier)
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    if (_rawCareLottieJSON && [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self pp_applyCareLottieForCurrentTraitCollection];
+    }
     if (_hasConfiguration) {
         [self configureForSection:_selectedSection kindName:_kindName filterName:_filterName count:_count state:_state loading:_loading animated:NO];
     }
@@ -500,6 +562,108 @@ static UIButton *PPCareButton(NSString *identifier)
 
 #pragma mark - Lottie Animation
 
+static NSArray<NSNumber *> *PPPetCareLottieRGBA(UIColor *color, UITraitCollection *traits)
+{
+    UIColor *resolved = [color resolvedColorWithTraitCollection:traits];
+    CGFloat r = 0, g = 0, b = 0, a = 1;
+    if (![resolved getRed:&r green:&g blue:&b alpha:&a]) {
+        CGFloat white = 0;
+        if ([resolved getWhite:&white alpha:&a]) {
+            r = g = b = white;
+        }
+    }
+    return @[@(r), @(g), @(b), @(a)];
+}
+
+static NSDictionary *PPPetCareRetintedECGJSON(NSDictionary *rawJSON, UITraitCollection *traits)
+{
+    if (![rawJSON isKindOfClass:NSDictionary.class] || rawJSON.count == 0) {
+        return rawJSON;
+    }
+    NSData *data = [NSJSONSerialization dataWithJSONObject:rawJSON options:0 error:nil];
+    if (!data) {
+        return rawJSON;
+    }
+    NSMutableDictionary *mutableJSON = [NSJSONSerialization JSONObjectWithData:data
+                                                                     options:NSJSONReadingMutableContainers
+                                                                       error:nil];
+    if (![mutableJSON isKindOfClass:NSMutableDictionary.class]) {
+        return rawJSON;
+    }
+
+    BOOL dark = (traits.userInterfaceStyle == UIUserInterfaceStyleDark);
+    NSArray<NSNumber *> *baselineColor = dark
+        ? @[@0.9622, @0.9252, @0.9178, @1.0]
+        : PPPetCareLottieRGBA([PPPetCareSecondaryTextColor() colorWithAlphaComponent:0.42], traits);
+    NSArray<NSNumber *> *pulseColor = PPPetCareLottieRGBA(PPPetCareBrandAccentTextColor(), traits);
+    NSArray<NSNumber *> *dotColor = dark
+        ? PPPetCareLottieRGBA(PPPetCareTextColor(), traits)
+        : PPPetCareLottieRGBA(PPPetCareBrandPrimaryColor(), traits);
+    NSArray<NSNumber *> *blurStrokeColor = dark
+        ? @[@0.2327, @0.0273, @0.0718, @1.0]
+        : PPPetCareLottieRGBA([PPPetCareBrandPrimaryColor() colorWithAlphaComponent:0.25], traits);
+
+    NSArray *layers = [mutableJSON[@"layers"] isKindOfClass:NSArray.class] ? mutableJSON[@"layers"] : nil;
+    for (id layerObj in layers) {
+        if (![layerObj isKindOfClass:NSMutableDictionary.class]) continue;
+        NSMutableDictionary *layer = (NSMutableDictionary *)layerObj;
+        NSInteger ind = [layer[@"ind"] integerValue];
+        NSArray *shapes = [layer[@"shapes"] isKindOfClass:NSArray.class] ? layer[@"shapes"] : nil;
+        for (id groupObj in shapes) {
+            if (![groupObj isKindOfClass:NSMutableDictionary.class]) continue;
+            NSArray *items = [groupObj[@"it"] isKindOfClass:NSArray.class] ? groupObj[@"it"] : nil;
+            for (id itemObj in items) {
+                if (![itemObj isKindOfClass:NSMutableDictionary.class]) continue;
+                NSMutableDictionary *item = (NSMutableDictionary *)itemObj;
+                NSString *ty = item[@"ty"];
+                NSMutableDictionary *colorDict = [item[@"c"] isKindOfClass:NSMutableDictionary.class] ? item[@"c"] : nil;
+                if (!colorDict) continue;
+                if (ind == 5 && [ty isEqualToString:@"st"]) {
+                    colorDict[@"k"] = baselineColor;
+                } else if (ind == 2 && [ty isEqualToString:@"st"]) {
+                    colorDict[@"k"] = pulseColor;
+                } else if (ind == 1 && [ty isEqualToString:@"fl"]) {
+                    colorDict[@"k"] = dotColor;
+                } else if (ind == 3 && [ty isEqualToString:@"fl"]) {
+                    colorDict[@"k"] = pulseColor;
+                } else if (ind == 4 && [ty isEqualToString:@"st"]) {
+                    colorDict[@"k"] = blurStrokeColor;
+                }
+            }
+        }
+    }
+    return mutableJSON;
+}
+
+- (void)pp_applyCareLottieForCurrentTraitCollection
+{
+    if (!_rawCareLottieJSON) {
+        return;
+    }
+    UIUserInterfaceStyle style = self.traitCollection.userInterfaceStyle;
+    if (_careLottieLoaded && _lastCareLottieStyle == style) {
+        return;
+    }
+    NSDictionary *themedJSON = PPPetCareRetintedECGJSON(_rawCareLottieJSON, self.traitCollection) ?: _rawCareLottieJSON;
+    LOTComposition *composition = [LOTComposition animationFromJSON:themedJSON];
+    if (!composition) {
+        return;
+    }
+
+    _lastCareLottieStyle = style;
+    _careLottieLoaded = YES;
+    [_careLottieView setSceneModel:composition];
+    _careLottieView.loopAnimation = YES;
+    _careLottieView.autoReverseAnimation = NO;
+    _careLottieView.animationSpeed = 0.5;
+    _careLottieView.animationProgress = 0.0;
+    _careLottieView.hidden = NO;
+
+    [self layoutIfNeeded];
+    [_careLottieView layoutIfNeeded];
+    [_careLottieView play];
+}
+
 - (void)pp_loadCareLottieAnimation
 {
     __weak typeof(self) weakSelf = self;
@@ -512,25 +676,13 @@ static UIButton *PPCareButton(NSString *identifier)
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) return;
 
-            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
-            if (!composition) {
+            self->_rawCareLottieJSON = [jsonDict copy];
+            self->_lastCareLottieStyle = UIUserInterfaceStyleUnspecified;
+            [self pp_applyCareLottieForCurrentTraitCollection];
+            if (!self->_careLottieLoaded) {
                 NSLog(@"⚠️ PPPetCareDiscoveryView: Failed to build LOTComposition for ecg1.json");
                 return;
             }
-
-            self->_careLottieLoaded = YES;
-            [self->_careLottieView setSceneModel:composition];
-            self->_careLottieView.loopAnimation = YES;
-            self->_careLottieView.autoReverseAnimation = NO;
-            self->_careLottieView.animationSpeed = 0.5;
-            self->_careLottieView.animationProgress = 0.0;
-            self->_careLottieView.hidden = NO;
-
-            // Ensure layout bounds are non-zero before triggering Core Animation
-            [self layoutIfNeeded];
-            [self->_careLottieView layoutIfNeeded];
-
-            [self->_careLottieView play];
 
             [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
                 self->_careLottieView.alpha = 1.0;

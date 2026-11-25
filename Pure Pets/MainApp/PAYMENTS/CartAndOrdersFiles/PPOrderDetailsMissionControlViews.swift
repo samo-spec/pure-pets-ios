@@ -133,8 +133,14 @@ struct PPOrderDetailsMissionControlScreen: View {
                 Image(systemName: store.closeSymbol)
                     .font(.system(size: 17, weight: .bold))
                     .frame(width: 44, height: 44)
-                    .background(Color.ppSurfaceElevated, in: Circle())
-                    .overlay(Circle().stroke(Color.ppSurfaceBorder, lineWidth: 1))
+                    .background(
+                        Color.ppSurfaceElevated,
+                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(Color.ppSurfaceBorder, lineWidth: 1)
+                    )
             }
             .buttonStyle(.plain)
             .accessibilityLabel(closeAccessibilityLabel)
@@ -161,8 +167,14 @@ struct PPOrderDetailsMissionControlScreen: View {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 17, weight: .semibold))
                     .frame(width: 44, height: 44)
-                    .background(Color.ppSurfaceElevated, in: Circle())
-                    .overlay(Circle().stroke(Color.ppSurfaceBorder, lineWidth: 1))
+                    .background(
+                        Color.ppSurfaceElevated,
+                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(Color.ppSurfaceBorder, lineWidth: 1)
+                    )
             }
             .buttonStyle(.plain)
             .accessibilityLabel(PPOrderMissionText("Share"))
@@ -175,13 +187,14 @@ struct PPOrderDetailsMissionControlScreen: View {
                     .frame(width: 44, height: 44)
                     .background(
                         PPOrderMissionColorRole.support.opacity(0.16),
-                        in: Circle()
+                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
                     )
                     .overlay(
-                        Circle().stroke(
-                            PPOrderMissionColorRole.support.opacity(0.32),
-                            lineWidth: 1
-                        )
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(
+                                PPOrderMissionColorRole.support.opacity(0.32),
+                                lineWidth: 1
+                            )
                     )
             }
             .buttonStyle(.plain)
@@ -471,7 +484,10 @@ struct PPOrderDetailsMissionControlScreen: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Color.ppTextSecondary)
                     .frame(width: 36, height: 36)
-                    .background(Color.ppSecondarySurface, in: Circle())
+                    .background(
+                        Color.ppSecondarySurface,
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    )
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: PPSpace.xxs) {
@@ -496,7 +512,7 @@ struct PPOrderDetailsMissionControlScreen: View {
                     .frame(width: 32, height: 32)
                     .background(
                         PPOrderMissionColorRole.primaryAction.opacity(0.10),
-                        in: Circle()
+                        in: RoundedRectangle(cornerRadius: 9, style: .continuous)
                     )
                     .accessibilityHidden(true)
             }
@@ -1018,8 +1034,14 @@ struct PPOrderMissionSection<Content: View>: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(accent)
                     .frame(width: 38, height: 38)
-                    .background(accent.opacity(0.18), in: Circle())
-                    .overlay(Circle().stroke(accent.opacity(0.32), lineWidth: 1))
+                    .background(
+                        accent.opacity(0.18),
+                        in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .stroke(accent.opacity(0.32), lineWidth: 1)
+                    )
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(eyebrow)

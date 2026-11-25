@@ -539,7 +539,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         : [self pp_localizedStringForKey:@"postAd" fallback:@"Post"];
     self.saveButton = [PPButtonHelper pp_buttonWithTitle:bt font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(uploadAd)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:self.saveButton];
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName) style:UIBarButtonItemStylePlain target:self action:@selector(onBack)];
+    UIButton *backBtn = [self pp_ButtonWithSystemName:PPChevronName action:@selector(onBack)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backBtn];
     [self pp_setSubmitEnabled:!self.isSubmittingAccessory];
 }
 

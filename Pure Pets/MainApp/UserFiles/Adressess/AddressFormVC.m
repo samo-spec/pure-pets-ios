@@ -1678,10 +1678,8 @@ shouldChangeCharactersInRange:(NSRange)range
     NSString *leadingImageName = self.addressFormPresent == AddressFormPresentSheet
         ? @"xmark"
         : (PPChevronName ?: @"chevron.backward");
-    self.leadingBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:leadingImageName]
-                                                                 style:UIBarButtonItemStylePlain
-                                                                target:self
-                                                                action:@selector(pp_handleLeadingAction)];
+    UIButton *leadingBtn = [self pp_ButtonWithSystemName:leadingImageName action:@selector(pp_handleLeadingAction)];
+    self.leadingBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:leadingBtn];
     self.leadingBarButtonItem.accessibilityLabel = self.addressFormPresent == AddressFormPresentSheet
         ? (kLang(@"Cancel") ?: @"Cancel")
         : (kLang(@"Back") ?: @"Back");

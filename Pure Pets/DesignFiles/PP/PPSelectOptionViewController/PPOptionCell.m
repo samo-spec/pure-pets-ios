@@ -458,7 +458,11 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
         (user.FirstName.length > 0 ? [NSString stringWithFormat:@"%@ %@", user.FirstName, user.LastName ?: @""] : (kLang(@"Account") ?: @"Member"));
     
     // Subtitle: format phone or email or placeholder
-    NSString *sub = user.MobileNo.length > 0 ? user.MobileNo : (user.UserEmail.length > 0 ? user.UserEmail : @"Pure Pets User");
+    NSString *memberFallback = [Language get:@"pp_chat_picker_member_subtitle" alter:@"Pure Pets Member"];
+    if (memberFallback.length == 0 || [memberFallback isEqualToString:@"pp_chat_picker_member_subtitle"]) {
+        memberFallback = @"Pure Pets Member";
+    }
+    NSString *sub = user.MobileNo.length > 0 ? user.MobileNo : (user.UserEmail.length > 0 ? user.UserEmail : memberFallback);
     
     self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
                             scaledFontForFont:([Styling fontBold:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightBold])];

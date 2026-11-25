@@ -1077,7 +1077,8 @@ commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
 
     //[self setTopGard:_topView];
 
-    UIBarButtonItem *closebutton = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"multiply"] style:UIBarButtonItemStylePlain target:self action:@selector(closeForm:)];
+    UIButton *closeBtn = [self pp_ButtonWithSystemName:@"xmark" action:@selector(closeForm:)];
+    UIBarButtonItem *closebutton = [[UIBarButtonItem alloc] initWithCustomView:closeBtn];
     self.navigationItem.leftBarButtonItem = closebutton;
 
     UIButton *savBtn = [PPButtonHelper pp_buttonWithTitle:kLang(@"save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveForm:)];

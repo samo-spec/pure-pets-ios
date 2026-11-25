@@ -110,6 +110,7 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 @property (nonatomic, assign) BOOL phoneEditorPresented;
 @property (nonatomic, assign) NSUInteger phoneEditorGeneration;
 @property (nonatomic, assign) os_signpost_id_t presentationTraceID;
+@property (nonatomic, copy, nullable) NSString *lastCollectionLayoutSignature;
 
 
 - (void)pp_applyPaymentHeroNavBar;
@@ -612,7 +613,21 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     self.paymentContactButton.enabled = !locked;
     self.retryAddressButton.enabled = !locked;
     [self pp_refreshCheckoutCallToAction];
-    [self.paymentCollection.collectionViewLayout invalidateLayout];
+
+    NSString *layoutSignature = [NSString stringWithFormat:@"%@|%@|%d|%d|%d|%d|%d",
+                                 addressText ?: @"",
+                                 message ?: @"",
+                                 (int)self.checkoutNoticeLabel.hidden,
+                                 (int)self.retryAddressButton.hidden,
+                                 (int)self.addressStatusStack.hidden,
+                                 (int)self.paymentContactButton.hidden,
+                                 (int)self.contactDivider.hidden];
+    if (![self.lastCollectionLayoutSignature isEqualToString:layoutSignature]) {
+        self.lastCollectionLayoutSignature = layoutSignature;
+        if (self.paymentCollection.superview != nil && CGRectGetWidth(self.paymentCollection.bounds) > 0.0) {
+            [self.paymentCollection.collectionViewLayout invalidateLayout];
+        }
+    }
 }
 
 - (void)pp_configurePaymentContactWithPhone:(NSString *)phone
@@ -715,8 +730,13 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 
 - (CGFloat)pp_paymentSectionHeightForKind:(NSString *)kind width:(CGFloat)width
 {
+    CGFloat resolvedWidth = width;
+    if (resolvedWidth <= 2.0 * PPScreenMargin) {
+        CGFloat viewWidth = self.isViewLoaded ? CGRectGetWidth(self.view.bounds) : 0.0;
+        resolvedWidth = viewWidth > 2.0 * PPScreenMargin ? viewWidth : CGRectGetWidth(UIScreen.mainScreen.bounds);
+    }
     UIStackView *stack = [kind isEqualToString:UICollectionElementKindSectionHeader] ? self.paymentPreludeView : self.deliveryDetailsView;
-    CGFloat contentWidth = MAX(1.0, MIN(680.0, width - 2.0 * PPScreenMargin));
+    CGFloat contentWidth = MAX(1.0, MIN(680.0, resolvedWidth - 2.0 * PPScreenMargin));
     CGSize size = [stack systemLayoutSizeFittingSize:CGSizeMake(contentWidth, UILayoutFittingCompressedSize.height)
                                       withHorizontalFittingPriority:UILayoutPriorityRequired
                                             verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
@@ -2314,9 +2334,11 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
 -(void)viewWillLayoutSubviews
 {
     [super viewWillLayoutSubviews];
-    [self.view bringSubviewToFront:self.summaryView];
+    if (self.summaryView && self.view.subviews.lastObject != self.summaryView) {
+        [self.view bringSubviewToFront:self.summaryView];
+    }
     self.summaryView.userInteractionEnabled = YES;
- }
+}
 
 
 - (void)dealloc
@@ -2347,16 +2369,27 @@ static BOOL PPPaymentUsesExpandedTextMetrics(UITraitCollection *traits)
     if (nav) {
         [nav pushViewController:detailsVC animated:YES];
 
-        // Clean up navigation stack: remove payment selection screen so that popping or
-        // navigating back from order details returns directly to Home/previous root rather
-        // than landing back on the payment screen after the order has already been placed.
-        dispatch_async(dispatch_get_main_queue(), ^{
-            NSMutableArray<UIViewController *> *viewControllers = [nav.viewControllers mutableCopy];
-            if ([viewControllers containsObject:self]) {
-                [viewControllers removeObject:self];
-                nav.viewControllers = viewControllers;
+        // Clean up navigation stack after push transition settles so UIKit doesn't
+        // mutate viewControllers mid-animation.
+        __weak UINavigationController *weakNav = nav;
+        __weak typeof(self) weakSelf = self;
+        void (^removePaymentScreen)(void) = ^{
+            UINavigationController *strongNav = weakNav;
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongNav || !strongSelf) return;
+            NSMutableArray<UIViewController *> *viewControllers = [strongNav.viewControllers mutableCopy];
+            if ([viewControllers containsObject:strongSelf]) {
+                [viewControllers removeObject:strongSelf];
+                [strongNav setViewControllers:viewControllers animated:NO];
             }
-        });
+        };
+        if (nav.transitionCoordinator) {
+            [nav.transitionCoordinator animateAlongsideTransition:nil completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
+                removePaymentScreen();
+            }];
+        } else {
+            dispatch_async(dispatch_get_main_queue(), removePaymentScreen);
+        }
     }
 }
 @end

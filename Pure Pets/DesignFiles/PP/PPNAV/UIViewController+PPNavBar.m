@@ -7,6 +7,7 @@
 
 #import "UIViewController+PPNavBar.h"
 #import <objc/runtime.h>
+#import "Language.h"
 #import "ChatPresenceManager.h"
 #import "PPModernAvatarRenderer.h"
 @import FirebaseAuth;
@@ -45,6 +46,18 @@ static UIImage *PPNavSupportLogoImage(void) {
 }
 
 #pragma mark - Private helpers
+
+static inline BOOL PPIsRTL(UIViewController * _Nullable vc) {
+    if (vc && vc.isViewLoaded) {
+        if (vc.view.semanticContentAttribute == UISemanticContentAttributeForceRightToLeft) {
+            return YES;
+        }
+        if (vc.view.semanticContentAttribute == UISemanticContentAttributeForceLeftToRight) {
+            return NO;
+        }
+    }
+    return [Language isRTL];
+}
 
 @implementation UIViewController (PPNavBar)
 
@@ -879,18 +892,20 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
                                title:(NSString * _Nullable)titleString
 {
     UIView *bar = [self pp_navBarAttachWithTitle:titleString];
+    BOOL isRTL = PPIsRTL(self);
     
-    // Ensure default back on LEFT (your old behavior)
+    // Ensure default back on the leading side (left in LTR, right in RTL)
     if (!PPDictForVC(self, NO)[kPPKeyBaseBack]) {
-        UIButton *back = [self pp_ButtonWithSystemName:PPChevronName action:@selector(onBack)];
+        UIButton *back = [self pp_ButtonWithSystemName:(isRTL ? @"arrow.right" : @"arrow.left")
+                                                action:@selector(onBack)];
+        back.accessibilityLabel = isRTL ? @"رجوع" : @"Back";
         [self _pp_addLeftButton:back key:kPPKeyBaseBack];
     }
     
-    // Trailing "other" (RIGHT)
+    // Keep the auxiliary action on the trailing side (right in LTR, left in RTL)
+    [self pp_navBarRemoveButtonForKey:kPPKeyBaseButton];
     if (otherBtn) {
         [self _pp_addRightButton:otherBtn key:kPPKeyBaseButton];
-    } else {
-        [self pp_navBarRemoveButtonForKey:kPPKeyBaseButton];
     }
     return bar;
 }
@@ -918,19 +933,24 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     // Attach (or reuse)
     UIView *bar = [self pp_navBarAttachWithTitle:title];
 
+    BOOL isRTL = (layout == PPNavBarBaseLayoutRTL)
+              || (layout == PPNavBarBaseLayoutAuto && PPIsRTL(self));
+
     // Clean current base items
     [self pp_navBarRemoveButtonForKey:kPPKeyBaseBack];
     [self pp_navBarRemoveButtonForKey:kPPKeyBaseButton];
     
-    // Ensure default back on LEFT (your old behavior)
+    // Default back on leading side (left in LTR, right in RTL)
     if (showBack) {
-        /* The check below is redundant because kPPKeyBaseBack was removed above. If showBack is YES, the back button will always be added. */
         if (!PPDictForVC(self, NO)[kPPKeyBaseBack]) {
-            UIButton *back = [self pp_ButtonWithSystemName:PPChevronName action:@selector(onBack)];
+            UIButton *back = [self pp_ButtonWithSystemName:(isRTL ? @"arrow.right" : @"arrow.left")
+                                                    action:@selector(onBack)];
+            back.accessibilityLabel = isRTL ? @"رجوع" : @"Back";
             [self _pp_addLeftButton:back key:kPPKeyBaseBack];
         }
     }
     
+    // Auxiliary action button on trailing side (right in LTR, left in RTL)
     if (button) {
         [self _pp_addRightButton:button key:kPPKeyBaseButton];
     } else {
@@ -943,9 +963,24 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     return bar;
 }
 
+- (void)pp_navBarAddLeftButton:(UIButton *)btn key:(NSString *)key {
+    [self _pp_addLeftButton:btn key:key];
+}
 
-#pragma mark - Base layout you asked for
+- (void)pp_navBarAddRightButton:(UIButton *)btn key:(NSString *)key {
+    [self _pp_addRightButton:btn key:key];
+}
 
+- (void)pp_navBarAddActionButton:(UIButton *)button key:(NSString *)key {
+    [self _pp_addRightButton:button key:key];
+}
+
+- (UIButton *)pp_navBarSetActionIcon:(NSString *)systemImage key:(NSString *)key
+                              target:(id)target action:(SEL)action
+                                 tap:(PPNavBarTapBlock)tapBlock
+{
+    return [self pp_navBarSetRightIcon:systemImage key:key target:target action:action tap:tapBlock];
+}
 
 #pragma mark - Default back
 -(void)onBackBar:(UIBarButtonItem *)sender
@@ -957,10 +992,12 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     [self onBack];
 }
 - (void)onBack {
-    if (self.navigationController.viewControllers.count > 1) {
+    if (self.navigationController && self.navigationController.viewControllers.count > 1) {
         [self.navigationController popViewControllerAnimated:YES];
-    } else {
+    } else if (self.presentingViewController || self.navigationController.presentingViewController) {
         [self dismissViewControllerAnimated:YES completion:nil];
+    } else if (self.navigationController) {
+        [self.navigationController popViewControllerAnimated:YES];
     }
 }
 
@@ -1120,19 +1157,23 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 
     return button;
 }
-#pragma mark - PPButton circle button helper
+#pragma mark - PPButton semi-square button helper
 - (UIButton *)pp_ButtonWithSystemName:(NSString *)imageName action:(SEL)action {
     UIButton *btn;
-    CGFloat btnSize = PPIOS26() ? 44 :38 ;
+    CGFloat btnSize = 40.0;
+    if (@available(iOS 26.0, *)) {
+        btnSize = 44.0;
+    }
+    CGFloat cornerRadius = (btnSize >= 44.0) ? 13.0 : 12.0;
 
     if (@available(iOS 26.0, *)) {
-        
         UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
         cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
-        //cfg.background.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+        cfg.baseForegroundColor = AppPrimaryClr;
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.background.cornerRadius = cornerRadius;
 
-        btn = [UIButton new];
-        btn.configuration = cfg;
+        btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
         [btn setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
     }
     else if (@available(iOS 15.0, *)) {
@@ -1140,27 +1181,32 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
         
         // ✅ Set background color through configuration
-        cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        cfg.background.cornerRadius = btnSize / 2;
+        cfg.background.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.background.cornerRadius = cornerRadius;
         
         btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
-        btn.clipsToBounds = YES;
     } else {
         btn = [UIButton buttonWithType:UIButtonTypeSystem];
         btn.contentEdgeInsets = UIEdgeInsetsMake(6, 6, 6, 6);
-         btn.layer.cornerRadius = btnSize/2;
-         btn.clipsToBounds = YES;
+        btn.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+    }
+
+    // Semi-square continuous squircle corners
+    btn.layer.cornerRadius = cornerRadius;
+    if (@available(iOS 13.0, *)) {
+        btn.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
     // Try SF Symbol first → fallback to asset
     UIImage *icon = [UIImage systemImageNamed:imageName];
     if (!icon) {
         icon = [UIImage imageNamed:imageName];
-        icon = [UIImage pp_resizedImage:icon toPointSize:PPIOS26() ? 18 : 15];
+        icon = [UIImage pp_resizedImage:icon toPointSize:18];
     }
 
     if (!icon) {
-        DLog(@"[pp_circleButton] ⚠️ No image found for name: %@", imageName);
+        DLog(@"[pp_ButtonWithSystemName] ⚠️ No image found for name: %@", imageName);
         icon = [UIImage new]; // fallback empty
     }
     
@@ -1171,34 +1217,20 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     [btn setImage:icon forState:UIControlStateNormal];
 
     btn.translatesAutoresizingMaskIntoConstraints = NO;
+    btn.tintColor = AppPrimaryClr;
     
-    
-    // ✅ Remove the old backgroundColor assignment for iOS 15+
-    if (@available(iOS 26.0, *)) {
-        // Background is already set in configuration
-        //btn.tintColor = AppPrimaryClr ?: [UIColor systemBlueColor];
-    } else {
-        btn.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        btn.layer.cornerRadius = btnSize/2;
-        btn.layer.masksToBounds = YES;
-        
-        btn.tintColor = UIColor.labelColor;
-        
-        [self addLiquidGlassBorderToView:btn];
+    if (action) {
+        [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     }
-
-    [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    
     [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
     [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
-    
-    [btn pp_setShadowColor:AppShadowClr];
-    btn.layer.shadowOpacity = 0.07;
+
+    btn.layer.shadowColor = PPPetsUIShadowColor().CGColor;
+    btn.layer.shadowOpacity = 0.10;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
-    btn.layer.shadowRadius = 6;
+    btn.layer.shadowRadius = 6.0;
     btn.layer.masksToBounds = NO; // shadow needs this
 
-    
     // 🔹 If it's SF Symbol, apply config
     if ([UIImage systemImageNamed:imageName]) {
         UIImageSymbolConfiguration *config =
@@ -1211,106 +1243,16 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     } else {
         btn.imageView.contentMode = UIViewContentModeScaleAspectFit;
     }
-    
-    //[PPButtonHelper attachTapAnimationToButton:btn style:PPButtonAnimationStylePulse];
-    return btn;
+
+     return btn;
 }
 
+- (UIButton *)pp_ButtonForNav:(NSString *)imageName action:(SEL)action {
+    return [self pp_ButtonWithSystemName:imageName action:action];
+}
 
-#pragma mark - PPButton circle button helper
 - (UIButton *)pp_ButtonWithSystemNameForNav:(NSString *)imageName action:(SEL)action {
-    UIButton *btn;
-    CGFloat btnSize = PPIOS26() ? 44 :38 ;
-
-    if (@available(iOS 26.0, *)) {
-        
-        UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
-        //cfg.background.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-
-        btn = [UIButton new];
-        btn.configuration = cfg;
-        [btn setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
-    }
-    else if (@available(iOS 15.0, *)) {
-        UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
-        
-        // ✅ Set background color through configuration
-        cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        cfg.background.cornerRadius = btnSize / 2;
-        
-        btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
-        btn.clipsToBounds = YES;
-    } else {
-        btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        btn.contentEdgeInsets = UIEdgeInsetsMake(6, 6, 6, 6);
-         btn.layer.cornerRadius = btnSize/2;
-         btn.clipsToBounds = YES;
-    }
-
-    // Try SF Symbol first → fallback to asset
-    UIImage *icon = [UIImage systemImageNamed:imageName];
-    if (!icon) {
-        icon = [UIImage imageNamed:imageName];
-        icon = [UIImage pp_resizedImage:icon toPointSize:PPIOS26() ? 18 : 15];
-    }
-
-    if (!icon) {
-        DLog(@"[pp_circleButton] ⚠️ No image found for name: %@", imageName);
-        icon = [UIImage new]; // fallback empty
-    }
-    
-    if([imageName isEqualToString:@"headset"]) {
-        icon = [[UIImage pp_resizedImage:icon toPointSize:18] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    }
-
-    [btn setImage:icon forState:UIControlStateNormal];
-
-    btn.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    
-    // ✅ Remove the old backgroundColor assignment for iOS 15+
-    if (@available(iOS 26.0, *)) {
-        // Background is already set in configuration
-        //btn.tintColor = AppPrimaryClr ?: [UIColor systemBlueColor];
-    } else {
-        btn.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        btn.layer.cornerRadius = btnSize/2;
-        btn.layer.masksToBounds = YES;
-        
-        btn.tintColor = UIColor.labelColor;
-        
-        [self addLiquidGlassBorderToView:btn];
-    }
-
-    [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    
-    [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
-    [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
-    
-    [btn pp_setShadowColor:AppShadowClr];
-    btn.layer.shadowOpacity = 0.07;
-    btn.layer.shadowOffset = CGSizeMake(0, 2);
-    btn.layer.shadowRadius = 6;
-    btn.layer.masksToBounds = NO; // shadow needs this
-
-    
-    // 🔹 If it's SF Symbol, apply config
-    if ([UIImage systemImageNamed:imageName]) {
-        UIImageSymbolConfiguration *config =
-        [UIImageSymbolConfiguration configurationWithPointSize:20
-                                                        weight:UIImageSymbolWeightRegular
-                                                         scale:UIImageSymbolScaleMedium];
-        [btn setImage:[icon imageByApplyingSymbolConfiguration:config]
-              forState:UIControlStateNormal];
-        btn.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    } else {
-        btn.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    }
-    
-    //[PPButtonHelper attachTapAnimationToButton:btn style:PPButtonAnimationStylePulse];
-    return btn;
+    return [self pp_ButtonWithSystemName:imageName action:action];
 }
 
 #pragma mark - PPButton circle button helper
@@ -1438,57 +1380,6 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     [gradient addAnimation:anim forKey:@"liquidShimmer"];
     */
 }
-
-#pragma mark - PPButton circle button helper
-- (UIButton *)pp_ButtonForNav:(NSString *)imageName action:(SEL)action {
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-    
-    btn.contentEdgeInsets = UIEdgeInsetsMake(6, 6, 6, 6);
-    if (@available(iOS 26.0, *)) {
-    }
-    else  {
-        btn.backgroundColor = AppForgroundColr ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        btn.layer.cornerRadius = 22;
-        btn.layer.masksToBounds = NO;
-        
-        [btn pp_setShadowColor:AppShadowClr];
-        btn.layer.shadowOpacity = 0.07;
-        btn.layer.shadowOffset = CGSizeMake(0, 2);
-        btn.layer.shadowRadius = 6;
-        btn.layer.masksToBounds = NO; // shadow needs this
-
-    }
-
-    // Try SF Symbol first → fallback to asset
-    UIImage *icon = [UIImage systemImageNamed:imageName];
-    if (!icon) {
-        icon = [UIImage imageNamed:imageName];
-        icon = [UIImage pp_resizedImage:icon toPointSize:18];
-    }
-    
-    
-    [btn setImage:icon forState:UIControlStateNormal];
-    btn.translatesAutoresizingMaskIntoConstraints = NO;
-    btn.tintColor = AppPrimaryClr ?:AppButtonMixColorClr;
-     
-
-    [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    
-    if (@available(iOS 26.0, *)) {}
-    else
-    {
-        [btn.widthAnchor constraintEqualToConstant:44].active = YES;
-        [btn.heightAnchor constraintEqualToConstant:44].active = YES;
-    }
-     
-    return btn;
-}
-
-
-
-
-/* The above old implementation of pp_ButtonWithSystemName is left in comments.
- * If it's no longer needed, consider removing it to avoid confusion and keep the code clean. */
 
 #pragma mark - Button plumbing
 

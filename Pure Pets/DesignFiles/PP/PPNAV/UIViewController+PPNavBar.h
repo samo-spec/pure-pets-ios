@@ -112,6 +112,10 @@ static CGFloat    const kPPKeyBaseButtonSize = 44.0;
 - (void)onBack:(UIButton *)sender;
 - (void)onDissmiss;
 - (void)onBackBar:(UIBarButtonItem *)sender;
+- (void)pp_applyPurePetsNavAppearance;
+- (void)pp_navBarAddLeftButton:(UIButton *)btn key:(NSString *)key;
+- (void)pp_navBarAddRightButton:(UIButton *)btn key:(NSString *)key;
+- (void)pp_navBarAddActionButton:(UIButton *)button key:(NSString *)key;
 - (UIButton *)pp_ButtonWithSystemName:(NSString *)symbolName action:(SEL _Nullable)action;
 - (UIButton *)pp_ButtonForNav:(NSString *)imageName action:(SEL)action ;
 /// ===== New: one-call “base” layout you described =====
@@ -145,6 +149,9 @@ static CGFloat    const kPPKeyBaseButtonSize = 44.0;
 - (UIButton *)pp_navBarSetLeftIcon:(NSString *)systemImage  key:(NSString *)key
                             target:(id _Nullable)target action:(SEL _Nullable)action
                                tap:(PPNavBarTapBlock _Nullable)tapBlock;
+- (UIButton *)pp_navBarSetActionIcon:(NSString *)systemImage key:(NSString *)key
+                              target:(id _Nullable)target action:(SEL _Nullable)action
+                                 tap:(PPNavBarTapBlock _Nullable)tapBlock;
 - (void)pp_navBarHideButtonForKey:(NSString *)key hidden:(BOOL)hidden animated:(BOOL)animated;
 - (void)pp_navBarRemoveButtonForKey:(NSString *)key;
 

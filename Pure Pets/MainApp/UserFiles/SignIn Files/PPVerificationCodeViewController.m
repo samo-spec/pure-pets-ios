@@ -345,12 +345,8 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     titleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.navigationItem.titleView = titleLabel;
 
-    UIImage *backImage = [UIImage systemImageNamed:[Language isRTL] ? @"arrow.right" : @"arrow.left"];
-    UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithImage:backImage
-                                                                 style:UIBarButtonItemStylePlain
-                                                                target:self
-                                                                action:@selector(didTapBack)];
-    backItem.tintColor = AppPrimaryClr ?: UIColor.labelColor;
+    UIButton *backBtn = [self pp_ButtonWithSystemName:([Language isRTL] ? @"arrow.right" : @"arrow.left") action:@selector(didTapBack)];
+    UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithCustomView:backBtn];
     self.navigationItem.leftBarButtonItem = backItem;
 }
 

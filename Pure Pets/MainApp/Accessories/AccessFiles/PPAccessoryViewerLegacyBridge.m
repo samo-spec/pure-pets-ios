@@ -13,6 +13,7 @@
 #import "PPAlertHelper.h"
 #import "PPAnalytics.h"
 #import "PPCommerceFeedbackManager.h"
+#import "PPFirebaseSessionBridge.h"
 #import "PPHUD.h"
 #import "PPImageLoaderManager.h"
 #import "PPNavigationController.h"
@@ -1429,13 +1430,18 @@ fromViewController:(UIViewController *)viewController
         return;
     }
     [[ChManager sharedManager] createOrGetChatThreadWithUser:owner completion:^(ChatThreadModel * _Nullable chatThread, NSError * _Nullable error) {
-        if (error || !chatThread) {
-            [GM chatWith:owner FromController:presenter];
-            return;
-        }
-        [PPOverlayCoordinator pp_openChatThread:chatThread
-                               accessoryContext:accessory
-                                         fromVC:presenter];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error || !chatThread) {
+                [PPAlertHelper showErrorIn:presenter
+                                     title:[PPFirebaseSessionBridge publicChatTitleForError:error]
+                                  subtitle:[PPFirebaseSessionBridge publicChatMessageForError:error
+                                                                                  fallbackKey:@"chat_start_failed_message"]];
+                return;
+            }
+            [PPOverlayCoordinator pp_openChatThread:chatThread
+                                   accessoryContext:accessory
+                                             fromVC:presenter];
+        });
     }];
     [PPCommerceFeedbackManager.shared
      playEvent:PPCommerceFeedbackEventPaymentAction];

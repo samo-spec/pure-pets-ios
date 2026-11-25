@@ -88,6 +88,11 @@
 		D4A102000000000000000001 /* PPOrderHistorySurfaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A101000000000000000001 /* PPOrderHistorySurfaceModels.swift */; };
 		D4A102000000000000000002 /* PPOrderHistorySurfaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A101000000000000000002 /* PPOrderHistorySurfaceController.swift */; };
 		D4A102000000000000000003 /* PPOrderHistorySurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A101000000000000000003 /* PPOrderHistorySurfaceView.swift */; };
+		D4A202000000000000000001 /* PPPurchasedItemsSurfaceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A201000000000000000001 /* PPPurchasedItemsSurfaceModels.swift */; };
+		D4A202000000000000000002 /* PPPurchasedItemsSurfaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A201000000000000000002 /* PPPurchasedItemsSurfaceController.swift */; };
+		D4A202000000000000000003 /* PPPurchasedItemsSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A201000000000000000003 /* PPPurchasedItemsSurfaceView.swift */; };
+		D4A302000000000000000002 /* PPStoreBranchInventoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = D4A301000000000000000002 /* PPStoreBranchInventoryManager.m */; };
+		D4A302000000000000000004 /* PPCartBranchBannerView.m in Sources */ = {isa = PBXBuildFile; fileRef = D4A301000000000000000004 /* PPCartBranchBannerView.m */; };
 		E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */; };
 		F2015E63302D280C00E68392 /*  PPCommandDeckTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2015E62302D280C00E68392 /*  PPCommandDeckTabBar.swift */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
@@ -321,6 +326,7 @@
 		F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */; };
 		F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */; };
 		F256E4E62FE0C70C004E1E2E /* PPUserMenuScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F256E4E52FE0C70C004E1E2E /* PPUserMenuScreen.swift */; };
+		F256E4F12FE0C70C004E1E2E /* PPMyAdsNextGenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F256E4F02FE0C70C004E1E2E /* PPMyAdsNextGenView.swift */; };
 		F25971AE2D1BEF3F00708763 /* ArchiveManagerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F25971AD2D1BEF3F00708763 /* ArchiveManagerVC.m */; };
 		F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F259DDDC2D29622E005524F8 /* XLFormButtonCell.m */; };
 		F25B387E2E173CB60066D504 /* OrderDetailsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */; };
@@ -1055,6 +1061,13 @@
 		D4A101000000000000000001 /* PPOrderHistorySurfaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderHistorySurfaceModels.swift; sourceTree = "<group>"; };
 		D4A101000000000000000002 /* PPOrderHistorySurfaceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderHistorySurfaceController.swift; sourceTree = "<group>"; };
 		D4A101000000000000000003 /* PPOrderHistorySurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPOrderHistorySurfaceView.swift; sourceTree = "<group>"; };
+		D4A201000000000000000001 /* PPPurchasedItemsSurfaceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPurchasedItemsSurfaceModels.swift; sourceTree = "<group>"; };
+		D4A201000000000000000002 /* PPPurchasedItemsSurfaceController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPurchasedItemsSurfaceController.swift; sourceTree = "<group>"; };
+		D4A201000000000000000003 /* PPPurchasedItemsSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPurchasedItemsSurfaceView.swift; sourceTree = "<group>"; };
+		D4A301000000000000000001 /* PPStoreBranchInventoryManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPStoreBranchInventoryManager.h; sourceTree = "<group>"; };
+		D4A301000000000000000002 /* PPStoreBranchInventoryManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPStoreBranchInventoryManager.m; sourceTree = "<group>"; };
+		D4A301000000000000000003 /* PPCartBranchBannerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartBranchBannerView.h; sourceTree = "<group>"; };
+		D4A301000000000000000004 /* PPCartBranchBannerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartBranchBannerView.m; sourceTree = "<group>"; };
 		D76BD429E474434CAD5D3B7E /* PPInAppChatNotificationPresenter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPInAppChatNotificationPresenter.h; sourceTree = "<group>"; };
 		D896001BDC02CA10E626678D /* PPNovaSwiftUIChatBarViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPNovaSwiftUIChatBarViewController.swift; sourceTree = "<group>"; };
 		DFCBF41EFDF6EF662DE3A38B /* PPPetProfilesUIStyle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetProfilesUIStyle.h; sourceTree = "<group>"; };
@@ -1497,6 +1510,7 @@
 		F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserMenuViewController.h; sourceTree = "<group>"; };
 		F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserMenuViewController.m; sourceTree = "<group>"; };
 		F256E4E52FE0C70C004E1E2E /* PPUserMenuScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUserMenuScreen.swift; sourceTree = "<group>"; };
+		F256E4F02FE0C70C004E1E2E /* PPMyAdsNextGenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMyAdsNextGenView.swift; sourceTree = "<group>"; };
 		F25971AC2D1BEF3F00708763 /* ArchiveManagerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArchiveManagerVC.h; sourceTree = "<group>"; };
 		F25971AD2D1BEF3F00708763 /* ArchiveManagerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArchiveManagerVC.m; sourceTree = "<group>"; };
 		F259DDDB2D29622E005524F8 /* XLFormButtonCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormButtonCell.h; sourceTree = "<group>"; };
@@ -3418,6 +3432,7 @@
 				F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */,
 				F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */,
 				F256E4E52FE0C70C004E1E2E /* PPUserMenuScreen.swift */,
+				F256E4F02FE0C70C004E1E2E /* PPMyAdsNextGenView.swift */,
 				F27365F92F85D5AB000AB3DD /* UsesHelpers */,
 				F20956702F8564C9007C4ABA /* PetsProfiles */,
 				F2D6396E2ECB4E1000FEBCBB /* SignIn Files */,
@@ -4101,6 +4116,8 @@
 				F2E1345C2DDC6E04006770E5 /* PetAccessoryManager.m */,
 				007A72FD2FE30D16C657EBC1 /* PPStoreBranchManager.h */,
 				148C209B3FDA29A52230E8B3 /* PPStoreBranchManager.m */,
+				D4A301000000000000000001 /* PPStoreBranchInventoryManager.h */,
+				D4A301000000000000000002 /* PPStoreBranchInventoryManager.m */,
 				F2E134562DDC6C41006770E5 /* PetAccessory.h */,
 				F2E134572DDC6C93006770E5 /* PetAccessory.m */,
 			);
@@ -5082,10 +5099,15 @@
 				D4A101000000000000000001 /* PPOrderHistorySurfaceModels.swift */,
 				D4A101000000000000000002 /* PPOrderHistorySurfaceController.swift */,
 				D4A101000000000000000003 /* PPOrderHistorySurfaceView.swift */,
+				D4A201000000000000000001 /* PPPurchasedItemsSurfaceModels.swift */,
+				D4A201000000000000000002 /* PPPurchasedItemsSurfaceController.swift */,
+				D4A201000000000000000003 /* PPPurchasedItemsSurfaceView.swift */,
 				F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */,
 				F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */,
 				F2201FEB2E11DB6A005DBD9F /* CartViewController.h */,
 				F2201FEC2E11DB7E005DBD9F /* CartViewController.m */,
+				D4A301000000000000000003 /* PPCartBranchBannerView.h */,
+				D4A301000000000000000004 /* PPCartBranchBannerView.m */,
 				F2201FE62E11D7BF005DBD9F /* CartItem.h */,
 				F2201FE72E11D7C9005DBD9F /* CartItem.m */,
 				F2E33F5A3006C240005E31C6 /* OrderSupportFunc.h */,
@@ -5692,6 +5714,7 @@
 				F27FC1702C52F63B007B855C /* selectTableViewCell.m in Sources */,
 				F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */,
 				F256E4E62FE0C70C004E1E2E /* PPUserMenuScreen.swift in Sources */,
+				F256E4F12FE0C70C004E1E2E /* PPMyAdsNextGenView.swift in Sources */,
 				F2916F102D54C6B600FF0394 /* PopupPickerView.m in Sources */,
 				F24F364C2D8A426B0094C6F2 /* BuyerCell.m in Sources */,
 				F27146692CCE6B5300F7F3BA /* NSArray+XLFormAdditions.m in Sources */,
@@ -6029,6 +6052,11 @@
 				D4A102000000000000000001 /* PPOrderHistorySurfaceModels.swift in Sources */,
 				D4A102000000000000000002 /* PPOrderHistorySurfaceController.swift in Sources */,
 				D4A102000000000000000003 /* PPOrderHistorySurfaceView.swift in Sources */,
+				D4A202000000000000000001 /* PPPurchasedItemsSurfaceModels.swift in Sources */,
+				D4A202000000000000000002 /* PPPurchasedItemsSurfaceController.swift in Sources */,
+				D4A202000000000000000003 /* PPPurchasedItemsSurfaceView.swift in Sources */,
+				D4A302000000000000000002 /* PPStoreBranchInventoryManager.m in Sources */,
+				D4A302000000000000000004 /* PPCartBranchBannerView.m in Sources */,
 				F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */,
 				F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */,
 				F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */,

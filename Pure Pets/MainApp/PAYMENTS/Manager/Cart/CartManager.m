@@ -6,12 +6,16 @@
 //
 #import "CartManager.h"
 #import "PetAccessoryManager.h"
+#import "PPStoreBranchManager.h"
+#import "PPStoreBranchInventoryManager.h"
 #import "PPCartCalculator.h"
 #import "PPFirestoreErrorNotifier.h"
 #import "PPAlertHelper.h"
 #import <UIKit/UIKit.h>
 #import <math.h>
 @import FirebaseAuth;
+
+NSString * const kCartStoreBranchChangedNotification = @"kCartStoreBranchChangedNotification";
 
 // One in-flight write per exact cart line. Later taps update desiredQuantity;
 // only a settled failure may restore the last server-confirmed quantity.
@@ -45,6 +49,11 @@
 @property (nonatomic, strong) NSMutableSet<NSString *> *pendingDeletedItemKeys;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, PPCartQuantityMutation *> *quantityMutations;
 @property (nonatomic, assign) NSUInteger cartListenerGeneration;
+@property (nonatomic, assign) BOOL isRefreshingCartStock;
+@property (nonatomic, assign) BOOL pendingForcedStockRefresh;
+@property (nonatomic, strong) NSMutableArray<void (^)(BOOL)> *stockRefreshCompletions;
+@property (nonatomic, assign) NSTimeInterval lastStockRefreshTimestamp;
+@property (nonatomic, copy) NSString *lastValidatedBranchId;
 
 - (BOOL)pp_addItem:(CartItem *)item
     syncCompletion:(void (^ _Nullable)(BOOL success))syncCompletion;
@@ -111,9 +120,19 @@
         _pendingSyncItemKeys = [NSMutableSet set];
         _pendingDeletedItemKeys = [NSMutableSet set];
         _quantityMutations = [NSMutableDictionary dictionary];
+        _stockRefreshCompletions = [NSMutableArray array];
+        _lastValidatedBranchId = @"";
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(pp_handleAppDidBecomeActiveNotification:)
                                                      name:UIApplicationDidBecomeActiveNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(pp_handleStoreBranchDidChangeNotification:)
+                                                     name:PPStoreBranchDidChangeNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(pp_handleStoreBranchInventoryDidUpdateNotification:)
+                                                     name:PPStoreBranchInventoryDidUpdateNotification
                                                    object:nil];
         [self refreshPricingConfiguration];
     }
@@ -124,6 +143,16 @@ static NSString *PPCartPricingTrimmedString(id value)
 {
     if (![value isKindOfClass:NSString.class]) return @"";
     return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static BOOL PPCartIsValidDocumentID(NSString * _Nullable value)
+{
+    if (![value isKindOfClass:NSString.class]) return NO;
+    NSString *trimmed = [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    return trimmed.length > 0 &&
+        ![trimmed isEqualToString:@"."] &&
+        ![trimmed isEqualToString:@".."] &&
+        ![trimmed containsString:@"/"];
 }
 
 static double PPCartNormalizedDeliveryFee(id value, double fallback)
@@ -424,12 +453,15 @@ static void PPCartMergeVariantMetadata(CartItem *source, CartItem *target)
 
 - (NSInteger)pp_stockLimitForItem:(CartItem *)item existingItem:(CartItem *)existingItem
 {
-    // F-22: the live catalogue document is authoritative, so it is consulted FIRST.
-    //
-    // This used to prefer the in-memory `stockQuantity` hint on the cart item, which
-    // is only ever as fresh as the last time that product was loaded. A cart held
-    // open across a sell-out therefore enforced a stale ceiling, and the server's own
-    // `noStock` was never consulted at all.
+    // Live store branch inventory is authoritative: consult it FIRST.
+    if (item.itemID.length > 0 && [[PPStoreBranchInventoryManager sharedManager] hasInventoryRecordForProductId:item.itemID]) {
+        NSInteger branchStock = [[PPStoreBranchInventoryManager sharedManager] availableStockForProductId:item.itemID fallback:NSNotFound];
+        if (branchStock != NSNotFound) {
+            return branchStock;
+        }
+    }
+
+    // F-22: the live catalogue document is authoritative, so it is consulted next.
     PetAccessory *accessory = [[PetAccessoryManager sharedManager] getAccessoryID:item.itemID];
     if (accessory) {
         if (!accessory.isPurchasable) {
@@ -469,7 +501,7 @@ static void PPCartMergeVariantMetadata(CartItem *source, CartItem *target)
     // U8: Use FIRAuth UID as primary, UserManager as fallback
     NSString *userID = PPCurrentFIRAuthUser.uid;
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
-    if (userID.length == 0 || item.itemID.length == 0) {
+    if (!PPCartIsValidDocumentID(userID) || !PPCartIsValidDocumentID(item.itemID)) {
         PPCartCompleteSync(completion, NO);
         return;
     }
@@ -831,7 +863,6 @@ presentingViewController:(UIViewController *)presentingViewController
         [encoded addObject:[item firestoreDictionary]];
     }
     [[NSUserDefaults standardUserDefaults] setObject:encoded forKey:kSavedCartKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
 - (void)loadCart {
@@ -859,7 +890,6 @@ presentingViewController:(UIViewController *)presentingViewController
         [self.pendingDeletedItemKeys removeAllObjects];
     }
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
     [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
 }
 
@@ -894,7 +924,6 @@ presentingViewController:(UIViewController *)presentingViewController
                 [self.pendingDeletedItemKeys removeAllObjects];
             }
             [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
-            [[NSUserDefaults standardUserDefaults] synchronize];
         }
         if (completion) { completion(YES); }
         return;
@@ -902,9 +931,9 @@ presentingViewController:(UIViewController *)presentingViewController
 
     NSMutableArray<CartItem *> *itemsToClear = [NSMutableArray array];
     for (CartItem *item in items) {
-        if (item.itemID.length > 0) { [itemsToClear addObject:item]; }
+        if (PPCartIsValidDocumentID(item.itemID)) { [itemsToClear addObject:item]; }
     }
-    if (itemsToClear.count == 0) {
+    if (itemsToClear.count == 0 || !PPCartIsValidDocumentID(userID)) {
         if (postNotification) {
             [self clearCart];
         } else {
@@ -918,7 +947,6 @@ presentingViewController:(UIViewController *)presentingViewController
                 [self.pendingDeletedItemKeys removeAllObjects];
             }
             [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
-            [[NSUserDefaults standardUserDefaults] synchronize];
         }
         if (completion) { completion(YES); }
         return;
@@ -955,7 +983,6 @@ presentingViewController:(UIViewController *)presentingViewController
                 [strongSelf.pendingDeletedItemKeys removeAllObjects];
             }
             [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
-            [[NSUserDefaults standardUserDefaults] synchronize];
         }
         if (postNotification) {
             [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
@@ -990,13 +1017,17 @@ presentingViewController:(UIViewController *)presentingViewController
 
             NSString *cartKey = [self pp_cartKeyForItem:matched];
             if (matched.quantity <= purchased.quantity) {
-                [itemsToRemoveCompletely addObject:matched];
+                if (PPCartIsValidDocumentID(matched.itemID)) {
+                    [itemsToRemoveCompletely addObject:matched];
+                }
                 if (cartKey.length > 0) {
                     [keysToDelete addObject:cartKey];
                 }
             } else {
                 matched.quantity -= purchased.quantity;
-                [itemsToUpdateQuantity addObject:matched];
+                if (PPCartIsValidDocumentID(matched.itemID)) {
+                    [itemsToUpdateQuantity addObject:matched];
+                }
             }
         }
 
@@ -1048,6 +1079,11 @@ presentingViewController:(UIViewController *)presentingViewController
         return;
     }
 
+    if (!PPCartIsValidDocumentID(userID)) {
+        PPCartCompleteSync(completion, YES);
+        return;
+    }
+
     FIRFirestore *db = [FIRFirestore firestore];
     FIRCollectionReference *cartItemsRef =
     [[[db collectionWithPath:@"UsersCol"]
@@ -1062,6 +1098,10 @@ presentingViewController:(UIViewController *)presentingViewController
         FIRDocumentReference *docRef = [cartItemsRef documentWithPath:updated.itemID];
         NSMutableDictionary *payload = [self pp_firestorePayloadForItem:updated quantity:updated.quantity];
         [batch setData:payload forDocument:docRef merge:YES];
+    }
+    if (itemsToRemoveCompletely.count == 0 && itemsToUpdateQuantity.count == 0) {
+        PPCartCompleteSync(completion, YES);
+        return;
     }
 
     __weak typeof(self) weakSelf = self;
@@ -1258,12 +1298,14 @@ presentingViewController:(UIViewController *)presentingViewController
 
         // Duplicate snapshot check: avoid redundant disk write & notification spam
         if ([self pp_areCartItems:self.cartItems equalTo:remoteCart]) {
+            [self refreshCartStockAvailabilityIfNeededWithCompletion:nil];
             return;
         }
 
         self.cartItems = remoteCart;
         [self saveCart]; // persist to local
         [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+        [self refreshCartStockAvailabilityIfNeededWithCompletion:nil];
     }];
 }
 
@@ -1355,6 +1397,10 @@ presentingViewController:(UIViewController *)presentingViewController
 {
     if (self.quantityMutations[cartKey] != mutation || mutation.writeInFlight) return;
     if (![mutation.userID isEqualToString:PPCurrentFIRAuthUser.uid ?: @""]) {
+        [self pp_finishQuantityMutation:mutation forKey:cartKey success:NO];
+        return;
+    }
+    if (!PPCartIsValidDocumentID(mutation.userID) || !PPCartIsValidDocumentID(mutation.item.itemID)) {
         [self pp_finishQuantityMutation:mutation forKey:cartKey success:NO];
         return;
     }
@@ -1503,6 +1549,16 @@ presentingViewController:(UIViewController *)presentingViewController
     NSString *userID = PPCurrentFIRAuthUser.uid;
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
     if (userID.length == 0) {
+        if (cartKey.length > 0) {
+            @synchronized (self.pendingDeletedItemKeys) {
+                [self.pendingDeletedItemKeys removeObject:cartKey];
+            }
+        }
+        PPCartCompleteSync(completion, YES);
+        return;
+    }
+
+    if (!PPCartIsValidDocumentID(userID) || !PPCartIsValidDocumentID(item.itemID)) {
         if (cartKey.length > 0) {
             @synchronized (self.pendingDeletedItemKeys) {
                 [self.pendingDeletedItemKeys removeObject:cartKey];
@@ -1669,15 +1725,230 @@ presentingViewController:(UIViewController *)presentingViewController
     self.pricingListener = nil;
 }
 
+- (void)pp_handleStoreBranchDidChangeNotification:(NSNotification *)notification {
+    [self revalidateCartItemsWithCompletion:nil];
+    [self refreshCartStockAvailabilityForced:YES completion:nil];
+}
+
+- (void)pp_handleStoreBranchInventoryDidUpdateNotification:(NSNotification *)notification {
+    [self revalidateCartItemsWithCompletion:nil];
+}
+
+- (void)refreshCartStockAvailabilityIfNeededWithCompletion:(void (^ _Nullable)(BOOL updated))completion {
+    [self refreshCartStockAvailabilityForced:NO completion:completion];
+}
+
+- (void)refreshCartStockAvailabilityForced:(BOOL)forced
+                                completion:(void (^ _Nullable)(BOOL updated))completion {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self refreshCartStockAvailabilityForced:forced completion:completion];
+        });
+        return;
+    }
+
+    if (self.cartItems.count == 0) {
+        PPCartCompleteSync(completion, NO);
+        return;
+    }
+
+    NSMutableOrderedSet<NSString *> *targetIDs = [NSMutableOrderedSet orderedSet];
+    BOOL hasUnknownStock = NO;
+    for (CartItem *item in self.cartItems) {
+        if (!PPCartIsValidDocumentID(item.itemID)) { continue; }
+        if ([self availableQuantityForItem:item] == NSNotFound) {
+            hasUnknownStock = YES;
+            [targetIDs addObject:item.itemID];
+        } else if (forced) {
+            [targetIDs addObject:item.itemID];
+        }
+    }
+
+    NSTimeInterval now = NSDate.date.timeIntervalSince1970;
+    if (!hasUnknownStock && forced && (now - self.lastStockRefreshTimestamp) < 5.0) {
+        PPCartCompleteSync(completion, NO);
+        return;
+    }
+    if (targetIDs.count == 0) {
+        PPCartCompleteSync(completion, NO);
+        return;
+    }
+
+    if (completion) {
+        [self.stockRefreshCompletions addObject:[completion copy]];
+    }
+    if (self.isRefreshingCartStock) {
+        if (forced) {
+            self.pendingForcedStockRefresh = YES;
+        }
+        return;
+    }
+
+    self.isRefreshingCartStock = YES;
+    NSArray<NSString *> *requestedIDs = targetIDs.array;
+    FIRFirestore *db = [FIRFirestore firestore];
+    NSMutableDictionary<NSString *, NSNumber *> *resolvedStockByID = [NSMutableDictionary dictionaryWithCapacity:requestedIDs.count];
+    dispatch_group_t group = dispatch_group_create();
+
+    for (NSString *itemID in requestedIDs) {
+        dispatch_group_enter(group);
+        [[[db collectionWithPath:@"petAccessories"] documentWithPath:itemID]
+         getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (!error) {
+                NSNumber *resolvedStock = @0;
+                if (snapshot.exists && snapshot.data) {
+                    PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:snapshot.data
+                                                                            documentID:snapshot.documentID];
+                    accessory.accessoryID = snapshot.documentID;
+                    [[PetAccessoryManager sharedManager] cacheAccessory:accessory];
+                    NSInteger qty = accessory.isPurchasable ? MAX(0, accessory.quantity) : 0;
+                    resolvedStock = @(qty);
+                }
+                @synchronized (resolvedStockByID) {
+                    resolvedStockByID[itemID] = resolvedStock;
+                }
+            }
+            dispatch_group_leave(group);
+        }];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) { return; }
+
+        NSDictionary<NSString *, NSNumber *> *stockSnapshot = nil;
+        @synchronized (resolvedStockByID) {
+            stockSnapshot = [resolvedStockByID copy];
+        }
+
+        BOOL didUpdate = NO;
+        for (CartItem *item in [self.cartItems copy]) {
+            if (!item.itemID.length) { continue; }
+            NSNumber *resolved = stockSnapshot[item.itemID];
+            if (!resolved) { continue; }
+            NSInteger newStock = MAX(0, resolved.integerValue);
+            if (item.stockQuantity != newStock) {
+                item.stockQuantity = newStock;
+                didUpdate = YES;
+            }
+        }
+
+        self.lastStockRefreshTimestamp = NSDate.date.timeIntervalSince1970;
+        self.isRefreshingCartStock = NO;
+        NSArray<void (^)(BOOL)> *pendingCompletions = [self.stockRefreshCompletions copy];
+        [self.stockRefreshCompletions removeAllObjects];
+
+        if (didUpdate) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+        }
+        for (void (^block)(BOOL) in pendingCompletions) {
+            block(didUpdate);
+        }
+
+        if (self.pendingForcedStockRefresh) {
+            self.pendingForcedStockRefresh = NO;
+            BOOL stillNeedsRefresh = NO;
+            for (CartItem *item in self.cartItems) {
+                if ([self availableQuantityForItem:item] == NSNotFound) {
+                    stillNeedsRefresh = YES;
+                    break;
+                }
+            }
+            if (stillNeedsRefresh) {
+                [self refreshCartStockAvailabilityIfNeededWithCompletion:nil];
+            }
+        }
+    });
+}
+
+- (void)revalidateCartItemsWithCompletion:(void (^)(NSArray<CartItem *> *clampedItems, NSArray<CartItem *> *outOfStockItems, NSString *branchName))completion
+{
+    NSString *branchName = [[PPStoreBranchManager sharedManager] localizedCurrentBranchName] ?: @"";
+    NSString *branchId = [PPStoreBranchManager sharedManager].currentBranchId ?: @"";
+    if (self.cartItems.count == 0) {
+        self.lastValidatedBranchId = branchId;
+        if (completion) completion(@[], @[], branchName);
+        return;
+    }
+
+    PPStoreBranchInventoryManager *invMgr = [PPStoreBranchInventoryManager sharedManager];
+    NSMutableArray<CartItem *> *clampedItems = [NSMutableArray array];
+    NSMutableArray<CartItem *> *outOfStockItems = [NSMutableArray array];
+    NSMutableArray<CartItem *> *priceChangedItems = [NSMutableArray array];
+
+    BOOL didChange = NO;
+    BOOL branchChanged = branchId.length > 0 && ![self.lastValidatedBranchId isEqualToString:branchId];
+    self.lastValidatedBranchId = branchId;
+
+    for (CartItem *item in [self.cartItems copy]) {
+        if (!item.itemID.length) continue;
+
+        BOOL hasRecord = [invMgr hasInventoryRecordForProductId:item.itemID];
+        if (hasRecord) {
+            NSInteger available = [invMgr availableStockForProductId:item.itemID fallback:item.stockQuantity];
+            BOOL isOut = [invMgr isOutOfStockForProductId:item.itemID fallback:(available <= 0)];
+
+            if (item.stockQuantity != available) {
+                item.stockQuantity = available;
+                didChange = YES;
+            }
+
+            if (isOut || available <= 0) {
+                [outOfStockItems addObject:item];
+                didChange = YES;
+            } else if (item.quantity > available) {
+                NSInteger clampedQty = available;
+                item.quantity = clampedQty;
+                item.stockQuantity = available;
+                [clampedItems addObject:item];
+                [self updateQuantity:clampedQty forItem:item completion:nil];
+                didChange = YES;
+            }
+
+            NSNumber *branchPrice = [invMgr sellingPriceForProductId:item.itemID];
+            if (branchPrice && fabs([branchPrice doubleValue] - item.price) > 0.001) {
+                item.price = [branchPrice doubleValue];
+                [priceChangedItems addObject:item];
+                didChange = YES;
+            }
+        }
+    }
+
+    if (didChange) {
+        [self saveCart];
+    }
+
+    BOOL shouldNotify = branchChanged || clampedItems.count > 0 || outOfStockItems.count > 0 || priceChangedItems.count > 0;
+    if (shouldNotify || completion) {
+        NSDictionary *info = @{
+            @"branchId": branchId,
+            @"branchName": branchName,
+            @"clampedItems": [clampedItems copy],
+            @"outOfStockItems": [outOfStockItems copy],
+            @"priceChangedItems": [priceChangedItems copy]
+        };
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (shouldNotify) {
+                [[NSNotificationCenter defaultCenter] postNotificationName:kCartStoreBranchChangedNotification
+                                                                    object:self
+                                                                  userInfo:info];
+            }
+            if (completion) {
+                completion(clampedItems, outOfStockItems, branchName);
+            }
+        });
+    }
+}
+
 - (void)dealloc
 {
     [self.cartListener remove];
     self.cartListener = nil;
     [self.pricingListener remove];
     self.pricingListener = nil;
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:UIApplicationDidBecomeActiveNotification
-                                                  object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 @end

@@ -1173,25 +1173,17 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 
 - (void)pp_configureNavigation
 {
-    UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName)
-                                                                  style:UIBarButtonItemStylePlain
-                                                                 target:self
-                                                                 action:@selector(pp_handleBack)];
+    UIButton *backBtn = [self pp_ButtonWithSystemName:PPChevronName action:@selector(pp_handleBack)];
+    UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithCustomView:backBtn];
     backItem.accessibilityLabel = kLang(@"Back");
     self.navigationItem.leftBarButtonItem = backItem;
 
-    UIBarButtonItem *addItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"plus"]
-                                                                style:UIBarButtonItemStylePlain
-                                                               target:self
-                                                               action:@selector(pp_addPet)];
-    addItem.tintColor = PPPetsUIBrandColor();
+    UIButton *addBtn = [self pp_ButtonWithSystemName:@"plus" action:@selector(pp_addPet)];
+    UIBarButtonItem *addItem = [[UIBarButtonItem alloc] initWithCustomView:addBtn];
     addItem.accessibilityLabel = kLang(@"pet_add_title");
 
-    UIBarButtonItem *remindersItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"bell"]
-                                                                      style:UIBarButtonItemStylePlain
-                                                                     target:self
-                                                                     action:@selector(pp_openReminders)];
-    remindersItem.tintColor = PPPetsUIBrandColor();
+    UIButton *remindersBtn = [self pp_ButtonWithSystemName:@"bell" action:@selector(pp_openReminders)];
+    UIBarButtonItem *remindersItem = [[UIBarButtonItem alloc] initWithCustomView:remindersBtn];
     remindersItem.accessibilityLabel = kLang(@"pet_reminders_tab");
     self.navigationItem.rightBarButtonItems = @[addItem, remindersItem];
 }

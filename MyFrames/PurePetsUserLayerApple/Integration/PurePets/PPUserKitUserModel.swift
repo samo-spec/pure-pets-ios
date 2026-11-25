@@ -151,7 +151,10 @@ public final class PPUserKitUserModel: NSObject, NSSecureCoding {
   }
 
   public var isEffectivelyBlocked: Bool {
-    isBlocked || accountStatus == "blocked" || accountStatus == "disabled"
+    let normalizedStatus = accountStatus.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return isBlocked || [
+      "blocked", "disabled", "inactive", "deleted", "suspended", "deactivated", "banned"
+    ].contains(normalizedStatus)
   }
 
   public var isPostingEffectivelyBlocked: Bool {
@@ -427,7 +430,12 @@ public final class PPUserKitUserModel: NSObject, NSSecureCoding {
     isAdmin = bool(in: dictionary, keys: ["isAdmin", "admin"]) ?? false
     isSuperAdmin = bool(in: dictionary, keys: ["isSuperAdmin", "superAdmin", "superadmin"]) ?? false
     isBlocked = bool(in: dictionary, keys: ["isBlocked", "blocked"]) ?? false
-    accountStatus = string(in: dictionary, keys: ["accountStatus"]) ?? "unknown"
+    accountStatus = string(in: dictionary, keys: ["accountStatus", "status"]) ?? "unknown"
+    let isAccountUnavailableFlag =
+      bool(in: dictionary, keys: ["isDeleted", "deleted", "isDisabled", "disabled", "isSuspended", "suspended"]) ?? false
+    if isAccountUnavailableFlag && accountStatus == "unknown" {
+      accountStatus = "disabled"
+    }
     prodectionStatus = string(in: dictionary, keys: ["prodectionStatus", "protectionStatus"]) ?? "inactive"
     let subscription = nested(dictionary, key: "subscription")
     subscriptionPlan =
@@ -456,7 +464,8 @@ public final class PPUserKitUserModel: NSObject, NSSecureCoding {
     canPharmacyFeature = bool(in: featureValues, keys: ["canPharmacy", "pharmacy"]) ?? bool(in: dictionary, keys: ["canPharmacy"]) ?? false
     canVetFeature = bool(in: featureValues, keys: ["canVet", "vet"]) ?? false
     canUseStoriesFeature = bool(in: featureValues, keys: ["canUseStories"]) ?? true
-    canUseChatFeature = bool(in: featureValues, keys: ["canUseChat"]) ?? true
+    let mirrorChatAllowed = bool(in: dictionary, keys: ["canReceiveMessages", "isChatEnabled"])
+    canUseChatFeature = bool(in: featureValues, keys: ["canUseChat"]) ?? mirrorChatAllowed ?? true
     canAccessPremiumMarketplaceFeature = bool(in: featureValues, keys: ["canAccessPremiumMarketplace"]) ?? false
     canAccessProviderMarketplaceFeature = bool(in: featureValues, keys: ["canAccessProviderMarketplace"]) ?? false
     let partnerProfile = nested(dictionary, key: "onboarding")

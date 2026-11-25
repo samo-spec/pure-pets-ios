@@ -44,6 +44,11 @@ typedef NS_ENUM(NSInteger, PPFirebaseSessionBridgeErrorCode) {
 + (NSString *)publicMessageForText:(NSString * _Nullable)text
                         fallbackKey:(NSString * _Nullable)fallbackKey;
 
++ (NSString *)publicChatTitleForError:(NSError * _Nullable)error;
+
++ (NSString *)publicChatMessageForError:(NSError * _Nullable)error
+                             fallbackKey:(NSString * _Nullable)fallbackKey;
+
 @end
 
 NS_ASSUME_NONNULL_END

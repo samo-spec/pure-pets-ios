@@ -3,16 +3,18 @@
 #import "AppClasses.h"
 #import "CartItem.h"
 #import "CartManager.h"
+#import "CartViewController.h"
 #import "PetAccessory.h"
 #import "PetAccessoryManager.h"
 #import "PPEmptyStateHelper.h"
 #import "PPHUD.h"
-#import <Pure_Pets-Swift.h>
 #import "PPOrder.h"
 #import "UserManager.h"
+@import FirebaseAuth;
+@import FirebaseFirestore;
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
-@import FirebaseAuth;
+#import <Pure_Pets-Swift.h>
 
 static NSString * const PPPurchasedItemCellID = @"PPPurchasedItemCell";
 static NSInteger const PPPurchasedItemsOrderLimit = 120;
@@ -46,12 +48,58 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
     return [wrappedStatus containsString:wrappedNeedle] || [status containsString:needle];
 }
 
+static NSString *PPPurchasedCategoryKeyForAccessory(PetAccessory *accessory, NSString *fallbackName)
+{
+    NSString *text = [NSString stringWithFormat:@"%@ %@", accessory.name ?: fallbackName ?: @"", accessory.desc ?: @""].lowercaseString;
+
+    NSArray<NSString *> *foodKeywords = @[
+        @"طعام", @"أكل", @"غذاء", @"وجبة", @"دراي", @"رطب", @"مكافآت", @"لحم", @"دجاج", @"سمك", @"سالمون", @"تونا", @"حبوب", @"حليب",
+        @"food", @"dry", @"wet", @"treat", @"snack", @"meat", @"chicken", @"fish", @"salmon", @"tuna", @"kibble", @"feed"
+    ];
+    for (NSString *keyword in foodKeywords) {
+        if ([text containsString:keyword]) return @"food";
+    }
+
+    NSArray<NSString *> *healthKeywords = @[
+        @"علاج", @"دواء", @"صحة", @"عناية", @"فيتامين", @"شامبو", @"نظافة", @"معقم", @"قطرة", @"مرهم", @"بخاخ", @"طبي", @"براغيث", @"ديدان",
+        @"care", @"health", @"med", @"vitamin", @"shampoo", @"hygiene", @"spray", @"drops", @"vet", @"flea", @"tick", @"supplement", @"deworm"
+    ];
+    for (NSString *keyword in healthKeywords) {
+        if ([text containsString:keyword]) return @"health";
+    }
+
+    return @"accessories";
+}
+
+static NSString *PPPurchasedCategoryTagText(NSString *categoryKey)
+{
+    if ([categoryKey isEqualToString:@"food"]) {
+        return [NSString stringWithFormat:@"🏷️ %@", kLang(@"purchased_filter_food") ?: @"أغذية وتغذية"];
+    } else if ([categoryKey isEqualToString:@"health"]) {
+        return [NSString stringWithFormat:@"🏷️ %@", kLang(@"purchased_filter_health") ?: @"عناية وصحة"];
+    } else {
+        return [NSString stringWithFormat:@"🏷️ %@", kLang(@"purchased_filter_accessories") ?: @"مستلزمات وألعاب"];
+    }
+}
+
+static NSInteger PPPurchasedDaysBetweenDates(NSDate *fromDateTime, NSDate *toDateTime)
+{
+    if (!fromDateTime || !toDateTime) return 0;
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDateComponents *difference = [calendar components:NSCalendarUnitDay
+                                               fromDate:fromDateTime
+                                                 toDate:toDateTime
+                                                options:0];
+    return MAX(0, [difference day]);
+}
+
 @interface PPPurchasedProduct : NSObject
 @property (nonatomic, copy) NSString *itemID;
 @property (nonatomic, copy) NSString *fallbackName;
 @property (nonatomic, copy) NSString *fallbackImageURL;
 @property (nonatomic, assign) double fallbackPrice;
 @property (nonatomic, assign) NSInteger quantity;
+@property (nonatomic, assign) NSInteger purchaseCount;
 @property (nonatomic, strong, nullable) NSDate *latestPurchaseDate;
 @property (nonatomic, strong, nullable) PetAccessory *accessory;
 @property (nonatomic, assign) BOOL productDocumentMissing;
@@ -103,19 +151,19 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
     self.cardView = [[UIView alloc] init];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
-    self.cardView.layer.cornerRadius = 22.0;
+    self.cardView.layer.cornerRadius = 20.0;
     self.cardView.layer.masksToBounds = NO;
     self.cardView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.cardView.layer.shadowOpacity = 0.07;
-    self.cardView.layer.shadowRadius = 18.0;
-    self.cardView.layer.shadowOffset = CGSizeMake(0, 10);
+    self.cardView.layer.shadowOpacity = 0.06;
+    self.cardView.layer.shadowRadius = 14.0;
+    self.cardView.layer.shadowOffset = CGSizeMake(0, 6);
     [self.contentView addSubview:self.cardView];
 
     self.productImageView = [[UIImageView alloc] init];
     self.productImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.productImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.productImageView.clipsToBounds = YES;
-    self.productImageView.layer.cornerRadius = 18.0;
+    self.productImageView.layer.cornerRadius = 14.0;
     self.productImageView.backgroundColor = AppBackgroundClr ?: UIColor.tertiarySystemBackgroundColor;
     [self.cardView addSubview:self.productImageView];
 
@@ -264,15 +312,18 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
 
 @end
 
-@interface PurchasedItemsViewController () <UITableViewDataSource, UITableViewDelegate>
+@interface PurchasedItemsViewController () <UITableViewDataSource, UITableViewDelegate, PPPurchasedItemsSurfaceControllerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UIRefreshControl *refreshControl;
 @property (nonatomic, strong) UIActivityIndicatorView *loader;
 @property (nonatomic, strong) PPEmptyStateConfig *emptyStateConfig;
 @property (nonatomic, strong) NSArray<PPPurchasedProduct *> *items;
+@property (nonatomic, strong) NSDictionary<NSString *, PPPurchasedProduct *> *productsByID;
 @property (nonatomic, copy) NSString *errorMessage;
 @property (nonatomic, strong) NSDateFormatter *dateFormatter;
 @property (nonatomic, assign) BOOL hasLoadedOnce;
+@property (nonatomic, assign) NSInteger totalOrdersLoaded;
+@property (nonatomic, strong) PPPurchasedItemsSurfaceController *surfaceController API_AVAILABLE(ios(15.0));
 @end
 
 @implementation PurchasedItemsViewController
@@ -281,21 +332,70 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
 {
     [super viewDidLoad];
     self.items = @[];
-    self.view.backgroundColor = AppBackgroundClr;
+    self.productsByID = @{};
+    self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
     [self pp_setupDateFormatter];
-    [self pp_setupNavigation];
-    [self pp_setupTableView];
-    [self pp_setupLoader];
+
+    if (@available(iOS 15.0, *)) {
+        [self pp_installNextGenSurface];
+    } else {
+        [self pp_setupNavigation];
+        [self pp_setupTableView];
+        [self pp_setupLoader];
+    }
+
     [self pp_loadPurchasedItemsRefreshing:NO];
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if (@available(iOS 15.0, *)) {
+        if (self.surfaceController) {
+            [self.navigationController setNavigationBarHidden:YES animated:animated];
+            NSInteger count = [CartManager sharedManager].cartItems.count;
+            double cartTotal = [self pp_calculateCurrentCartTotal];
+            NSString *formatted = cartTotal > 0.0 ? [PetAccessory formatCurrency:@(cartTotal)] : @"";
+            [self.surfaceController updateCartBadgeWithCount:(int)count total:formatted];
+            return;
+        }
+    }
     [self pp_setupNavigation];
 }
 
-#pragma mark - Setup
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    if (@available(iOS 15.0, *)) {
+        if (self.surfaceController) {
+            [self.navigationController setNavigationBarHidden:NO animated:animated];
+        }
+    }
+}
+
+#pragma mark - NextGen Surface Installation
+
+- (void)pp_installNextGenSurface API_AVAILABLE(ios(15.0))
+{
+    PPPurchasedItemsSurfaceController *surface = [[PPPurchasedItemsSurfaceController alloc] initWithDelegate:self];
+    surface.view.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addChildViewController:surface];
+    [self.view addSubview:surface.view];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [surface.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [surface.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [surface.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [surface.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ]];
+    [surface didMoveToParentViewController:self];
+    self.surfaceController = surface;
+
+    // Publish initial loading state
+    [self pp_publishNextGenSnapshotWithProducts:@[] totalOrders:0 isLoading:YES];
+}
+
+#pragma mark - Setup (Legacy / Fallback)
 
 - (void)pp_setupDateFormatter
 {
@@ -311,10 +411,8 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
                       button:nil
                        title:kLang(@"purchased_items_title")
                     showBack:showBack];
-    UIButton *refreshButton = [PPButtonHelper pp_buttonWithTitleForBar:nil
-                                                              imageName:@"arrow.clockwise"
-                                                                target:self
-                                                                action:@selector(pp_refreshPulled)];
+    UIButton *refreshButton = [self pp_ButtonWithSystemName:@"arrow.clockwise"
+                                                     action:@selector(pp_refreshPulled)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:refreshButton];
 }
 
@@ -385,6 +483,7 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
     if (userID.length == 0) {
         self.errorMessage = kLang(@"UserNotAuthenticated") ?: @"Please sign in first.";
         self.items = @[];
+        self.productsByID = @{};
         [self pp_finishLoadingRefreshing:refreshing];
         return;
     }
@@ -407,16 +506,26 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
             dispatch_async(dispatch_get_main_queue(), ^{
                 self.errorMessage = error.localizedDescription ?: (kLang(@"Error") ?: @"Error");
                 self.items = @[];
+                self.productsByID = @{};
                 [self pp_finishLoadingRefreshing:refreshing];
             });
             return;
         }
 
+        NSInteger validOrdersCount = 0;
+        for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+            PPOrder *order = [PPOrder orderFromSnapshot:doc];
+            if ([self pp_shouldIncludeOrderForPurchasedItems:order]) {
+                validOrdersCount++;
+            }
+        }
+        self.totalOrdersLoaded = validOrdersCount;
+
         NSArray<PPPurchasedProduct *> *snapshotItems = [self pp_purchasedProductsFromSnapshot:snapshot];
         NSArray<NSString *> *itemIDs = [self pp_itemIDsFromPurchasedProducts:snapshotItems];
         [self pp_resolveAccessoriesForProducts:snapshotItems
                                        itemIDs:itemIDs
-                                   refreshing:refreshing];
+                                    refreshing:refreshing];
     }];
 }
 
@@ -442,18 +551,23 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
                 entry.fallbackImageURL = [self pp_orderItemString:rawItem keys:@[@"imageURL", @"imageUrl", @"image", @"photo", @"icon"]];
                 entry.fallbackPrice = [self pp_orderItemDouble:rawItem keys:@[@"price", @"finalPrice", @"unitPrice"]];
                 entry.quantity = [self pp_orderItemQuantity:rawItem];
+                entry.purchaseCount = 1;
                 entry.latestPurchaseDate = purchaseDate;
                 deduped[itemID] = entry;
             } else {
+                entry.purchaseCount += 1;
+                NSInteger quantity = [self pp_orderItemQuantity:rawItem];
+                entry.quantity += (quantity > 0 ? quantity : 1);
+
                 if (!entry.latestPurchaseDate || [purchaseDate compare:entry.latestPurchaseDate] == NSOrderedDescending) {
                     entry.latestPurchaseDate = purchaseDate;
-                    entry.fallbackName = [self pp_orderItemString:rawItem keys:@[@"name", @"title", @"itemName", @"productName"]];
-                    entry.fallbackImageURL = [self pp_orderItemString:rawItem keys:@[@"imageURL", @"imageUrl", @"image", @"photo", @"icon"]];
+                    NSString *name = [self pp_orderItemString:rawItem keys:@[@"name", @"title", @"itemName", @"productName"]];
+                    if (name.length > 0) entry.fallbackName = name;
+                    NSString *img = [self pp_orderItemString:rawItem keys:@[@"imageURL", @"imageUrl", @"image", @"photo", @"icon"]];
+                    if (img.length > 0) entry.fallbackImageURL = img;
                     double price = [self pp_orderItemDouble:rawItem keys:@[@"price", @"finalPrice", @"unitPrice"]];
                     if (price > 0.0) entry.fallbackPrice = price;
                 }
-                NSInteger quantity = [self pp_orderItemQuantity:rawItem];
-                if (quantity > 0) entry.quantity = quantity;
             }
         }
     }
@@ -510,11 +624,16 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
 
 - (void)pp_resolveAccessoriesForProducts:(NSArray<PPPurchasedProduct *> *)products
                                  itemIDs:(NSArray<NSString *> *)itemIDs
-                             refreshing:(BOOL)refreshing
+                              refreshing:(BOOL)refreshing
 {
     if (itemIDs.count == 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
             self.items = products ?: @[];
+            NSMutableDictionary *map = [NSMutableDictionary dictionary];
+            for (PPPurchasedProduct *p in self.items) {
+                if (p.itemID.length > 0) map[p.itemID] = p;
+            }
+            self.productsByID = map.copy;
             [self pp_finishLoadingRefreshing:refreshing];
         });
         return;
@@ -534,6 +653,11 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
 
         dispatch_async(dispatch_get_main_queue(), ^{
             self.items = products ?: @[];
+            NSMutableDictionary *map = [NSMutableDictionary dictionary];
+            for (PPPurchasedProduct *p in self.items) {
+                if (p.itemID.length > 0) map[p.itemID] = p;
+            }
+            self.productsByID = map.copy;
             [self pp_finishLoadingRefreshing:refreshing];
         });
     }];
@@ -546,6 +670,161 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
     if (refreshing) [self.refreshControl endRefreshing];
     [self pp_updateEmptyState];
     [self.tableView reloadData];
+
+    if (@available(iOS 15.0, *)) {
+        [self pp_publishNextGenSnapshotWithProducts:self.items
+                                        totalOrders:self.totalOrdersLoaded
+                                          isLoading:NO];
+    }
+}
+
+- (double)pp_calculateCurrentCartTotal
+{
+    double total = 0.0;
+    for (CartItem *item in [CartManager sharedManager].cartItems ?: @[]) {
+        total += item.lineSubtotal;
+    }
+    return total;
+}
+
+- (void)pp_publishNextGenSnapshotWithProducts:(NSArray<PPPurchasedProduct *> *)products
+                                  totalOrders:(NSInteger)totalOrders
+                                    isLoading:(BOOL)isLoading API_AVAILABLE(ios(15.0))
+{
+    if (!self.surfaceController) return;
+
+    PPPurchasedItemsSnapshotDescriptor *snapshot = [PPPurchasedItemsSnapshotDescriptor new];
+    snapshot.isInitialLoading = isLoading;
+    snapshot.showsBackButton = (self.navigationController.viewControllers.count > 1 || self.presentingViewController != nil);
+
+    NSMutableArray<PPPurchasedItemDescriptor *> *itemDescriptors = [NSMutableArray arrayWithCapacity:products.count];
+    NSInteger foodCount = 0;
+    NSInteger accessoriesCount = 0;
+    NSInteger healthCount = 0;
+    NSInteger popularCount = 0;
+    NSInteger readyForRefillCount = 0;
+    NSInteger totalUnitsRestocked = 0;
+
+    NSDate *now = [NSDate date];
+
+    for (PPPurchasedProduct *product in products) {
+        PetAccessory *accessory = product.accessory;
+        PPPurchasedItemDescriptor *desc = [PPPurchasedItemDescriptor new];
+        desc.id = product.itemID ?: @"";
+
+        NSString *name = accessory.name.length > 0 ? accessory.name : product.fallbackName;
+        desc.name = name.length > 0 ? name : (kLang(@"purchased_item_unknown_product") ?: @"Product");
+
+        NSString *imageURL = @"";
+        if ([accessory.imageURLsArray isKindOfClass:NSArray.class] && accessory.imageURLsArray.count > 0) {
+            imageURL = accessory.imageURLsArray.firstObject;
+        }
+        if (imageURL.length == 0) imageURL = product.fallbackImageURL ?: @"";
+        desc.imageURL = imageURL;
+
+        double currentPrice = accessory ? [accessory.finalPrice doubleValue] : product.fallbackPrice;
+        desc.price = currentPrice;
+        desc.formattedPrice = currentPrice > 0.0 ? [PetAccessory formatCurrency:@(currentPrice)] : @"";
+
+        if (accessory && accessory.price && [accessory.price doubleValue] > currentPrice) {
+            desc.hasDiscount = YES;
+            desc.originalPrice = [accessory.price doubleValue];
+            desc.formattedOriginalPrice = [PetAccessory formatCurrency:accessory.price];
+        }
+
+        desc.purchaseCount = MAX(1, product.purchaseCount);
+        desc.totalUnitsPurchased = MAX(1, product.quantity);
+        totalUnitsRestocked += desc.totalUnitsPurchased;
+
+        desc.latestPurchaseDate = product.latestPurchaseDate;
+        if (product.latestPurchaseDate) {
+            desc.latestPurchaseDateText = [NSString stringWithFormat:kLang(@"purchased_cadence_last_date") ?: @"Last order: %@",
+                                           [self.dateFormatter stringFromDate:product.latestPurchaseDate]];
+        } else {
+            desc.latestPurchaseDateText = @"";
+        }
+
+        NSString *unavailReason = nil;
+        desc.isOutOfStock = [self pp_isAccessoryUnavailable:accessory reason:&unavailReason];
+        desc.stockQuantity = accessory ? accessory.quantity : 0;
+        if (desc.isOutOfStock) {
+            desc.stockStatusText = kLang(@"purchased_stock_out_of_stock") ?: @"Out of Stock";
+        } else if (accessory && accessory.quantity > 0 && accessory.quantity <= 5) {
+            desc.stockStatusText = [NSString stringWithFormat:kLang(@"purchased_stock_remaining_format") ?: @"%ld left", (long)accessory.quantity];
+        } else {
+            desc.stockStatusText = kLang(@"purchased_stock_available") ?: @"In Stock";
+        }
+
+        desc.categoryKey = PPPurchasedCategoryKeyForAccessory(accessory, product.fallbackName);
+        if ([desc.categoryKey isEqualToString:@"food"]) foodCount++;
+        else if ([desc.categoryKey isEqualToString:@"health"]) healthCount++;
+        else accessoriesCount++;
+
+        desc.categoryTagText = PPPurchasedCategoryTagText(desc.categoryKey);
+        desc.weightOrSizeText = accessory.weightText.length > 0 ? accessory.weightText : (accessory.size ?: @"");
+
+        NSInteger daysSince = PPPurchasedDaysBetweenDates(product.latestPurchaseDate, now);
+        desc.isReadyForRefill = (desc.purchaseCount >= 2 && daysSince >= 14) || desc.purchaseCount >= 3;
+        if (desc.isReadyForRefill) readyForRefillCount++;
+
+        if (desc.purchaseCount >= 2) popularCount++;
+
+        desc.cadenceBadgeText = desc.purchaseCount > 1
+            ? [NSString stringWithFormat:kLang(@"purchased_cadence_times_format") ?: @"Ordered %ld times", (long)desc.purchaseCount]
+            : (kLang(@"purchased_cadence_once") ?: @"Ordered once");
+
+        desc.searchIndex = [NSString stringWithFormat:@"%@ %@ %@ %@",
+                            desc.name, desc.weightOrSizeText, desc.categoryTagText, desc.latestPurchaseDateText].lowercaseString;
+
+        [itemDescriptors addObject:desc];
+    }
+
+    snapshot.items = itemDescriptors;
+    snapshot.totalDistinctCount = itemDescriptors.count;
+    snapshot.totalOrdersCount = totalOrders;
+    snapshot.totalUnitsRestocked = totalUnitsRestocked;
+    snapshot.readyForRefillCount = readyForRefillCount;
+
+    // Quick Reorder Items: Top 5 by purchaseCount or latest purchase
+    NSArray<PPPurchasedItemDescriptor *> *sortedForQuick = [itemDescriptors sortedArrayUsingComparator:^NSComparisonResult(PPPurchasedItemDescriptor *a, PPPurchasedItemDescriptor *b) {
+        if (a.purchaseCount != b.purchaseCount) {
+            return a.purchaseCount < b.purchaseCount ? NSOrderedDescending : NSOrderedAscending;
+        }
+        NSDate *dateA = a.latestPurchaseDate ?: NSDate.distantPast;
+        NSDate *dateB = b.latestPurchaseDate ?: NSDate.distantPast;
+        return [dateB compare:dateA];
+    }];
+    snapshot.quickReorderItems = [sortedForQuick subarrayWithRange:NSMakeRange(0, MIN(sortedForQuick.count, 6))];
+
+    // Filter Chips
+    snapshot.filters = @[
+        [[PPPurchasedFilterDescriptor alloc] initWithId:@"all"
+                                                  title:kLang(@"purchased_filter_all") ?: @"All"
+                                                   icon:@"sparkles"
+                                                  count:(int)itemDescriptors.count],
+        [[PPPurchasedFilterDescriptor alloc] initWithId:@"food"
+                                                  title:kLang(@"purchased_filter_food") ?: @"Food & Treats"
+                                                   icon:@"fork.knife"
+                                                  count:(int)foodCount],
+        [[PPPurchasedFilterDescriptor alloc] initWithId:@"accessories"
+                                                  title:kLang(@"purchased_filter_accessories") ?: @"Supplies & Toys"
+                                                   icon:@"pawprint.fill"
+                                                  count:(int)accessoriesCount],
+        [[PPPurchasedFilterDescriptor alloc] initWithId:@"health"
+                                                  title:kLang(@"purchased_filter_health") ?: @"Care & Health"
+                                                   icon:@"cross.case.fill"
+                                                  count:(int)healthCount],
+        [[PPPurchasedFilterDescriptor alloc] initWithId:@"popular"
+                                                  title:kLang(@"purchased_filter_popular") ?: @"Most Repeated"
+                                                   icon:@"flame.fill"
+                                                  count:(int)popularCount]
+    ];
+
+    snapshot.cartBadgeCount = [CartManager sharedManager].cartItems.count;
+    double cartTotal = [self pp_calculateCurrentCartTotal];
+    snapshot.cartTotalFormatted = cartTotal > 0.0 ? [PetAccessory formatCurrency:@(cartTotal)] : @"";
+
+    [self.surfaceController applySnapshot:snapshot];
 }
 
 - (void)pp_updateEmptyState
@@ -631,7 +910,7 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
         if (reason) *reason = kLang(@"purchased_item_hidden") ?: @"This item is currently hidden.";
         return YES;
     }
-    if (accessory.quantity <= 0) {
+    if (accessory.isOutOfStock || accessory.quantity <= 0) {
         if (reason) *reason = kLang(@"Out of stock") ?: @"Out of stock";
         return YES;
     }
@@ -642,22 +921,37 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
 
 - (void)pp_addPurchasedItemToCart:(PPPurchasedProduct *)product
 {
+    [self pp_addPurchasedItemToCart:product quantity:1];
+}
+
+- (void)pp_addPurchasedItemToCart:(PPPurchasedProduct *)product quantity:(NSInteger)quantity
+{
     NSString *reason = nil;
     if ([self pp_isAccessoryUnavailable:product.accessory reason:&reason]) {
         [PPHUD showError:reason];
         return;
     }
 
-    CartItem *item = [[CartItem alloc] initWithAccessory:product.accessory quantity:1];
+    CartItem *item = [[CartItem alloc] initWithAccessory:product.accessory quantity:MAX(1, quantity)];
+    __weak typeof(self) weakSelf = self;
     [[CartManager sharedManager] addItem:item
                 presentingViewController:self
-                              completion:^(BOOL didAdd, BOOL didCancel) {
-        if (didCancel) { return; }
+                               completion:^(BOOL didAdd, BOOL didCancel) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || didCancel) return;
         if (didAdd) {
             [PPFunc triggerLightHaptic];
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [PPAddToCartSuccessToast showWithTitle:kLang(@"ItemAddedToCart") ?: kLang(@"purchased_item_added_to_cart") ?: @"Item added to cart"];
             });
+            if (@available(iOS 15.0, *)) {
+                if (self.surfaceController) {
+                    NSInteger count = [CartManager sharedManager].cartItems.count;
+                    double cartTotal = [self pp_calculateCurrentCartTotal];
+                    NSString *formatted = cartTotal > 0.0 ? [PetAccessory formatCurrency:@(cartTotal)] : @"";
+                    [self.surfaceController updateCartBadgeWithCount:(int)count total:formatted];
+                }
+            }
         } else {
             [PPHUD showError:kLang(@"Out of stock") ?: @"Out of stock"];
         }
@@ -678,7 +972,55 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
     [self.navigationController pushViewController:viewer animated:YES];
 }
 
-#pragma mark - UITableView
+#pragma mark - PPPurchasedItemsSurfaceControllerDelegate
+
+- (void)purchasedItemsSurfaceDidRequestBack
+{
+    if (self.navigationController.viewControllers.count > 1) {
+        [self.navigationController popViewControllerAnimated:YES];
+    } else if (self.presentingViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
+}
+
+- (void)purchasedItemsSurfaceDidRequestRefresh
+{
+    [self pp_loadPurchasedItemsRefreshing:YES];
+}
+
+- (void)purchasedItemsSurfaceDidRequestAddToCart:(NSString *)itemID quantity:(NSInteger)quantity
+{
+    PPPurchasedProduct *product = self.productsByID[itemID];
+    if (!product || !product.accessory) {
+        [PPHUD showError:kLang(@"purchased_item_unavailable") ?: @"This item is no longer available."];
+        return;
+    }
+    [self pp_addPurchasedItemToCart:product quantity:quantity];
+}
+
+- (void)purchasedItemsSurfaceDidRequestOpenProduct:(NSString *)itemID
+{
+    PPPurchasedProduct *product = self.productsByID[itemID];
+    if (!product) return;
+    [self pp_openProduct:product];
+}
+
+- (void)purchasedItemsSurfaceDidRequestOpenCart
+{
+    CartViewController *vc = [CartViewController new];
+    [self.navigationController pushViewController:vc animated:YES];
+}
+
+- (void)purchasedItemsSurfaceDidRequestExploreStore
+{
+    if (self.navigationController.viewControllers.count > 1) {
+        [self.navigationController popToRootViewControllerAnimated:YES];
+    } else if (self.presentingViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
+}
+
+#pragma mark - UITableView (Legacy Fallback)
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {

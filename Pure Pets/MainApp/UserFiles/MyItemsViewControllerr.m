@@ -377,6 +377,7 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 >
 
 @property (nonatomic, assign) MyItemsMode mode;
+@property (nonatomic, strong) PPMyAdsNextGenHostingController *myAdsHostingController;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) NSArray<PPUniversalCellViewModel *> *items;
 @property (nonatomic, strong) NSArray *rawItems;
@@ -445,6 +446,25 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 {
     [super viewDidLoad];
 
+    if (self.mode == MyItemsModeMyAds) {
+        self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+        self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+        self.myAdsHostingController = [PPMyAdsNextGenHostingController new];
+        [self addChildViewController:self.myAdsHostingController];
+        self.myAdsHostingController.view.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.view addSubview:self.myAdsHostingController.view];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [self.myAdsHostingController.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [self.myAdsHostingController.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.myAdsHostingController.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.myAdsHostingController.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+        [self.myAdsHostingController didMoveToParentViewController:self];
+        return;
+    }
+
     [self setupBaseUI];
     [self setupHeader];
     [self setupSegmentedControl];
@@ -458,8 +478,13 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 {
     [super viewWillAppear:animated];
 
-    NSString *title =
-        self.mode == MyItemsModeMyAds ? kLang(@"myadsTitle") : kLang(@"myfavTitle");
+    if (self.mode == MyItemsModeMyAds) {
+        [self.navigationController setNavigationBarHidden:YES animated:animated];
+        [self.myAdsHostingController refreshState];
+        return;
+    }
+
+    NSString *title = kLang(@"myfavTitle");
     BOOL isNavigationRoot =
         self.navigationController.viewControllers.firstObject == self;
     BOOL shouldHideBackButton =
@@ -478,12 +503,20 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    [self runEntranceIfNeeded];
+    if (self.mode != MyItemsModeMyAds) {
+        [self runEntranceIfNeeded];
+    }
 }
 
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+
+    if (self.mode == MyItemsModeMyAds) {
+        [self.navigationController setNavigationBarHidden:NO animated:animated];
+        return;
+    }
+
     for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
         if ([PPUniversalCell pp_isUniversalCell:cell]) {
             [(PPUniversalCell *)cell stopMediaPlayback];
@@ -591,7 +624,8 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
     iconLottie.alpha = 0.0;
     [aura addSubview:iconLottie];
     
-    [Styling setAnimationNamed:@"Speaker.lottie" toView:iconLottie withSpeed:0.8 loopAnimation:YES autoplay:YES completion:^(BOOL success) {
+    NSString *animName = (self.mode == MyItemsModeFavorites) ? @"Heart.lottie" : @"Speaker.lottie";
+    [Styling setAnimationNamed:animName toView:iconLottie withSpeed:0.8 loopAnimation:YES autoplay:YES completion:^(BOOL success) {
         if (success) {
             [UIView animateWithDuration:0.3 animations:^{
                 iconLottie.alpha = 1.0;

@@ -769,16 +769,10 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     self.isLoading = YES;
 
     // Nav — AddressFormVC style
-    self.navigationItem.leftBarButtonItem =
-        [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName)
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(pp_handleBack)];
-    UIBarButtonItem *addBtn = [[UIBarButtonItem alloc]
-        initWithImage:[UIImage systemImageNamed:@"plus.circle.fill"]
-                style:UIBarButtonItemStylePlain target:self action:@selector(pp_addReminder)];
-    addBtn.tintColor = AppPrimaryClr;
-    self.navigationItem.rightBarButtonItem = addBtn;
+    UIButton *backBtn = [self pp_ButtonWithSystemName:PPChevronName action:@selector(pp_handleBack)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backBtn];
+    UIButton *addBtn = [self pp_ButtonWithSystemName:@"plus" action:@selector(pp_addReminder)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:addBtn];
 
     self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     self.tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;

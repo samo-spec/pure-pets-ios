@@ -358,17 +358,8 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (void)pp_orderApplyChevronBackButton
 {
-    if (@available(iOS 13.0, *)) {
-        UIImage *backImage = [UIImage systemImageNamed:PPChevronName];
-        self.navigationItem.leftBarButtonItem =
-        [[UIBarButtonItem alloc] initWithImage:backImage
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(pp_orderHandleChevronBack)];
-    } else {
-        UIButton *backButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:PPChevronName target:self action:@selector(pp_orderHandleChevronBack)];
-        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
-    }
+    UIButton *backButton = [self pp_ButtonWithSystemName:PPChevronName action:@selector(pp_orderHandleChevronBack)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
 }
 
 - (void)pp_orderHandleChevronBack
@@ -846,20 +837,13 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     } else {
         leftButtonImageName = PPChevronName;
     }
-    if (@available(iOS 13.0, *)) {
-        UIImage *backImage = [UIImage systemImageNamed:leftButtonImageName];
-        self.navigationItem.leftBarButtonItem =
-        [[UIBarButtonItem alloc] initWithImage:backImage
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(onBackBarButtonTapped)];
-    } else {
-        UIButton *backButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:leftButtonImageName target:self action:@selector(onBack:)];
-        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
-    }
+    UIButton *backButton = [self pp_ButtonWithSystemName:leftButtonImageName action:@selector(onBackBarButtonTapped)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
 
-    UIBarButtonItem *supportItem =  [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"headphones.dots"] style:UIBarButtonItemStylePlain target:self action:@selector(contactSupportTapped)];
-    UIBarButtonItem *shareItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"square.and.arrow.up"] style:UIBarButtonItemStylePlain target:self action:@selector(shareOrderTapped)];
+    UIButton *supportButton = [self pp_ButtonWithSystemName:@"headphones.dots" action:@selector(contactSupportTapped)];
+    UIButton *shareButton = [self pp_ButtonWithSystemName:@"square.and.arrow.up" action:@selector(shareOrderTapped)];
+    UIBarButtonItem *supportItem =  [[UIBarButtonItem alloc] initWithCustomView:supportButton];
+    UIBarButtonItem *shareItem = [[UIBarButtonItem alloc] initWithCustomView:shareButton];
     self.navigationItem.rightBarButtonItems = @[shareItem, supportItem];
 }
 

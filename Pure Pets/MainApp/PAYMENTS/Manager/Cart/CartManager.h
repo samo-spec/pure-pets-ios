@@ -12,6 +12,8 @@
 @class UIViewController;
 NS_ASSUME_NONNULL_BEGIN
 
+extern NSString * const kCartStoreBranchChangedNotification;
+
 typedef void (^PPCartAddItemCompletion)(BOOL success, BOOL didCancel);
 
 @interface PPCartAddProjection : NSObject
@@ -85,6 +87,10 @@ presentingViewController:(UIViewController * _Nullable)presentingViewController
 - (double)pp_currentCheckoutShippingFee;
 - (double)pp_checkoutShippingFeeForItems:(nullable NSArray<CartItem *> *)items;
 - (void)fetchLatestPricingConfigurationWithCompletion:(void (^ _Nullable)(double deliveryFee, NSError * _Nullable error))completion;
+- (void)refreshCartStockAvailabilityIfNeededWithCompletion:(void (^ _Nullable)(BOOL updated))completion;
+- (void)refreshCartStockAvailabilityForced:(BOOL)forced
+                                completion:(void (^ _Nullable)(BOOL updated))completion;
+- (void)revalidateCartItemsWithCompletion:(nullable void (^)(NSArray<CartItem *> *clampedItems, NSArray<CartItem *> *outOfStockItems, NSString *branchName))completion;
 @end
 
 NS_ASSUME_NONNULL_END

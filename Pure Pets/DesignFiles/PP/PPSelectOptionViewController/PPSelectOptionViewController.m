@@ -653,17 +653,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     [container addSubview:grabber];
 
     // 2. Circular glass close button
-    UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-    closeBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    closeBtn.backgroundColor = [self pp_dynamicLightColor:[UIColor colorWithWhite:0.0 alpha:0.05]
-                                                darkColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
-    closeBtn.layer.cornerRadius = 16.0;
-    closeBtn.layer.cornerCurve = kCACornerCurveContinuous;
-    UIImageSymbolConfiguration *xConfig = [UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightBold];
-    UIImage *xImg = [UIImage systemImageNamed:@"xmark" withConfiguration:xConfig];
-    [closeBtn setImage:[xImg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
-    closeBtn.tintColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    [closeBtn addTarget:self action:@selector(pp_dismissAction) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *closeBtn = [self pp_ButtonWithSystemName:@"xmark" action:@selector(pp_dismissAction)];
     [container addSubview:closeBtn];
 
     // 3. Optional task symbol. The calling flow owns the semantic name, so the

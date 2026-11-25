@@ -3877,6 +3877,9 @@ static char kUIViewTapActionKey;
                                 target:(id)target
                                 action:(nullable SEL)action
 {
+    if ((!title || title.length == 0) && imageName.length > 0) {
+        return [self pp_NavBarButtonWithSystemName:imageName action:action controller:target];
+    }
     if (@available(iOS 26.0, *)) {
         return [self pp_buttonWithTitle:title font:[GM boldFontWithSize:14] textColor:[AppPrimaryClr colorWithAlphaComponent:1.1] corners:22 imageName:imageName target:target config:[UIButtonConfiguration glassButtonConfiguration] btnSize:0 action:action];
     } else {
@@ -4238,82 +4241,73 @@ static char kUIViewTapActionKey;
 
 + (UIButton *)pp_NavBarButtonWithSystemName:(NSString *)imageName action:(SEL)action controller:(UIViewController *)controller{
     UIButton *btn;
-    CGFloat btnSize = 40;
+    CGFloat btnSize = 40.0;
+    if (@available(iOS 26.0, *)) {
+        btnSize = 44.0;
+    }
+    CGFloat cornerRadius = (btnSize >= 44.0) ? 13.0 : 12.0;
     
     if (@available(iOS 26.0, *)) {
-        // ✅ Use glass button on iOS 17+
-        btnSize = 44;
         UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
         cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
-        cfg.baseBackgroundColor = UIColor.systemMintColor;
-        cfg.baseForegroundColor = UIColor.whiteColor;
-        btn = [UIButton new];
-        btn.configuration = cfg;
-        [btn setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
-    }
-    else if (@available(iOS 15.0, *)) {
-        // ✅ iOS 15–16: plain button with background config
+        cfg.baseForegroundColor = AppPrimaryClr;
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.background.cornerRadius = cornerRadius;
+        btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+    } else if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
         cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
-        cfg.background.backgroundColor = AppBackgroundClr ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        cfg.background.cornerRadius = 20;
-        
+        cfg.background.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.background.cornerRadius = cornerRadius;
         btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
-        [btn setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
     } else {
-        // ✅ iOS < 15 fallback
         btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        btn.contentEdgeInsets = UIEdgeInsetsMake(6, 6, 6, 6);
-        btn.backgroundColor = AppBackgroundClr ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        btn.layer.cornerRadius = 20;
-        [btn setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
+        btn.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
     }
     
-    // Try SF Symbol → fallback to asset
+    btn.frame = CGRectMake(0, 0, btnSize, btnSize);
+    btn.layer.cornerRadius = cornerRadius;
+    if (@available(iOS 13.0, *)) {
+        btn.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    btn.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [btn.widthAnchor constraintEqualToConstant:btnSize],
+        [btn.heightAnchor constraintEqualToConstant:btnSize]
+    ]];
+
     UIImage *icon = [UIImage systemImageNamed:imageName];
-    if (!icon) {
+    if (icon) {
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:20
+                                                                                             weight:UIImageSymbolWeightRegular
+                                                                                              scale:UIImageSymbolScaleMedium];
+        icon = [icon imageByApplyingSymbolConfiguration:config];
+    } else {
         icon = [UIImage imageNamed:imageName];
+        if (!icon) {
+            DLog(@"[pp_NavBarButtonWithSystemName] ⚠️ No image found for name: %@", imageName);
+            icon = [UIImage new];
+        }
         icon = [UIImage pp_resizedImage:icon toPointSize:18];
-    }
-    
-    if (!icon) {
-        DLog(@"[pp_circleButton] ⚠️ No image found for name: %@", imageName);
-        icon = [UIImage new];
-    }
-    
-    if ([imageName isEqualToString:@"headset"]) {
-        icon = [[UIImage pp_resizedImage:icon toPointSize:18] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     }
     
     [btn setImage:icon forState:UIControlStateNormal];
+    btn.tintColor = AppPrimaryClr;
+    btn.imageView.contentMode = UIViewContentModeScaleAspectFit;
     
-    btn.translatesAutoresizingMaskIntoConstraints = NO;
-    btn.tintColor = AppPrimaryClr ?: [UIColor systemBlueColor];
-    
-    // Apply size constraints
-    [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
-    [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
-    
-    // Shadows (glass or not)
-    [btn pp_setShadowColor:AppShadowClr];
+    [btn pp_setShadowColor:(AppShadowClr ?: UIColor.blackColor)];
     btn.layer.shadowOpacity = 0.10;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
-    btn.layer.shadowRadius = 6;
+    btn.layer.shadowRadius = 6.0;
     btn.layer.masksToBounds = NO;
     
-    // Apply symbol config if SF Symbol
-    if ([UIImage systemImageNamed:imageName]) {
-        UIImageSymbolConfiguration *config =
-        [UIImageSymbolConfiguration configurationWithPointSize:20
-                                                        weight:UIImageSymbolWeightRegular
-                                                         scale:UIImageSymbolScaleMedium];
-        [btn setImage:[icon imageByApplyingSymbolConfiguration:config] forState:UIControlStateNormal];
-        btn.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    } else {
-        btn.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    if (controller && action) {
+        [btn addTarget:controller action:action forControlEvents:UIControlEventTouchUpInside];
     }
     
-    [btn addTarget:controller action:action forControlEvents:UIControlEventTouchUpInside];
+    [PPButtonHelper pp_addPressAnimationToButton:btn];
     return btn;
 }
 

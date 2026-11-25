@@ -30,6 +30,7 @@
 #import "PPAnalytics.h"
 #import "PPDataViewInput.h"
 #import "PPDataViewVM.h"
+#import "PPFirebaseSessionBridge.h"
 #import "PPFunc.h"
 #import "PPHomeHelper.h"
 #import "PPHUD.h"
@@ -1833,8 +1834,9 @@ static NSString *PPMarketplaceTrimmedString(id value)
                 completion:^(ChatThreadModel * _Nullable thread, NSError * _Nullable chatError) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (chatError || !thread) {
-                        [PPHUD showError:kLang(@"SomethingWentWrong")
-                               subtitle:chatError.localizedDescription ?: @""];
+                        [PPHUD showError:[PPFirebaseSessionBridge publicChatTitleForError:chatError]
+                               subtitle:[PPFirebaseSessionBridge publicChatMessageForError:chatError
+                                                                               fallbackKey:@"chat_start_failed_message"]];
                         return;
                     }
                     [PPOverlayCoordinator pp_openChatThread:thread

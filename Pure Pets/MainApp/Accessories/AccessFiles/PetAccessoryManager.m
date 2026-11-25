@@ -11,6 +11,7 @@
 
 #import "PetAccessoryManager.h"
 #import "PPStoreBranchManager.h"
+#import "PPStoreBranchInventoryManager.h"
 #import "PetAdManager.h"
 #import "UserManager.h"
 #import "UserModel.h"
@@ -31,6 +32,7 @@
 @interface PetAccessoryManager ()
 @property (nonatomic, strong) FIRFirestore *firestore;
 @property (nonatomic, strong) id<FIRListenerRegistration> listener;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, PetAccessory *> *cachedAccessoriesByID;
 + (NSArray<PetAccessory *> *)pp_filterItems:(NSArray<PetAccessory *> *)items
                                matchingKind:(AccessKindType)kind
                 requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility;
@@ -607,11 +609,17 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         sharedInstance = [[PetAccessoryManager alloc] init];
         sharedInstance.firestore = [FIRFirestore firestore];
         sharedInstance.accessoriesArray = [NSMutableArray array];
+        sharedInstance.cachedAccessoriesByID = [NSMutableDictionary dictionary];
         [PetAccessoryManager pp_loadExpiryThresholdIfNeeded];
         [[PPStoreBranchManager sharedManager] startObservingStoreBranch];
+        [[PPStoreBranchInventoryManager sharedManager] startListening];
         [[NSNotificationCenter defaultCenter] addObserver:sharedInstance
                                                  selector:@selector(pp_storeBranchDidChange:)
                                                      name:PPStoreBranchDidChangeNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:sharedInstance
+                                                 selector:@selector(pp_storeBranchInventoryDidUpdate:)
+                                                     name:PPStoreBranchInventoryDidUpdateNotification
                                                    object:nil];
     });
     return sharedInstance;
@@ -620,7 +628,19 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 - (void)pp_storeBranchDidChange:(NSNotification *)notification {
     NSLog(@"[PetAccessoryManager] Store branch changed -> refreshing active accessories");
     [self.accessoriesArray removeAllObjects];
+    @synchronized (self.cachedAccessoriesByID) {
+        [self.cachedAccessoriesByID removeAllObjects];
+    }
     dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"kPetAccessoriesDidUpdateNotification" object:nil];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"PPAccessoriesNeedRefreshNotification" object:nil];
+    });
+}
+
+- (void)pp_storeBranchInventoryDidUpdate:(NSNotification *)notification {
+    NSLog(@"[PetAccessoryManager] Live branch inventory updated -> notifying UI across all categories");
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"kPetAccessoriesDidUpdateNotification" object:nil];
         [[NSNotificationCenter defaultCenter] postNotificationName:@"PPAccessoriesNeedRefreshNotification" object:nil];
     });
 }
@@ -1952,24 +1972,45 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     }
 
     + (void)fetchAccessoriesWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
-        if (itemIDs.count == 0) {
-            completion(@[]);
+        NSMutableOrderedSet<NSString *> *validIDs = [NSMutableOrderedSet orderedSet];
+        for (id rawID in itemIDs ?: @[]) {
+            if (![rawID isKindOfClass:[NSString class]]) { continue; }
+            NSString *cleanID = [(NSString *)rawID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            if (cleanID.length == 0 ||
+                [cleanID isEqualToString:@"."] ||
+                [cleanID isEqualToString:@".."] ||
+                [cleanID containsString:@"/"]) {
+                continue;
+            }
+            [validIDs addObject:cleanID];
+        }
+        if (validIDs.count == 0) {
+            if (completion) {
+                if ([NSThread isMainThread]) {
+                    completion(@[]);
+                } else {
+                    dispatch_async(dispatch_get_main_queue(), ^{ completion(@[]); });
+                }
+            }
             return;
         }
 
         FIRFirestore *db = [FIRFirestore firestore];
-        NSMutableArray<PetAccessory *> *results = [NSMutableArray array];
+        NSMutableArray<PetAccessory *> *results = [NSMutableArray arrayWithCapacity:validIDs.count];
         dispatch_group_t group = dispatch_group_create();
 
-        for (NSString *itemID in itemIDs) {
+        for (NSString *itemID in validIDs) {
             dispatch_group_enter(group);
             [[[db collectionWithPath:@"petAccessories"] documentWithPath:itemID]
              getDocumentWithCompletion:^(FIRDocumentSnapshot *doc, NSError *error) {
                 if (doc.exists && doc.data) {
                     PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
+                    [[PetAccessoryManager sharedManager] pp_cacheFetchedAccessory:item];
                     if (PPAccessoryItemPassesUsedAccessoryFlag(item, item.accessKindType)) {
-                        [results addObject:item];
+                        @synchronized (results) {
+                            [results addObject:item];
+                        }
                     }
                 }
                 dispatch_group_leave(group);
@@ -1977,9 +2018,22 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-            completion(results);
+            if (completion) {
+                completion([results copy]);
+            }
         });
     }
+
+- (void)cacheAccessory:(PetAccessory *)accessory {
+    [self pp_cacheFetchedAccessory:accessory];
+}
+
+- (void)pp_cacheFetchedAccessory:(PetAccessory *)accessory {
+    if (!accessory || accessory.accessoryID.length == 0) { return; }
+    @synchronized (self.cachedAccessoriesByID) {
+        self.cachedAccessoriesByID[accessory.accessoryID] = accessory;
+    }
+}
 
 #pragma mark - Colour-variant families
 
@@ -2018,7 +2072,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         NSString *cleanID = [accessoryID isKindOfClass:[NSString class]]
             ? [accessoryID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
             : @"";
-        if (cleanID.length == 0) {
+        if (cleanID.length == 0 || [cleanID isEqualToString:@"."] || [cleanID isEqualToString:@".."] || [cleanID containsString:@"/"]) {
             dispatch_async(dispatch_get_main_queue(), ^{ completion(nil, nil); });
             return;
         }
@@ -2040,6 +2094,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data
                                                                   documentID:doc.documentID];
                 item.accessoryID = doc.documentID;
+                [[PetAccessoryManager sharedManager] pp_cacheFetchedAccessory:item];
                 completion(item, nil);
             });
         }];
@@ -2363,13 +2418,18 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
     -(PetAccessory *)getAccessoryID:(NSString *)accessID
     {
-        for (PetAccessory *accessory in self.accessoriesArray) {
+        if (![accessID isKindOfClass:[NSString class]] || accessID.length == 0) {
+            return nil;
+        }
+        NSArray<PetAccessory *> *snapshot = [self.accessoriesArray copy];
+        for (PetAccessory *accessory in snapshot) {
             if ([accessory.accessoryID isEqualToString:accessID]) {
                 return accessory;
             }
         }
-
-        return nil;
+        @synchronized (self.cachedAccessoriesByID) {
+            return self.cachedAccessoriesByID[accessID];
+        }
     }
 
 

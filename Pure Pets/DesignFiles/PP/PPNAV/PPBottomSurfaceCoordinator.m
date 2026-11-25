@@ -115,10 +115,25 @@
          (requestedKind == PPBottomSurfaceKindPremiumTabBar ||
           requestedKind == PPBottomSurfaceKindFloatingCartSurface));
 
+    // Each summary host owns its own summaryView (e.g. CartViewController -> PPSelectPaymentVC).
+    // Hide the outgoing controller's bar immediately/independently without blocking the incoming
+    // screen's summary dock behind a 0.24s hide timer during navigation pushes.
+    BOOL handsOffOwnedSummarySurface =
+        (previousKind == PPBottomSurfaceKindSummaryBottomBar &&
+         requestedKind == PPBottomSurfaceKindSummaryBottomBar &&
+         previousController != targetController);
+
     self.transitionToken += 1;
     NSUInteger token = self.transitionToken;
 
-    if (reusesPersistentSurface) {
+    if (reusesPersistentSurface || handsOffOwnedSummarySurface) {
+        if (handsOffOwnedSummarySurface && previousController) {
+            UIView *outgoingSurface = [self pp_controllerOwnedSurfaceViewForController:previousController kind:previousKind];
+            [self pp_hideManagedSurfaceView:outgoingSurface
+                               inController:previousController
+                                   animated:NO
+                                 completion:nil];
+        }
         self.activeController = targetController;
         self.activeSurfaceKind = requestedKind;
         [self pp_refreshStateForController:targetController kind:requestedKind];
@@ -447,9 +462,14 @@
         return;
     }
 
-    [controller.view layoutIfNeeded];
-    UIView *containerView = surfaceView.superview ?: controller.view;
-    [containerView layoutIfNeeded];
+    if (surfaceView.isHidden && surfaceView.alpha <= 0.01) {
+        surfaceView.userInteractionEnabled = NO;
+        surfaceView.transform = CGAffineTransformIdentity;
+        if (completion) {
+            completion();
+        }
+        return;
+    }
 
     void (^applyHiddenState)(void) = ^{
         surfaceView.alpha = 0.0;
@@ -490,23 +510,33 @@
         return;
     }
 
-    [controller.view layoutIfNeeded];
     UIView *containerView = surfaceView.superview ?: controller.view;
-    [containerView layoutIfNeeded];
-    [containerView bringSubviewToFront:surfaceView];
+    if (containerView.subviews.lastObject != surfaceView) {
+        [containerView bringSubviewToFront:surfaceView];
+    }
+
+    BOOL alreadyVisible = !surfaceView.isHidden &&
+        surfaceView.alpha > 0.99 &&
+        CGAffineTransformIsIdentity(surfaceView.transform);
+    if (alreadyVisible) {
+        surfaceView.userInteractionEnabled = YES;
+        return;
+    }
 
     surfaceView.hidden = NO;
     surfaceView.userInteractionEnabled = YES;
-    surfaceView.alpha = [self pp_reduceMotionEnabled] ? 1.0 : 0.0;
-    surfaceView.transform = [self pp_reduceMotionEnabled]
-        ? CGAffineTransformIdentity
-        : CGAffineTransformMakeTranslation(0.0, [self pp_translationDistanceForSurfaceView:surfaceView inController:controller]);
 
-    if (![self pp_shouldAnimate:animated]) {
+    if (![self pp_shouldAnimate:animated] || !controller.view.window) {
         surfaceView.alpha = 1.0;
         surfaceView.transform = CGAffineTransformIdentity;
         return;
     }
+
+    [containerView layoutIfNeeded];
+    surfaceView.alpha = [self pp_reduceMotionEnabled] ? 1.0 : 0.0;
+    surfaceView.transform = [self pp_reduceMotionEnabled]
+        ? CGAffineTransformIdentity
+        : CGAffineTransformMakeTranslation(0.0, [self pp_translationDistanceForSurfaceView:surfaceView inController:controller]);
 
     [UIView animateWithDuration:[[self class] transitionInDuration]
                           delay:0.0
@@ -627,7 +657,7 @@
 
     [self pp_invokeIfSupported:NSSelectorFromString(@"pp_updateBottomNavigationInsetsIfNeeded") onTarget:controller];
     [self pp_invokeIfSupported:NSSelectorFromString(@"updateCollectionContentInset") onTarget:controller];
-    [controller.view layoutIfNeeded];
+    [controller.view setNeedsLayout];
 }
 
 - (void)pp_invokeIfSupported:(SEL)selector onTarget:(id)target

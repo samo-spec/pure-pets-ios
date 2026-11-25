@@ -2382,18 +2382,23 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
 // MARK: - startChatWith SelectUser
 - (void)startChatWith:(UserModel *)user fromController:(UIViewController *)controller {
-    //NSString *userID = UserManager.sharedManager.currentUser.ID;
-    
     [ChManager.sharedManager createOrGetChatThreadWithUser:user completion:^(ChatThreadModel * _Nullable thread, NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"❌ Failed to create chat thread: %@", error.localizedDescription);
-            return;
-        }
-        
-        // Open chat messaging screen
-        [PPOverlayCoordinator pp_openChatThread:thread fromVC:controller];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error || !thread) {
+                NSLog(@"❌ Failed to create chat thread: %@", error.localizedDescription);
+                if (controller) {
+                    [PPAlertHelper showErrorIn:controller
+                                         title:[PPFirebaseSessionBridge publicChatTitleForError:error]
+                                      subtitle:[PPFirebaseSessionBridge publicChatMessageForError:error
+                                                                                      fallbackKey:@"chat_start_failed_message"]];
+                }
+                return;
+            }
+
+            // Open chat messaging screen
+            [PPOverlayCoordinator pp_openChatThread:thread fromVC:controller];
+        });
     }];
-    
 }
 
 
@@ -2463,16 +2468,21 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
 + (void)chatWith:(UserModel *)user FromController:(UIViewController *)controller
 {
-    //NSLog(@"Selected user for new chat: %@", user.UserName);
-
-        [[ChManager sharedManager] createOrGetChatThreadWithUser:user completion:^(ChatThreadModel * _Nullable chatThread, NSError * _Nullable error) {
-            if (error) {
-                //NSLog(@"❌ Failed to create chat thread: %@", error.localizedDescription);
+    [[ChManager sharedManager] createOrGetChatThreadWithUser:user completion:^(ChatThreadModel * _Nullable chatThread, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error || !chatThread) {
+                if (controller) {
+                    [PPAlertHelper showErrorIn:controller
+                                         title:[PPFirebaseSessionBridge publicChatTitleForError:error]
+                                      subtitle:[PPFirebaseSessionBridge publicChatMessageForError:error
+                                                                                      fallbackKey:@"chat_start_failed_message"]];
+                }
                 return;
             }
 
             // Open chat messaging screen
             [PPOverlayCoordinator pp_openChatThread:chatThread fromVC:controller];
-        }];
+        });
+    }];
 }
 @end

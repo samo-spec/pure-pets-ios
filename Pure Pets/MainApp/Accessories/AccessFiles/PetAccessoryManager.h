@@ -65,6 +65,7 @@ NS_ASSUME_NONNULL_BEGIN
            imageObjects:(NSArray<UIImage *> *)images
              completion:(void (^)(NSError * _Nullable error))completion;
 - (PetAccessory *)getAccessoryID:(NSString *)accessID;
+- (void)cacheAccessory:(PetAccessory *)accessory;
 - (void)loadAllAccessories:(void (^)(NSArray<PetAccessory *> *accessories))updateBlock;
 ////////
 ///

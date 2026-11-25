@@ -222,8 +222,8 @@ struct PPVetViewerScreen: View {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .medium))
                 .frame(width: 44, height: 44)
-                .background(Color.ppSurface, in: Circle())
-                .contentShape(Circle())
+                .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
         .buttonStyle(PPVetDetailPressStyle())
         .accessibilityLabel(label)

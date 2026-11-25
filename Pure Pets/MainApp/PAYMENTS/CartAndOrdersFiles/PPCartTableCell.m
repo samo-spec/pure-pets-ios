@@ -435,6 +435,12 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
 @property (nonatomic, assign) BOOL savedForLaterActionCompleted;
 @property (nonatomic, assign) NSUInteger savedArrivalAnimationToken;
 @property (nonatomic, assign) NSUInteger imageRequestToken;
+@property (nonatomic, assign) CGFloat lastLayoutWidth;
+@property (nonatomic, assign) BOOL lastLayoutAccessibility;
+@property (nonatomic, assign) BOOL lastLayoutSavedMode;
+@property (nonatomic, assign) BOOL needsWidthLayoutUpdate;
+@property (nonatomic, copy) NSString *lastLayoutTotalText;
+@property (nonatomic, assign) CGFloat lastDividerAxisOffset;
 @end
 
 @implementation PPCartTableCell
@@ -779,20 +785,32 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     if (self.textWidthConstraint.active != verticalIdentity) {
         self.textWidthConstraint.active = verticalIdentity;
     }
-    self.identityRow.axis = verticalIdentity ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    self.identityRow.alignment = verticalIdentity ? UIStackViewAlignmentLeading : UIStackViewAlignmentTop;
-    if (self.savedForLaterMode) {
-        self.imageWidthConstraint.constant = accessibility ? 56 : 62;
-    } else {
-        self.imageWidthConstraint.constant = accessibility ? 72 : 88;
+    UILayoutConstraintAxis identityAxis = verticalIdentity ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    if (self.identityRow.axis != identityAxis) {
+        self.identityRow.axis = identityAxis;
     }
-    self.dividerView.imageAxisOffset = self.imageWidthConstraint.constant / 2;
-    [self.dividerView setNeedsDisplay];
+    UIStackViewAlignment identityAlign = verticalIdentity ? UIStackViewAlignmentLeading : UIStackViewAlignmentTop;
+    if (self.identityRow.alignment != identityAlign) {
+        self.identityRow.alignment = identityAlign;
+    }
+    CGFloat targetImageWidth = self.savedForLaterMode ? (accessibility ? 56 : 62) : (accessibility ? 72 : 88);
+    if (fabs(self.imageWidthConstraint.constant - targetImageWidth) > 0.1) {
+        self.imageWidthConstraint.constant = targetImageWidth;
+    }
+    CGFloat axisOffset = targetImageWidth / 2;
+    if (fabs(self.lastDividerAxisOffset - axisOffset) > 0.1) {
+        self.lastDividerAxisOffset = axisOffset;
+        self.dividerView.imageAxisOffset = axisOffset;
+        [self.dividerView setNeedsDisplay];
+    }
 
-    CGFloat imageW = self.imageWidthConstraint.constant;
-    CGFloat textWidth = verticalIdentity ? available : MAX(0, available - imageW - PPSpaceMD);
-    self.nameLabel.preferredMaxLayoutWidth = textWidth;
-    self.variantOptionsLabel.preferredMaxLayoutWidth = textWidth;
+    CGFloat textWidth = verticalIdentity ? available : MAX(0, available - targetImageWidth - PPSpaceMD);
+    if (fabs(self.nameLabel.preferredMaxLayoutWidth - textWidth) > 0.5) {
+        self.nameLabel.preferredMaxLayoutWidth = textWidth;
+    }
+    if (fabs(self.variantOptionsLabel.preferredMaxLayoutWidth - textWidth) > 0.5) {
+        self.variantOptionsLabel.preferredMaxLayoutWidth = textWidth;
+    }
 
     CGFloat quantityWidth = MAX(30, ceil(self.quantityLabel.intrinsicContentSize.width));
     CGFloat totalWidth = MAX(96, ceil(self.lineTotalLabel.attributedText.length
@@ -800,11 +818,27 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
         : [self.lineTotalLabel.text sizeWithAttributes:@{NSFontAttributeName: self.lineTotalLabel.font}].width));
     CGFloat actionsWidth = quantityWidth + 82.0 + 42.0 + PPSpaceSM;
     BOOL verticalFooter = accessibility || available < totalWidth + actionsWidth + PPSpaceMD;
-    self.bottomRow.axis = verticalFooter ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    self.bottomRow.alignment = verticalFooter ? UIStackViewAlignmentFill : UIStackViewAlignmentCenter;
-    self.savedActionsRow.axis = (accessibility || available < 260) ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    UILayoutConstraintAxis footerAxis = verticalFooter ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    if (self.bottomRow.axis != footerAxis) {
+        self.bottomRow.axis = footerAxis;
+    }
+    UIStackViewAlignment footerAlign = verticalFooter ? UIStackViewAlignmentFill : UIStackViewAlignmentCenter;
+    if (self.bottomRow.alignment != footerAlign) {
+        self.bottomRow.alignment = footerAlign;
+    }
+    UILayoutConstraintAxis savedAxis = (accessibility || available < 260) ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    if (self.savedActionsRow.axis != savedAxis) {
+        self.savedActionsRow.axis = (accessibility || available < 260) ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    }
     // The quantity stays centred when its control expands to the whole footer.
-    self.stepperStack.distribution = UIStackViewDistributionFill;
+    if (self.stepperStack.distribution != UIStackViewDistributionFill) {
+        self.stepperStack.distribution = UIStackViewDistributionFill;
+    }
+    self.lastLayoutWidth = width;
+    self.lastLayoutAccessibility = accessibility;
+    self.lastLayoutSavedMode = self.savedForLaterMode;
+    self.lastLayoutTotalText = self.lineTotalLabel.text ?: @"";
+    self.needsWidthLayoutUpdate = NO;
 }
 
 - (void)pp_refineTotalTypography
@@ -1002,6 +1036,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:YES];
     [self pp_styleActionButton:self.plusButton kind:PPCartActionButtonKindAccent enabled:YES];
     [self pp_styleActionButton:self.saveForLaterButton kind:PPCartActionButtonKindNeutral enabled:YES];
+    self.needsWidthLayoutUpdate = YES;
 }
 
 - (CGSize)systemLayoutSizeFittingSize:(CGSize)targetSize
@@ -1024,13 +1059,19 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     CGFloat editingInset = MAX(0.0, CGRectGetWidth(self.bounds) - CGRectGetWidth(self.contentView.bounds));
     CGFloat fittingWidth = MAX(0.0, width - editingInset);
 
-    [self pp_updateLayoutForWidth:fittingWidth];
+    BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    BOOL widthChanged = fabs(fittingWidth - self.lastLayoutWidth) > 0.5;
+    BOOL modeChanged = self.lastLayoutSavedMode != self.savedForLaterMode || self.lastLayoutAccessibility != accessibility;
+    BOOL textChanged = ![self.lastLayoutTotalText ?: @"" isEqualToString:self.lineTotalLabel.text ?: @""];
+    if (self.needsWidthLayoutUpdate || widthChanged || modeChanged || textChanged) {
+        [self pp_updateLayoutForWidth:fittingWidth];
+    }
 
-    // Reset contentView to fittingWidth with zero height so Auto Layout is NOT anchored by previous frame height
-    self.contentView.bounds = CGRectMake(0, 0, fittingWidth, 0);
-    self.contentView.frame = CGRectMake(0, 0, fittingWidth, 0);
-    [self.contentView setNeedsLayout];
-    [self.contentView layoutIfNeeded];
+    if (fabs(CGRectGetWidth(self.contentView.bounds) - fittingWidth) > 0.5 || CGRectGetHeight(self.contentView.bounds) <= 0.5) {
+        self.contentView.bounds = CGRectMake(0, 0, fittingWidth, CGRectGetHeight(self.contentView.bounds));
+        [self.contentView setNeedsLayout];
+        [self.contentView layoutIfNeeded];
+    }
 
     CGSize size = [self.contentView systemLayoutSizeFittingSize:CGSizeMake(fittingWidth, UILayoutFittingCompressedSize.height)
                                   withHorizontalFittingPriority:UILayoutPriorityRequired
@@ -1060,15 +1101,25 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
             }
         }
     }
-    [self pp_updateLayoutForWidth:width];
+    BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    if (self.needsWidthLayoutUpdate ||
+        fabs(width - self.lastLayoutWidth) > 0.5 ||
+        self.lastLayoutAccessibility != accessibility ||
+        self.lastLayoutSavedMode != self.savedForLaterMode ||
+        ![self.lastLayoutTotalText ?: @"" isEqualToString:self.lineTotalLabel.text ?: @""]) {
+        [self pp_updateLayoutForWidth:width];
+    }
     [super layoutSubviews];
-    self.cardContainer.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.cardContainer.bounds
-                                                                   cornerRadius:PPCornerCard].CGPath;
+    if (!CGRectIsEmpty(self.cardContainer.bounds)) {
+        self.cardContainer.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.cardContainer.bounds
+                                                                       cornerRadius:PPCornerCard].CGPath;
+    }
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    self.needsWidthLayoutUpdate = YES;
     if (!self.contentStack) return;
     self.lineTotalLabel.font = PPCartNumberFont(27, UIFontTextStyleTitle1, self.traitCollection);
     self.quantityLabel.font = PPCartNumberFont(17, UIFontTextStyleBody, self.traitCollection);
@@ -1294,6 +1345,7 @@ typedef NS_ENUM(NSInteger, PPCartStepperKeyKind) {
     [self pp_applyVisualTheme];
     [self pp_loadImageForItem:item];
     [self pp_updateAccessibility];
+    self.needsWidthLayoutUpdate = YES;
     [self setNeedsLayout];
 }
 

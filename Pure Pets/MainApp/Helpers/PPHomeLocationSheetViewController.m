@@ -397,20 +397,7 @@
                                           scale:UIImageSymbolScaleMedium
                                         palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
                                    makeTemplate:YES];
-    _backButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    _backButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [_backButton setImage:backIcon forState:UIControlStateNormal];
-    _backButton.tintColor = [UIColor colorWithRed:0.16 green:0.14 blue:0.18 alpha:1.0];
-    _backButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.70];
-    _backButton.layer.cornerRadius = 22.0;
-    _backButton.layer.cornerCurve = kCACornerCurveContinuous;
-    _backButton.layer.borderWidth = 1.0;
-    [_backButton pp_setBorderColor:[UIColor colorWithRed:0.73 green:0.68 blue:0.70 alpha:0.28]];
-    [_backButton pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    _backButton.layer.shadowOpacity = 0.10f;
-    _backButton.layer.shadowRadius = 16.0f;
-    _backButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-    [_backButton addTarget:self action:@selector(pp_handleBack) forControlEvents:UIControlEventTouchUpInside];
+    _backButton = [self pp_ButtonWithSystemName:PPChevronName action:@selector(pp_handleBack)];
     _backButton.accessibilityLabel = kLang(@"Back") ?: @"Back";
     [_backdropView addSubview:_backButton];
 

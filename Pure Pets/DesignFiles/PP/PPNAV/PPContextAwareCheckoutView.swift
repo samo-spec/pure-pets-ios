@@ -119,14 +119,29 @@ private enum PPContextCheckoutCopy {
 }
 
 private enum PPContextCheckoutCurrency {
+    private static let lock = NSLock()
+    private static var cachedSymbol: String?
+    private static var cachedFormatter: NumberFormatter?
+
     static func format(_ value: CGFloat) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale(identifier: "en_QA")
-        formatter.currencyCode = "QAR"
-        formatter.currencySymbol = NSLocalizedString("Rials", comment: "")
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
+        let symbol = NSLocalizedString("Rials", comment: "")
+        lock.lock()
+        defer { lock.unlock() }
+        let formatter: NumberFormatter
+        if let existing = cachedFormatter, cachedSymbol == symbol {
+            formatter = existing
+        } else {
+            let created = NumberFormatter()
+            created.numberStyle = .currency
+            created.locale = Locale(identifier: "en_QA")
+            created.currencyCode = "QAR"
+            created.currencySymbol = symbol
+            created.minimumFractionDigits = 2
+            created.maximumFractionDigits = 2
+            cachedFormatter = created
+            cachedSymbol = symbol
+            formatter = created
+        }
         return formatter.string(from: NSNumber(value: Double(value)))
             ?? String(format: "%.2f", value)
     }
@@ -765,6 +780,11 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
                 return
             }
             reviewExpanded = false
+            if presentationMode == .payment && needsHiddenTableReload {
+                needsHiddenTableReload = false
+                itemsTable.reloadData()
+                updateTableHeight()
+            }
             updateContextVisibility(animated: window != nil)
         }
     }
@@ -801,6 +821,10 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     private var usesDefaultCheckoutTitle = true
     private var usesAutomaticCheckoutImage = true
     private var stateAnimator: UIViewPropertyAnimator?
+    private var lastAdaptiveLayoutWidth: CGFloat = 0
+    private var lastAdaptiveContentSizeCategory: UIContentSizeCategory?
+    private var lastAdaptiveTotalText: String?
+    private var needsHiddenTableReload = false
 
     @objc public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -1077,13 +1101,24 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     private func updateAdaptiveDecisionLayout() {
         // During destination construction this view has no resolved width yet.
         guard bounds.width.isFinite, bounds.width > 1 else { return }
-        let accessibility = traitCollection.preferredContentSizeCategory.isAccessibilityCategory
+        let currentCategory = traitCollection.preferredContentSizeCategory
+        let currentTotalText = totalLabel.text ?? ""
+        if abs(bounds.width - lastAdaptiveLayoutWidth) <= 0.5,
+           lastAdaptiveContentSizeCategory == currentCategory,
+           lastAdaptiveTotalText == currentTotalText {
+            return
+        }
+        lastAdaptiveLayoutWidth = bounds.width
+        lastAdaptiveContentSizeCategory = currentCategory
+        lastAdaptiveTotalText = currentTotalText
+
+        let accessibility = currentCategory.isAccessibilityCategory
         let availableWidth = max(0, bounds.width - PPContextCheckoutMetrics.outerInset * 2 - 14
                                  - PPContextCheckoutMetrics.decisionHorizontalInset * 2)
         // Measure the unwrapped text, not the label's current wrapped geometry.
         // Otherwise changing the axis can change the next axis decision itself.
         let totalText = totalLabel.attributedText ?? NSAttributedString(
-            string: totalLabel.text ?? "",
+            string: currentTotalText,
             attributes: [.font: totalLabel.font ?? UIFont.preferredFont(forTextStyle: .title2)]
         )
         let requiredWidth = ceil(totalText.size().width) + 178 + PPContextCheckoutMetrics.decisionContentSpacing + 8
@@ -1131,10 +1166,15 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     public func updatePreviewItems(_ items: [CartItem]?) {
         checkoutItems = items ?? []
         totalItemQuantity = checkoutItems.reduce(0) { $0 + max($1.quantity, 0) }
-        itemsTable.reloadData()
         reviewControl.configure(items: checkoutItems, expanded: reviewExpanded)
-        updateTableHeight()
-        updateContextVisibility(animated: window != nil)
+        if presentationMode == .payment && reviewExpanded {
+            needsHiddenTableReload = false
+            itemsTable.reloadData()
+            updateTableHeight()
+        } else {
+            needsHiddenTableReload = true
+        }
+        updateContextVisibility(animated: false)
     }
 
     @objc(setCheckoutBTNTitle:image:)
@@ -1231,13 +1271,22 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         let showReviewControl = payment && hasItems
         let showItems = showReviewControl && reviewExpanded
 
+        reviewControl.configure(items: checkoutItems, expanded: reviewExpanded)
+        let visibilityChanged =
+            reviewControl.isHidden != !showReviewControl ||
+            pricingBreakdownStack.isHidden != !hasItems ||
+            itemsContainer.isHidden != !showItems
+
+        guard visibilityChanged else {
+            return
+        }
+
         let changes = {
             self.reviewControl.isHidden = !showReviewControl
             self.reviewControl.accessibilityElementsHidden = !showReviewControl
             self.pricingBreakdownStack.isHidden = !hasItems
             self.itemsContainer.isHidden = !showItems
             self.itemsContainer.accessibilityElementsHidden = !showItems
-            self.reviewControl.configure(items: self.checkoutItems, expanded: self.reviewExpanded)
             self.invalidateIntrinsicContentSize()
             self.setNeedsLayout()
             self.superview?.setNeedsLayout()
@@ -1248,16 +1297,14 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
 
         guard animated,
               window != nil,
+              !bounds.isEmpty,
               UIView.areAnimationsEnabled,
               !UIAccessibility.isReduceMotionEnabled else {
             changes()
             return
         }
 
-        // Only an onscreen disclosure animation needs synchronous layout.
-        // Nonanimated updates during navigation settle in UIKit's normal pass.
         let layoutRoot = superview ?? self
-        layoutRoot.layoutIfNeeded()
         let animator = UIViewPropertyAnimator(
             duration: PPContextCheckoutMetrics.animationDuration,
             curve: .easeOut,
@@ -1278,6 +1325,11 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     private func setReviewExpanded(_ expanded: Bool, animated: Bool) {
         guard presentationMode == .payment, !checkoutItems.isEmpty, reviewExpanded != expanded else { return }
         reviewExpanded = expanded
+        if expanded && needsHiddenTableReload {
+            needsHiddenTableReload = false
+            itemsTable.reloadData()
+            updateTableHeight()
+        }
         let feedback = UISelectionFeedbackGenerator()
         feedback.prepare()
         feedback.selectionChanged()

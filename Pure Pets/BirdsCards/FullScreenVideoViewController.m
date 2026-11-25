@@ -67,13 +67,8 @@
       [self setupControlOverlay];
     
     // Add a dismiss button with custom styling.
-    UIButton *dismissButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    dismissButton.frame = CGRectMake(20, 40, 44, 44);
-    [dismissButton setImage:[UIImage imageNamed:@"pulldown"] forState:UIControlStateNormal];
-    dismissButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.6];
-    dismissButton.layer.cornerRadius = 22;
-    dismissButton.clipsToBounds = YES;
-    [dismissButton addTarget:self action:@selector(dismissSelf) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *dismissButton = [self pp_ButtonWithSystemName:@"xmark" action:@selector(dismissSelf)];
+    dismissButton.frame = CGRectMake(20, 40, 40, 40);
     [self.view addSubview:dismissButton];
     
     // Fade-in animation for smooth appearance.

@@ -77,7 +77,7 @@ struct PPPetAdViewerNavigationBar: View {
                     height: PPPetAdViewerLayoutMetrics.navigationControlSize
                 )
                 .ppPetAdNavigationGlassControl()
-                .contentShape(Circle())
+                .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
         .buttonStyle(PPPetAdPressButtonStyle())
         .accessibilityLabel(
@@ -102,7 +102,7 @@ struct PPPetAdViewerNavigationBar: View {
                     height: PPPetAdViewerLayoutMetrics.navigationControlSize
                 )
                 .ppPetAdNavigationGlassControl()
-                .contentShape(Circle())
+                .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
         .buttonStyle(PPPetAdPressButtonStyle())
         .accessibilityLabel(accessibilityLabel)
@@ -132,7 +132,7 @@ struct PPPetAdViewerNavigationBar: View {
 private extension View {
     func ppPetAdNavigationGlassControl() -> some View {
         ppGlassSurface(
-            in: Circle(),
+            in: RoundedRectangle(cornerRadius: 13, style: .continuous),
             tint: Color.black.opacity(0.20),
             fallback: Color.black.opacity(0.82),
             stroke: Color.white.opacity(0.24),

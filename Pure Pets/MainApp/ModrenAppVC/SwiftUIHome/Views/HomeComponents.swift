@@ -6191,34 +6191,9 @@ extension View {
     }
 }
 
-/// Home's Pure Lens launcher, composed as one optical instrument rather than as
-/// another copy-plus-artwork gateway card.
-///
-/// Two bands read as a single object from the trailing edge inward:
-///
-/// 1. the **threshold** — the copy panel and the rectangular viewfinder reticle
-///    that holds the subject;
-/// 2. the **focus deck** — a rail spanning the whole inner width with three
-///    engraved scale stops, one focus index that rests beneath the reticle, and
-///    the action legend.
-///
-/// Pressing the card racks focus: the brackets converge, the subject sharpens,
-/// the lock indicator resolves, and the index sweeps from the lens toward the
-/// copy. That is the card's only motion — there is no ambient loop, no camera
-/// session, and no second press target. Behavior is unchanged from the previous
-/// footer-button composition: one `Button`, the same `action`, the same
-/// readiness handshake with `HomePureLensMotionGate`, and the same accessibility
-/// element and `home.pureLens.open` identifier.
-// MARK: - Pure Lens Presentation Flag
+// MARK: - Home Pure Lens
 
-/// Presentation flag for the Home Pure Lens section card composition.
-///
-/// `UseLensCardV2 == true` renders `HomePureLensSectionV2`: an unmistakably original,
-/// category-defining, flagship-grade Living Neural Optical Chamber.
-///
-/// `UseLensCardV2 == false` preserves `HomePureLensSectionV1` (the existing optical
-/// reticle and focus deck layout). Both branches preserve the exact same action,
-/// motion gate readiness handshake, accessibility labels and traits, and identifier.
+/// Compatibility flag for older callers. Home renders PureLensCardV2 directly.
 public enum PPHomePureLensFlags {
     public static var UseLensCardV2: Bool {
         get { PURE_LENS_USE_V2.boolValue }
@@ -6257,37 +6232,33 @@ private extension EnvironmentValues {
     }
 }
 
-/// Pure Lens optical palette — studio-crafted with Apple-grade calm refinement,
-/// elegant obsidian/ceramic tones, and high-contrast accessibility compliance.
+/// Pure Lens optical palette — studio-crafted AI Vision identity.
+/// Aligned pixel-perfect with the profile screen (PPPureLensVanguardCard) pattern:
+/// - Brand Primary Crimson (#CB2654 / Color.ppPrimary) + Action Pressed
+/// - Camera: Color.ppPrimary
+/// - Recognition: Color.ppSuccess
+/// - Discovery: Color.ppInfo
 private enum HomePureLensColors {
-    static let surface = Color(uiColor: .systemGray6)
-    static let canvas = Color(uiColor: .secondarySystemGroupedBackground)
-    static let primaryText = Color(uiColor: .label)
-    static let secondaryText = Color(uiColor: .secondaryLabel)
+    static let surface = Color.ppSurfaceElevated
+    static let canvas = Color.ppSurfaceBase
+    static let primaryText = Color.ppTextPrimary
+    static let secondaryText = Color.ppTextSecondary
 
-    /// Dynamic living signal tone: elegant, dignified forest emerald jade.
-    static let signal = Color(
-        UIColor { traitCollection in
-            traitCollection.userInterfaceStyle == .dark
-                ? UIColor(red: 0.16, green: 0.84, blue: 0.62, alpha: 1.0)
-                : UIColor(red: 0.05, green: 0.58, blue: 0.42, alpha: 1.0)
-        }
-    )
+    /// Dynamic living signal tone: matches profile screen's Color.ppPrimary.
+    static let signal = Color.ppPrimary
 
     /// Active pressed state for signal elements.
-    static let signalPressed = Color(
-        UIColor { traitCollection in
-            traitCollection.userInterfaceStyle == .dark
-                ? UIColor(red: 0.12, green: 0.72, blue: 0.52, alpha: 1.0)
-                : UIColor(red: 0.03, green: 0.46, blue: 0.32, alpha: 1.0)
-        }
-    )
+    static let signalPressed = Color.ppPressedAction
 
-    static let onSignal = Color(uiColor: .systemBackground)
-    static let divider = Color(uiColor: .separator)
-    static let recognition = Color(uiColor: .systemGreen)
-    static let discovery = Color(uiColor: .systemIndigo)
-    static let emeraldSoft = Color(red: 0.16, green: 0.84, blue: 0.62)
+    static let onSignal = Color.white
+    static let divider = Color.ppSurfaceBorder
+
+    // Pipeline progression tones — exactly matching profile screen stepPills:
+    static let camera = Color.ppPrimary
+    static let recognition = Color.ppSuccess
+    static let discovery = Color.ppInfo
+    static let beaconDot = Color.ppPrimary
+    static let emeraldSoft = Color.ppPrimary.opacity(0.12)
 }
 
 // MARK: - Living Optical Glass Surface
@@ -6490,517 +6461,202 @@ struct PureLensCardV2: View {
     let onMotionSettled: () -> Void
     let action: () -> Void
 
-    // MARK: - NextGen V10 Living Motion States
-    @State private var pulseAura: Bool = false
-    @State private var beaconPulse: Bool = false
-    @State private var scanBeamOffset: CGFloat = -18.0
-    @State private var scanBeamOpacity: Double = 0.0
-    @State private var activePipelineStep: Int = 0
-    @State private var photonProgress1: CGFloat = 0.0
-    @State private var photonProgress2: CGFloat = 0.0
-    @State private var arrowFloat: Bool = false
-    @State private var iconPlateBreathe: Bool = false
-    @State private var glassAuraBreathe: Bool = false
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorSchemeContrast) private var contrast
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.homePureLensIsPressed) private var isPressed
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.layoutDirection) private var layoutDirection
-    @Environment(\.scenePhase) private var scenePhase
-
-    private var isDark: Bool {
-        colorScheme == .dark
-    }
-
-    private var isRTL: Bool {
-        layoutDirection == .rightToLeft || Language.isRTL()
-    }
-
     var body: some View {
-        Button(action: {
+        let title = Language.get("pure_lens_account_title", alter: nil) ?? ""
+        let purpose = Language.get("home_pure_lens_subtitle", alter: nil) ?? ""
+        let openCamera = Language.get("home_pure_lens_action", alter: nil) ?? ""
+        let spokenAction = Language.get("home_pure_lens_a11y", alter: nil) ?? ""
+
+        Button {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             action()
-        }) {
-            ZStack {
-                // Background surface
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.ppSurfaceElevated,
-                                HomePureLensColors.signal.opacity(isDark ? (glassAuraBreathe ? 0.12 : 0.06) : (glassAuraBreathe ? 0.08 : 0.04))
-                            ],
-                            startPoint: isRTL ? .topTrailing : .topLeading,
-                            endPoint: isRTL ? .bottomLeading : .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    colors: [
-                                        HomePureLensColors.signal.opacity(pulseAura ? 0.28 : 0.10),
-                                        Color.ppSurfaceBorder.opacity(isDark ? 0.25 : 0.35)
-                                    ],
-                                    startPoint: isRTL ? .topTrailing : .topLeading,
-                                    endPoint: isRTL ? .bottomLeading : .bottomTrailing
-                                ),
-                                lineWidth: 1.0
-                            )
-                    )
-                    .shadow(
-                        color: HomePureLensColors.signal.opacity(isDark ? (glassAuraBreathe ? 0.16 : 0.08) : (glassAuraBreathe ? 0.10 : 0.05)),
-                        radius: glassAuraBreathe ? 20 : 14,
-                        x: 0,
-                        y: glassAuraBreathe ? 8 : 5
-                    )
-
-                VStack(spacing: 16) {
-                    if dynamicTypeSize.isAccessibilitySize {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 12) {
-                                scannerIconPlate
-                                Spacer(minLength: 0)
-                                actionArrow
-                            }
-                            textContent
-                        }
-                    } else {
-                        HStack(spacing: 14) {
-                            scannerIconPlate
-                            textContent
-                            Spacer(minLength: 0)
-                            actionArrow
-                        }
-                    }
-
-                    // 3-step connected recognition pipeline with living signal wave
-                    HStack(spacing: 6) {
-                        stepPill(
-                            stepIndex: 0,
-                            symbol: "camera.fill",
-                            titleKey: "pure_lens_account_camera",
-                            fallback: isRTL ? "كاميرا" : "Camera",
-                            tint: HomePureLensColors.signal
-                        )
-                        connectorLine(
-                            progress: photonProgress1,
-                            tint: HomePureLensColors.recognition
-                        )
-                        stepPill(
-                            stepIndex: 1,
-                            symbol: "viewfinder",
-                            titleKey: "pure_lens_account_recognize",
-                            fallback: isRTL ? "تعرّف" : "Recognize",
-                            tint: HomePureLensColors.recognition
-                        )
-                        connectorLine(
-                            progress: photonProgress2,
-                            tint: HomePureLensColors.discovery
-                        )
-                        stepPill(
-                            stepIndex: 2,
-                            symbol: "sparkles",
-                            titleKey: "pure_lens_account_discover",
-                            fallback: isRTL ? "اكتشف" : "Discover",
-                            tint: HomePureLensColors.discovery
-                        )
-                    }
-                }
-                .padding(18)
-            }
+        } label: {
+            HomeLensCardLabel(title: title, purpose: purpose, openCamera: openCamera)
         }
         .buttonStyle(HomeLensPressStyle())
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true)) {
-                pulseAura = true
-                iconPlateBreathe = true
-                arrowFloat = true
-                glassAuraBreathe = true
-            }
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                beaconPulse = true
-            }
-        }
-        .task(id: motionReady) {
-            guard motionReady || motionAlreadyPlayed else { return }
-            onMotionSettled()
-        }
-        .task(id: pipelineLoopID) {
-            await runPipelineMotionLoop()
-        }
-        .onChange(of: scenePhase) { phase in
-            if phase != .active {
-                activePipelineStep = -1
-                scanBeamOffset = -18.0
-                scanBeamOpacity = 0.0
-                photonProgress1 = 0.0
-                photonProgress2 = 0.0
-            }
-        }
+        .onAppear { acknowledgeReadiness(motionReady) }
+        .onChange(of: motionReady, perform: acknowledgeReadiness)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(HomeModelAdapter.localized("home_pure_lens_a11y", fallback: "Open Pure Lens camera"))
-        .accessibilityHint(HomeModelAdapter.localized("home_pure_lens_subtitle", fallback: "Recognize an animal and discover what fits it."))
+        .accessibilityLabel(Text(verbatim: spokenAction))
+        .accessibilityHint(Text(verbatim: purpose))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityInputLabels([openCamera, title, spokenAction])
         .accessibilityIdentifier("home.pureLens.open")
     }
 
-    // MARK: - Pipeline Choreography Loop (NextGen V10)
-    @MainActor
-    private func runPipelineMotionLoop() async {
-        guard !reduceMotion && scenePhase == .active else { return }
-
-        while !Task.isCancelled && !reduceMotion && scenePhase == .active {
-            // Step 0: Camera active (capture stage)
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
-                activePipelineStep = 0
-            }
-            // Trigger scanner beam sweep across icon plate
-            withAnimation(.easeInOut(duration: 0.75)) {
-                scanBeamOffset = 18.0
-                scanBeamOpacity = 0.85
-            }
-            do {
-                try await Task.sleep(nanoseconds: 750_000_000)
-            } catch { return }
-
-            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
-
-            withAnimation(.easeOut(duration: 0.25)) {
-                scanBeamOpacity = 0.0
-            }
-            scanBeamOffset = -18.0
-
-            // Pulse traveling through Connector 1 -> Step 1
-            withAnimation(.easeInOut(duration: 0.45)) {
-                photonProgress1 = 1.0
-            }
-            do {
-                try await Task.sleep(nanoseconds: 450_000_000)
-            } catch { return }
-
-            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
-
-            // Step 1: Recognize active (neural analysis)
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
-                activePipelineStep = 1
-                photonProgress1 = 0.0
-            }
-            do {
-                try await Task.sleep(nanoseconds: 700_000_000)
-            } catch { return }
-
-            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
-
-            // Pulse traveling through Connector 2 -> Step 2
-            withAnimation(.easeInOut(duration: 0.45)) {
-                photonProgress2 = 1.0
-            }
-            do {
-                try await Task.sleep(nanoseconds: 450_000_000)
-            } catch { return }
-
-            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
-
-            // Step 2: Discover active (personalized match)
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.65)) {
-                activePipelineStep = 2
-                photonProgress2 = 0.0
-            }
-            do {
-                try await Task.sleep(nanoseconds: 850_000_000)
-            } catch { return }
-
-            guard !Task.isCancelled && !reduceMotion && scenePhase == .active else { return }
-
-            // Rest phase between cycles
-            withAnimation(.easeInOut(duration: 0.4)) {
-                activePipelineStep = -1
-            }
-            do {
-                try await Task.sleep(nanoseconds: 1_200_000_000)
-            } catch { return }
+    private func acknowledgeReadiness(_ ready: Bool) {
+        if ready && !motionAlreadyPlayed {
+            onMotionSettled()
         }
     }
+}
 
-    private var pipelineLoopID: Int {
-        var hasher = Hasher()
-        hasher.combine(reduceMotion)
-        hasher.combine(scenePhase == .active)
-        return hasher.finalize()
-    }
+@available(iOS 16.0, *)
+private struct HomeLensCardLabel: View {
+    let title: String
+    let purpose: String
+    let openCamera: String
 
-    // MARK: - AI Camera Scanner Icon Plate (NextGen V10 Living Instrument)
-    private var scannerIconPlate: some View {
-        ZStack {
-            // Ambient Aura Halo Ring behind the plate
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(
-                    HomePureLensColors.signal.opacity(
-                        reduceMotion ? 0.12 : (iconPlateBreathe ? 0.38 : 0.10)
-                    ),
-                    lineWidth: reduceMotion ? 1.0 : (iconPlateBreathe ? 2.5 : 1.0)
-                )
-                .frame(width: 56, height: 56)
-                .scaleEffect(reduceMotion ? 1.0 : (iconPlateBreathe ? 1.06 : 0.96))
-                .blur(radius: reduceMotion ? 0 : 2)
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.horizontalSizeClass) private var widthClass
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityShowButtonShapes) private var showButtonShapes
+    @Environment(\.homePureLensIsPressed) private var isPressed
+    @ScaledMetric(relativeTo: .body) private var minimumCopyWidth: CGFloat = 146
 
-            // Primary Plate Base
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            HomePureLensColors.signal,
-                            HomePureLensColors.signalPressed
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 48, height: 48)
-                .shadow(
-                    color: HomePureLensColors.signal.opacity(
-                        reduceMotion ? 0.35 : (iconPlateBreathe ? 0.52 : 0.25)
-                    ),
-                    radius: iconPlateBreathe ? 12 : 8,
-                    x: 0,
-                    y: iconPlateBreathe ? 6 : 4
-                )
-
-            // Dynamic Laser Scan Line inside the plate
-            if !reduceMotion {
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.0),
-                                Color.white.opacity(scanBeamOpacity),
-                                Color.white.opacity(0.0)
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: 36, height: 2)
-                    .offset(y: scanBeamOffset)
-                    .blur(radius: 0.5)
-                    .clipped()
-            }
-
-            // Viewfinder Camera Icon with Micro-Spring Scale
-            Image(systemName: "camera.viewfinder")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white)
-                .scaleEffect(
-                    reduceMotion ? 1.0 : (activePipelineStep == 0 ? 1.08 : (iconPlateBreathe ? 1.02 : 0.98))
-                )
-                .rotationEffect(
-                    .degrees(activePipelineStep == 0 && !reduceMotion ? (isRTL ? -3 : 3) : 0)
-                )
-
-            // Specular Edge Catch
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.45),
-                            Color.white.opacity(0.12),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.0
-                )
-                .frame(width: 48, height: 48)
-        }
-        .accessibilityHidden(true)
-    }
-
-    // MARK: - Text Content (Title, Live Vision Badge, Subtitle)
-    private var textContent: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
-                Text(HomeModelAdapter.localized("pure_lens_account_title", fallback: isRTL ? "بيور لينس" : "Pure Lens"))
-                    .font(HomeFont.bold(19))
-                    .foregroundColor(Color.ppTextPrimary)
-
-                liveVisionBadge
-            }
-
-            Text(HomeModelAdapter.localized("home_pure_lens_subtitle", fallback: isRTL ? "تعرّف على الحيوان واكتشف ما يناسبه." : "Recognize an animal and discover what fits it."))
-                .font(HomeFont.regular(13))
-                .foregroundColor(Color.ppTextSecondary)
-                .lineLimit(2)
-        }
-    }
-
-    // MARK: - Live Vision Beacon Badge (NextGen V10 Pulsing Beacon)
-    private var liveVisionBadge: some View {
-        HStack(spacing: 5) {
-            // Live Pulsing Optical Beacon Dot
-            ZStack {
-                // Expanding Aura Wave
-                Circle()
-                    .fill(HomePureLensColors.signal.opacity(beaconPulse && !reduceMotion ? 0.0 : 0.55))
-                    .frame(width: 6, height: 6)
-                    .scaleEffect(beaconPulse && !reduceMotion ? 2.6 : 1.0)
-
-                // Solid Core Dot
-                Circle()
-                    .fill(HomePureLensColors.signal)
-                    .frame(width: 5, height: 5)
-                    .shadow(color: HomePureLensColors.signal.opacity(0.8), radius: 2)
-            }
-            .frame(width: 8, height: 8)
-
-            Text(HomeModelAdapter.localized(
-                "pure_lens_account_live_vision",
-                fallback: isRTL ? "رؤية ذكية مباشرة" : "LIVE AI VISION"
-            ))
-            .font(HomeFont.bold(9.5))
-            .foregroundColor(HomePureLensColors.signal)
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(
-            Capsule()
-                .fill(HomePureLensColors.signal.opacity(isDark ? 0.18 : 0.12))
-        )
-        .overlay(
-            Capsule()
-                .strokeBorder(
-                    HomePureLensColors.signal.opacity(beaconPulse && !reduceMotion ? 0.35 : 0.18),
-                    lineWidth: 0.75
-                )
-        )
-    }
-
-    // MARK: - Action Arrow (Kinetic Vector Floating)
-    private var actionArrow: some View {
-        ZStack {
-            // Radiant Halo
-            Circle()
-                .fill(HomePureLensColors.signal.opacity(arrowFloat && !reduceMotion ? 0.18 : 0.06))
-                .frame(width: 32, height: 32)
-                .scaleEffect(arrowFloat && !reduceMotion ? 1.15 : 0.95)
-
-            Image(systemName: "arrow.up.forward.circle.fill")
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundColor(HomePureLensColors.signal)
-                .offset(
-                    x: isPressed && !reduceMotion ? (isRTL ? -3 : 3) : (arrowFloat && !reduceMotion ? (isRTL ? -1.5 : 1.5) : 0),
-                    y: isPressed && !reduceMotion ? -3 : (arrowFloat && !reduceMotion ? -1.5 : 0)
-                )
-        }
-        .accessibilityHidden(true)
-    }
-
-    // MARK: - Step Pill (Interactive Sequential Illumination)
-    private func stepPill(
-        stepIndex: Int,
-        symbol: String,
-        titleKey: String,
-        fallback: String,
-        tint: Color
-    ) -> some View {
-        let isActive = (activePipelineStep == stepIndex) && !reduceMotion
-        return HStack(spacing: 5) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(isActive ? tint : tint.opacity(0.85))
-                .scaleEffect(isActive ? 1.18 : 1.0)
-                .rotationEffect(
-                    (stepIndex == 2 && isActive) ? .degrees(isRTL ? -14 : 14) : .zero
-                )
-
-            Text(HomeModelAdapter.localized(titleKey, fallback: fallback))
-                .font(isActive ? HomeFont.bold(11.5) : HomeFont.medium(11.5))
-                .foregroundColor(isActive ? Color.ppTextPrimary : Color.ppTextSecondary)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .fixedSize(horizontal: true, vertical: false)
-        .background(
-            Capsule()
-                .fill(
-                    isActive
-                        ? tint.opacity(isDark ? 0.22 : 0.14)
-                        : Color.ppSurfaceBase.opacity(0.85)
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            isActive ? tint.opacity(0.52) : tint.opacity(0.12),
-                            lineWidth: isActive ? 1.2 : 0.75
-                        )
-                )
-        )
-        .shadow(
-            color: isActive ? tint.opacity(0.35) : .clear,
-            radius: isActive ? 6 : 0,
-            x: 0,
-            y: isActive ? 2 : 0
-        )
-        .scaleEffect(isActive ? 1.04 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.65), value: isActive)
-    }
-
-    // MARK: - Connector Line with Traveling Photon Packet
-    private func connectorLine(progress: CGFloat, tint: Color) -> some View {
-        GeometryReader { proxy in
-            let lineWidth = proxy.size.width
-            let photonWidth: CGFloat = 8.0
-            let effectiveProgress = isRTL ? (1.0 - progress) : progress
-            let photonX = (lineWidth - photonWidth) * effectiveProgress
-
-            ZStack(alignment: isRTL ? .trailing : .leading) {
-                // Background track
-                Rectangle()
-                    .fill(HomePureLensColors.signal.opacity(0.18))
-                    .frame(height: 1.5)
-
-                // Traveling photon light packet
-                if progress > 0.01 && progress < 0.99 && !reduceMotion {
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.white,
-                                    tint
-                                ],
-                                startPoint: isRTL ? .trailing : .leading,
-                                endPoint: isRTL ? .leading : .trailing
-                            )
-                        )
-                        .frame(width: photonWidth, height: 3.5)
-                        .shadow(color: tint.opacity(0.8), radius: 3)
-                        .offset(x: photonX, y: -1)
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: HomeVisualTokens.cardCorner, style: .continuous)
+        Group {
+            if typeSize.isAccessibilitySize {
+                copy
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: PPSpace.base) {
+                        copy.frame(minWidth: minimumCopyWidth, idealWidth: minimumCopyWidth,
+                                   maxWidth: .infinity, alignment: .leading)
+                        HomeLensRangefinder(diameter: widthClass == .regular ? 144 : 112)
+                    }
+                    VStack(alignment: .leading, spacing: PPSpace.xs) {
+                        HStack(spacing: PPSpace.md) {
+                            heading.frame(maxWidth: .infinity, alignment: .leading)
+                            HomeLensRangefinder(diameter: 56)
+                        }
+                        explanation
+                        cameraCommand
+                    }
                 }
             }
         }
-        .frame(height: 1.5)
-        .frame(minWidth: 8, maxWidth: .infinity)
+        .multilineTextAlignment(.leading)
+        .padding(.horizontal, widthClass == .regular ? PPSpace.xxl : PPSpace.lg)
+        .padding(.vertical, PPSpace.base)
+        .frame(maxWidth: .infinity, minHeight: HomeVisualTokens.minimumTouchTarget, alignment: .leading)
+        .background(Color.ppSurfaceElevated, in: shape)
+        .overlay {
+            shape.strokeBorder(
+                isPressed ? Color.ppTextPrimary : HomeVisualTokens.cardBorder(colorScheme: scheme, contrast: contrast),
+                lineWidth: isPressed ? 2 : HomeVisualTokens.cardBorderWidth(contrast: contrast)
+            )
+            .allowsHitTesting(false)
+        }
+        .contentShape(shape)
+    }
+
+    private var copy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            heading
+            explanation
+            cameraCommand
+        }
+    }
+
+    private var heading: some View {
+        Text(verbatim: title)
+            .font(HomeFont.title1())
+            .foregroundStyle(Color.ppTextPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var explanation: some View {
+        Text(verbatim: purpose)
+            .font(HomeFont.callout())
+            .foregroundStyle(contrast == .increased ? Color.ppTextPrimary : Color.ppTextSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var cameraCommand: some View {
+        Label {
+            Text(verbatim: openCamera)
+                .font(HomeFont.headline())
+                .underline(showButtonShapes)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "camera")
+                .font(.body.weight(.semibold))
+        }
+        .labelStyle(.titleAndIcon)
+        .foregroundStyle(isPressed || contrast == .increased ? Color.ppTextPrimary : Color.ppAccentText)
+        .padding(.top, PPSpace.sm)
+    }
+}
+
+/// A printed focus scale surrounds a still portrait. Only the two sight marks
+/// move on press; the subject and the optical scale keep their registration.
+@available(iOS 16.0, *)
+private struct HomeLensRangefinder: View {
+    let diameter: CGFloat
+
+    @Environment(\.homePureLensIsPressed) private var isPressed
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    var body: some View {
+        ZStack {
+            Circle().fill(Color.ppWarmPorcelain)
+
+            Image(decorative: "homeLensFalcon")
+                .resizable()
+                .scaledToFill()
+                .clipShape(Circle())
+                .padding(diameter * 0.085)
+
+            Circle()
+                .strokeBorder(Color.ppTextSecondary.opacity(contrast == .increased ? 0.7 : 0.24),
+                              lineWidth: 1)
+
+            Canvas { context, size in
+                let radius = min(size.width, size.height) / 2
+                let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                for index in -4...4 {
+                    let angle = CGFloat(index) * .pi / 16 - .pi / 2
+                    let length = radius * (index.isMultiple(of: 2) ? 0.095 : 0.055)
+                    let outer = radius - 2
+                    let inner = outer - length
+                    var tick = Path()
+                    tick.move(to: CGPoint(x: center.x + cos(angle) * inner,
+                                          y: center.y + sin(angle) * inner))
+                    tick.addLine(to: CGPoint(x: center.x + cos(angle) * outer,
+                                             y: center.y + sin(angle) * outer))
+                    context.stroke(tick, with: .color(index == 0 ? Color.ppPrimary : Color.ppTextSecondary),
+                                   lineWidth: index == 0 ? 2 : 1)
+                }
+            }
+
+            let marks = HomeLensFocusMarks()
+            ZStack {
+                marks.stroke(.black.opacity(0.65), lineWidth: 3)
+                marks.stroke(.white, lineWidth: 1.25)
+            }
+            .frame(width: diameter * 0.58, height: diameter * 0.115)
+            .scaleEffect(x: isPressed && !reduceMotion ? 0.88 : 1, y: 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: isPressed)
+            .offset(y: -diameter * 0.16)
+        }
+        .frame(width: diameter, height: diameter)
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+    }
+}
+
+private struct HomeLensFocusMarks: Shape {
+    func path(in rect: CGRect) -> Path {
+        let tip = rect.height * 0.42
+        var path = Path()
+        for (edge, direction) in [(rect.minX, CGFloat(1)), (rect.maxX, CGFloat(-1))] {
+            path.move(to: CGPoint(x: edge + direction * tip, y: rect.minY))
+            path.addLine(to: CGPoint(x: edge, y: rect.minY))
+            path.addLine(to: CGPoint(x: edge, y: rect.maxY))
+            path.addLine(to: CGPoint(x: edge + direction * tip, y: rect.maxY))
+        }
+        return path
     }
 }
 
 private struct HomeLensPressStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .environment(\.homePureLensIsPressed, configuration.isPressed)
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.975 : 1)
-            .opacity(configuration.isPressed ? 0.92 : 1)
-            .animation(
-                reduceMotion
-                    ? nil
-                    : .spring(response: 0.28, dampingFraction: 0.72),
-                value: configuration.isPressed
-            )
     }
 }
 
@@ -7101,13 +6757,13 @@ struct HomePureLensSectionV2: View {
             HStack(spacing: 5) {
                 ZStack {
                     Circle()
-                        .fill(Color.green.opacity(0.35))
+                        .fill(palette.signal.opacity(0.35))
                         .frame(width: 12, height: 12)
                         .scaleEffect(reduceMotion ? 1.0 : ambientBreath)
                     Circle()
-                        .fill(Color.green)
+                        .fill(palette.signal)
                         .frame(width: 6, height: 6)
-                        .shadow(color: Color.green.opacity(0.7), radius: 2)
+                        .shadow(color: palette.signal.opacity(0.7), radius: 2)
                 }
 
                 Text(HomeModelAdapter.localized(
@@ -7115,12 +6771,12 @@ struct HomePureLensSectionV2: View {
                     fallback: "LIVE AI VISION"
                 ))
                     .font(HomeFont.bold(11))
-                    .foregroundStyle(Color.green)
+                    .foregroundStyle(palette.signal)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Color.green.opacity(colorScheme == .dark ? 0.14 : 0.08), in: Capsule())
-            .overlay(Capsule().strokeBorder(Color.green.opacity(0.22), lineWidth: 0.75))
+            .background(palette.signal.opacity(colorScheme == .dark ? 0.14 : 0.08), in: Capsule())
+            .overlay(Capsule().strokeBorder(palette.signal.opacity(0.22), lineWidth: 0.75))
 
             Spacer()
         }

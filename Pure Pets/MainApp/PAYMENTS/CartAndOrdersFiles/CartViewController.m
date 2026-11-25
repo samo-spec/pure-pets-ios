@@ -15,11 +15,14 @@
 #import "ChManager.h"
 #import "AppClasses.h"
 #import "UIViewController+PPBottomSurface.h"
+#import "PPBottomSurfaceCoordinator.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPChatsFunc.h"
 #import "PPHUD.h"
 #import <Pure_Pets-Swift.h>
 #import "PPBackgroundView.h"
+#import "PPStoreBranchManager.h"
+#import "PPCartBranchBannerView.h"
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
 #import <QuartzCore/QuartzCore.h>
@@ -679,6 +682,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 @end
 
 @interface CartViewController ()
+@property (nonatomic, strong, nullable) PPCartBranchBannerView *branchBannerView;
 @property (nonatomic, strong) PPSPinnerView *spinner;
 
 @property (nonatomic, strong) UITableView *cartTableView;
@@ -719,6 +723,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
 @property (nonatomic, assign) BOOL didPrimeInitialCartScrollPosition;
 @property (nonatomic, assign) BOOL didPrimeInitialCartLayout;
+@property (nonatomic, assign) CGFloat lastCartTableLayoutWidth;
 @property (nonatomic, assign) CGFloat headerCollapseProgress;
 @property (nonatomic, assign) BOOL savedForLaterExpanded;
 @property (nonatomic, copy, nullable) NSString *pendingSavedForLaterItemID;
@@ -858,6 +863,10 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                                              selector:@selector(pp_cartContentSizeCategoryDidChange:)
                                                  name:UIContentSizeCategoryDidChangeNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_handleCartStoreBranchChangedNotification:)
+                                                 name:kCartStoreBranchChangedNotification
+                                               object:nil];
     
     // Initial UI
     [self setupFormFooterFrom:@"LOAD"];
@@ -944,12 +953,21 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         self.didPrimeInitialCartScrollPosition = YES;
     }
 
-    if (!self.didPrimeInitialCartLayout && self.cartTableView && CGRectGetWidth(self.cartTableView.bounds) > 0) {
+    CGFloat tableWidth = CGRectGetWidth(self.cartTableView.bounds);
+    if (!self.didPrimeInitialCartLayout && self.cartTableView && tableWidth > 0) {
         self.didPrimeInitialCartLayout = YES;
-        [UIView performWithoutAnimation:^{
-            [self.cartTableView reloadData];
-            [self.cartTableView layoutIfNeeded];
-        }];
+        if (fabs(self.lastCartTableLayoutWidth - tableWidth) > 0.5) {
+            self.lastCartTableLayoutWidth = tableWidth;
+            __weak typeof(self) weakSelf = self;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || !self.isViewLoaded || self.isPerformingTableMutation || self.cartTableView.hasUncommittedUpdates) return;
+                [UIView performWithoutAnimation:^{
+                    [self.cartTableView beginUpdates];
+                    [self.cartTableView endUpdates];
+                }];
+            });
+        }
     }
 }
 
@@ -1059,6 +1077,9 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 -(void)viewWillAppear:(BOOL)animated
 {
     self.didPrimeInitialCartLayout = NO;
+    self.isPerformingTableMutation = NO;
+    self.savedForLaterRevealInProgress = NO;
+    self.cartTableView.userInteractionEnabled = YES;
     [CartManager.sharedManager refreshPricingConfiguration];
     [super viewWillAppear:animated];
 
@@ -1067,11 +1088,9 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self pp_updatePremiumCartBackgroundAppearance];
 
     NSString *leadingSymbol = [self pp_cartCanNavigateBackInStack] ? PPChevronName : @"house.fill";
+    UIButton *leadingBtn = [self pp_ButtonWithSystemName:leadingSymbol action:@selector(pp_handleLeadingCartNavigation)];
     self.navigationItem.leftBarButtonItem =
-    [[UIBarButtonItem alloc] initWithImage:PPSYSImage(leadingSymbol)
-                                     style:UIBarButtonItemStylePlain
-                                    target:self
-                                    action:@selector(pp_handleLeadingCartNavigation)];
+    [[UIBarButtonItem alloc] initWithCustomView:leadingBtn];
     self.navigationItem.leftBarButtonItem.accessibilityLabel =
     [self pp_cartCanNavigateBackInStack]
     ? NSLocalizedString(@"Back", @"Navigate back")
@@ -1080,11 +1099,27 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self pp_refreshCartEditControls];
 
     [self.summaryView setCheckoutLoading:NO];
-    [self updateTotalLabel];
+    [self pp_updateTotalLabelUpdatingBottomSurface:NO];
     [self.summaryView setNeedsLayout];
     [self.premiumBackgroundView startAnimations];
     [self pp_updateSavedForLaterFooter];
     [self pp_applyBottomSurfaceAnimated:animated];
+
+    // Hydrate live petAccessories availability so restored cart lines reflect current
+    // stock instead of showing "يلزم التحقق من التوفر".
+    [CartManager.sharedManager refreshCartStockAvailabilityForced:YES completion:nil];
+
+    // Check if any cart items are unavailable in the active store branch
+    NSMutableArray<CartItem *> *initialOutOfStock = [NSMutableArray array];
+    for (CartItem *item in CartManager.sharedManager.cartItems) {
+        if ([CartManager.sharedManager availableQuantityForItem:item] == 0) {
+            [initialOutOfStock addObject:item];
+        }
+    }
+    if (initialOutOfStock.count > 0) {
+        NSString *branchName = [[PPStoreBranchManager sharedManager] localizedCurrentBranchName] ?: @"";
+        [self pp_showBranchNoticeWithBranchName:branchName outOfStockItems:initialOutOfStock clampedItems:@[]];
+    }
 }
 
 - (void)pp_applyCartScreenBackgroundColor
@@ -1099,12 +1134,6 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    if (self.cartTableView && CGRectGetWidth(self.cartTableView.bounds) > 0) {
-        [UIView performWithoutAnimation:^{
-            [self.cartTableView beginUpdates];
-            [self.cartTableView endUpdates];
-        }];
-    }
     [self pp_runEntranceAnimationIfNeeded];
 }
 
@@ -1150,6 +1179,9 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 -(void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    self.isPerformingTableMutation = NO;
+    self.savedForLaterRevealInProgress = NO;
+    self.cartTableView.userInteractionEnabled = YES;
     //[[NSNotificationCenter defaultCenter]   postNotificationName:PPExpandSystemTabBarNotification  object:nil];
     [_summaryView pp_stopTrustBannerShimmer];
     [self.premiumBackgroundView stopAnimations];
@@ -1877,11 +1909,14 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     if (self.didRunEntranceAnimation) return;
     self.didRunEntranceAnimation = YES;
 
+    BOOL shouldShowSummary = ([CartManager sharedManager].cartItems.count > 0);
     if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.cartTableView.alpha = 1.0;
+        self.cartTableView.transform = CGAffineTransformIdentity;
+        self.summaryView.alpha = shouldShowSummary ? 1.0 : 0.0;
         return;
     }
 
-    BOOL shouldShowSummary = ([CartManager sharedManager].cartItems.count > 0);
     self.cartTableView.alpha = 0.0;
     self.cartTableView.transform = CGAffineTransformMakeTranslation(0.0, 32.0);
 
@@ -2035,6 +2070,10 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 }
 
 - (void)updateTotalLabel {
+    [self pp_updateTotalLabelUpdatingBottomSurface:YES];
+}
+
+- (void)pp_updateTotalLabelUpdatingBottomSurface:(BOOL)updateBottomSurface {
     PPCartSummary *summary = [PPCartCalculator currentSummary];
 
     self.summaryView.showDetails = YES;
@@ -2072,7 +2111,13 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     }
 
     [self pp_applyEmptyStateIfNeeded];
-    [self pp_applyBottomSurfaceAnimated:YES];
+    if (updateBottomSurface) {
+        PPBottomSurfaceCoordinator *surfaceCoordinator = [PPBottomSurfaceCoordinator sharedCoordinator];
+        if (surfaceCoordinator.activeController != self ||
+            surfaceCoordinator.activeSurfaceKind != [self pp_preferredBottomSurfaceKind]) {
+            [self pp_applyBottomSurfaceAnimated:YES];
+        }
+    }
 }
 
 // Guard: avoid structural table reloads during local quantity taps or row mutations.
@@ -2107,13 +2152,6 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
     if (![self pp_refreshVisibleActiveCartRows]) {
         [self.cartTableView reloadData];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (!self.isViewLoaded || self.cartTableView.hasUncommittedUpdates) return;
-            [UIView performWithoutAnimation:^{
-                [self.cartTableView beginUpdates];
-                [self.cartTableView endUpdates];
-            }];
-        });
     }
     [self updateTotalLabel];
     [self pp_updateSavedForLaterFooter];
@@ -2157,8 +2195,22 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     copy.name = item.name ?: @"";
     copy.quantity = item.quantity;
     copy.price = item.price;
+    copy.originalPrice = item.originalPrice;
+    copy.size = item.size ?: @"";
+    copy.sellableUnitId = item.sellableUnitId ?: @"";
+    copy.variantId = item.variantId ?: @"";
+    copy.variantCombinationKey = item.variantCombinationKey ?: @"";
+    copy.productFamilyId = item.productFamilyId ?: @"";
+    copy.sku = item.sku ?: @"";
+    copy.barcode = item.barcode ?: @"";
+    copy.isVariant = item.isVariant;
+    copy.selectedOptions = item.selectedOptions.copy;
+    copy.selectedOptionsSnapshot = item.selectedOptionsSnapshot.copy;
+    copy.optionsSummary = item.optionsSummary ?: @"";
     copy.imageURL = item.imageURL ?: @"";
     copy.type = item.type ?: @"";
+    copy.providerID = item.providerID ?: @"";
+    copy.stockQuantity = item.stockQuantity;
     return copy;
 }
 
@@ -2264,6 +2316,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)pp_hideUndoBarAnimated:(BOOL)animated clearPayload:(BOOL)clearPayload
 {
     self.undoPresentationToken += 1;
+    NSUInteger token = self.undoPresentationToken;
     if (clearPayload) {
         self.lastRemovedCartItem = nil;
         self.lastRemovedCartIndex = NSNotFound;
@@ -2275,10 +2328,13 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         return;
     }
 
+    __weak typeof(self) weakSelf = self;
     [UIView animateWithDuration:0.2 animations:^{
-        self.undoContainerView.alpha = 0.0;
+        weakSelf.undoContainerView.alpha = 0.0;
     } completion:^(__unused BOOL finished) {
-        self.undoContainerView.hidden = YES;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || strongSelf.undoPresentationToken != token) return;
+        strongSelf.undoContainerView.hidden = YES;
     }];
 }
 
@@ -2297,11 +2353,12 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
 - (void)pp_removeItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (!indexPath) return;
-    if (indexPath.row >= CartManager.sharedManager.cartItems.count) return;
+    if (!indexPath || indexPath.section != 0 || indexPath.row < 0) return;
+    NSArray<CartItem *> *itemsBefore = CartManager.sharedManager.cartItems;
+    if (indexPath.row >= (NSInteger)itemsBefore.count) return;
     if (self.isPerformingTableMutation) return;
 
-    CartItem *item = CartManager.sharedManager.cartItems[indexPath.row];
+    CartItem *item = itemsBefore[indexPath.row];
     if (CartManager.sharedManager.isLocked || [CartManager.sharedManager isSyncPendingForItem:item]) {
         [PPHUD showInfo:kLang(@"cart_quantity_syncing")];
         return;
@@ -2309,6 +2366,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.isPerformingTableMutation = YES;
     CartItem *removedSnapshot = [self pp_cloneCartItem:item];
     NSInteger removedIndex = indexPath.row;
+    NSInteger oldCartCount = itemsBefore.count;
 
     // Offer undo only after deletion settles, so a late delete cannot erase it.
     [self pp_hideUndoBarAnimated:NO clearPayload:YES];
@@ -2331,19 +2389,40 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [[CartManager sharedManager] saveCart];
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartItemRemoved];
 
-    [self.cartTableView performBatchUpdates:^{
-        [self.cartTableView deleteRowsAtIndexPaths:@[indexPath]
-                                  withRowAnimation:UITableViewRowAnimationFade];
-    } completion:^(__unused BOOL finished) {
+    NSInteger newCartCount = CartManager.sharedManager.cartItems.count;
+    NSInteger expectedOldRows = newCartCount + [self pp_savedForLaterInlineRowCount] + 1;
+    BOOL canAnimateRowDelete = (oldCartCount - newCartCount == 1) &&
+        [self.cartTableView numberOfSections] > 0 &&
+        [self.cartTableView numberOfRowsInSection:0] == expectedOldRows &&
+        indexPath.row < expectedOldRows;
+
+    void (^finishRemoval)(void) = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
         self.isPerformingTableMutation = NO;
         [self updateTotalLabel];
         [self pp_notifyCartBadgeAndCollections];
         animationFinished = YES;
         presentUndoIfReady();
-    }];
+    };
+
+    if (canAnimateRowDelete) {
+        [self.cartTableView performBatchUpdates:^{
+            [self.cartTableView deleteRowsAtIndexPaths:@[indexPath]
+                                      withRowAnimation:UITableViewRowAnimationFade];
+        } completion:^(__unused BOOL finished) {
+            finishRemoval();
+        }];
+    } else {
+        [self.cartTableView reloadData];
+        finishRemoval();
+    }
 }
 
 - (void)checkoutTapped {
+    if (self.navigationController.transitionCoordinator != nil) {
+        return;
+    }
     // Handler time includes validation, summary feedback, init and push scheduling;
     // the payment controller separately traces presentation through viewDidAppear.
     os_log_t log = PPCartCheckoutInteractionLog();
@@ -2372,6 +2451,24 @@ static UIFont *PPCartScaledFont(NSString *fontName,
             return;
         }
 
+        // Branch live inventory check: block checkout if any item is out of stock in active branch
+        NSMutableArray<CartItem *> *outOfStock = [NSMutableArray array];
+        for (CartItem *item in CartManager.sharedManager.cartItems) {
+            if ([CartManager.sharedManager availableQuantityForItem:item] == 0) {
+                [outOfStock addObject:item];
+            }
+        }
+        if (outOfStock.count > 0) {
+            [self.summaryView setCheckoutLoading:NO];
+            NSString *bName = [[PPStoreBranchManager sharedManager] localizedCurrentBranchName] ?: @"";
+            [self.summaryView setCheckoutSurfaceState:@"error"
+                                                title:kLang(@"cart_branch_unavailable_checkout_blocked_title") ?: @"Unavailable Items in Cart"
+                                             subtitle:[NSString stringWithFormat:kLang(@"cart_branch_unavailable_checkout_blocked_msg") ?: @"Your cart contains %ld items not available at %@.", (long)outOfStock.count, bName]];
+            [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+            [self pp_presentUnavailableItemsAlertForItems:outOfStock];
+            return;
+        }
+
         [self.summaryView clearCheckoutSurfaceState];
         [self.summaryView setCheckoutLoading:YES];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
@@ -2391,6 +2488,169 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     } @finally {
         os_signpost_interval_end(log, trace, "CartCheckoutTap");
     }
+}
+
+#pragma mark - Store Branch & Live Inventory Notifications
+
+- (void)pp_handleCartStoreBranchChangedNotification:(NSNotification *)notification
+{
+    NSDictionary *userInfo = notification.userInfo;
+    NSString *branchName = userInfo[@"branchName"] ?: [[PPStoreBranchManager sharedManager] localizedCurrentBranchName] ?: @"";
+    NSArray<CartItem *> *clamped = userInfo[@"clampedItems"] ?: @[];
+    NSArray<CartItem *> *outOfStock = userInfo[@"outOfStockItems"] ?: @[];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.isViewLoaded) return;
+        BOOL bannerAlreadyShowsReload = (outOfStock.count > 0 || clamped.count > 0);
+        [self pp_showBranchNoticeWithBranchName:branchName outOfStockItems:outOfStock clampedItems:clamped];
+        if (!bannerAlreadyShowsReload && !self.isPerformingTableMutation) {
+            [self.cartTableView reloadData];
+        }
+        [self updateTotalLabel];
+    });
+}
+
+- (void)pp_showBranchNoticeWithBranchName:(NSString *)branchName
+                          outOfStockItems:(NSArray<CartItem *> *)outOfStock
+                             clampedItems:(NSArray<CartItem *> *)clamped
+{
+    if (outOfStock.count == 0 && clamped.count == 0) {
+        if (self.branchBannerView) {
+            [self pp_dismissBranchBanner];
+        }
+        return;
+    }
+
+    if (!self.branchBannerView) {
+        CGFloat tableWidth = CGRectGetWidth(self.cartTableView.bounds) > 0 ? CGRectGetWidth(self.cartTableView.bounds) : CGRectGetWidth(self.view.bounds);
+        if (tableWidth <= 0) tableWidth = 375.0;
+        self.branchBannerView = [[PPCartBranchBannerView alloc] initWithFrame:CGRectMake(0, 0, tableWidth, 160)];
+        __weak typeof(self) weakSelf = self;
+        self.branchBannerView.onRemoveUnavailable = ^{
+            [weakSelf pp_removeUnavailableItemsFromCart];
+        };
+        self.branchBannerView.onSaveUnavailableToSavedForLater = ^{
+            [weakSelf pp_saveUnavailableItemsToSavedForLater];
+        };
+        self.branchBannerView.onDismiss = ^{
+            [weakSelf pp_dismissBranchBanner];
+        };
+    }
+    
+    [self.branchBannerView configureWithBranchName:branchName
+                                   outOfStockCount:outOfStock.count
+                                      clampedCount:clamped.count];
+    
+    CGFloat tableWidth = CGRectGetWidth(self.cartTableView.bounds) > 0 ? CGRectGetWidth(self.cartTableView.bounds) : CGRectGetWidth(self.view.bounds);
+    if (tableWidth <= 0) tableWidth = 375.0;
+    CGSize fittingSize = [self.branchBannerView systemLayoutSizeFittingSize:CGSizeMake(tableWidth, UILayoutFittingCompressedSize.height)
+                                              withHorizontalFittingPriority:UILayoutPriorityRequired
+                                                    verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGRect frame = self.branchBannerView.frame;
+    frame.size.width = tableWidth;
+    frame.size.height = MAX(140.0, fittingSize.height);
+    self.branchBannerView.frame = frame;
+    self.cartTableView.tableHeaderView = self.branchBannerView;
+    [self.cartTableView reloadData];
+}
+
+- (void)pp_removeUnavailableItemsFromCart
+{
+    NSMutableArray<CartItem *> *itemsToRemove = [NSMutableArray array];
+    for (CartItem *item in CartManager.sharedManager.cartItems) {
+        if ([CartManager.sharedManager availableQuantityForItem:item] == 0) {
+            [itemsToRemove addObject:item];
+        }
+    }
+    if (itemsToRemove.count == 0) return;
+
+    for (CartItem *item in itemsToRemove) {
+        [[CartManager sharedManager] removeItem:item];
+    }
+    [[CartManager sharedManager] saveCart];
+    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartItemRemoved];
+    
+    [self pp_dismissBranchBanner];
+    [self.cartTableView reloadData];
+    [self updateTotalLabel];
+    [self pp_notifyCartBadgeAndCollections];
+    [self pp_applyEmptyStateIfNeeded];
+    [PPHUD showSuccess:kLang(@"ItemDeleted") ?: @"Removed"];
+}
+
+- (void)pp_saveUnavailableItemsToSavedForLater
+{
+    NSMutableArray<CartItem *> *itemsToMove = [NSMutableArray array];
+    for (CartItem *item in CartManager.sharedManager.cartItems) {
+        if ([CartManager.sharedManager availableQuantityForItem:item] == 0) {
+            [itemsToMove addObject:item];
+        }
+    }
+    if (itemsToMove.count == 0) return;
+
+    for (CartItem *item in itemsToMove) {
+        [[PPSaveForLaterManager sharedManager] saveItemForLater:item];
+        [[CartManager sharedManager] removeItem:item];
+    }
+    [[CartManager sharedManager] saveCart];
+    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartItemRemoved];
+
+    [self pp_dismissBranchBanner];
+    [self.cartTableView reloadData];
+    [self updateTotalLabel];
+    [self pp_notifyCartBadgeAndCollections];
+    [self pp_updateSavedForLaterFooter];
+    [self pp_applyEmptyStateIfNeeded];
+    [PPHUD showSuccess:kLang(@"saved_for_later_added_toast") ?: @"Saved for later"];
+}
+
+- (void)pp_dismissBranchBanner
+{
+    if (!self.branchBannerView) return;
+    __weak typeof(self) weakSelf = self;
+    [UIView animateWithDuration:0.25 animations:^{
+        weakSelf.branchBannerView.alpha = 0.0;
+    } completion:^(__unused BOOL finished) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.cartTableView.tableHeaderView = nil;
+        self.branchBannerView = nil;
+        if (!self.isPerformingTableMutation) {
+            [self.cartTableView reloadData];
+        }
+    }];
+}
+
+- (void)pp_presentUnavailableItemsAlertForItems:(NSArray<CartItem *> *)items
+{
+    NSString *branchName = [[PPStoreBranchManager sharedManager] localizedCurrentBranchName] ?: @"";
+    NSString *title = kLang(@"cart_branch_unavailable_checkout_blocked_title") ?: @"Unavailable Items in Cart";
+    NSString *msg = [NSString stringWithFormat:kLang(@"cart_branch_unavailable_checkout_blocked_msg") ?: @"Your cart contains %ld items not available at %@. Please remove them to proceed with checkout.", (long)items.count, branchName];
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
+                                                                   message:msg
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cart_branch_remove_unavailable_action") ?: @"Remove Unavailable"
+                                              style:UIAlertActionStyleDestructive
+                                            handler:^(__unused UIAlertAction * _Nonnull action) {
+        [weakSelf pp_removeUnavailableItemsFromCart];
+    }]];
+
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cart_branch_save_unavailable_action") ?: @"Save for Later"
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction * _Nonnull action) {
+        [weakSelf pp_saveUnavailableItemsToSavedForLater];
+    }]];
+
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel") ?: @"Cancel"
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 #pragma mark - Saved For Later Inline Rows
@@ -2967,13 +3227,16 @@ static UIFont *PPCartScaledFont(NSString *fontName,
             CartItem *current = manager.cartItems[row];
             BOOL increasing = [action isEqualToString:@"plus"];
             if (increasing && current.quantity == NSIntegerMax) return;
+            NSInteger prevQuantity = current.quantity;
             NSInteger requested = increasing ? current.quantity + 1 : MAX(1, current.quantity - 1);
             [manager updateQuantity:requested forItem:current completion:^(__unused BOOL success) {
                 // Completion also covers rollback/rejection; never leave the cell
                 // displaying a quantity that the manager did not accept.
                 [weakSelf updateViewFromSync];
             }];
-            [strongSelf updateTotalLabel];
+            if (current.quantity == prevQuantity) {
+                [strongSelf updateTotalLabel];
+            }
         } else if ([action isEqualToString:@"moveToSavedForLater"]) {
             [strongSelf pp_moveCartItemToSavedForLater:actionItem];
         }
@@ -3921,18 +4184,28 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     if (targetRow == NSNotFound) {
         targetRow = [self pp_cartRowForItemID:item.itemID];
     }
-    if (targetRow == NSNotFound || targetRow >= (NSInteger)[CartManager sharedManager].cartItems.count) {
+    NSInteger oldCartCount = [CartManager sharedManager].cartItems.count;
+    if (targetRow == NSNotFound || targetRow >= oldCartCount) {
         return;
     }
 
     self.isPerformingTableMutation = YES;
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:targetRow inSection:0];
 
-    // 1. Save item to Saved for Later
-    [[PPSaveForLaterManager sharedManager] saveItemForLater:item];
-
-    // 2. Remove item from Cart and persist
+    // 1. Remove item from Cart first so a blocked/stale removal never duplicates into Saved for Later
     [[CartManager sharedManager] removeItem:item];
+    NSInteger newCartCount = [CartManager sharedManager].cartItems.count;
+    if (oldCartCount - newCartCount != 1) {
+        self.isPerformingTableMutation = NO;
+        [self.cartTableView reloadData];
+        [self updateTotalLabel];
+        [self pp_updateSavedForLaterFooter];
+        [self pp_applyEmptyStateIfNeeded];
+        return;
+    }
+
+    // 2. Save item to Saved for Later and persist
+    [[PPSaveForLaterManager sharedManager] saveItemForLater:item];
     [[CartManager sharedManager] saveCart];
 
     // 3. Tactile haptic & sound feedback
@@ -3941,33 +4214,45 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [feedback prepare];
     [feedback notificationOccurred:UINotificationFeedbackTypeSuccess];
 
-    // 4. Update UI with animated transition
+    // 4. Update UI with animated transition (fall back safely if row counts drifted)
+    __weak typeof(self) weakSelf = self;
+    void (^finishMove)(void) = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.isPerformingTableMutation = NO;
+        [self updateTotalLabel];
+        [self pp_notifyCartBadgeAndCollections];
+        [self pp_updateSavedForLaterFooter];
+        [self pp_applyEmptyStateIfNeeded];
+        [PPHUD showSuccess:kLang(@"saved_for_later_added_toast")];
+    };
+
     if (self.savedForLaterExpanded) {
         [UIView transitionWithView:self.cartTableView
                           duration:0.25
                            options:UIViewAnimationOptionTransitionCrossDissolve
                         animations:^{
-            [self.cartTableView reloadData];
+            [weakSelf.cartTableView reloadData];
         } completion:^(__unused BOOL finished) {
-            self.isPerformingTableMutation = NO;
-            [self updateTotalLabel];
-            [self pp_notifyCartBadgeAndCollections];
-            [self pp_updateSavedForLaterFooter];
-            [self pp_applyEmptyStateIfNeeded];
-            [PPHUD showSuccess:kLang(@"saved_for_later_added_toast")];
+            finishMove();
         }];
     } else {
-        [self.cartTableView performBatchUpdates:^{
-            [self.cartTableView deleteRowsAtIndexPaths:@[indexPath]
-                                      withRowAnimation:UITableViewRowAnimationFade];
-        } completion:^(__unused BOOL finished) {
-            self.isPerformingTableMutation = NO;
-            [self updateTotalLabel];
-            [self pp_notifyCartBadgeAndCollections];
-            [self pp_updateSavedForLaterFooter];
-            [self pp_applyEmptyStateIfNeeded];
-            [PPHUD showSuccess:kLang(@"saved_for_later_added_toast")];
-        }];
+        NSInteger expectedOldRows = newCartCount + [self pp_savedForLaterInlineRowCount] + 1;
+        BOOL canAnimateDelete =
+            [self.cartTableView numberOfSections] > 0 &&
+            [self.cartTableView numberOfRowsInSection:0] == expectedOldRows &&
+            indexPath.row < expectedOldRows;
+        if (canAnimateDelete) {
+            [self.cartTableView performBatchUpdates:^{
+                [self.cartTableView deleteRowsAtIndexPaths:@[indexPath]
+                                          withRowAnimation:UITableViewRowAnimationFade];
+            } completion:^(__unused BOOL finished) {
+                finishMove();
+            }];
+        } else {
+            [self.cartTableView reloadData];
+            finishMove();
+        }
     }
 }
 
@@ -4169,6 +4454,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     (void)tableView;
     if (![self pp_isCartItemIndexPath:indexPath]) return NO;
     CartManager *manager = CartManager.sharedManager;
+    if (indexPath.row < 0 || indexPath.row >= (NSInteger)manager.cartItems.count) return NO;
     return !manager.isLocked && ![manager isSyncPendingForItem:manager.cartItems[indexPath.row]];
 }
 
@@ -4186,15 +4472,26 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
 trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (![self tableView:tableView canEditRowAtIndexPath:indexPath]) return nil;
+    NSArray<CartItem *> *snapshotItems = [CartManager sharedManager].cartItems;
+    if (indexPath.row < 0 || indexPath.row >= (NSInteger)snapshotItems.count) return nil;
+    CartItem *targetItem = snapshotItems[indexPath.row];
 
+    __weak typeof(self) weakSelf = self;
     UIContextualAction *removeAction =
     [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
                                             title:kLang(@"cart_swipe_remove")
                                           handler:^(__unused UIContextualAction * _Nonnull action,
                                                     __unused UIView * _Nonnull sourceView,
                                                     void (^ _Nonnull completionHandler)(BOOL)) {
-        [self pp_removeItemAtIndexPath:indexPath];
-        completionHandler(YES);
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { completionHandler(NO); return; }
+        NSInteger liveRow = [strongSelf pp_cartRowForItem:targetItem];
+        if (liveRow != NSNotFound && liveRow < (NSInteger)CartManager.sharedManager.cartItems.count) {
+            [strongSelf pp_removeItemAtIndexPath:[NSIndexPath indexPathForRow:liveRow inSection:0]];
+            completionHandler(YES);
+        } else {
+            completionHandler(NO);
+        }
     }];
 
     if (@available(iOS 13.0, *)) {
@@ -4208,12 +4505,16 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
                                           handler:^(__unused UIContextualAction * _Nonnull action,
                                                     __unused UIView * _Nonnull sourceView,
                                                     void (^ _Nonnull completionHandler)(BOOL)) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { completionHandler(NO); return; }
+        NSInteger liveRow = [strongSelf pp_cartRowForItem:targetItem];
         NSArray<CartItem *> *items = [CartManager sharedManager].cartItems;
-        if (indexPath.row < (NSInteger)items.count) {
-            CartItem *item = items[indexPath.row];
-            [self pp_moveCartItemToSavedForLater:item];
+        if (liveRow != NSNotFound && liveRow < (NSInteger)items.count) {
+            [strongSelf pp_moveCartItemToSavedForLater:items[liveRow]];
+            completionHandler(YES);
+        } else {
+            completionHandler(NO);
         }
-        completionHandler(YES);
     }];
 
     if (@available(iOS 13.0, *)) {

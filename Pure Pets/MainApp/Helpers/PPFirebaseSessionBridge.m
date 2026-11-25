@@ -71,11 +71,145 @@ static BOOL PPFirebaseSessionTextContainsAnyToken(NSString *text,
     return NO;
 }
 
-static NSString *PPFirebaseSessionFallbackMessage(NSString *fallbackKey)
+static NSString *PPFirebaseSessionLocalizedString(NSString * _Nullable key, NSString *fallback)
 {
-    NSString *fallback = fallbackKey.length ? (kLang(fallbackKey) ?: nil) : nil;
+    if (key.length > 0) {
+        NSString *resolved = [Language get:key alter:nil];
+        if (resolved.length > 0 && ![resolved isEqualToString:key]) {
+            return resolved;
+        }
+    }
+    return fallback ?: @"";
+}
+
+static NSString *PPFirebaseSessionFallbackMessage(NSString * _Nullable fallbackKey)
+{
+    NSString *fallback = PPFirebaseSessionLocalizedString(fallbackKey, @"");
     if (fallback.length) return fallback;
-    return kLang(@"SomethingWentWrong") ?: @"";
+    return PPFirebaseSessionLocalizedString(@"SomethingWentWrong", @"Something went wrong.");
+}
+
+static NSDictionary * _Nullable PPFirebaseSessionResolveChatErrorDescriptor(NSString * _Nullable text)
+{
+    if (text.length == 0) return nil;
+
+    static NSArray<NSDictionary<NSString *, id> *> *descriptors = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        descriptors = @[
+            @{
+                @"tokens": @[@"the conversation recipient is not active", @"recipient is not active", @"support assignee is not active"],
+                @"titleKey": @"chat_recipient_inactive_title",
+                @"defaultTitle": @"Recipient Unavailable",
+                @"messageKey": @"chat_recipient_inactive_message",
+                @"defaultMessage": @"This user's account is currently inactive and cannot receive messages. Please choose another user or try again later.",
+            },
+            @{
+                @"tokens": @[@"messaging is unavailable between these accounts"],
+                @"titleKey": @"chat_peer_blocked_title",
+                @"defaultTitle": @"Messaging Unavailable",
+                @"messageKey": @"chat_peer_blocked_message",
+                @"defaultMessage": @"Messaging is unavailable between these accounts because one of the accounts has blocked the conversation.",
+            },
+            @{
+                @"tokens": @[@"staff conversations must be initiated by an authorized staff member"],
+                @"titleKey": @"chat_staff_initiation_title",
+                @"defaultTitle": @"Direct Chat Unavailable",
+                @"messageKey": @"chat_staff_initiation_message",
+                @"defaultMessage": @"You cannot start a direct chat with this staff account. Please contact Pure Pets Support instead.",
+            },
+            @{
+                @"tokens": @[
+                    @"chat is not available for this account",
+                    @"this staff account is not active",
+                    @"not allowed to use support chat",
+                    @"support chat is not available for this account",
+                    @"support access is not available for this staff account",
+                    @"you are not a participant in this conversation",
+                    @"you can only unsend your own messages",
+                    @"this account cannot modify chat messages",
+                ],
+                @"titleKey": @"chat_account_unavailable_title",
+                @"defaultTitle": @"Chat Unavailable",
+                @"messageKey": @"chat_account_unavailable_message",
+                @"defaultMessage": @"Messaging is not available for your account right now. Please contact Pure Pets Support if you need help.",
+            },
+            @{
+                @"tokens": @[@"a conversation needs another participant", @"a message needs another recipient"],
+                @"titleKey": @"Warning",
+                @"defaultTitle": @"Warning",
+                @"messageKey": @"CannotChatWithSelf",
+                @"defaultMessage": @"You cannot start a conversation with yourself. Please choose another user.",
+            },
+            @{
+                @"tokens": @[
+                    @"the requested pet advertisement is not available",
+                    @"the requested pet advertisement is not publicly available",
+                    @"the advertisement does not belong to this conversation",
+                ],
+                @"titleKey": @"chat_ad_unavailable_title",
+                @"defaultTitle": @"Listing Unavailable",
+                @"messageKey": @"chat_ad_unavailable_message",
+                @"defaultMessage": @"This listing is no longer available for messaging.",
+            },
+            @{
+                @"tokens": @[
+                    @"community messaging is currently unavailable",
+                    @"community chat participant profile was not found",
+                    @"messaging is not available for this community record state",
+                    @"the requested community conversation context is not available",
+                    @"the community record does not belong to these conversation participants",
+                ],
+                @"titleKey": @"chat_community_unavailable_title",
+                @"defaultTitle": @"Messaging Unavailable",
+                @"messageKey": @"chat_community_unavailable_message",
+                @"defaultMessage": @"Messaging is currently unavailable for this community item.",
+            },
+            @{
+                @"tokens": @[@"this message can no longer be unsent"],
+                @"titleKey": @"chat_unsend_window_expired_title",
+                @"defaultTitle": @"Unable to Unsend",
+                @"messageKey": @"chat_unsend_window_expired_message",
+                @"defaultMessage": @"Messages can only be unsent within 15 minutes of sending.",
+            },
+            @{
+                @"tokens": @[
+                    @"conversation not found",
+                    @"the conversation was not found",
+                    @"support conversation not found",
+                    @"the conversation message was not found",
+                ],
+                @"titleKey": @"chat_thread_not_found_title",
+                @"defaultTitle": @"Conversation Unavailable",
+                @"messageKey": @"chat_thread_not_found_message",
+                @"defaultMessage": @"This conversation could not be found or is no longer available.",
+            },
+            @{
+                @"tokens": @[
+                    @"support threads must use supportchatcommand",
+                    @"support threads use a separate canonical command",
+                    @"support thread preferences use supportchatcommand",
+                    @"support conversations use the support lifecycle",
+                    @"the support conversation changed",
+                    @"reopen the support conversation before replying",
+                    @"this support conversation is historical",
+                ],
+                @"titleKey": @"chat_start_failed_title",
+                @"defaultTitle": @"Unable to Start Chat",
+                @"messageKey": @"pp_support_open_failed",
+                @"defaultMessage": @"Could not open support chat right now.",
+            },
+        ];
+    });
+
+    NSString *lower = text.lowercaseString;
+    for (NSDictionary<NSString *, id> *descriptor in descriptors) {
+        NSArray<NSString *> *tokens = descriptor[@"tokens"];
+        if (PPFirebaseSessionTextContainsAnyToken(lower, tokens)) {
+            return descriptor;
+        }
+    }
+    return nil;
 }
 
 static BOOL PPFirebaseSessionErrorContainsBridgeCode(NSError *error,
@@ -427,13 +561,15 @@ static void PPFirebaseSessionEnsureCachedSession(FIRUser *user,
     if (PPFirebaseSessionTextContainsAnyToken(lower, @[
         @"app check", @"appcheck", @"app attest", @"appattest", @"devicecheck"
     ])) {
-        return kLang(@"pp_app_check_unavailable") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+        return PPFirebaseSessionLocalizedString(@"pp_app_check_unavailable",
+                                               @"We could not verify this device right now. Please try again.");
     }
 
     if (PPFirebaseSessionTextContainsAnyToken(lower, @[
         @"unauthenticated", @"auth token", @"id token", @"user token", @"session refresh"
     ])) {
-        return kLang(@"pp_auth_session_refresh_failed") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+        return PPFirebaseSessionLocalizedString(@"pp_auth_session_refresh_failed",
+                                               @"We could not refresh your session. Please try again.");
     }
 
     if (PPFirebaseSessionTextContainsAnyToken(lower, @[
@@ -443,7 +579,14 @@ static void PPFirebaseSessionEnsureCachedSession(FIRUser *user,
         @"the internet connection appears to be offline",
         @"failed to get document because the client is offline"
     ])) {
-        return kLang(@"offline_action_message") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+        return PPFirebaseSessionLocalizedString(@"offline_action_message",
+                                               PPFirebaseSessionFallbackMessage(@"SomethingWentWrong"));
+    }
+
+    NSDictionary *chatDescriptor = PPFirebaseSessionResolveChatErrorDescriptor(text);
+    if (chatDescriptor) {
+        return PPFirebaseSessionLocalizedString(chatDescriptor[@"messageKey"],
+                                               chatDescriptor[@"defaultMessage"]);
     }
 
     if (PPFirebaseSessionTextContainsAnyToken(lower, @[
@@ -479,7 +622,8 @@ static void PPFirebaseSessionEnsureCachedSession(FIRUser *user,
                          fallbackKey:(NSString *)fallbackKey
 {
     if (PPFirebaseSessionErrorContainsBridgeCode(error, PPFirebaseSessionBridgeErrorCodeAppCheckUnavailable)) {
-        return kLang(@"pp_app_check_unavailable") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+        return PPFirebaseSessionLocalizedString(@"pp_app_check_unavailable",
+                                               @"We could not verify this device right now. Please try again.");
     }
 
     if ([self isAuthOrAppCheckError:error]) {
@@ -489,22 +633,66 @@ static void PPFirebaseSessionEnsureCachedSession(FIRUser *user,
             [text containsString:@"app attest"] ||
             [text containsString:@"appattest"] ||
             [text containsString:@"devicecheck"]) {
-            return kLang(@"pp_app_check_unavailable") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+            return PPFirebaseSessionLocalizedString(@"pp_app_check_unavailable",
+                                                   @"We could not verify this device right now. Please try again.");
         }
-        return kLang(@"pp_auth_session_refresh_failed") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+        return PPFirebaseSessionLocalizedString(@"pp_auth_session_refresh_failed",
+                                               @"We could not refresh your session. Please try again.");
     }
 
     if (error.localizedDescription.length) {
+        NSDictionary *directDescriptor = PPFirebaseSessionResolveChatErrorDescriptor(error.localizedDescription);
+        if (directDescriptor) {
+            return PPFirebaseSessionLocalizedString(directDescriptor[@"messageKey"],
+                                                   directDescriptor[@"defaultMessage"]);
+        }
         NSString *publicText = [self publicMessageForText:error.localizedDescription
                                               fallbackKey:fallbackKey];
         if (publicText.length && ![publicText isEqualToString:error.localizedDescription]) {
             return publicText;
         }
     }
-    NSString *fallback = fallbackKey.length ? (kLang(fallbackKey) ?: nil) : nil;
+
+    NSString *combinedText = PPFirebaseSessionCombinedErrorText(error);
+    NSDictionary *combinedDescriptor = PPFirebaseSessionResolveChatErrorDescriptor(combinedText);
+    if (combinedDescriptor) {
+        return PPFirebaseSessionLocalizedString(combinedDescriptor[@"messageKey"],
+                                               combinedDescriptor[@"defaultMessage"]);
+    }
+
+    NSString *fallback = PPFirebaseSessionLocalizedString(fallbackKey, @"");
     if (fallback.length) return fallback;
     if (error.localizedDescription.length) return error.localizedDescription;
     return PPFirebaseSessionFallbackMessage(fallbackKey);
+}
+
++ (NSString *)publicChatTitleForError:(NSError * _Nullable)error
+{
+    if (!error || [self isAuthOrAppCheckError:error]) {
+        return PPFirebaseSessionLocalizedString(@"chat_start_failed_title",
+                                               @"Unable to Start Chat");
+    }
+
+    NSDictionary *descriptor =
+        PPFirebaseSessionResolveChatErrorDescriptor(error.localizedDescription) ?:
+        PPFirebaseSessionResolveChatErrorDescriptor(PPFirebaseSessionCombinedErrorText(error));
+    if (descriptor) {
+        return PPFirebaseSessionLocalizedString(descriptor[@"titleKey"],
+                                               descriptor[@"defaultTitle"]);
+    }
+
+    return PPFirebaseSessionLocalizedString(@"chat_start_failed_title",
+                                           @"Unable to Start Chat");
+}
+
++ (NSString *)publicChatMessageForError:(NSError * _Nullable)error
+                             fallbackKey:(NSString * _Nullable)fallbackKey
+{
+    NSString *effectiveFallbackKey = fallbackKey.length > 0 ? fallbackKey : @"chat_start_failed_message";
+    if (!error) {
+        return PPFirebaseSessionFallbackMessage(effectiveFallbackKey);
+    }
+    return [self publicMessageForError:error fallbackKey:effectiveFallbackKey];
 }
 
 @end

@@ -54,7 +54,6 @@ static NSString * const kPPUserFullWidthCellInSavedForLaterKey = @"userFullWidth
 
 + (void)setUserFullWidthCellInSavedForLater:(BOOL)value {
     [[NSUserDefaults standardUserDefaults] setBool:value forKey:kPPUserFullWidthCellInSavedForLaterKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
 }
 
 + (instancetype)sharedManager {
@@ -374,7 +373,6 @@ static NSString * const kPPUserFullWidthCellInSavedForLaterKey = @"userFullWidth
         [serialized addObject:dict];
     }
     [[NSUserDefaults standardUserDefaults] setObject:serialized forKey:userKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
     
     [self postSavedForLaterUpdatedNotification];
 }

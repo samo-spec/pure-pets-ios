@@ -257,6 +257,7 @@
 #define AppBackgroundClr            [UIColor ppBackground]
 #define AppBackgroundClrLigter      [UIColor ppBackground]
 #define AppBackgroundClrDarker      [UIColor ppWarmPorcelain]
+#define AppBackgroundClrShiner      [UIColor ppElevatedSurface]
 
 #define AppPrimaryTextClr           [UIColor ppTextPrimary]
 #define AppSecondaryTextClr         [UIColor ppTextSecondary]

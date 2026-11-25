@@ -3690,10 +3690,8 @@ UIBarButtonItem *addbutton;
 - (void)changeColor {
     self.navigationController.navigationBar.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
 
-    UIBarButtonItem *closebutton = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:Language.isRTL ? @"arrow.right" : @"arrow.left"]
-                                                                    style:UIBarButtonItemStylePlain
-                                                                   target:self
-                                                                   action:@selector(closeForm:)];
+    UIButton *closeBtn = [self pp_ButtonWithSystemName:PPChevronName action:@selector(closeForm:)];
+    UIBarButtonItem *closebutton = [[UIBarButtonItem alloc] initWithCustomView:closeBtn];
     self.navigationItem.leftBarButtonItem = closebutton;
 
     self.saveButton = [PPButtonHelper pp_buttonWithTitle:kLang(@"save")

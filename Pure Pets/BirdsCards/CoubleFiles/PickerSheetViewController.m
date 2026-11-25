@@ -43,12 +43,7 @@
     [self.topBarView addSubview:self.topTitle];
 
     // -- Close button --
-    self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.closeButton.translatesAutoresizingMaskIntoConstraints = NO;
-    UIImage *xImage = [UIImage systemImageNamed:@"xmark"];
-    [self.closeButton setImage:xImage forState:UIControlStateNormal];
-    self.closeButton.tintColor = [UIColor whiteColor];
-    [self.closeButton addTarget:self action:@selector(cancelBTN:) forControlEvents:UIControlEventTouchUpInside];
+    self.closeButton = [self pp_ButtonWithSystemName:@"xmark" action:@selector(cancelBTN:)];
     [self.topBarView addSubview:self.closeButton];
 
     // -- Table view --

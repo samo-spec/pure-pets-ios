@@ -275,6 +275,7 @@ private struct PPVetCardName: View {
     var body: some View {
         Text(profile.title)
             .vetCardFont(size, bold: true, relativeTo: .title2)
+            .foregroundStyle(Color.ppTextPrimary)
             .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -304,7 +305,7 @@ private struct PPVetCardRole: View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
             Label(PPVetCardStyle.copy(profile.isCompany ? "vet_detail_clinic" : "vet_detail_doctor"),
                   systemImage: profile.isCompany ? "building.2" : "stethoscope")
-                .foregroundStyle(Color.ppPrimary)
+                .foregroundStyle(Color.ppAccentText)
             if profile.isVerified {
                 Label(PPVetCardStyle.copy("vet_detail_profile_verified"), systemImage: "checkmark.seal")
                     .foregroundStyle(Color.ppTextSecondary)
@@ -336,7 +337,7 @@ private struct PPVetCardIdentityImage: View {
         .clipShape(RoundedRectangle(cornerRadius: profile.isCompany ? 16 : 24, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: profile.isCompany ? 16 : 24, style: .continuous)
-                .strokeBorder(Color.ppSurfaceBorder, lineWidth: 0.75)
+                .strokeBorder(Color.ppSurfaceBorder, lineWidth: 1.0)
         }
         // Identity is already named alongside it. No duplicate VoiceOver stop or nested retry button.
         .accessibilityHidden(true)
@@ -370,6 +371,7 @@ private struct PPVetCardFact: View {
                 }
                 Text(text)
                     .vetCardFont(16, relativeTo: .body)
+                    .foregroundStyle(Color.ppTextPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -442,6 +444,7 @@ private struct PPVetCardFee: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(amount)
                     .vetCardFont(24, bold: true, relativeTo: .title2)
+                    .foregroundStyle(Color.ppTextPrimary)
                 Text(PPVetCardStyle.copy("vet_detail_currency"))
                     .vetCardFont(14, relativeTo: .caption)
                     .foregroundStyle(Color.ppTextSecondary)
@@ -477,7 +480,7 @@ private struct PPVetCardActions: View {
                 .padding(.horizontal, PPSpace.base)
                 .padding(.vertical, PPSpace.sm)
                 .frame(minHeight: 48)
-                .foregroundStyle(Color.ppPrimary)
+                .foregroundStyle(Color.ppAccentText)
                 .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: PPCorner.small))
                 .contentShape(RoundedRectangle(cornerRadius: PPCorner.small))
             }
@@ -524,6 +527,7 @@ private struct PPVetCardActions: View {
                 .padding(.vertical, PPSpace.sm)
                 .frame(minHeight: 48)
                 .foregroundStyle(enabled ? Color.ppTextPrimary : Color.ppTextSecondary)
+                .background(Color(uiColor: .ppElevatedSurface), in: RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: PPCorner.small, style: .continuous)
                         .strokeBorder(Color.ppSurfaceBorder, lineWidth: 1)

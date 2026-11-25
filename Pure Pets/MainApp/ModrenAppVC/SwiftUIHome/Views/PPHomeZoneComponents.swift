@@ -5581,7 +5581,9 @@ struct PPHomePetCareCard: View {
         let id: String
         let fallbackTitle: String
         let symbol: String
-        let accent: Color
+        let accentColor: Color
+        let sublineKey: String
+        let fallbackSubline: String
     }
 
     private let services = [
@@ -5589,178 +5591,222 @@ struct PPHomePetCareCard: View {
             id: "pet_care_veterinarians",
             fallbackTitle: "Veterinarians",
             symbol: "stethoscope",
-            accent: .ppCareAccent
+            accentColor: Color.ppCareAccent,
+            sublineKey: "pet_care_vet_consult",
+            fallbackSubline: Language.isRTL() ? "أطباء معتمدون" : "Certified Vets"
         ),
         Service(
             id: "pet_care_clinics",
             fallbackTitle: "Clinics",
             symbol: "cross.case.fill",
-            accent: .ppQuickActionAnimals
+            accentColor: PPMarketplaceQuickActionTone.vet,
+            sublineKey: "pet_care_clinic_booking",
+            fallbackSubline: Language.isRTL() ? "حجز ومواعيد" : "Appointments"
         ),
         Service(
             id: "pet_care_medicines",
             fallbackTitle: "Medicines",
             symbol: "pills.fill",
-            accent: .ppPremiumAccent
+            accentColor: PPMarketplaceQuickActionTone.pharmacy,
+            sublineKey: "pet_care_pharmacy_rx",
+            fallbackSubline: Language.isRTL() ? "صيدلية ورعاية" : "Pharmacy"
         )
     ]
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.displayScale) private var displayScale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.layoutDirection) private var layoutDirection
 
-    private var showsPortrait: Bool { dynamicTypeSize < .xxLarge }
-    private var portraitWidth: CGFloat { horizontalSizeClass == .regular ? 192 : 148 }
-    private var hairline: CGFloat { 1 / max(displayScale, 1) }
-    private var serviceTintOpacity: Double { colorScheme == .dark ? 0.24 : 0.18 }
+    private var isRTL: Bool {
+        layoutDirection == .rightToLeft || Language.isRTL()
+    }
+
+    private var showsArtwork: Bool { dynamicTypeSize < .xxLarge }
+    private var artworkSide: CGFloat {
+        horizontalSizeClass == .regular ? 122 : 98
+    }
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: HomeVisualTokens.cardCorner, style: .continuous)
         Button(action: open) {
-            VStack(spacing: 0) {
-                hero
+            VStack(alignment: .leading, spacing: PPSpace.md) {
+                HStack(alignment: .center, spacing: PPSpace.md) {
+                    heroCopy
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+
+                    if showsArtwork {
+                        PPHomeCareOrbit()
+                            .frame(width: artworkSide, height: artworkSide)
+                            .accessibilityHidden(true)
+                            .allowsHitTesting(false)
+                    }
+                }
+
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.ppSurfaceBorder,
+                                Color.ppSurfaceBorder.opacity(0.28)
+                            ],
+                            startPoint: isRTL ? .trailing : .leading,
+                            endPoint: isRTL ? .leading : .trailing
+                        )
+                    )
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
+
                 serviceIndex
             }
-            .modifier(PPHomeCompanionInvitationSurface())
-            .overlay { bottomHighlight }
+            .padding(PPSpace.base)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.ppSurfaceElevated, in: shape)
+            .overlay {
+                shape.strokeBorder(
+                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+                )
+                .allowsHitTesting(false)
+            }
+            .contentShape(shape)
         }
         .buttonStyle(PPHomeSurfacePressStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(Text(title))
         .accessibilityValue(Text(spokenSummary))
+        .accessibilityHint(Text(PPHomeZoneCopy.petCareCardAction))
         .accessibilityIdentifier("home.petCare")
-    }
-
-    private var hero: some View {
-        HStack(spacing: 0) {
-            heroCopy
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, PPSpace.lg)
-                .padding(.trailing, PPSpace.sm)
-                .padding(.vertical, PPSpace.base)
-
-            if showsPortrait {
-                Color.clear.frame(width: portraitWidth, height: 0)
-            }
-        }
-        .frame(minHeight: showsPortrait ? 112 : nil)
-        .background(alignment: .trailing) {
-            if showsPortrait {
-                portrait
-            }
-        }
-        .background(Color(hex: 0x163A35))
     }
 
     private var heroCopy: some View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
             Text(title)
-                .font(HomeFont.bold(32))
-                .foregroundStyle(Color.white)
+                .font(HomeFont.bold(30))
+                .foregroundStyle(Color.ppTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
 
             if let categoryTitle, !categoryTitle.isEmpty {
-                Label(categoryTitle, systemImage: "pawprint")
-                    .font(HomeFont.medium(14))
-                    .foregroundStyle(Color.white.opacity(0.84))
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(Color.ppCareAccent)
+                        .frame(width: 6, height: 6)
+
+                    Image(systemName: "pawprint.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.ppCareAccent)
+                        .accessibilityHidden(true)
+
+                    Text(categoryTitle)
+                        .font(HomeFont.bold(13))
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 3.5)
+                .background(Color.ppSecondarySurface, in: Capsule())
+                .overlay(
+                    Capsule().strokeBorder(
+                        contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder,
+                        lineWidth: contrast == .increased ? 1.25 : 0.85
+                    )
+                )
             }
 
-            HStack(spacing: PPSpace.sm) {
+            HStack(alignment: .center, spacing: 8) {
                 Text(PPHomeZoneCopy.petCareCardAction)
-                    .font(HomeFont.bold(16))
+                    .font(HomeFont.bold(15))
+                    .foregroundStyle(contrast == .increased ? Color.ppTextPrimary : Color.ppAccentText)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Image(systemName: "arrow.forward")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 11, weight: .heavy))
                     .flipsForRightToLeftLayoutDirection(true)
+                    .foregroundStyle(Color.white)
+                    .frame(width: 24, height: 24)
+                    .background(Color.ppPrimary, in: Circle())
                     .accessibilityHidden(true)
             }
-            .foregroundStyle(Color.ppPremiumAccent)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6.5)
+            .background(Color.ppSecondarySurface, in: Capsule())
+            .overlay(
+                Capsule().strokeBorder(
+                    contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder,
+                    lineWidth: contrast == .increased ? 1.25 : 0.85
+                )
+            )
             .padding(.top, PPSpace.xs)
         }
         .multilineTextAlignment(.leading)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
-    private var portrait: some View {
-        GeometryReader { proxy in
-            Image(decorative: "homePetCareConsultation")
-                .resizable()
-                .scaledToFill()
-                .frame(width: proxy.size.width, height: proxy.size.height, alignment: .top)
-                .clipShape(PPHomeCarePhotoEdge(mirrored: layoutDirection == .rightToLeft))
-        }
-        .frame(width: portraitWidth)
-        .accessibilityHidden(true)
-        .allowsHitTesting(false)
-    }
-
+    // Jewel-Crafted Interactive Service Cards (Veterinarians, Clinics, Medicines)
     private var serviceIndex: some View {
         Group {
             if dynamicTypeSize >= .xxLarge {
                 Text(summary)
                     .font(HomeFont.callout())
+                    .foregroundStyle(Color.ppTextSecondary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, PPSpace.base)
-                    .padding(.vertical, PPSpace.md)
-                    .background(Color.ppCareAccent.opacity(serviceTintOpacity))
             } else {
-                HStack(spacing: 0) {
+                HStack(alignment: .top, spacing: PPSpace.sm) {
                     ForEach(services) { service in
-                        serviceLabel(service)
+                        VStack(spacing: 5) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(service.accentColor.opacity(colorScheme == .dark ? 0.16 : 0.10))
+                                    .frame(width: 34, height: 34)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .strokeBorder(
+                                                service.accentColor.opacity(contrast == .increased ? 0.70 : 0.28),
+                                                lineWidth: 0.85
+                                            )
+                                    )
+
+                                Image(systemName: service.symbol)
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(service.accentColor)
+                            }
+
+                            Text(HomeModelAdapter.localized(service.id, fallback: service.fallbackTitle))
+                                .font(HomeFont.bold(13))
+                                .foregroundStyle(Color.ppTextPrimary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .lineLimit(1)
+
+                            Text(HomeModelAdapter.localized(service.sublineKey, fallback: service.fallbackSubline))
+                                .font(HomeFont.medium(10))
+                                .foregroundStyle(Color.ppTextSecondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .lineLimit(1)
+                        }
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 4)
+                        .background(
+                            Color.ppSecondarySurface,
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(
+                                    HomeVisualTokens.cardBorder(colorScheme: colorScheme, contrast: contrast),
+                                    lineWidth: HomeVisualTokens.cardBorderWidth(contrast: contrast)
+                                )
+                        )
                     }
                 }
-                .background { serviceTints }
             }
         }
-        .foregroundStyle(Color.homeTextPrimary)
         .accessibilityHidden(true)
-    }
-
-    private func serviceLabel(_ service: Service) -> some View {
-        HStack(spacing: PPSpace.xs) {
-            Image(systemName: service.symbol)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(colorScheme == .dark ? service.accent : Color.homeTextPrimary.opacity(0.8))
-            Text(HomeModelAdapter.localized(service.id, fallback: service.fallbackTitle))
-                .font(HomeFont.medium(15))
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, PPSpace.sm)
-        .padding(.vertical, PPSpace.md)
-        .frame(minWidth: 0, maxWidth: .infinity)
-    }
-
-    private var serviceTints: some View {
-        HStack(spacing: 0) {
-            ForEach(services) { service in
-                Rectangle()
-                    .fill(service.accent.opacity(serviceTintOpacity))
-                    .overlay(alignment: .trailing) {
-                        if service.id != services.last?.id {
-                            Rectangle()
-                                .fill(Color.white.opacity(colorScheme == .dark ? 0.27 : 0.92))
-                                .frame(width: hairline)
-                        }
-                    }
-            }
-        }
-    }
-
-    private var bottomHighlight: some View {
-        RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-            .inset(by: hairline * 2)
-            .strokeBorder(
-                Color.white.opacity(colorScheme == .dark ? 0.45 : 0.96),
-                lineWidth: hairline * 2
-            )
-            .mask(alignment: .bottom) {
-                LinearGradient(colors: [.clear, .white], startPoint: .top, endPoint: .bottom)
-                    .frame(height: PPCorner.card)
-            }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 
     private var spokenSummary: String {
@@ -5769,30 +5815,133 @@ struct PPHomePetCareCard: View {
     }
 }
 
-/// Curve the inner edge of the photograph toward the copy at the bottom.
-private struct PPHomeCarePhotoEdge: Shape {
-    let mirrored: Bool
+/// Living care emblem: an organic, breathing sanctuary medallion with resting cardiac rhythm.
+@available(iOS 15.0, *)
+private struct PPHomeCareOrbit: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @State private var revealed = false
+    @State private var heartbeat = false
+    @State private var auraBreath = false
+    @State private var beaconWave = false
 
-    @available(iOS 17.0, *)
-    var layoutDirectionBehavior: LayoutDirectionBehavior { .fixed }
+    var body: some View {
+        GeometryReader { proxy in
+            let side = min(proxy.size.width, proxy.size.height)
+            ZStack {
+                // Layer 1: Subtle Care Mist Halo
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.ppCareAccent.opacity(reduceMotion ? 0.12 : (auraBreath ? 0.22 : 0.09)),
+                                Color.ppPrimary.opacity(reduceMotion ? 0.04 : (auraBreath ? 0.09 : 0.02)),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 4,
+                            endRadius: side * 0.52
+                        )
+                    )
+                    .frame(width: side * 1.10, height: side * 1.10)
+                    .scaleEffect(reduceMotion ? 1.0 : (auraBreath ? 1.06 : 0.94))
 
-    func path(in rect: CGRect) -> Path {
-        let inset = min(PPSpace.xxl, rect.width / 4)
-        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: mirrored ? rect.maxX - x : rect.minX + x, y: rect.minY + y)
+                // Layer 2: Concentric Sanctuary Orbit Track
+                Circle()
+                    .strokeBorder(
+                        contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder,
+                        style: StrokeStyle(lineWidth: 1.0, dash: [4, 3])
+                    )
+                    .frame(width: side * 0.94, height: side * 0.94)
+
+                // Layer 3: Cardiac Vitality Pulse Arc
+                Circle()
+                    .trim(from: 0.06, to: 0.44)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.ppPrimary,
+                                Color.ppAccentText
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        style: StrokeStyle(lineWidth: 2.8, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(reduceMotion ? -98 : (heartbeat ? -95 : -101)))
+                    .frame(width: side * 0.94, height: side * 0.94)
+                    .shadow(color: Color.ppPrimary.opacity(colorScheme == .dark ? 0.36 : 0.18), radius: 3)
+
+                // Layer 4: Inner Care Medallion
+                Circle()
+                    .fill(Color.ppSecondarySurface)
+                    .overlay {
+                        Circle().strokeBorder(
+                            contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder,
+                            lineWidth: 1.0
+                        )
+                    }
+                    .frame(width: side * 0.72, height: side * 0.72)
+
+                // Layer 5: Sculpted Living Heart
+                Image(systemName: "heart.fill")
+                    .font(.system(size: side * 0.44, weight: .regular))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [
+                                Color.ppPrimary,
+                                Color.ppPressedAction
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .shadow(color: Color.ppPrimary.opacity(colorScheme == .dark ? 0.28 : 0.14), radius: 4, x: 0, y: 2)
+                    .scaleEffect(reduceMotion ? 1.0 : (heartbeat ? 1.05 : 0.97))
+
+                // Layer 6: Embossed Pawprint Centered in Heart
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: side * 0.19, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .offset(y: -side * 0.025)
+                    .scaleEffect(reduceMotion ? 1.0 : (heartbeat ? 1.05 : 0.97))
+
+                // Layer 7: Vitality Beacon Satellite
+                ZStack {
+                    Circle()
+                        .fill(Color.ppCareAccent.opacity(beaconWave && !reduceMotion ? 0.0 : 0.55))
+                        .frame(width: 9, height: 9)
+                        .scaleEffect(beaconWave && !reduceMotion ? 2.6 : 1.0)
+
+                    Circle()
+                        .fill(Color.ppCareAccent)
+                        .frame(width: 8, height: 8)
+                        .overlay(Circle().strokeBorder(Color.ppSurfaceElevated, lineWidth: 1.25))
+                        .shadow(color: Color.ppCareAccent.opacity(colorScheme == .dark ? 0.65 : 0.30), radius: 3)
+                }
+                .offset(x: side * 0.35, y: side * 0.30)
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .scaleEffect(reduceMotion || revealed ? 1 : 0.94)
+            .opacity(reduceMotion || revealed ? 1 : 0.82)
         }
-
-        var path = Path()
-        path.move(to: point(inset, 0))
-        path.addLine(to: point(rect.width, 0))
-        path.addLine(to: point(rect.width, rect.height))
-        path.addLine(to: point(0, rect.height))
-        path.addQuadCurve(
-            to: point(inset, 0),
-            control: point(inset, rect.height * 0.55)
-        )
-        path.closeSubpath()
-        return path
+        .onAppear {
+            guard !revealed else { return }
+            revealed = true
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
+                heartbeat = true
+            }
+            withAnimation(.easeInOut(duration: 3.4).repeatForever(autoreverses: true)) {
+                auraBreath = true
+            }
+            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
+                beaconWave = true
+            }
+        }
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
     }
 }
 

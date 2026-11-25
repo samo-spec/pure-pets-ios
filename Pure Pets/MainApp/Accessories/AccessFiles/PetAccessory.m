@@ -1,4 +1,5 @@
 #import "PetAccessory.h"
+#import "PPStoreBranchInventoryManager.h"
 #import "ArabicNormalizer.h"
 #import "GM.h"
 
@@ -173,9 +174,14 @@ static NSArray<NSNumber *> *PPAccessoryIntegerArray(id value) {
 }
 
 - (NSNumber *)calculateFinalPrice {
-    if (!self.price) return nil;
+    NSNumber *branchPrice = nil;
+    if (self.accessoryID.length > 0) {
+        branchPrice = [[PPStoreBranchInventoryManager sharedManager] sellingPriceForProductId:self.accessoryID];
+    }
+    NSNumber *effectiveBasePrice = branchPrice ?: self.price;
+    if (!effectiveBasePrice) return nil;
     
-    double basePrice = [self.price doubleValue];
+    double basePrice = [effectiveBasePrice doubleValue];
     double finalPrice = basePrice;
     
     // Apply percentage discount first
@@ -195,7 +201,19 @@ static NSArray<NSNumber *> *PPAccessoryIntegerArray(id value) {
     return @(finalPrice);
 }
 
+- (NSInteger)quantity {
+    if (self.accessoryID.length > 0 && [[PPStoreBranchInventoryManager sharedManager] hasInventoryRecordForProductId:self.accessoryID]) {
+        return [[PPStoreBranchInventoryManager sharedManager] availableStockForProductId:self.accessoryID fallback:_quantity];
+    }
+    return _quantity;
+}
+
 - (BOOL)isOutOfStock {
+    // Live branch inventory check first: if active store branch has an inventory record,
+    // its available quantity and noStock flag take absolute precedence.
+    if (self.accessoryID.length > 0 && [[PPStoreBranchInventoryManager sharedManager] hasInventoryRecordForProductId:self.accessoryID]) {
+        return [[PPStoreBranchInventoryManager sharedManager] isOutOfStockForProductId:self.accessoryID fallback:(self.serverMarkedNoStock || _quantity <= 0)];
+    }
     // Either signal is sufficient. The server flag is authoritative; the quantity
     // comparison remains as a conservative second check so a stale flag with a zero
     // count still reads as unavailable.

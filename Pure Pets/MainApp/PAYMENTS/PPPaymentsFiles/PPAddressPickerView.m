@@ -536,20 +536,28 @@ static UIColor *PPAddressPickerSecondaryTextColor(void)
     BOOL expanded = UIContentSizeCategoryIsAccessibilityCategory(traits.preferredContentSizeCategory);
     self.iconPlateWidthConstraint.constant = expanded ? 0 : PPSpaceXXL;
     self.iconPlateView.hidden = expanded;
-    for (UIView *view in self.inlineHeadingStack.arrangedSubviews.copy) {
-        [self.inlineHeadingStack removeArrangedSubview:view];
-        [view removeFromSuperview];
-    }
-    [self.textStack removeArrangedSubview:self.actionChipView];
-    [self.actionChipView removeFromSuperview];
-    if (self.inlineHeadingStack.superview != self.textStack) {
-        [self.textStack insertArrangedSubview:self.inlineHeadingStack atIndex:0];
-    }
-    [self.inlineHeadingStack addArrangedSubview:self.hintLabel];
-    if (expanded) {
-        [self.textStack addArrangedSubview:self.actionChipView];
-    } else {
-        [self.inlineHeadingStack addArrangedSubview:self.actionChipView];
+
+    BOOL placementMatches =
+        self.inlineHeadingStack.superview == self.textStack &&
+        self.hintLabel.superview == self.inlineHeadingStack &&
+        (expanded ? (self.actionChipView.superview == self.textStack)
+                  : (self.actionChipView.superview == self.inlineHeadingStack));
+    if (!placementMatches) {
+        for (UIView *view in self.inlineHeadingStack.arrangedSubviews.copy) {
+            [self.inlineHeadingStack removeArrangedSubview:view];
+            [view removeFromSuperview];
+        }
+        [self.textStack removeArrangedSubview:self.actionChipView];
+        [self.actionChipView removeFromSuperview];
+        if (self.inlineHeadingStack.superview != self.textStack) {
+            [self.textStack insertArrangedSubview:self.inlineHeadingStack atIndex:0];
+        }
+        [self.inlineHeadingStack addArrangedSubview:self.hintLabel];
+        if (expanded) {
+            [self.textStack addArrangedSubview:self.actionChipView];
+        } else {
+            [self.inlineHeadingStack addArrangedSubview:self.actionChipView];
+        }
     }
     self.inlineHeadingStack.alignment = UIStackViewAlignmentCenter;
     [self.hintLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];

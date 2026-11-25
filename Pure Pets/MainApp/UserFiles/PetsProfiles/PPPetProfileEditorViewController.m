@@ -1214,6 +1214,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(ws) self = ws;
                 if (error || imageURL.length == 0) {
+                    NSLog(@"[PetProfileEditor] ❌ uploadPetImage failed for petID=%@ error=%@", petID, error);
                     self.isSaving = NO;
                     self.swiftUISaveSucceeded = NO;
                     [self pp_updateSwiftUIEditorHost];

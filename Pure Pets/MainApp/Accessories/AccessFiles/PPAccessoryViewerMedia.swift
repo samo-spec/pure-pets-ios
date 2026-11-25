@@ -614,7 +614,7 @@ struct PPAccessoryFullScreenMediaViewer: View {
                 .frame(width: 48, height: 48)
                 .ppAccessorySubviewBackground(
                     PPAccessorySubviewBackground.fullScreenChromeFill,
-                    in: Circle(),
+                    in: RoundedRectangle(cornerRadius: 13, style: .continuous),
                     stroke: Color.white.opacity(0.16),
                     lineWidth: 0.8
                 )

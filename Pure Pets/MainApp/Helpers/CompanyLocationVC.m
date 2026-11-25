@@ -338,41 +338,16 @@ static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
 
 - (void)pp_setupFloatingBackButton
 {
-    self.floatingBackButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.floatingBackButton.translatesAutoresizingMaskIntoConstraints = NO;
-    PPLocationApplyCornerRadius(self.floatingBackButton, 22.0);
-
-    if (@available(iOS 26.0, *)) {
-        self.floatingBackButton.backgroundColor = UIColor.clearColor;
-    } else {
-        self.floatingBackButton.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.88];
-    }
-
-    CGFloat borderAlpha = 0.70;
-    if (@available(iOS 26.0, *)) {
-        borderAlpha = 0.25;
-    }
-    self.floatingBackButton.layer.borderWidth = 1.0;
-    self.floatingBackButton.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:borderAlpha].CGColor;
-
-    self.floatingBackButton.layer.shadowColor = [UIColor colorWithWhite:0.10 alpha:1.0].CGColor;
-    self.floatingBackButton.layer.shadowOpacity = 0.12;
-    self.floatingBackButton.layer.shadowRadius = 12.0;
-    self.floatingBackButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
-    self.floatingBackButton.clipsToBounds = NO;
-    self.floatingBackButton.tintColor = PPLocationPrimaryTextColor();
-
-    [self.floatingBackButton addTarget:self
-                                action:@selector(pp_handleDismissOrBack)
-                      forControlEvents:UIControlEventTouchUpInside];
+    NSString *symbolName = (self.presentingViewController != nil) ? @"xmark" : PPChevronName;
+    self.floatingBackButton = [self pp_ButtonWithSystemName:symbolName action:@selector(pp_handleDismissOrBack)];
 
     [self.view addSubview:self.floatingBackButton];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.floatingBackButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
         [self.floatingBackButton.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:16.0],
-        [self.floatingBackButton.widthAnchor constraintEqualToConstant:44.0],
-        [self.floatingBackButton.heightAnchor constraintEqualToConstant:44.0]
+        [self.floatingBackButton.widthAnchor constraintEqualToConstant:40.0],
+        [self.floatingBackButton.heightAnchor constraintEqualToConstant:40.0]
     ]];
 
     [self.view bringSubviewToFront:self.floatingBackButton];

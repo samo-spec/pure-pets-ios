@@ -22,19 +22,63 @@ PPPetCareHelperInline NSString *PPPetCareLocalized(NSString *key, NSString *fall
     return value.length > 0 ? value : fallback;
 }
  
+#pragma mark - Pet Care V10 Semantic Palette (PurePets-DesignSystem aligned)
+
+PPPetCareHelperInline UIColor *PPPetCareDynamicHex(CGFloat lr, CGFloat lg, CGFloat lb, CGFloat la,
+                                                   CGFloat dr, CGFloat dg, CGFloat db, CGFloat da)
+{
+    UIColor *light = [UIColor colorWithRed:lr / 255.0 green:lg / 255.0 blue:lb / 255.0 alpha:la];
+    UIColor *dark = [UIColor colorWithRed:dr / 255.0 green:dg / 255.0 blue:db / 255.0 alpha:da];
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? dark : light;
+        }];
+    }
+    return light;
+}
+
+PPPetCareHelperInline UIColor *PPPetCareCanvasColor(void)
+{
+    // PurePets-DesignSystem ppBackground: #F8F8F9 (light) / #0E0B0C (dark)
+    return PPPetCareDynamicHex(248.0, 248.0, 249.0, 1.0, 14.0, 11.0, 12.0, 1.0);
+}
+
+PPPetCareHelperInline UIColor *PPPetCareSurfaceColor(void)
+{
+    // PurePets-DesignSystem ppElevatedSurface: #FFFDFC (light) / #21191C (dark)
+    return PPPetCareDynamicHex(255.0, 253.0, 252.0, 1.0, 33.0, 25.0, 28.0, 1.0);
+}
+
+PPPetCareHelperInline UIColor *PPPetCareSecondarySurfaceColor(void)
+{
+    // PurePets-DesignSystem ppSecondarySurface: #F7F1ED (light) / #2B2024 (dark)
+    return PPPetCareDynamicHex(247.0, 241.0, 237.0, 1.0, 43.0, 32.0, 36.0, 1.0);
+}
+
 PPPetCareHelperInline UIColor *PPPetCareBorderColor(void)
 {
+    // PurePets-DesignSystem ppSurfaceBorder (#EEDDE3 / #3B2D32) with increased-contrast escalation
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+            if (traitCollection.accessibilityContrast == UIAccessibilityContrastHigh) {
+                return dark
+                    ? [UIColor colorWithRed:194.0/255.0 green:180.0/255.0 blue:185.0/255.0 alpha:1.0]
+                    : [UIColor colorWithRed:117.0/255.0 green:102.0/255.0 blue:107.0/255.0 alpha:1.0];
+            }
             return dark
-                ? [UIColor colorWithWhite:1.0 alpha:0.11]
-            : [AppBackgroundClr colorWithAlphaComponent:0.22];
+                ? [UIColor colorWithRed:59.0/255.0 green:45.0/255.0 blue:50.0/255.0 alpha:1.0]
+                : [UIColor colorWithRed:238.0/255.0 green:221.0/255.0 blue:227.0/255.0 alpha:1.0];
         }];
     }
-    return [UIColor colorWithRed:0.72 green:0.66 blue:0.62 alpha:0.22];
+    return [UIColor colorWithRed:238.0/255.0 green:221.0/255.0 blue:227.0/255.0 alpha:1.0];
 }
 
+PPPetCareHelperInline UIColor *PPPetCareSeparatorColor(void)
+{
+    // PurePets-DesignSystem ppSeparator: #E6DADD (light) / #3B2D32 (dark)
+    return PPPetCareDynamicHex(230.0, 218.0, 221.0, 1.0, 59.0, 45.0, 50.0, 1.0);
+}
 
 PPPetCareHelperInline NSString *PPPetCareSafeString(id value)
 {
@@ -43,31 +87,64 @@ PPPetCareHelperInline NSString *PPPetCareSafeString(id value)
 
 PPPetCareHelperInline UIColor *PPPetCareTextColor(void)
 {
-    return AppPrimaryTextClr ?: UIColor.labelColor;
+    // PurePets-DesignSystem ppTextPrimary: #2A1D21 (light) / #FFF8FA (dark)
+    return PPPetCareDynamicHex(42.0, 29.0, 33.0, 1.0, 255.0, 248.0, 250.0, 1.0);
 }
 
 PPPetCareHelperInline UIColor *PPPetCareSecondaryTextColor(void)
 {
-    return AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    // PurePets-DesignSystem ppTextSecondary: #75666B (light) / #C2B4B9 (dark)
+    return PPPetCareDynamicHex(117.0, 102.0, 107.0, 1.0, 194.0, 180.0, 185.0, 1.0);
 }
 
 PPPetCareHelperInline UIColor *PPPetCareAccentColor(void)
 {
-    return AppPrimaryClr  ?: UIColor.systemTealColor;
+    // PurePets-DesignSystem ppCareAccent: #47929C (light) / #64AAB0 (dark)
+    return PPPetCareDynamicHex(71.0, 146.0, 156.0, 1.0, 100.0, 170.0, 176.0, 1.0);
 }
 
+PPPetCareHelperInline UIColor *PPPetCareAccentTextColor(void)
+{
+    // High-contrast care foreground for small text labels: #2B6971 (light) / #7AC0C6 (dark)
+    return PPPetCareDynamicHex(43.0, 105.0, 113.0, 1.0, 122.0, 192.0, 198.0, 1.0);
+}
 
-PPPetCareHelperInline UIColor *PPPetCareSurfaceColor(void)
+PPPetCareHelperInline UIColor *PPPetCareActiveChipBackgroundColor(void)
+{
+    return PPPetCareDynamicHex(71.0, 146.0, 156.0, 0.13, 100.0, 170.0, 176.0, 0.20);
+}
+
+PPPetCareHelperInline UIColor *PPPetCareActiveChipBorderColor(void)
 {
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+            BOOL highContrast = traitCollection.accessibilityContrast == UIAccessibilityContrastHigh;
+            CGFloat alpha = highContrast ? 0.90 : (dark ? 0.58 : 0.45);
             return dark
-            ? [AppBackgroundClr colorWithAlphaComponent:0.075]
-            : [AppForgroundColr colorWithAlphaComponent:0.82];
+                ? [UIColor colorWithRed:100.0/255.0 green:170.0/255.0 blue:176.0/255.0 alpha:alpha]
+                : [UIColor colorWithRed:71.0/255.0 green:146.0/255.0 blue:156.0/255.0 alpha:alpha];
         }];
     }
-    return [UIColor colorWithWhite:1.0 alpha:0.76];
+    return [UIColor colorWithRed:71.0/255.0 green:146.0/255.0 blue:156.0/255.0 alpha:0.45];
+}
+
+PPPetCareHelperInline UIColor *PPPetCareActiveChipTextColor(void)
+{
+    // #1F565E (light) / #A3DCE0 (dark)
+    return PPPetCareDynamicHex(31.0, 86.0, 94.0, 1.0, 163.0, 220.0, 224.0, 1.0);
+}
+
+PPPetCareHelperInline UIColor *PPPetCareBrandPrimaryColor(void)
+{
+    // PurePets-DesignSystem ppPrimary: #CB2654
+    return [UIColor colorWithRed:203.0/255.0 green:38.0/255.0 blue:84.0/255.0 alpha:1.0];
+}
+
+PPPetCareHelperInline UIColor *PPPetCareBrandAccentTextColor(void)
+{
+    // PurePets-DesignSystem ppAccentText: #CB2654 (light) / #E05A7E (dark)
+    return PPPetCareDynamicHex(203.0, 38.0, 84.0, 1.0, 224.0, 90.0, 126.0, 1.0);
 }
 
 PPPetCareHelperInline NSString *PPPetCareMedicineItemIdentifier(VetMedicineModel *medicine)

@@ -12,8 +12,17 @@
 #import "PPPaymentManager.h"
 #import "PPPetCareViewController.h"
 #import "PPPetCareDiscoveryView.h"
+#import "PPFirebaseSessionBridge.h"
+#import "Language.h"
 #import "VetModel.h"
 #import "MainKindsModel.h"
+#import "CartItem.h"
+#import "PPCartTableCell.h"
+#import "CartViewController.h"
+#import "PPSelectPaymentVC.h"
+#import "PPBottomSurfaceCoordinator.h"
+#import "UIViewController+PPBottomSurface.h"
+#import <Pure_Pets-Swift.h>
 
 @interface PPPetCareViewController (ClinicDiscoveryTests)
 - (void)pp_applyFiltersAndReload;
@@ -626,6 +635,209 @@
     // Max length constraint is strictly respected
     NSString *longText = [PPPaymentManager sanitizedQIBText:@"This is a very long text that exceeds thirty two characters limit" fallback:@"Doha" maxLength:10];
     XCTAssertEqual(longText.length, 10);
+}
+
+@end
+
+@interface PPChatLocalizationAndEligibilityTests : XCTestCase
+@end
+
+@implementation PPChatLocalizationAndEligibilityTests
+
+- (void)testRecipientInactiveChatErrorIsHelpfulAndLocalizedInArabicAndEnglish {
+    NSString *previousLanguage = [Language currentLanguageCode];
+    NSError *serverError = [NSError errorWithDomain:@"FIRFunctionsErrorDomain"
+                                               code:9
+                                           userInfo:@{NSLocalizedDescriptionKey: @"The conversation recipient is not active."}];
+
+    [Language setLanguage:@"ar"];
+    NSString *arTitle = [PPFirebaseSessionBridge publicChatTitleForError:serverError];
+    NSString *arMessage = [PPFirebaseSessionBridge publicChatMessageForError:serverError
+                                                                 fallbackKey:@"chat_start_failed_message"];
+    XCTAssertEqualObjects(arTitle, @"المستخدم غير متاح للمحادثة");
+    XCTAssertTrue([arMessage containsString:@"غير نشط"]);
+    XCTAssertFalse([arMessage containsString:@"recipient is not active"]);
+
+    [Language setLanguage:@"en"];
+    NSString *enTitle = [PPFirebaseSessionBridge publicChatTitleForError:serverError];
+    NSString *enMessage = [PPFirebaseSessionBridge publicChatMessageForError:serverError
+                                                                 fallbackKey:@"chat_start_failed_message"];
+    XCTAssertEqualObjects(enTitle, @"Recipient Unavailable");
+    XCTAssertTrue([enMessage containsString:@"inactive"]);
+    XCTAssertFalse([enMessage isEqualToString:@"The conversation recipient is not active."]);
+
+    [Language setLanguage:previousLanguage];
+}
+
+- (void)testUnknownChatErrorFallsBackToLocalizedHelpfulCopy {
+    NSString *previousLanguage = [Language currentLanguageCode];
+    NSError *unknownError = [NSError errorWithDomain:@"FIRFunctionsErrorDomain"
+                                                code:13
+                                            userInfo:@{NSLocalizedDescriptionKey: @"Some raw backend detail"}];
+
+    [Language setLanguage:@"ar"];
+    XCTAssertEqualObjects([PPFirebaseSessionBridge publicChatTitleForError:unknownError], @"تعذّر بدء المحادثة");
+    XCTAssertEqualObjects([PPFirebaseSessionBridge publicChatMessageForError:unknownError fallbackKey:@"chat_start_failed_message"],
+                          @"تعذّر بدء هذه المحادثة حالياً. يُرجى المحاولة مرة أخرى بعد قليل.");
+
+    [Language setLanguage:previousLanguage];
+}
+
+- (void)testUserModelRespectsMirrorChatAvailabilityAndInactiveStatuses {
+    UserModel *disabledMirrorUser = [[UserModel alloc] initWithDict:@{
+        @"ID": @"u_mirror_disabled",
+        @"UserName": @"Inactive Mirror",
+        @"canReceiveMessages": @NO,
+        @"isChatEnabled": @NO
+    }];
+    XCTAssertFalse(disabledMirrorUser.canUseChatFeature);
+
+    UserModel *inactiveStatusUser = [[UserModel alloc] initWithDict:@{
+        @"ID": @"u_status_inactive",
+        @"UserName": @"Inactive Status",
+        @"status": @"inactive"
+    }];
+    XCTAssertTrue(inactiveStatusUser.isEffectivelyBlocked);
+    XCTAssertTrue(inactiveStatusUser.isChatEffectivelyBlocked);
+
+    UserModel *deletedFlagUser = [[UserModel alloc] initWithDict:@{
+        @"ID": @"u_deleted",
+        @"UserName": @"Deleted User",
+        @"isDeleted": @YES
+    }];
+    XCTAssertTrue(deletedFlagUser.isEffectivelyBlocked);
+}
+
+@end
+
+@interface CartViewController (CartCheckoutStabilityTests)
+- (CartItem *)pp_cloneCartItem:(CartItem *)item;
+@end
+
+@interface PPSelectPaymentVC (CartCheckoutStabilityTests)
+- (CGFloat)pp_paymentSectionHeightForKind:(NSString *)kind width:(CGFloat)width;
+@end
+
+@interface PPCartCheckoutStabilityTests : XCTestCase
+@end
+
+@implementation PPCartCheckoutStabilityTests
+
+- (void)testCartCellTransitionsFromUnknownAvailabilityToLiveStockAndSizesStably {
+    CartItem *item = [[CartItem alloc] initWithDictionary:@{
+        @"id": @"nail_clipper_1",
+        @"itemID": @"nail_clipper_1",
+        @"name": @"مقص أظافر القطط الاحترافي",
+        @"price": @32.0,
+        @"quantity": @3
+    }];
+    XCTAssertEqual(item.stockQuantity, NSNotFound);
+
+    PPCartTableCell *cell = [[PPCartTableCell alloc] initWithStyle:UITableViewCellStyleDefault
+                                                   reuseIdentifier:@"PPCartTableCell"];
+    [cell configureWithItem:item];
+    [cell updateCartStateWithAvailableQuantity:NSNotFound
+                                   syncPending:NO
+                                        locked:NO
+                        quantityChangesEnabled:YES];
+
+    UIButton *plusUnknown = [cell valueForKey:@"plusButton"];
+    UILabel *availabilityUnknown = [cell valueForKey:@"availabilityLabel"];
+    XCTAssertFalse(plusUnknown.enabled);
+    XCTAssertEqualObjects(availabilityUnknown.text, kLang(@"cart_quantity_availability_unknown"));
+
+    [cell updateCartStateWithAvailableQuantity:300
+                                   syncPending:NO
+                                        locked:NO
+                        quantityChangesEnabled:YES];
+    XCTAssertTrue(plusUnknown.enabled);
+    NSString *expectedAvail = [NSString stringWithFormat:kLang(@"cart_quantity_available_format"), 300L];
+    XCTAssertEqualObjects(availabilityUnknown.text, expectedAvail);
+
+    CGSize firstSize = [cell systemLayoutSizeFittingSize:CGSizeMake(390.0, UILayoutFittingCompressedSize.height)
+                          withHorizontalFittingPriority:UILayoutPriorityRequired
+                                verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGSize secondSize = [cell systemLayoutSizeFittingSize:CGSizeMake(390.0, UILayoutFittingCompressedSize.height)
+                           withHorizontalFittingPriority:UILayoutPriorityRequired
+                                 verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    XCTAssertGreaterThan(firstSize.height, 80.0);
+    XCTAssertLessThan(firstSize.height, 600.0);
+    XCTAssertEqualWithAccuracy(firstSize.height, secondSize.height, 0.5);
+}
+
+- (void)testCloneCartItemPreservesVariantAndStockMetadataForUndo {
+    CartItem *item = [[CartItem alloc] initWithDictionary:@{
+        @"id": @"prod_1",
+        @"itemID": @"prod_1",
+        @"name": @"Collar",
+        @"price": @45.0,
+        @"originalPrice": @55.0,
+        @"quantity": @2,
+        @"variantId": @"var_red_s",
+        @"variantCombinationKey": @"color:red|size:s",
+        @"sellableUnitId": @"unit_1",
+        @"productFamilyId": @"fam_1",
+        @"isVariant": @YES,
+        @"optionsSummary": @"Red · S",
+        @"providerID": @"prov_1"
+    }];
+    item.stockQuantity = 12;
+
+    CartViewController *cartVC = [[CartViewController alloc] init];
+    CartItem *cloned = [cartVC pp_cloneCartItem:item];
+    XCTAssertFalse(cartVC.isViewLoaded);
+    XCTAssertEqualObjects(cloned.itemID, @"prod_1");
+    XCTAssertEqualObjects(cloned.variantId, @"var_red_s");
+    XCTAssertEqualObjects(cloned.variantCombinationKey, @"color:red|size:s");
+    XCTAssertEqualObjects(cloned.sellableUnitId, @"unit_1");
+    XCTAssertEqualObjects(cloned.productFamilyId, @"fam_1");
+    XCTAssertEqualObjects(cloned.optionsSummary, @"Red · S");
+    XCTAssertEqualObjects(cloned.providerID, @"prov_1");
+    XCTAssertTrue(cloned.isVariant);
+    XCTAssertEqual(cloned.stockQuantity, 12);
+    XCTAssertEqualWithAccuracy(cloned.originalPrice, 55.0, 0.001);
+}
+
+- (void)testPaymentSectionHeightFallsBackSafelyWhenCollectionWidthIsZero {
+    PPSelectPaymentVC *paymentVC = [[PPSelectPaymentVC alloc] init];
+    UILabel *label = [[UILabel alloc] init];
+    label.numberOfLines = 0;
+    label.text = @"اختر طريقة الدفع المناسبة لإتمام طلبك بأمان وسهولة.";
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[label]];
+    stack.axis = UILayoutConstraintAxisVertical;
+    [paymentVC setValue:stack forKey:@"paymentPreludeView"];
+
+    CGFloat heightAtZeroWidth = [paymentVC pp_paymentSectionHeightForKind:UICollectionElementKindSectionHeader
+                                                                   width:0.0];
+    CGFloat heightAtPhoneWidth = [paymentVC pp_paymentSectionHeightForKind:UICollectionElementKindSectionHeader
+                                                                    width:390.0];
+    XCTAssertGreaterThan(heightAtZeroWidth, 0.0);
+    XCTAssertLessThan(heightAtZeroWidth, 250.0);
+    XCTAssertGreaterThan(heightAtPhoneWidth, 0.0);
+    XCTAssertFalse(paymentVC.isViewLoaded);
+}
+
+- (void)testContextAwareCheckoutViewCartAndPaymentSizingAndModeSwitch {
+    PPContextAwareCheckoutView *summaryView = [[PPContextAwareCheckoutView alloc] initWithFrame:CGRectMake(0, 0, 390, 120)];
+    summaryView.presentationMode = PPContextAwareCheckoutModeCart;
+    [summaryView updateTotalsWithItems:96.0 shipping:16.0 showTitle:NO];
+
+    CartItem *item = [[CartItem alloc] initWithDictionary:@{
+        @"id": @"item_1",
+        @"itemID": @"item_1",
+        @"name": @"Clipper",
+        @"price": @32.0,
+        @"quantity": @3
+    }];
+    [summaryView updatePreviewItems:@[item]];
+
+    CGSize cartSize = [summaryView systemLayoutSizeFittingSize:CGSizeMake(390.0, UILayoutFittingCompressedSize.height)];
+    XCTAssertGreaterThan(cartSize.height, 60.0);
+    XCTAssertLessThan(cartSize.height, 400.0);
+
+    summaryView.presentationMode = PPContextAwareCheckoutModePayment;
+    CGSize paymentSize = [summaryView systemLayoutSizeFittingSize:CGSizeMake(390.0, UILayoutFittingCompressedSize.height)];
+    XCTAssertGreaterThan(paymentSize.height, cartSize.height);
 }
 
 @end

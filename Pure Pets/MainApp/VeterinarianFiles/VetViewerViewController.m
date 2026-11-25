@@ -47,13 +47,7 @@
         return;
     }
 
-    UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
-    btn.backgroundColor = UIColor.clearColor;
-    btn.clipsToBounds = YES;
-    [btn setImage:[UIImage imageNamed:@"pulldown"] forState:UIControlStateNormal];
-    btn.tintColor = UIColor.darkGrayColor;
-    btn.imageEdgeInsets = UIEdgeInsetsMake(10, 10, 10, 10);
-    [btn addTarget:self action:@selector(closeMe) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *btn = [self pp_ButtonWithSystemName:@"xmark" action:@selector(closeMe)];
     [self.view addSubview:btn];
     self.closeButton = btn;
 }

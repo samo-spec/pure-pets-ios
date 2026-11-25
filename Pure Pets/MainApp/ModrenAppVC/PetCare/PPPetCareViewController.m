@@ -1,5 +1,6 @@
 #import "PPPetCareViewController.h"
 #import "PPPetCareDiscoveryView.h"
+#import "PetCareHelpers.h"
 #import "PPDesignTokens.h"
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
@@ -17,7 +18,6 @@
 #import "PPNavigationController.h"
 #import "PPRootTabBarController.h"
 #import "PPHomeHelper.h"
-#import "UIView+Badge.h"
 #import "AppClasses.h"
 #import "PPNetworkRetryHelper.h"
 #import "PPAlertHelper.h"
@@ -78,6 +78,8 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 @property (nonatomic, strong) UITextField *searchField;
 @property (nonatomic, strong) UIButton *filterButton;
 @property (nonatomic, strong) UIButton *navCartButton;
+@property (nonatomic, strong) PPInsetLabel *navCartBadgeLabel;
+@property (nonatomic, assign) NSInteger renderedCartBadgeCount;
 @property (nonatomic, copy) NSString *selectedMedicineID;
 @property (nonatomic, copy) NSString *medicineQuery;
 @property (nonatomic, copy) NSString *vetQuery;
@@ -196,6 +198,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     if (![self.traitCollection.preferredContentSizeCategory isEqualToString:previousTraitCollection.preferredContentSizeCategory] ||
         self.traitCollection.legibilityWeight != previousTraitCollection.legibilityWeight ||
         [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self pp_refreshCartButtonAppearance];
         [self pp_updateLocalizedText];
         [self.collectionView.collectionViewLayout invalidateLayout];
         [self.collectionView reloadData];
@@ -253,6 +256,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     [PPUniversalCell pp_registerInCollectionView:self.collectionView];
     [self.collectionView registerClass:PPPetCareVetCell.class forCellWithReuseIdentifier:PPPetCareVetCell.reuseIdentifier];
     UIRefreshControl *refresh = [[UIRefreshControl alloc] init];
+    refresh.tintColor = UIColor.ppCareAccent;
     [refresh addTarget:self action:@selector(pp_refreshSelectedSection) forControlEvents:UIControlEventValueChanged];
     self.collectionView.refreshControl = refresh;
     [self.view addSubview:self.collectionView];
@@ -312,12 +316,15 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 {
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.collectionView.semanticContentAttribute = self.view.semanticContentAttribute;
-    self.view.backgroundColor = AppBackgroundClr;
+    self.view.backgroundColor = UIColor.ppBackground;
+    self.collectionView.backgroundColor = UIColor.clearColor;
     self.title = nil;
     self.navigationItem.title = nil;
     self.navigationItem.titleView = nil;
     [self pp_navBarSetTitle:kLang(@"pet_care_title")];
+    self.navCartButton.semanticContentAttribute = self.view.semanticContentAttribute;
     self.navCartButton.accessibilityLabel = kLang(@"Cart");
+    [self pp_updateCartBadge];
     [self pp_updateFilterMenu];
     [self pp_updateDiscoveryAnimated:NO];
 }
@@ -395,50 +402,141 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     self.title = nil;
     self.navigationItem.title = nil;
     self.navigationItem.titleView = nil;
+    self.navigationItem.rightBarButtonItem = nil;
+    UIButton *cartButton = [self pp_ensureCartNavigationButton];
     BOOL showBack = (self.navigationController.viewControllers.count > 1) || (self.presentingViewController != nil);
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"pet_care_title") showBack:showBack];
-    [self pp_installCartNavigationButton];
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
+                      button:cartButton
+                       title:kLang(@"pet_care_title")
+                    showBack:showBack];
+    [self pp_refreshCartButtonAppearance];
+    [self pp_updateCartBadge];
 }
 
-- (void)pp_installCartNavigationButton
+- (UIButton *)pp_ensureCartNavigationButton
 {
-    if (self.navCartButton && (self.navigationItem.rightBarButtonItem.customView == self.navCartButton ||
-                               self.navigationItem.rightBarButtonItem.customView.subviews.firstObject == self.navCartButton)) {
-        return;
+    if (self.navCartButton) {
+        return self.navCartButton;
     }
 
-    CGFloat buttonDimension = PPTouchTargetMin;
-    UIView *cartContainer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, buttonDimension, buttonDimension)];
-    cartContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    cartContainer.clipsToBounds = NO;
-    [cartContainer.widthAnchor constraintEqualToConstant:buttonDimension].active = YES;
-    [cartContainer.heightAnchor constraintEqualToConstant:buttonDimension].active = YES;
+    CGFloat btnSize = 40.0;
+    if (@available(iOS 26.0, *)) {
+        btnSize = 44.0;
+    }
+    CGFloat cornerRadius = (btnSize >= 44.0) ? 13.0 : 12.0;
 
-    UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIImageSymbolConfiguration *symCfg = [UIImageSymbolConfiguration configurationWithPointSize:17.0
+                                                                                       weight:UIImageSymbolWeightSemibold
+                                                                                        scale:UIImageSymbolScaleMedium];
+    UIImage *cartIcon = [UIImage systemImageNamed:@"cart.fill" withConfiguration:symCfg];
+    UIButton *cartNavBtn = nil;
+
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.background.cornerRadius = cornerRadius;
+        cfg.baseForegroundColor = UIColor.ppTextPrimary;
+        cfg.image = cartIcon;
+        cartNavBtn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+    } else if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.background.cornerRadius = cornerRadius;
+        cfg.background.backgroundColor = UIColor.ppElevatedSurface;
+        cfg.background.strokeColor = UIColor.ppSurfaceBorder;
+        cfg.background.strokeWidth = 0.8;
+        cfg.baseForegroundColor = UIColor.ppTextPrimary;
+        cfg.image = cartIcon;
+        cartNavBtn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+    } else {
+        cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [cartNavBtn setImage:cartIcon forState:UIControlStateNormal];
+        cartNavBtn.backgroundColor = UIColor.ppElevatedSurface;
+        cartNavBtn.tintColor = UIColor.ppTextPrimary;
+        cartNavBtn.layer.borderWidth = 0.8;
+        [cartNavBtn pp_setBorderColor:UIColor.ppSurfaceBorder];
+    }
+
     cartNavBtn.translatesAutoresizingMaskIntoConstraints = NO;
-    [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
-    [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
+    cartNavBtn.layer.cornerRadius = cornerRadius;
+    if (@available(iOS 13.0, *)) {
+        cartNavBtn.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [cartNavBtn pp_setShadowColor:PPPetsUIShadowColor()];
+    cartNavBtn.layer.shadowOpacity = 0.10;
+    cartNavBtn.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+    cartNavBtn.layer.shadowRadius = 6.0;
+    cartNavBtn.layer.masksToBounds = NO;
+    cartNavBtn.clipsToBounds = NO;
     cartNavBtn.accessibilityLabel = PPPetCareLocalized(@"Cart", @"Cart");
     cartNavBtn.accessibilityIdentifier = @"petCare.cart";
-    cartNavBtn.backgroundColor = AppForgroundColr;
-    cartNavBtn.tintColor = AppPrimaryClr;
-    cartNavBtn.layer.cornerRadius = buttonDimension / 2.0;
-    cartNavBtn.clipsToBounds = NO;
+    [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
+    [PPButtonFactory pp_addPressAnimationToButton:cartNavBtn];
 
-    [cartContainer addSubview:cartNavBtn];
     [NSLayoutConstraint activateConstraints:@[
-        [cartNavBtn.leadingAnchor constraintEqualToAnchor:cartContainer.leadingAnchor],
-        [cartNavBtn.trailingAnchor constraintEqualToAnchor:cartContainer.trailingAnchor],
-        [cartNavBtn.topAnchor constraintEqualToAnchor:cartContainer.topAnchor],
-        [cartNavBtn.bottomAnchor constraintEqualToAnchor:cartContainer.bottomAnchor],
-        [cartNavBtn.widthAnchor constraintEqualToConstant:buttonDimension],
-        [cartNavBtn.heightAnchor constraintEqualToConstant:buttonDimension],
-        [cartNavBtn.widthAnchor constraintEqualToAnchor:cartNavBtn.heightAnchor]
+        [cartNavBtn.widthAnchor constraintEqualToConstant:btnSize],
+        [cartNavBtn.heightAnchor constraintEqualToConstant:btnSize]
+    ]];
+
+    PPInsetLabel *badge = [[PPInsetLabel alloc] init];
+    badge.translatesAutoresizingMaskIntoConstraints = NO;
+    badge.textInsets = UIEdgeInsetsMake(1.0, 5.0, 1.0, 5.0);
+    badge.textAlignment = NSTextAlignmentCenter;
+    badge.font = [UIFont systemFontOfSize:10.5 weight:UIFontWeightBold];
+    badge.textColor = UIColor.whiteColor;
+    badge.backgroundColor = UIColor.ppPrimary;
+    badge.adjustsFontSizeToFitWidth = YES;
+    badge.minimumScaleFactor = 0.82;
+    badge.layer.cornerRadius = 9.0;
+    badge.layer.borderWidth = 1.5;
+    [badge pp_setBorderColor:UIColor.ppBackground];
+    badge.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        badge.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    badge.hidden = YES;
+    badge.alpha = 0.0;
+    badge.userInteractionEnabled = NO;
+    badge.isAccessibilityElement = NO;
+    [cartNavBtn addSubview:badge];
+    [NSLayoutConstraint activateConstraints:@[
+        [badge.widthAnchor constraintGreaterThanOrEqualToConstant:18.0],
+        [badge.heightAnchor constraintEqualToConstant:18.0],
+        [badge.topAnchor constraintEqualToAnchor:cartNavBtn.topAnchor constant:-1.5],
+        [badge.trailingAnchor constraintEqualToAnchor:cartNavBtn.trailingAnchor constant:2.5]
     ]];
 
     self.navCartButton = cartNavBtn;
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartContainer];
-    [self pp_updateCartBadge];
+    self.navCartBadgeLabel = badge;
+    self.renderedCartBadgeCount = 0;
+    return cartNavBtn;
+}
+
+- (void)pp_refreshCartButtonAppearance
+{
+    if (!self.navCartButton) {
+        return;
+    }
+    [self.navCartButton pp_resolveLayerColors];
+    if (self.navCartBadgeLabel) {
+        self.navCartBadgeLabel.backgroundColor = UIColor.ppPrimary;
+        [self.navCartBadgeLabel pp_setBorderColor:UIColor.ppBackground];
+    }
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *cfg = self.navCartButton.configuration;
+        if (cfg) {
+            cfg.baseForegroundColor = UIColor.ppTextPrimary;
+            if (@available(iOS 26.0, *)) {
+                // Glass background adapts natively to current trait appearance.
+            } else {
+                cfg.background.backgroundColor = UIColor.ppElevatedSurface;
+                cfg.background.strokeColor = UIColor.ppSurfaceBorder;
+            }
+            self.navCartButton.configuration = cfg;
+        }
+    }
 }
 
 - (NSInteger)pp_currentCartItemCount
@@ -448,46 +546,48 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 
 - (void)pp_updateCartBadge
 {
-    if (!self.navCartButton) {
+    if (!self.navCartButton || !self.navCartBadgeLabel) {
         return;
     }
 
-    UIButton *badgeHost = self.navCartButton;
-    [badgeHost removeBadge];
-
-    NSInteger count = [self pp_currentCartItemCount];
+    NSInteger count = MAX(0, [self pp_currentCartItemCount]);
     NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
     formatter.locale = [NSLocale localeWithLocaleIdentifier:Language.isRTL ? @"ar" : @"en"];
     formatter.numberStyle = NSNumberFormatterDecimalStyle;
-    NSString *localizedCount = [formatter stringFromNumber:@(MAX(0, count))];
-    badgeHost.accessibilityValue = [NSString stringWithFormat:kLang(@"pet_care_cart_count_format"), localizedCount];
+    NSString *localizedCount = [formatter stringFromNumber:@(count)];
+    self.navCartButton.accessibilityValue = [NSString stringWithFormat:kLang(@"pet_care_cart_count_format"), localizedCount];
+
     if (count <= 0) {
+        self.renderedCartBadgeCount = 0;
+        self.navCartBadgeLabel.text = nil;
+        self.navCartBadgeLabel.alpha = 0.0;
+        self.navCartBadgeLabel.hidden = YES;
+        self.navCartBadgeLabel.transform = CGAffineTransformIdentity;
         return;
     }
 
     NSString *badgeText = (count > 99) ? kLang(@"pet_care_count_over_99") : localizedCount;
-    UIColor *badgeColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    BOOL wasHidden = self.navCartBadgeLabel.hidden;
+    BOOL countChanged = (self.renderedCartBadgeCount != count);
+    self.renderedCartBadgeCount = count;
 
-    void (^applyBadge)(void) = ^{
-        UIButton *host = self.navCartButton;
-        if (!host || [self pp_currentCartItemCount] != count) return;
+    self.navCartBadgeLabel.text = badgeText;
+    self.navCartBadgeLabel.hidden = NO;
+    self.navCartBadgeLabel.alpha = 1.0;
 
-        [host layoutIfNeeded];
-        if (CGRectIsEmpty(host.bounds)) return;
-
-        [host removeBadge];
-        [host addBadgeWithContent:badgeText
-                       badgeColor:badgeColor
-                           offset:CGPointMake(-10.0, 10.0)
-                      badgeRadius:9.5];
-    };
-
-    applyBadge();
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.navigationController.navigationBar setNeedsLayout];
-        [self.navigationController.navigationBar layoutIfNeeded];
-        applyBadge();
-    });
+    if (!UIAccessibilityIsReduceMotionEnabled() && (wasHidden || countChanged)) {
+        self.navCartBadgeLabel.transform = CGAffineTransformMakeScale(0.82, 0.82);
+        [UIView animateWithDuration:0.22
+                              delay:0.0
+             usingSpringWithDamping:0.72
+              initialSpringVelocity:0.18
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.navCartBadgeLabel.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    } else {
+        self.navCartBadgeLabel.transform = CGAffineTransformIdentity;
+    }
 }
 
 - (void)pp_handleCartUpdated:(NSNotification *)notification

@@ -1303,6 +1303,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.uploadProgressTitleLabel.text = [self pp_localizedStringForKey:@"uploading_images" fallback:@"Uploading images..."];
     [self pp_refreshFormHeroContent];
     [self pp_rebuildFormFields];
+    [self pp_rebuildSpeciesChips];
     [self pp_updateImageCollectionFooterLayoutIfNeeded];
 }
 
@@ -4031,46 +4032,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         [chipsStack.heightAnchor constraintEqualToAnchor:chipsScroll.frameLayoutGuide.heightAnchor]
     ]];
 
-    NSArray<NSDictionary *> *chipData = @[
-        @{@"key": @"cat", @"title": [self pp_localizedStringForKey:@"community_species_cat" fallback:@"قطط"], @"symbol": @"cat.fill"},
-        @{@"key": @"dog", @"title": [self pp_localizedStringForKey:@"community_species_dog" fallback:@"كلاب"], @"symbol": @"dog.fill"},
-        @{@"key": @"bird", @"title": [self pp_localizedStringForKey:@"community_species_bird" fallback:@"طيور"], @"symbol": @"bird.fill"},
-        @{@"key": @"rabbit", @"title": [self pp_localizedStringForKey:@"community_species_rabbit" fallback:@"أرانب"], @"symbol": @"hare.fill"},
-        @{@"key": @"other", @"title": [self pp_localizedStringForKey:@"community_species_other" fallback:@"أخرى"], @"symbol": @"sparkles"}
-    ];
-
-    for (NSInteger i = 0; i < chipData.count; i++) {
-        NSDictionary *dict = chipData[i];
-        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
-        btn.translatesAutoresizingMaskIntoConstraints = NO;
-        btn.layer.cornerRadius = 18.0;
-        btn.layer.cornerCurve = kCACornerCurveContinuous;
-        btn.layer.borderWidth = 0.8;
-        btn.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [UIColor colorWithWhite:1.0 alpha:0.1]
-                : [UIColor colorWithWhite:0.0 alpha:0.08];
-        }].CGColor;
-        btn.tag = i;
-
-        [btn setTitle:dict[@"title"] forState:UIControlStateNormal];
-        [btn setTitleColor:PPAdFormPrimaryTextColor() forState:UIControlStateNormal];
-        btn.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
-
-        UIImageSymbolConfiguration *symConfig = [UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightSemibold];
-        UIImage *symImg = [UIImage systemImageNamed:dict[@"symbol"] withConfiguration:symConfig] ?: [UIImage systemImageNamed:@"pawprint.fill" withConfiguration:symConfig];
-        [btn setImage:[symImg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
-        btn.tintColor = PPAdFormPrimaryTextColor();
-        btn.contentEdgeInsets = UIEdgeInsetsMake(8, 14, 8, 14);
-        btn.imageEdgeInsets = UIEdgeInsetsMake(0, Language.isRTL ? 6 : -6, 0, Language.isRTL ? -6 : 6);
-
-        [btn addTarget:self action:@selector(pp_handleQuickSpeciesChipTapped:) forControlEvents:UIControlEventTouchUpInside];
-        [chipsStack addArrangedSubview:btn];
-
-        [NSLayoutConstraint activateConstraints:@[
-            [btn.heightAnchor constraintEqualToConstant:36.0]
-        ]];
-    }
+    [self pp_rebuildSpeciesChips];
 
     UIStackView *cardStack = [[UIStackView alloc] initWithArrangedSubviews:@[header, chipsScroll, self.basicFormView]];
     cardStack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -4090,40 +4052,151 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     return card;
 }
 
+- (NSString *)pp_symbolForMainKind:(MainKindsModel *)kind {
+    NSString *icon = kind.KindIconName ?: @"";
+    if (icon.length > 0 && [UIImage systemImageNamed:icon]) {
+        return icon;
+    }
+    NSString *nameLower = (kind.KindNameEn ?: kind.KindName ?: @"").lowercaseString;
+    NSString *nameAr = kind.KindNameAr ?: @"";
+    if ([nameLower containsString:@"cat"] || [nameAr containsString:@"قط"]) {
+        return @"cat.fill";
+    }
+    if ([nameLower containsString:@"dog"] || [nameAr containsString:@"كلب"]) {
+        return @"dog.fill";
+    }
+    if ([nameLower containsString:@"bird"] || [nameLower containsString:@"falcon"] || [nameAr containsString:@"طير"] || [nameAr containsString:@"صقر"]) {
+        return @"bird.fill";
+    }
+    if ([nameLower containsString:@"rabbit"] || [nameLower containsString:@"hare"] || [nameAr containsString:@"أرنب"] || [nameAr containsString:@"ارانب"]) {
+        return @"hare.fill";
+    }
+    if ([nameLower containsString:@"fish"] || [nameAr containsString:@"سمك"] || [nameAr containsString:@"أسماك"]) {
+        return @"fish.fill";
+    }
+    if ([nameLower containsString:@"turtle"] || [nameAr containsString:@"سلحف"] || [nameAr containsString:@"سلاحف"]) {
+        return @"tortoise.fill";
+    }
+    if ([nameLower containsString:@"horse"] || [nameAr containsString:@"خيل"] || [nameAr containsString:@"خيول"]) {
+        return @"figure.equestrian.sports";
+    }
+    return @"pawprint.fill";
+}
+
+- (void)pp_rebuildSpeciesChips {
+    if (!self.studioSpeciesChipsStack) return;
+
+    for (UIView *v in [self.studioSpeciesChipsStack.arrangedSubviews copy]) {
+        [self.studioSpeciesChipsStack removeArrangedSubview:v];
+        [v removeFromSuperview];
+    }
+
+    NSArray<MainKindsModel *> *kinds = [MKM visibleMainKindsSnapshot];
+    if (kinds.count == 0) {
+        kinds = [MKM.MainKindsArray copy];
+    }
+
+    if (kinds.count == 0) {
+        __weak typeof(self) weakSelf = self;
+        [MKM loadMainDataCompletionHandler:^(int result) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [weakSelf pp_rebuildSpeciesChips];
+            });
+        }];
+    }
+
+    UIImageSymbolConfiguration *symConfig = [UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightSemibold];
+
+    for (MainKindsModel *kind in kinds) {
+        if (![kind isKindOfClass:MainKindsModel.class]) continue;
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+        btn.translatesAutoresizingMaskIntoConstraints = NO;
+        btn.layer.cornerRadius = 18.0;
+        btn.layer.cornerCurve = kCACornerCurveContinuous;
+        btn.layer.borderWidth = 0.8;
+        btn.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithWhite:1.0 alpha:0.1]
+                : [UIColor colorWithWhite:0.0 alpha:0.08];
+        }].CGColor;
+        btn.tag = kind.ID;
+
+        NSString *title = kind.KindName ?: (Language.isRTL ? kind.KindNameAr : kind.KindNameEn);
+        [btn setTitle:title forState:UIControlStateNormal];
+        [btn setTitleColor:PPAdFormPrimaryTextColor() forState:UIControlStateNormal];
+        btn.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+
+        NSString *symName = [self pp_symbolForMainKind:kind];
+        UIImage *symImg = [UIImage systemImageNamed:symName withConfiguration:symConfig] ?: [UIImage systemImageNamed:@"pawprint.fill" withConfiguration:symConfig];
+        [btn setImage:[symImg imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+        btn.tintColor = PPAdFormPrimaryTextColor();
+        btn.contentEdgeInsets = UIEdgeInsetsMake(8, 14, 8, 14);
+        btn.imageEdgeInsets = UIEdgeInsetsMake(0, Language.isRTL ? 6 : -6, 0, Language.isRTL ? -6 : 6);
+
+        [btn addTarget:self action:@selector(pp_handleDynamicSpeciesChipTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [self.studioSpeciesChipsStack addArrangedSubview:btn];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [btn.heightAnchor constraintEqualToConstant:36.0]
+        ]];
+    }
+
+    // Append "Other" chip at the end
+    UIButton *otherBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    otherBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    otherBtn.layer.cornerRadius = 18.0;
+    otherBtn.layer.cornerCurve = kCACornerCurveContinuous;
+    otherBtn.layer.borderWidth = 0.8;
+    otherBtn.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.1]
+            : [UIColor colorWithWhite:0.0 alpha:0.08];
+    }].CGColor;
+    otherBtn.tag = -999;
+
+    NSString *otherTitle = [self pp_localizedStringForKey:@"community_species_other" fallback:@"أخرى"];
+    [otherBtn setTitle:otherTitle forState:UIControlStateNormal];
+    [otherBtn setTitleColor:PPAdFormPrimaryTextColor() forState:UIControlStateNormal];
+    otherBtn.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+
+    UIImage *otherSym = [UIImage systemImageNamed:@"sparkles" withConfiguration:symConfig];
+    [otherBtn setImage:[otherSym imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    otherBtn.tintColor = PPAdFormPrimaryTextColor();
+    otherBtn.contentEdgeInsets = UIEdgeInsetsMake(8, 14, 8, 14);
+    otherBtn.imageEdgeInsets = UIEdgeInsetsMake(0, Language.isRTL ? 6 : -6, 0, Language.isRTL ? -6 : 6);
+
+    [otherBtn addTarget:self action:@selector(pp_handleDynamicSpeciesChipTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [self.studioSpeciesChipsStack addArrangedSubview:otherBtn];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [otherBtn.heightAnchor constraintEqualToConstant:36.0]
+    ]];
+
+    [self pp_syncSpeciesChipsState];
+}
+
 - (void)pp_syncSpeciesChipsState {
     if (!self.studioSpeciesChipsStack) return;
 
-    NSArray<NSDictionary *> *chipData = @[
-        @{@"key": @"cat", @"title": @"قطط"},
-        @{@"key": @"dog", @"title": @"كلاب"},
-        @{@"key": @"bird", @"title": @"طيور"},
-        @{@"key": @"rabbit", @"title": @"أرانب"},
-        @{@"key": @"other", @"title": @"أخرى"}
-    ];
-
-    NSString *currentName = self.selectedKind.KindName ?: @"";
+    NSInteger selectedKindID = self.selectedKind ? self.selectedKind.ID : self.adModel.category;
+    BOOL isKindInVisibleChips = NO;
+    for (UIView *subview in self.studioSpeciesChipsStack.arrangedSubviews) {
+        if ([subview isKindOfClass:UIButton.class] && subview.tag > 0 && subview.tag == selectedKindID) {
+            isKindInVisibleChips = YES;
+            break;
+        }
+    }
 
     for (UIView *subview in self.studioSpeciesChipsStack.arrangedSubviews) {
         if (![subview isKindOfClass:UIButton.class]) continue;
         UIButton *btn = (UIButton *)subview;
-        NSInteger idx = btn.tag;
-        if (idx < 0 || idx >= chipData.count) continue;
-        NSDictionary *dict = chipData[idx];
 
         BOOL isSelected = NO;
-        if ([dict[@"key"] isEqualToString:@"other"]) {
-            if (self.selectedKind) {
-                BOOL matched = NO;
-                for (NSInteger j = 0; j < 4; j++) {
-                    if ([currentName containsString:chipData[j][@"title"]]) {
-                        matched = YES;
-                        break;
-                    }
-                }
-                isSelected = !matched;
-            }
-        } else {
-            isSelected = [currentName containsString:dict[@"title"]];
+        if (btn.tag > 0 && btn.tag == selectedKindID) {
+            isSelected = YES;
+        } else if (btn.tag == -999) {
+            // "Other" button: selected if a category is selected but not matching any specific visible chip
+            isSelected = (selectedKindID > 0 && !isKindInVisibleChips);
         }
 
         if (isSelected) {
@@ -4148,34 +4221,24 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     }
 }
 
-- (void)pp_handleQuickSpeciesChipTapped:(UIButton *)sender {
+- (void)pp_handleDynamicSpeciesChipTapped:(UIButton *)sender {
     UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [haptic impactOccurred];
 
-    NSArray<NSDictionary *> *chipData = @[
-        @{@"key": @"cat", @"keyword": @"قط"},
-        @{@"key": @"dog", @"keyword": @"كلب"},
-        @{@"key": @"bird", @"keyword": @"طير"},
-        @{@"key": @"rabbit", @"keyword": @"أرنب"},
-        @{@"key": @"other", @"keyword": @""}
-    ];
-
-    NSInteger idx = sender.tag;
-    if (idx < 0 || idx >= chipData.count) return;
-    NSDictionary *dict = chipData[idx];
-
-    if ([dict[@"key"] isEqualToString:@"other"]) {
+    if (sender.tag == -999) {
         PPFormFieldConfig *catConfig = [self.basicFormView configForIdentifier:kcategory];
         [self pp_presentMainCategoryPickerForConfig:catConfig];
         return;
     }
-   
-    NSString *keyword = dict[@"keyword"];
-    MainKindsModel *matchedKind = nil;
-    for (MainKindsModel *kind in MKM.MainKindsArray) {
-        if ([kind.KindName containsString:keyword] || [kind.KindName containsString:dict[@"key"]]) {
-            matchedKind = kind;
-            break;
+
+    NSInteger kindID = sender.tag;
+    MainKindsModel *matchedKind = [MKM mainKindForID:kindID];
+    if (!matchedKind) {
+        for (MainKindsModel *kind in MKM.MainKindsArray) {
+            if (kind.ID == kindID) {
+                matchedKind = kind;
+                break;
+            }
         }
     }
 
@@ -4185,7 +4248,6 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         self.adModel.subcategory = 0;
         [self.basicFormView setValue:matchedKind.KindName forIdentifier:kcategory];
         [self.basicFormView setValue:@"" forIdentifier:ksubcategory];
-
         [self.basicFormView setFieldEnabled:YES identifier:ksubcategory];
 
         self.hasUserModifiedForm = YES;
@@ -5717,40 +5779,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     [savBtn addTarget:self action:@selector(saveFormData:) forControlEvents:UIControlEventTouchUpInside];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:savBtn];
 
-    // Refined Frosted Circular Back Button
-    UIButtonConfiguration *backConfig = [UIButtonConfiguration plainButtonConfiguration];
-    backConfig.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    UIImageSymbolConfiguration *chevronSym = [UIImageSymbolConfiguration configurationWithPointSize:13.5 weight:UIImageSymbolWeightSemibold];
-    backConfig.image = [UIImage systemImageNamed:PPChevronName withConfiguration:chevronSym];
-    backConfig.baseForegroundColor = PPAdFormPrimaryTextColor();
-    backConfig.contentInsets = NSDirectionalEdgeInsetsZero;
-
-    UIButton *backButton = [UIButton buttonWithConfiguration:backConfig primaryAction:nil];
-    backButton.translatesAutoresizingMaskIntoConstraints = NO;
-    backButton.layer.cornerRadius = 18.0;
-    if (@available(iOS 13.0, *)) backButton.layer.cornerCurve = kCACornerCurveContinuous;
-    backButton.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithWhite:1.0 alpha:0.12]
-            : [UIColor colorWithWhite:1.0 alpha:0.90];
-    }];
-    backButton.layer.borderWidth = 0.75;
-    backButton.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithWhite:1.0 alpha:0.08]
-            : [UIColor colorWithWhite:0.0 alpha:0.06];
-    }].CGColor;
-    backButton.layer.shadowColor = UIColor.blackColor.CGColor;
-    backButton.layer.shadowOpacity = 0.04;
-    backButton.layer.shadowRadius = 5.0;
-    backButton.layer.shadowOffset = CGSizeMake(0.0, 1.5);
-    [backButton addTarget:self action:@selector(onBack:) forControlEvents:UIControlEventTouchUpInside];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [backButton.widthAnchor constraintEqualToConstant:36.0],
-        [backButton.heightAnchor constraintEqualToConstant:36.0]
-    ]];
-
+    UIButton *backButton = [self pp_ButtonWithSystemName:PPChevronName action:@selector(onBack:)];
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
     [self pp_setSubmitEnabled:!self.isSubmittingAd && !self.isPrefillInProgress];
 }

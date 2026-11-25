@@ -133,9 +133,6 @@ static CGFloat PPProfileBottomBarClearance(void) {
 @property (nonatomic, assign) BOOL isRunningProfileEntranceAnimation;
 @property (nonatomic, assign) BOOL allowsCellDisplayAnimation;
 @property (nonatomic, assign) NSUInteger profileEntranceAnimationToken;
-
-@property (nonatomic, strong) UIBarButtonItem *saveDataBarButton;
-@property (nonatomic, strong) UIBarButtonItem *logoutBarButton;
 @end
 
 @implementation ProfileVC
@@ -225,9 +222,28 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 #pragma mark - Lifecycle
 
+- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
+{
+    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder
+{
+    self = [super initWithCoder:coder];
+    if (self) {
+        self.hidesBottomBarWhenPushed = YES;
+    }
+    return self;
+}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    self.hidesBottomBarWhenPushed = YES;
 
     self.formDataArray = [NSMutableDictionary dictionary];
     self.animatedCellKeys = [NSMutableSet set];
@@ -841,12 +857,12 @@ static CGFloat PPProfileBottomBarClearance(void) {
 {
     BOOL hasChanges = [self pp_hasPendingProfileChanges];
     self.showingSave = hasChanges;
+    self.navigationItem.rightBarButtonItem = nil;
     if (hasChanges) {
         [self pp_showSaveButton];
     } else {
         [self pp_navBarRemoveButtonForKey:@"saveOrLogout"];
         [self pp_navBarHideButtonForKey:@"saveOrLogout" hidden:YES animated:NO];
-        //[self pp_navBarHideButtonForKey:@"saveOrLogout"];
     }
 }
 
@@ -886,40 +902,43 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 - (void)pp_showSaveButton
 {
-    if (!self.saveDataBarButton) {
-        UIButton *sav = [PPButtonHelper pp_buttonWithTitle:kLang(@"Save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(updateUserData)];
-        self.saveDataBarButton = [[UIBarButtonItem alloc] initWithCustomView:sav];
-    }
-    self.navigationItem.rightBarButtonItem = self.saveDataBarButton;
+    self.navigationItem.rightBarButtonItem = nil;
 
     UIButton *saveButton = [self pp_ButtonWithSystemName:@"checkmark" action:@selector(updateUserData)];
+    saveButton.accessibilityLabel = kLang(@"Save");
     [self pp_navBarRemoveButtonForKey:@"saveOrLogout"];
-    [self _pp_addRightButton:saveButton key:@"saveOrLogout"];
+    [self pp_navBarAddActionButton:saveButton key:@"saveOrLogout"];
 }
 
 - (void)pp_showLogoutButton
 {
+    self.navigationItem.rightBarButtonItem = nil;
+
     UIButton *logoutButton = [self pp_ButtonWithSystemName:@"power" action:@selector(logoutTapped)];
+    logoutButton.accessibilityLabel = kLang(@"logout");
     [self pp_navBarRemoveButtonForKey:@"saveOrLogout"];
-    [self _pp_addRightButton:logoutButton key:@"saveOrLogout"];
+    [self pp_navBarAddActionButton:logoutButton key:@"saveOrLogout"];
 }
 
 - (void)BellowIos26Buttons
 {
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"UserProfile") showBack:YES];
-
-    if (!self.saveDataBarButton) {
-        UIButton *sav = [PPButtonHelper pp_buttonWithTitle:kLang(@"Save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(updateUserData)];
-        self.saveDataBarButton = [[UIBarButtonItem alloc] initWithCustomView:sav];
+    self.navigationItem.hidesBackButton = YES;
+    self.navigationItem.leftBarButtonItem = nil;
+    self.navigationItem.rightBarButtonItem = nil;
+    self.navigationItem.backBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"" style:UIBarButtonItemStylePlain target:nil action:nil];
+    if (@available(iOS 14.0, *)) {
+        self.navigationItem.backButtonTitle = @"";
     }
+
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"UserProfile") showBack:YES];
     [self pp_refreshRightNavSaveState];
 }
 
 - (void)pp_setProfileSaving:(BOOL)isSaving
 {
     self.isSavingProfile = isSaving;
-    self.navigationItem.rightBarButtonItem.enabled = !isSaving;
-    self.navigationItem.leftBarButtonItem.enabled = !isSaving;
+    self.navigationItem.rightBarButtonItem = nil;
+    self.navigationItem.leftBarButtonItem = nil;
     [self pp_navBarHideButtonForKey:@"saveOrLogout" hidden:isSaving animated:NO];
     self.tableView.userInteractionEnabled = !isSaving;
 }

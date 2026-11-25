@@ -336,9 +336,8 @@ static UIView *PPRemEdDivider(void) {
 #pragma mark - Composition
 
 - (void)pp_buildNavigation {
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]
-        initWithImage:[UIImage systemImageNamed:@"chevron.backward"] style:UIBarButtonItemStylePlain
-        target:self action:@selector(pp_handleBack)];
+    UIButton *backBtn = [self pp_ButtonWithSystemName:PPChevronName action:@selector(pp_handleBack)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backBtn];
     self.navigationItem.leftBarButtonItem.accessibilityLabel = kLang(@"Back");
     self.saveButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.saveButton.accessibilityIdentifier = @"reminderEditor.save";

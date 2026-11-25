@@ -393,16 +393,9 @@ static const CGFloat PPAddressBottomActionsHeight = 128.0;
     self.headerTitleLabel.text = kLang(@"address_picker_title");
     self.headerTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
 
-    self.closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.closeButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.closeButton setImage:[UIImage systemImageNamed:@"xmark" withConfiguration:
-        [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold]] forState:UIControlStateNormal];
+    self.closeButton = [self pp_ButtonWithSystemName:@"xmark" action:@selector(pp_closeSheet)];
     self.closeButton.accessibilityLabel = kLang(@"Close");
     self.closeButton.accessibilityIdentifier = @"addressPicker.close";
-    PPApplyContinuousCorners(self.closeButton, PPCornerCard);
-    [self.closeButton.widthAnchor constraintEqualToConstant:PPTouchTargetMin].active = YES;
-    [self.closeButton.heightAnchor constraintEqualToConstant:PPTouchTargetMin].active = YES;
-    [self.closeButton addTarget:self action:@selector(pp_closeSheet) forControlEvents:UIControlEventTouchUpInside];
     NSArray<UIView *> *headingViews = self.presentationStyle == PPSelectOptionPresentationPush
         ? @[self.headerTitleLabel] : @[self.headerTitleLabel, self.closeButton];
     UIStackView *heading = [[UIStackView alloc] initWithArrangedSubviews:headingViews];

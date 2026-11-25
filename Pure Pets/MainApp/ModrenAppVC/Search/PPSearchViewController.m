@@ -679,27 +679,13 @@ PHPickerViewControllerDelegate>
         isModal = YES;
     }
     if (isModal) {
-        UIImageSymbolConfiguration *cfg =
-            [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold];
-        UIImage *xImage = [UIImage systemImageNamed:@"xmark" withConfiguration:cfg];
-        UIButton *dismissBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        dismissBtn.tintColor = AppSecondaryTextClr;
-        [dismissBtn setImage:xImage forState:UIControlStateNormal];
-        dismissBtn.backgroundColor = PPIOS26() ? AppClearClr : AppForgroundColr;
-        dismissBtn.layer.cornerRadius = 16.0;
-        if (@available(iOS 13.0, *)) {
-            dismissBtn.layer.cornerCurve = kCACornerCurveContinuous;
-        }
-        [dismissBtn addTarget:self action:@selector(pp_dismissTapped) forControlEvents:UIControlEventTouchUpInside];
-        [NSLayoutConstraint activateConstraints:@[
-            [dismissBtn.widthAnchor constraintEqualToConstant:32.0],
-            [dismissBtn.heightAnchor constraintEqualToConstant:32.0]
-        ]];
+        UIButton *dismissBtn = [self pp_ButtonWithSystemName:@"xmark" action:@selector(pp_dismissTapped)];
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:dismissBtn];
     }
     else
     {
-        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] style:UIBarButtonItemStylePlain target:self action:@selector(BackToMain)];
+        UIButton *backBtn = [self pp_ButtonWithSystemName:PPChevronName action:@selector(BackToMain)];
+        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backBtn];
     }
 
     UIButton *novaBtn = [self pp_makeNovaNavigationButton];

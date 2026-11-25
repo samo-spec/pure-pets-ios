@@ -448,11 +448,11 @@ struct PPAccessoryViewerTopBar: View {
                     .frame(width: 44, height: 44)
                     .ppAccessorySubviewBackground(
                         PPAccessorySubviewBackground.chromeFill,
-                        in: Circle(),
+                        in: RoundedRectangle(cornerRadius: 13, style: .continuous),
                         stroke: PPAccessorySubviewBackground.chromeStroke,
                         lineWidth: 0.8
                     )
-                    .contentShape(Circle())
+                    .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
             }
             .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.90))
             .accessibilityLabel(label)
@@ -596,12 +596,15 @@ struct PPAccessoryGlassButtonRepresentable: UIViewRepresentable {
         let button = UIButton(type: .custom)
         if #available(iOS 26.0, *) {
             var config = UIButton.Configuration.glass()
-            config.cornerStyle = .capsule
+            config.cornerStyle = .fixed
+            config.background.cornerRadius = 13.0
             config.baseBackgroundColor = .clear
             config.baseForegroundColor = UIColor(tint)
             config.image = UIImage(systemName: symbol)
             button.configuration = config
         }
+        button.layer.cornerRadius = 13.0
+        button.layer.cornerCurve = .continuous
         button.addAction(UIAction { _ in action() }, for: .touchUpInside)
         return button
     }
@@ -609,10 +612,14 @@ struct PPAccessoryGlassButtonRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: UIButton, context: Context) {
         if #available(iOS 26.0, *) {
             var config = uiView.configuration ?? UIButton.Configuration.glass()
+            config.cornerStyle = .fixed
+            config.background.cornerRadius = 13.0
             config.baseForegroundColor = UIColor(tint)
             config.image = UIImage(systemName: symbol)
             uiView.configuration = config
         }
+        uiView.layer.cornerRadius = 13.0
+        uiView.layer.cornerCurve = .continuous
     }
 }
 

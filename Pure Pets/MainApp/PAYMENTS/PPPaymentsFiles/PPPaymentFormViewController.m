@@ -181,11 +181,9 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
                                                          action:@selector(saveButtonPressed)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveBTN];
 
+    UIButton *backBtn = [self pp_ButtonWithSystemName:PPChevronName action:@selector(onBack)];
     self.navigationItem.leftBarButtonItem =
-        [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName)
-                                         style:UIBarButtonItemStylePlain
-                                        target:self
-                                        action:@selector(onBack)];
+        [[UIBarButtonItem alloc] initWithCustomView:backBtn];
 }
 
 - (void)dealloc {

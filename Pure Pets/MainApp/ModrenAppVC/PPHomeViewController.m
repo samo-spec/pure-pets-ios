@@ -15,6 +15,7 @@
 #import "PPBrowseHistoryManager.h"
 #import "PPChatsFunc.h"
 #import "PPDataViewInput.h"
+#import "PPFirebaseSessionBridge.h"
 #import "PPFunc.h"
 #import "PPHomeHelper.h"
 #import "PPHomeLocationSheetViewController.h"
@@ -929,8 +930,9 @@ static NSArray<MainKindsModel *> *PPHomeShellMainKinds(void)
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (chatError || !thread) {
                         [PPHUD
-                            showError:kLang(@"SomethingWentWrong")
-                            subtitle:chatError.localizedDescription ?: @""];
+                            showError:[PPFirebaseSessionBridge publicChatTitleForError:chatError]
+                            subtitle:[PPFirebaseSessionBridge publicChatMessageForError:chatError
+                                                                            fallbackKey:@"chat_start_failed_message"]];
                         return;
                     }
                     [PPOverlayCoordinator

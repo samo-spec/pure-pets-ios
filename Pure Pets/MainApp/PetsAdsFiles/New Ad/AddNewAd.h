@@ -59,8 +59,8 @@ typedef NS_ENUM(NSUInteger, AdEditorMode) {
 
 @protocol AddNewAdDelegate <NSObject>
 @optional
-- (void)addNewAd:(AddNewAd *)vc didCreateAd:(PetAd *)ad;
-- (void)addNewAd:(AddNewAd *)vc didUpdateAd:(PetAd *)ad;
+- (void)addNewAd:(AddNewAd *)vc didCreateAd:(PetAd *)ad NS_SWIFT_NAME(addNewAd(_:didCreate:));
+- (void)addNewAd:(AddNewAd *)vc didUpdateAd:(PetAd *)ad NS_SWIFT_NAME(addNewAd(_:didUpdate:));
 @end
 
 NS_ASSUME_NONNULL_END

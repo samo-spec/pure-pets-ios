@@ -39,21 +39,22 @@ NSNotificationName const PPPetProfileManagerDidChangeNotification =
 /// Resolve the current user's Firestore document reference.
 /// Uses `currentUserUID` (set by UserManager) with fallback to FIRAuth.
 - (nullable FIRDocumentReference *)pp_currentUserDocumentReference {
-    NSString *uid = self.currentUserUID;
+    NSString *uid = [FIRAuth auth].currentUser.uid;
     if (uid.length == 0) {
-        uid = [FIRAuth auth].currentUser.uid;
+        uid = self.currentUserUID;
     }
     if (uid.length == 0) { return nil; }
     return [[[FIRFirestore firestore] collectionWithPath:@"UsersCol"] documentWithPath:uid];
 }
 
 /// Resolve the raw UID string (for Storage paths).
+/// Always prefer the active FIRAuth UID so Storage Security Rules match request.auth.uid.
 - (nullable NSString *)pp_resolvedUID {
-    NSString *uid = self.currentUserUID;
-    if (uid.length == 0) {
-        uid = [FIRAuth auth].currentUser.uid;
+    NSString *authUID = [FIRAuth auth].currentUser.uid;
+    if (authUID.length > 0) {
+        return authUID;
     }
-    return uid.length > 0 ? uid : nil;
+    return self.currentUserUID.length > 0 ? self.currentUserUID : nil;
 }
 
 /// Public accessor — delegates to the private helper.
@@ -205,6 +206,7 @@ NSNotificationName const PPPetProfileManagerDidChangeNotification =
 {
     NSString *uid = [self pp_resolvedUID];
     if (uid.length == 0 || petID.length == 0 || !image) {
+        NSLog(@"[PPPetProfileManager] ❌ Cannot upload pet image: missing uid=%@ petID=%@ image=%@", uid, petID, image);
         if (completion) completion(nil, [NSError errorWithDomain:@"PPPetProfileManager"
                                                            code:400
                                                        userInfo:@{NSLocalizedDescriptionKey: @"Missing pet image data"}]);
@@ -212,18 +214,36 @@ NSNotificationName const PPPetProfileManagerDidChangeNotification =
     }
 
     NSData *data = [GM compressImageToMaxSize:image maxSizeKB:600] ?: UIImageJPEGRepresentation(image, 0.82);
+    if (!data || data.length == 0) {
+        data = UIImagePNGRepresentation(image);
+    }
+    if (!data || data.length == 0) {
+        NSLog(@"[PPPetProfileManager] ❌ Failed to encode image for petID=%@", petID);
+        if (completion) completion(nil, [NSError errorWithDomain:@"PPPetProfileManager"
+                                                           code:422
+                                                       userInfo:@{NSLocalizedDescriptionKey: @"Failed to encode image data"}]);
+        return;
+    }
+
     FIRStorageReference *ref = [[[[[FIRStorage storage] reference] child:@"users"] child:uid]
                                 child:[NSString stringWithFormat:@"pets/%@/avatar.jpg", petID]];
 
     FIRStorageMetadata *meta = [FIRStorageMetadata new];
     meta.contentType = @"image/jpeg";
 
+    NSLog(@"[PPPetProfileManager] 📤 Uploading pet image to: %@", ref.fullPath);
     [ref putData:data metadata:meta completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
         if (error) {
+            NSLog(@"[PPPetProfileManager] ❌ putData error at %@: %@", ref.fullPath, error);
             if (completion) completion(nil, error);
             return;
         }
         [ref downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"[PPPetProfileManager] ❌ downloadURL error at %@: %@", ref.fullPath, error);
+            } else {
+                NSLog(@"[PPPetProfileManager] ✅ Uploaded pet image at %@ -> %@", ref.fullPath, URL.absoluteString);
+            }
             if (completion) completion(URL.absoluteString, error);
         }];
     }];
