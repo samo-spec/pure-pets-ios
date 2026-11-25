@@ -21,6 +21,13 @@ import UIKit
 private enum PPContextCheckoutMetrics {
     static let outerInset: CGFloat = 16
     static let surfaceRadius: CGFloat = 26
+    static let dockedSurfaceRadius: CGFloat = 28
+    static let dockedTopInset: CGFloat = 14
+    static let dockedHorizontalInset: CGFloat = 20
+    static let dockedSafeAreaBreathingRoom: CGFloat = 10
+    static let dockedBottomPaddingMinimum: CGFloat = 16
+    static let dockedContentSpacing: CGFloat = 10
+    static let floatingContentSpacing: CGFloat = 7
     static let panelRadius: CGFloat = 20
     static let controlRadius: CGFloat = 18
     static let actionHeight: CGFloat = 58
@@ -30,10 +37,13 @@ private enum PPContextCheckoutMetrics {
     static let maxAccessibilityVisibleRows = 2
     static let decisionHorizontalInset: CGFloat = 14
     static let decisionVerticalInset: CGFloat = 10
+    static let dockedDecisionVerticalInset: CGFloat = 2
     static let decisionContentSpacing: CGFloat = 16
     static let breakdownHorizontalInset: CGFloat = 12
     static let breakdownVerticalSpacing: CGFloat = 8
     static let animationDuration: TimeInterval = 0.24
+    static let pressSpringDuration: TimeInterval = 0.28
+    static let pressSpringDamping: CGFloat = 0.88
     static let checkoutTapDebounce: TimeInterval = 0.45
 
     static var hairline: CGFloat {
@@ -63,6 +73,19 @@ private enum PPContextCheckoutFont {
 
     static func bold(_ size: CGFloat, style: UIFont.TextStyle) -> UIFont {
         scaled(named: "Beiruti-Bold", size: size, weight: .bold, style: style)
+    }
+
+    static func monospacedBold(_ size: CGFloat, style: UIFont.TextStyle) -> UIFont {
+        let base = UIFont(name: "Beiruti-Bold", size: size + 1)
+            ?? UIFont.systemFont(ofSize: size, weight: .bold)
+        let descriptor = base.fontDescriptor.addingAttributes([
+            .featureSettings: [[
+                UIFontDescriptor.FeatureKey.type: kNumberSpacingType,
+                UIFontDescriptor.FeatureKey.selector: kMonospacedNumbersSelector
+            ]]
+        ])
+        let tabular = UIFont(descriptor: descriptor, size: base.pointSize)
+        return UIFontMetrics(forTextStyle: style).scaledFont(for: tabular)
     }
 
     private static func scaled(
@@ -628,8 +651,8 @@ private final class PPContextCheckoutPricingRow: UIView {
         titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         amountLabel.font = emphasized
-            ? PPContextCheckoutFont.bold(16, style: .headline)
-            : PPContextCheckoutFont.bold(13, style: .footnote)
+            ? PPContextCheckoutFont.monospacedBold(16, style: .headline)
+            : PPContextCheckoutFont.monospacedBold(13, style: .footnote)
         amountLabel.adjustsFontForContentSizeCategory = true
         amountLabel.numberOfLines = 1
         amountLabel.adjustsFontSizeToFitWidth = true
@@ -681,20 +704,40 @@ private final class PPContextCheckoutActionButton: UIButton {
     private var visibleImage: UIImage?
     private var loading = false
 
+    override var isHighlighted: Bool {
+        didSet {
+            guard oldValue != isHighlighted else { return }
+            setNeedsUpdateConfiguration()
+            animatePressState(highlighted: isHighlighted)
+        }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
-        translatesAutoresizingMaskIntoConstraints = false
-        accessibilityIdentifier = "contextCheckout.primaryAction"
-        layer.cornerCurve = .continuous
-        configuration = .filled()
+        commonButtonInit()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
+        commonButtonInit()
+    }
+
+    private func commonButtonInit() {
         translatesAutoresizingMaskIntoConstraints = false
         accessibilityIdentifier = "contextCheckout.primaryAction"
         layer.cornerCurve = .continuous
+        layer.masksToBounds = false
         configuration = .filled()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if !bounds.isEmpty {
+            layer.shadowPath = UIBezierPath(
+                roundedRect: bounds,
+                cornerRadius: PPContextCheckoutMetrics.controlRadius
+            ).cgPath
+        }
     }
 
     override func updateConfiguration() {
@@ -708,7 +751,9 @@ private final class PPContextCheckoutActionButton: UIButton {
         config.baseForegroundColor = PPContextCheckoutColors.actionText
         config.imagePlacement = .trailing
         config.imagePadding = 7
-        config.contentInsets = NSDirectionalEdgeInsets(top: 9, leading: 13, bottom: 9, trailing: 13)
+        config.titleLineBreakMode = .byWordWrapping
+        config.titleAlignment = .center
+        config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
         config.showsActivityIndicator = loading
         config.activityIndicatorColorTransformer = UIConfigurationColorTransformer { _ in
             PPContextCheckoutColors.actionText
@@ -723,6 +768,30 @@ private final class PPContextCheckoutActionButton: UIButton {
         }
         configuration = config
         alpha = isEnabled || loading ? 1 : 0.58
+
+        let showBrandElevation = isEnabled && !loading
+        layer.shadowColor = PPContextCheckoutColors.action.cgColor
+        layer.shadowOpacity = showBrandElevation ? (traitCollection.userInterfaceStyle == .dark ? 0.34 : 0.22) : 0
+        layer.shadowRadius = 12
+        layer.shadowOffset = CGSize(width: 0, height: 4)
+    }
+
+    private func animatePressState(highlighted: Bool) {
+        guard !UIAccessibility.isReduceMotionEnabled, UIView.areAnimationsEnabled else {
+            transform = .identity
+            return
+        }
+        let targetScale: CGFloat = highlighted ? 0.975 : 1.0
+        UIView.animate(
+            withDuration: highlighted ? 0.10 : PPContextCheckoutMetrics.pressSpringDuration,
+            delay: 0,
+            usingSpringWithDamping: highlighted ? 1.0 : PPContextCheckoutMetrics.pressSpringDamping,
+            initialSpringVelocity: highlighted ? 0 : 0.2,
+            options: [.beginFromCurrentState, .allowUserInteraction],
+            animations: {
+                self.transform = CGAffineTransform(scaleX: targetScale, y: targetScale)
+            }
+        )
     }
 
     func configure(title: String, image: UIImage?) {
@@ -776,10 +845,15 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     public var presentationMode: PPContextAwareCheckoutMode = .cart {
         didSet {
             guard oldValue != presentationMode else {
+                applyPresentationChrome()
+                refreshColors()
                 updateContextVisibility(animated: false)
                 return
             }
             reviewExpanded = false
+            lastAdaptiveLayoutWidth = 0
+            applyPresentationChrome()
+            refreshColors()
             if presentationMode == .payment && needsHiddenTableReload {
                 needsHiddenTableReload = false
                 itemsTable.reloadData()
@@ -790,6 +864,10 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     }
 
     private let surfaceView = UIView()
+    private let surfaceBackdropClipView = UIView()
+    private let dockedBlurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
+    private let dockedTintOverlay = UIView()
+    private let dockedTopRimLayer = CAShapeLayer()
     private let contentStack = UIStackView()
     private let reviewControl = PPContextCheckoutReviewControl()
     private let itemsContainer = UIView()
@@ -808,6 +886,17 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     private let totalLabel = UILabel()
     private let actionButton = PPContextCheckoutActionButton()
 
+    private var surfaceTopConstraint: NSLayoutConstraint?
+    private var surfaceLeadingConstraint: NSLayoutConstraint?
+    private var surfaceTrailingConstraint: NSLayoutConstraint?
+    private var contentTopConstraint: NSLayoutConstraint?
+    private var contentLeadingConstraint: NSLayoutConstraint?
+    private var contentTrailingConstraint: NSLayoutConstraint?
+    private var contentBottomConstraint: NSLayoutConstraint?
+    private var decisionTopConstraint: NSLayoutConstraint?
+    private var decisionLeadingConstraint: NSLayoutConstraint?
+    private var decisionTrailingConstraint: NSLayoutConstraint?
+    private var decisionBottomConstraint: NSLayoutConstraint?
     private var itemsTableHeightConstraint: NSLayoutConstraint?
     private var actionMinimumWidthConstraint: NSLayoutConstraint?
     private var actionMaximumWidthConstraint: NSLayoutConstraint?
@@ -825,6 +914,10 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     private var lastAdaptiveContentSizeCategory: UIContentSizeCategory?
     private var lastAdaptiveTotalText: String?
     private var needsHiddenTableReload = false
+
+    private var isDockedCartStyle: Bool {
+        presentationMode == .cart
+    }
 
     @objc public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -852,6 +945,7 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         buildLayout()
         installObservers()
         applyLanguage()
+        applyPresentationChrome()
         refreshColors()
         updateTotalsWithItems(0, shipping: 0, showTitle: false)
         updatePreviewItems(nil)
@@ -866,10 +960,29 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         surfaceView.layer.masksToBounds = false
         addSubview(surfaceView)
 
+        surfaceBackdropClipView.translatesAutoresizingMaskIntoConstraints = false
+        surfaceBackdropClipView.backgroundColor = .clear
+        surfaceBackdropClipView.isUserInteractionEnabled = false
+        surfaceBackdropClipView.layer.cornerCurve = .continuous
+        surfaceBackdropClipView.layer.masksToBounds = true
+        surfaceView.addSubview(surfaceBackdropClipView)
+
+        dockedBlurView.translatesAutoresizingMaskIntoConstraints = false
+        dockedBlurView.isUserInteractionEnabled = false
+        surfaceBackdropClipView.addSubview(dockedBlurView)
+
+        dockedTintOverlay.translatesAutoresizingMaskIntoConstraints = false
+        dockedTintOverlay.isUserInteractionEnabled = false
+        surfaceBackdropClipView.addSubview(dockedTintOverlay)
+
+        dockedTopRimLayer.fillColor = nil
+        dockedTopRimLayer.lineCap = .round
+        surfaceBackdropClipView.layer.addSublayer(dockedTopRimLayer)
+
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.axis = .vertical
         contentStack.alignment = .fill
-        contentStack.spacing = 7
+        contentStack.spacing = PPContextCheckoutMetrics.floatingContentSpacing
         surfaceView.addSubview(contentStack)
 
         reviewControl.addTarget(self, action: #selector(didTapReviewOrder), for: .touchUpInside)
@@ -953,12 +1066,12 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         totalStack.accessibilityIdentifier = "contextCheckout.total"
         totalStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        totalCaptionLabel.font = PPContextCheckoutFont.medium(11, style: .caption1)
+        totalCaptionLabel.font = PPContextCheckoutFont.medium(12, style: .caption1)
         totalCaptionLabel.adjustsFontForContentSizeCategory = true
         totalCaptionLabel.numberOfLines = 1
         totalCaptionLabel.isAccessibilityElement = false
 
-        totalLabel.font = PPContextCheckoutFont.bold(24, style: .title2)
+        totalLabel.font = PPContextCheckoutFont.monospacedBold(25, style: .title2)
         totalLabel.adjustsFontForContentSizeCategory = true
         totalLabel.numberOfLines = 1
         totalLabel.adjustsFontSizeToFitWidth = true
@@ -984,6 +1097,27 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         let tableHeight = itemsTable.heightAnchor.constraint(equalToConstant: PPContextCheckoutMetrics.itemRowHeight)
         itemsTableHeightConstraint = tableHeight
 
+        let dTop = decisionStack.topAnchor.constraint(
+            equalTo: decisionPanel.topAnchor,
+            constant: PPContextCheckoutMetrics.decisionVerticalInset
+        )
+        let dLeading = decisionStack.leadingAnchor.constraint(
+            equalTo: decisionPanel.leadingAnchor,
+            constant: PPContextCheckoutMetrics.decisionHorizontalInset
+        )
+        let dTrailing = decisionStack.trailingAnchor.constraint(
+            equalTo: decisionPanel.trailingAnchor,
+            constant: -PPContextCheckoutMetrics.decisionHorizontalInset
+        )
+        let dBottom = decisionStack.bottomAnchor.constraint(
+            equalTo: decisionPanel.bottomAnchor,
+            constant: -PPContextCheckoutMetrics.decisionVerticalInset
+        )
+        decisionTopConstraint = dTop
+        decisionLeadingConstraint = dLeading
+        decisionTrailingConstraint = dTrailing
+        decisionBottomConstraint = dBottom
+
         NSLayoutConstraint.activate([
             itemsTable.topAnchor.constraint(equalTo: itemsContainer.topAnchor, constant: 4),
             itemsTable.leadingAnchor.constraint(equalTo: itemsContainer.leadingAnchor, constant: 4),
@@ -1001,22 +1135,10 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
             reviewHintIcon.widthAnchor.constraint(equalToConstant: 13),
             reviewHintIcon.heightAnchor.constraint(equalToConstant: 13),
 
-            decisionStack.topAnchor.constraint(
-                equalTo: decisionPanel.topAnchor,
-                constant: PPContextCheckoutMetrics.decisionVerticalInset
-            ),
-            decisionStack.leadingAnchor.constraint(
-                equalTo: decisionPanel.leadingAnchor,
-                constant: PPContextCheckoutMetrics.decisionHorizontalInset
-            ),
-            decisionStack.trailingAnchor.constraint(
-                equalTo: decisionPanel.trailingAnchor,
-                constant: -PPContextCheckoutMetrics.decisionHorizontalInset
-            ),
-            decisionStack.bottomAnchor.constraint(
-                equalTo: decisionPanel.bottomAnchor,
-                constant: -PPContextCheckoutMetrics.decisionVerticalInset
-            ),
+            dTop,
+            dLeading,
+            dTrailing,
+            dBottom,
             actionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: PPContextCheckoutMetrics.actionHeight)
         ])
         actionMinimumWidthConstraint = actionButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 178)
@@ -1026,16 +1148,47 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     }
 
     private func buildLayout() {
+        let sTop = surfaceView.topAnchor.constraint(equalTo: topAnchor, constant: 0)
+        let sLeading = surfaceView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0)
+        let sTrailing = surfaceView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 0)
+        surfaceTopConstraint = sTop
+        surfaceLeadingConstraint = sLeading
+        surfaceTrailingConstraint = sTrailing
+
+        let cTop = contentStack.topAnchor.constraint(equalTo: surfaceView.topAnchor, constant: PPContextCheckoutMetrics.dockedTopInset)
+        let cLeading = contentStack.leadingAnchor.constraint(equalTo: surfaceView.leadingAnchor, constant: PPContextCheckoutMetrics.dockedHorizontalInset)
+        let cTrailing = contentStack.trailingAnchor.constraint(equalTo: surfaceView.trailingAnchor, constant: -PPContextCheckoutMetrics.dockedHorizontalInset)
+        let cBottom = contentStack.bottomAnchor.constraint(equalTo: surfaceView.bottomAnchor, constant: -effectiveBottomContentInset())
+        contentTopConstraint = cTop
+        contentLeadingConstraint = cLeading
+        contentTrailingConstraint = cTrailing
+        contentBottomConstraint = cBottom
+
         NSLayoutConstraint.activate([
-            surfaceView.topAnchor.constraint(equalTo: topAnchor, constant: 4),
-            surfaceView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: PPContextCheckoutMetrics.outerInset),
-            surfaceView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -PPContextCheckoutMetrics.outerInset),
+            sTop,
+            sLeading,
+            sTrailing,
             surfaceView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            contentStack.topAnchor.constraint(equalTo: surfaceView.topAnchor, constant: 7),
-            contentStack.leadingAnchor.constraint(equalTo: surfaceView.leadingAnchor, constant: 7),
-            contentStack.trailingAnchor.constraint(equalTo: surfaceView.trailingAnchor, constant: -7),
-            contentStack.bottomAnchor.constraint(equalTo: surfaceView.bottomAnchor, constant: -7)
+            surfaceBackdropClipView.topAnchor.constraint(equalTo: surfaceView.topAnchor),
+            surfaceBackdropClipView.leadingAnchor.constraint(equalTo: surfaceView.leadingAnchor),
+            surfaceBackdropClipView.trailingAnchor.constraint(equalTo: surfaceView.trailingAnchor),
+            surfaceBackdropClipView.bottomAnchor.constraint(equalTo: surfaceView.bottomAnchor),
+
+            dockedBlurView.topAnchor.constraint(equalTo: surfaceBackdropClipView.topAnchor),
+            dockedBlurView.leadingAnchor.constraint(equalTo: surfaceBackdropClipView.leadingAnchor),
+            dockedBlurView.trailingAnchor.constraint(equalTo: surfaceBackdropClipView.trailingAnchor),
+            dockedBlurView.bottomAnchor.constraint(equalTo: surfaceBackdropClipView.bottomAnchor),
+
+            dockedTintOverlay.topAnchor.constraint(equalTo: surfaceBackdropClipView.topAnchor),
+            dockedTintOverlay.leadingAnchor.constraint(equalTo: surfaceBackdropClipView.leadingAnchor),
+            dockedTintOverlay.trailingAnchor.constraint(equalTo: surfaceBackdropClipView.trailingAnchor),
+            dockedTintOverlay.bottomAnchor.constraint(equalTo: surfaceBackdropClipView.bottomAnchor),
+
+            cTop,
+            cLeading,
+            cTrailing,
+            cBottom
         ])
     }
 
@@ -1044,7 +1197,25 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         center.addObserver(self, selector: #selector(languageDidChange), name: Notification.Name("LanguageDidChangeNotification"), object: nil)
         center.addObserver(self, selector: #selector(languageDidChange), name: Notification.Name("PPLanguageDidChangeNotification"), object: nil)
         center.addObserver(self, selector: #selector(appearanceDidChange), name: UIAccessibility.darkerSystemColorsStatusDidChangeNotification, object: nil)
+        center.addObserver(self, selector: #selector(appearanceDidChange), name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
         center.addObserver(self, selector: #selector(reduceMotionDidChange), name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
+    }
+
+    private func effectiveBottomContentInset() -> CGFloat {
+        guard isDockedCartStyle else { return 7 }
+        return max(
+            safeAreaInsets.bottom + PPContextCheckoutMetrics.dockedSafeAreaBreathingRoom,
+            PPContextCheckoutMetrics.dockedBottomPaddingMinimum
+        )
+    }
+
+    public override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        guard isDockedCartStyle else { return }
+        contentBottomConstraint?.constant = -effectiveBottomContentInset()
+        invalidateIntrinsicContentSize()
+        setNeedsLayout()
+        superview?.setNeedsLayout()
     }
 
     // MARK: Sizing
@@ -1069,18 +1240,27 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     }
 
     private func measuredHeight(for width: CGFloat) -> CGFloat {
-        let contentWidth = max(width - (PPContextCheckoutMetrics.outerInset * 2) - 14, 1)
+        let surfaceHorizontalInset = isDockedCartStyle ? 0 : (PPContextCheckoutMetrics.outerInset * 2)
+        let contentHorizontalInset = isDockedCartStyle
+            ? (PPContextCheckoutMetrics.dockedHorizontalInset * 2)
+            : 14
+        let surfaceTopInset: CGFloat = isDockedCartStyle ? 0 : 4
+        let contentTopInset = isDockedCartStyle ? PPContextCheckoutMetrics.dockedTopInset : 7
+        let contentBottomInset = effectiveBottomContentInset()
+
+        let contentWidth = max(width - surfaceHorizontalInset - contentHorizontalInset, 1)
         let size = contentStack.systemLayoutSizeFitting(
             CGSize(width: contentWidth, height: UIView.layoutFittingCompressedSize.height),
             withHorizontalFittingPriority: .required,
             verticalFittingPriority: .fittingSizeLevel
         )
-        return ceil(4 + 7 + size.height + 7)
+        return ceil(surfaceTopInset + contentTopInset + size.height + contentBottomInset)
     }
 
     public override func layoutSubviews() {
         super.layoutSubviews()
         updateShadowPath()
+        updateDockedTopRimPath()
         updateAdaptiveDecisionLayout()
     }
 
@@ -1113,8 +1293,13 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         lastAdaptiveTotalText = currentTotalText
 
         let accessibility = currentCategory.isAccessibilityCategory
-        let availableWidth = max(0, bounds.width - PPContextCheckoutMetrics.outerInset * 2 - 14
-                                 - PPContextCheckoutMetrics.decisionHorizontalInset * 2)
+        let availableWidth: CGFloat
+        if isDockedCartStyle {
+            availableWidth = max(0, bounds.width - PPContextCheckoutMetrics.dockedHorizontalInset * 2)
+        } else {
+            availableWidth = max(0, bounds.width - PPContextCheckoutMetrics.outerInset * 2 - 14
+                                     - PPContextCheckoutMetrics.decisionHorizontalInset * 2)
+        }
         // Measure the unwrapped text, not the label's current wrapped geometry.
         // Otherwise changing the axis can change the next axis decision itself.
         let totalText = totalLabel.attributedText ?? NSAttributedString(
@@ -1137,10 +1322,96 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
 
     private func updateShadowPath() {
         guard !surfaceView.bounds.isEmpty else { return }
+        let radius = isDockedCartStyle
+            ? PPContextCheckoutMetrics.dockedSurfaceRadius
+            : PPContextCheckoutMetrics.surfaceRadius
+        let corners: UIRectCorner = isDockedCartStyle ? [.topLeft, .topRight] : .allCorners
         surfaceView.layer.shadowPath = UIBezierPath(
             roundedRect: surfaceView.bounds,
-            cornerRadius: PPContextCheckoutMetrics.surfaceRadius
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
         ).cgPath
+    }
+
+    private func updateDockedTopRimPath() {
+        guard isDockedCartStyle, !surfaceBackdropClipView.bounds.isEmpty else {
+            dockedTopRimLayer.path = nil
+            return
+        }
+        let w = surfaceBackdropClipView.bounds.width
+        let h = surfaceBackdropClipView.bounds.height
+        let r = min(PPContextCheckoutMetrics.dockedSurfaceRadius, w * 0.5, h * 0.5)
+        let lineWidth = PPContextCheckoutMetrics.hairline
+        let inset = lineWidth * 0.5
+
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: inset, y: r))
+        path.addArc(
+            withCenter: CGPoint(x: r, y: r),
+            radius: max(r - inset, 0),
+            startAngle: .pi,
+            endAngle: -.pi * 0.5,
+            clockwise: true
+        )
+        path.addLine(to: CGPoint(x: max(w - r, r), y: inset))
+        path.addArc(
+            withCenter: CGPoint(x: w - r, y: r),
+            radius: max(r - inset, 0),
+            startAngle: -.pi * 0.5,
+            endAngle: 0,
+            clockwise: true
+        )
+
+        dockedTopRimLayer.frame = surfaceBackdropClipView.bounds
+        dockedTopRimLayer.lineWidth = lineWidth
+        dockedTopRimLayer.path = path.cgPath
+    }
+
+    private func applyPresentationChrome() {
+        let docked = isDockedCartStyle
+        surfaceTopConstraint?.constant = docked ? 0 : 4
+        surfaceLeadingConstraint?.constant = docked ? 0 : PPContextCheckoutMetrics.outerInset
+        surfaceTrailingConstraint?.constant = docked ? 0 : -PPContextCheckoutMetrics.outerInset
+
+        contentStack.spacing = docked
+            ? PPContextCheckoutMetrics.dockedContentSpacing
+            : PPContextCheckoutMetrics.floatingContentSpacing
+        contentTopConstraint?.constant = docked ? PPContextCheckoutMetrics.dockedTopInset : 7
+        contentLeadingConstraint?.constant = docked ? PPContextCheckoutMetrics.dockedHorizontalInset : 7
+        contentTrailingConstraint?.constant = docked ? -PPContextCheckoutMetrics.dockedHorizontalInset : -7
+        contentBottomConstraint?.constant = -effectiveBottomContentInset()
+
+        pricingBreakdownStack.directionalLayoutMargins = docked
+            ? NSDirectionalEdgeInsets(top: 0, leading: 2, bottom: 2, trailing: 2)
+            : NSDirectionalEdgeInsets(
+                top: 4, leading: PPContextCheckoutMetrics.breakdownHorizontalInset,
+                bottom: 4, trailing: PPContextCheckoutMetrics.breakdownHorizontalInset
+            )
+
+        decisionTopConstraint?.constant = docked
+            ? PPContextCheckoutMetrics.dockedDecisionVerticalInset
+            : PPContextCheckoutMetrics.decisionVerticalInset
+        decisionLeadingConstraint?.constant = docked ? 0 : PPContextCheckoutMetrics.decisionHorizontalInset
+        decisionTrailingConstraint?.constant = docked ? 0 : -PPContextCheckoutMetrics.decisionHorizontalInset
+        decisionBottomConstraint?.constant = docked ? 0 : -PPContextCheckoutMetrics.decisionVerticalInset
+
+        let radius = docked
+            ? PPContextCheckoutMetrics.dockedSurfaceRadius
+            : PPContextCheckoutMetrics.surfaceRadius
+        let maskedCorners: CACornerMask = docked
+            ? [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+            : [.layerMinXMinYCorner, .layerMaxXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner]
+
+        surfaceView.layer.cornerRadius = radius
+        surfaceView.layer.maskedCorners = maskedCorners
+        surfaceBackdropClipView.isHidden = !docked
+        surfaceBackdropClipView.layer.cornerRadius = radius
+        surfaceBackdropClipView.layer.maskedCorners = maskedCorners
+        dockedTopRimLayer.isHidden = !docked
+
+        decisionPanel.layer.cornerRadius = docked ? 0 : PPContextCheckoutMetrics.panelRadius
+        decisionPanel.layer.masksToBounds = !docked
+        invalidateIntrinsicContentSize()
     }
 
     // MARK: Public host contract
@@ -1410,13 +1681,46 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
     }
 
     private func refreshColors() {
-        surfaceView.backgroundColor = PPContextCheckoutColors.surface
-        surfaceView.layer.borderColor = PPContextCheckoutColors.border.cgColor
-        surfaceView.layer.borderWidth = PPContextCheckoutMetrics.hairline
-        surfaceView.layer.shadowColor = UIColor.black.cgColor
-        surfaceView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.16 : 0.07
-        surfaceView.layer.shadowRadius = 18
-        surfaceView.layer.shadowOffset = CGSize(width: 0, height: 6)
+        let isDark = traitCollection.userInterfaceStyle == .dark
+        let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
+        let darkerColors = UIAccessibility.isDarkerSystemColorsEnabled
+
+        if isDockedCartStyle {
+            surfaceView.backgroundColor = .clear
+            surfaceView.layer.borderWidth = 0
+            surfaceView.layer.shadowColor = UIColor.black.cgColor
+            surfaceView.layer.shadowOpacity = isDark ? 0.24 : 0.06
+            surfaceView.layer.shadowRadius = 22
+            surfaceView.layer.shadowOffset = CGSize(width: 0, height: -8)
+
+            dockedBlurView.isHidden = reduceTransparency
+            dockedTintOverlay.backgroundColor = reduceTransparency
+                ? PPContextCheckoutColors.surface
+                : PPContextCheckoutColors.surface.withAlphaComponent(isDark ? 0.88 : 0.84)
+            let rimColor: UIColor = darkerColors
+                ? PPContextCheckoutColors.border
+                : (isDark
+                    ? UIColor.white.withAlphaComponent(0.14)
+                    : UIColor.white.withAlphaComponent(0.86))
+            dockedTopRimLayer.strokeColor = rimColor.cgColor
+
+            decisionPanel.backgroundColor = .clear
+            decisionPanel.layer.borderWidth = 0
+        } else {
+            surfaceView.backgroundColor = PPContextCheckoutColors.surface
+            surfaceView.layer.borderColor = PPContextCheckoutColors.border.cgColor
+            surfaceView.layer.borderWidth = PPContextCheckoutMetrics.hairline
+            surfaceView.layer.shadowColor = UIColor.black.cgColor
+            surfaceView.layer.shadowOpacity = isDark ? 0.16 : 0.07
+            surfaceView.layer.shadowRadius = 18
+            surfaceView.layer.shadowOffset = CGSize(width: 0, height: 6)
+
+            decisionPanel.backgroundColor = PPContextCheckoutColors.quietSurface
+            decisionPanel.layer.borderColor = PPContextCheckoutColors.border.cgColor
+            decisionPanel.layer.borderWidth = darkerColors
+                ? PPContextCheckoutMetrics.hairline
+                : 0
+        }
 
         reviewControl.refreshColors()
         itemsContainer.backgroundColor = PPContextCheckoutColors.secondarySurface
@@ -1425,18 +1729,13 @@ public final class PPContextAwareCheckoutView: UIView, UITableViewDataSource, UI
         itemsTable.separatorColor = PPContextCheckoutColors.border.withAlphaComponent(0.72)
         itemsTable.visibleCells.forEach { ($0 as? PPContextCheckoutItemCell)?.refreshColors() }
 
-        pricingDivider.backgroundColor = PPContextCheckoutColors.border
+        pricingDivider.backgroundColor = PPContextCheckoutColors.border.withAlphaComponent(isDockedCartStyle ? 0.82 : 1.0)
         deliveryPricingRow.refreshColors()
         itemsPricingRow.refreshColors()
 
         reviewHintIcon.tintColor = PPContextCheckoutColors.tertiaryText
         reviewHintLabel.textColor = PPContextCheckoutColors.secondaryText
 
-        decisionPanel.backgroundColor = PPContextCheckoutColors.quietSurface
-        decisionPanel.layer.borderColor = PPContextCheckoutColors.border.cgColor
-        decisionPanel.layer.borderWidth = UIAccessibility.isDarkerSystemColorsEnabled
-            ? PPContextCheckoutMetrics.hairline
-            : 0
         totalCaptionLabel.textColor = PPContextCheckoutColors.secondaryText
         totalLabel.textColor = PPContextCheckoutColors.primaryText
         actionButton.setNeedsUpdateConfiguration()

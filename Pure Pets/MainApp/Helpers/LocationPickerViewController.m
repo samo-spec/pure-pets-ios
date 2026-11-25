@@ -180,6 +180,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 @property (nonatomic, assign) PPLocationPickerDisplayState displayState;
 @property (nonatomic, assign) BOOL managesHomeBottomNavigationVisibility;
 @property (nonatomic, assign) BOOL capturedNavigationAppearance;
+@property (nonatomic, assign) BOOL navigationBarWasHidden;
 @property (nonatomic, assign) BOOL navigationBarWasTranslucent;
 @property (nonatomic, strong) UIColor *savedNavigationTintColor;
 @property (nonatomic, strong) UINavigationBarAppearance *savedStandardAppearance;
@@ -297,7 +298,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     [super viewWillAppear:animated];
 
     [self pp_captureNavigationAppearanceIfNeeded];
-    [self pp_setupNavigationChrome];
+    [self pp_setupNavigationChromeAnimated:animated];
 
     // Bulletproof: unconditionally ensure bottom navigation bar is hidden across all presentation modes
     [self pp_setBottomNavigationHidden:YES animated:animated];
@@ -326,7 +327,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     self.pinAnimator = nil;
 
     [self pp_setBottomNavigationHidden:NO animated:animated];
-    [self pp_restoreNavigationAppearance];
+    [self pp_restoreNavigationAppearanceAnimated:animated];
 
     id<UIViewControllerTransitionCoordinator> coordinator = self.transitionCoordinator;
     if (!coordinator) {
@@ -343,7 +344,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
         if (!self) {
             return;
         }
-        [self pp_setupNavigationChrome];
+        [self pp_setupNavigationChromeAnimated:NO];
         [self pp_setPinLifted:NO animated:NO];
         [self pp_scheduleReverseGeocodeForPosition:self.mapView.camera];
         [self pp_setBottomNavigationHidden:YES animated:YES];
@@ -436,32 +437,23 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
 
 #pragma mark - Navigation Setup
 
-- (void)pp_setupNavigationChrome
+- (void)pp_setupNavigationChromeAnimated:(BOOL)animated
 {
+    self.navigationItem.title = @"";
+    self.navigationItem.hidesBackButton = YES;
+    self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
+
+    // Use floating cockpit back/close button and hide the system bar so no duplicate nav bar appears.
+    self.navigationItem.leftBarButtonItem = nil;
+    self.navigationItem.rightBarButtonItem = nil;
+    self.navigationItem.leftBarButtonItems = nil;
+    self.navigationItem.rightBarButtonItems = nil;
+
     if (!self.navigationController) {
         return;
     }
 
-    self.navigationItem.title = @"";
-    self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
-
-    // Use floating cockpit close button for cleaner edge-to-edge immersion
-    self.navigationItem.leftBarButtonItem = nil;
-    self.navigationItem.rightBarButtonItem = nil;
-
-    UINavigationBar *navBar = self.navigationController.navigationBar;
-    navBar.tintColor = PPLocationPickerPrimaryTextColor();
-    navBar.translucent = YES;
-    UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
-    [appearance configureWithTransparentBackground];
-    appearance.backgroundColor = UIColor.clearColor;
-    appearance.shadowColor = UIColor.clearColor;
-    navBar.standardAppearance = appearance;
-    navBar.scrollEdgeAppearance = appearance;
-    navBar.compactAppearance = appearance;
-    if (@available(iOS 15.0, *)) {
-        navBar.compactScrollEdgeAppearance = appearance;
-    }
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
 }
 
 #pragma mark - Map Canvas Setup
@@ -2285,6 +2277,7 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     UINavigationBar *navigationBar = self.navigationController.navigationBar;
     if (!navigationBar || self.capturedNavigationAppearance) return;
     self.capturedNavigationAppearance = YES;
+    self.navigationBarWasHidden = self.navigationController.navigationBarHidden;
     self.navigationBarWasTranslucent = navigationBar.translucent;
     self.savedNavigationTintColor = navigationBar.tintColor;
     self.savedStandardAppearance = [navigationBar.standardAppearance copy];
@@ -2295,10 +2288,11 @@ typedef NS_ENUM(NSUInteger, PPLocationPickerDisplayState) {
     }
 }
 
-- (void)pp_restoreNavigationAppearance
+- (void)pp_restoreNavigationAppearanceAnimated:(BOOL)animated
 {
     UINavigationBar *navigationBar = self.navigationController.navigationBar;
     if (!navigationBar || !self.capturedNavigationAppearance) return;
+    [self.navigationController setNavigationBarHidden:self.navigationBarWasHidden animated:animated];
     navigationBar.translucent = self.navigationBarWasTranslucent;
     navigationBar.tintColor = self.savedNavigationTintColor;
     if (self.savedStandardAppearance) {

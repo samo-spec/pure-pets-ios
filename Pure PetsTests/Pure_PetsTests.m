@@ -841,3 +841,48 @@
 }
 
 @end
+
+@interface PPHomeCardsVerificationTests : XCTestCase
+@end
+
+@implementation PPHomeCardsVerificationTests
+
+- (void)testHomePureLensAndPetCareKeysExistInArabicAndEnglish {
+    NSString *previousLanguage = [Language currentLanguageCode];
+    NSArray<NSString *> *keys = @[
+        @"pure_lens_account_title",
+        @"home_pure_lens_subtitle",
+        @"home_pure_lens_action",
+        @"home_pure_lens_a11y",
+        @"pet_care_title",
+        @"home_pet_care_card_summary",
+        @"home_pet_care_card_action",
+        @"pet_care_veterinarians",
+        @"pet_care_clinics",
+        @"pet_care_medicines",
+        @"pet_care_vet_consult",
+        @"pet_care_clinic_booking",
+        @"pet_care_pharmacy_rx"
+    ];
+
+    for (NSString *lang in @[@"ar", @"en"]) {
+        [Language setLanguage:lang];
+        for (NSString *key in keys) {
+            NSString *value = [Language get:key alter:nil];
+            XCTAssertNotNil(value, @"Missing %@ for %@", key, lang);
+            XCTAssertFalse([value isEqualToString:key], @"Unlocalized %@ for %@", key, lang);
+            XCTAssertGreaterThan(value.length, 0U, @"Empty %@ for %@", key, lang);
+        }
+    }
+
+    [Language setLanguage:previousLanguage];
+}
+
+- (void)testHomePureLensFalconAssetLoadsFromMainBundle {
+    UIImage *falcon = [UIImage imageNamed:@"homeLensFalcon"];
+    XCTAssertNotNil(falcon);
+    XCTAssertGreaterThan(falcon.size.width, 0.0);
+    XCTAssertGreaterThan(falcon.size.height, 0.0);
+}
+
+@end

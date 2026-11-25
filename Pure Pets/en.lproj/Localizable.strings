@@ -3053,6 +3053,9 @@
 "pet_care_title" = "Pet Care";
 "home_pet_care_card_summary" = "Vets, clinics and medicines";
 "home_pet_care_card_action" = "Explore care";
+"pet_care_vet_consult" = "Certified Vets";
+"pet_care_clinic_booking" = "Appointments";
+"pet_care_pharmacy_rx" = "Pharmacy";
 "pet_care_eyebrow" = "Premium care";
 "pet_care_medicines" = "Medicines";
 "pet_care_veterinarians" = "Veterinarians";

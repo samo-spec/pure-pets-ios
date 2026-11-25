@@ -5593,7 +5593,7 @@ struct PPHomePetCareCard: View {
             symbol: "stethoscope",
             accentColor: Color.ppCareAccent,
             sublineKey: "pet_care_vet_consult",
-            fallbackSubline: Language.isRTL() ? "أطباء معتمدون" : "Certified Vets"
+            fallbackSubline: "Certified Vets"
         ),
         Service(
             id: "pet_care_clinics",
@@ -5601,7 +5601,7 @@ struct PPHomePetCareCard: View {
             symbol: "cross.case.fill",
             accentColor: PPMarketplaceQuickActionTone.vet,
             sublineKey: "pet_care_clinic_booking",
-            fallbackSubline: Language.isRTL() ? "حجز ومواعيد" : "Appointments"
+            fallbackSubline: "Appointments"
         ),
         Service(
             id: "pet_care_medicines",
@@ -5609,7 +5609,7 @@ struct PPHomePetCareCard: View {
             symbol: "pills.fill",
             accentColor: PPMarketplaceQuickActionTone.pharmacy,
             sublineKey: "pet_care_pharmacy_rx",
-            fallbackSubline: Language.isRTL() ? "صيدلية ورعاية" : "Pharmacy"
+            fallbackSubline: "Pharmacy"
         )
     ]
 

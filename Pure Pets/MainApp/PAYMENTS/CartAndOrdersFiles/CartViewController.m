@@ -62,6 +62,20 @@ static UIColor *PPCartScreenBackgroundColor(void)
     return PPBackgroundColorForIOS26(AppBackgroundClr);
 }
 
+static UIBarButtonItem *PPCartStandaloneBarButtonItem(UIView *customView)
+{
+    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithCustomView:customView];
+    if (@available(iOS 26.0, *)) {
+        if ([item respondsToSelector:@selector(setHidesSharedBackground:)]) {
+            item.hidesSharedBackground = YES;
+        }
+        if ([item respondsToSelector:@selector(setSharesBackground:)]) {
+            item.sharesBackground = NO;
+        }
+    }
+    return item;
+}
+
 static UIColor *PPSavedForLaterDeferredAccentColor(void)
 {
     if (@available(iOS 13.0, *)) {
@@ -814,8 +828,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.cartTableView.showsHorizontalScrollIndicator = NO;
     self.cartTableView.showsVerticalScrollIndicator = NO;
     self.cartTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    self.cartTableView.contentInset = UIEdgeInsetsMake(28.0, 0.0, kCartTableBottomInset, 0.0);
-    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(28.0, 0.0, kCartTableBottomInset, 0.0);
+    self.cartTableView.contentInset = UIEdgeInsetsMake(28.0, 0.0, kCartTableBottomInset + 24.0, 0.0);
+    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(28.0, 0.0, kCartTableBottomInset + 12.0, 0.0);
     self.cartTableView.rowHeight = UITableViewAutomaticDimension;
     self.cartTableView.estimatedRowHeight = 220.0;
     if (@available(iOS 15.0, *)) {
@@ -839,7 +853,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         [self.cartTableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor]
     ]];
     self.tableBottomConstraint =
-    [self.cartTableView.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:0.0];
+    [self.cartTableView.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor
+                                                    constant:(CartManager.sharedManager.cartItems.count > 0 ? 24.0 : 0.0)];
     self.tableBottomConstraint.active = YES;
 
     [self.view bringSubviewToFront:self.summaryView];
@@ -895,7 +910,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self.summaryView setCollapsible:YES initiallyCollapsed:YES];
     
     [self.view addSubview:self.summaryView];
-    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-22.0].active = YES;
+    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:0.0].active = YES;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 
@@ -1047,25 +1062,87 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self pp_refreshCartEditControls];
 }
 
+- (UIButton *)pp_cartTrailingEditButtonWithTitle:(NSString *)title isEditing:(BOOL)isEditing
+{
+    CGFloat btnSize = 40.0;
+    if (@available(iOS 26.0, *)) {
+        btnSize = 44.0;
+    }
+    CGFloat cornerRadius = (btnSize >= 44.0) ? 13.0 : 12.0;
+    UIColor *foregroundColor = isEditing
+        ? (AppPrimaryClr ?: UIColor.labelColor)
+        : (AppPrimaryTextClr ?: UIColor.labelColor);
+    UIFont *font = [GM MidFontWithSize:16] ?: [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
+
+    UIButton *button = nil;
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.background.cornerRadius = cornerRadius;
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 14.0, 6.0, 14.0);
+        cfg.baseForegroundColor = foregroundColor;
+        cfg.attributedTitle = [[NSAttributedString alloc] initWithString:title ?: @""
+                                                              attributes:@{
+            NSFontAttributeName: font,
+            NSForegroundColorAttributeName: foregroundColor
+        }];
+        button = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+    } else if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.background.cornerRadius = cornerRadius;
+        cfg.background.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 14.0, 6.0, 14.0);
+        cfg.baseForegroundColor = foregroundColor;
+        cfg.attributedTitle = [[NSAttributedString alloc] initWithString:title ?: @""
+                                                              attributes:@{
+            NSFontAttributeName: font,
+            NSForegroundColorAttributeName: foregroundColor
+        }];
+        button = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+    } else {
+        button = [UIButton buttonWithType:UIButtonTypeSystem];
+        button.contentEdgeInsets = UIEdgeInsetsMake(6.0, 14.0, 6.0, 14.0);
+        button.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+        [button setTitle:title ?: @"" forState:UIControlStateNormal];
+        [button setTitleColor:foregroundColor forState:UIControlStateNormal];
+        button.titleLabel.font = font;
+    }
+
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    button.tintColor = foregroundColor;
+    button.adjustsImageWhenHighlighted = NO;
+    button.layer.cornerRadius = cornerRadius;
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    button.layer.borderWidth = 0.0;
+    button.layer.shadowColor = PPPetsUIShadowColor().CGColor;
+    button.layer.shadowOpacity = 0.10;
+    button.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+    button.layer.shadowRadius = 6.0;
+    button.layer.masksToBounds = NO;
+
+    [button.heightAnchor constraintEqualToConstant:btnSize].active = YES;
+    [button.widthAnchor constraintGreaterThanOrEqualToConstant:btnSize].active = YES;
+    [button addTarget:self action:@selector(pp_toggleCartEditMode) forControlEvents:UIControlEventTouchUpInside];
+    return button;
+}
+
 - (void)pp_refreshCartEditControls
 {
     BOOL isEditing = self.cartTableView.isEditing || self.cartEditingModeActive;
     BOOL hasItems = [self pp_hasEditableCartItems];
     NSString *title = isEditing ? kLang(@"Done") : kLang(@"Edit");
-    UIButton *editButton =
-    [PPButtonHelper pp_buttonWithTitle:title
-                                  font:[GM MidFontWithSize:16]
-                             imageName:@""
-                                target:self
-                                config:[UIButtonConfiguration tintedButtonConfiguration]
-                                action:@selector(pp_toggleCartEditMode)];
+    UIButton *editButton = [self pp_cartTrailingEditButtonWithTitle:title isEditing:isEditing];
     editButton.enabled = hasItems || isEditing;
     editButton.alpha = editButton.enabled ? 1.0 : 0.46;
     editButton.accessibilityLabel = title;
     editButton.accessibilityHint = kLang(@"editing_mode");
+    editButton.accessibilityIdentifier = @"cart.editButton";
 
-    UIBarButtonItem *editItem =
-    [[UIBarButtonItem alloc] initWithCustomView:editButton];
+    UIBarButtonItem *editItem = PPCartStandaloneBarButtonItem(editButton);
     editItem.enabled = hasItems || isEditing;
     editItem.accessibilityLabel = title;
     editItem.accessibilityHint = kLang(@"editing_mode");
@@ -1089,12 +1166,12 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
     NSString *leadingSymbol = [self pp_cartCanNavigateBackInStack] ? PPChevronName : @"house.fill";
     UIButton *leadingBtn = [self pp_ButtonWithSystemName:leadingSymbol action:@selector(pp_handleLeadingCartNavigation)];
-    self.navigationItem.leftBarButtonItem =
-    [[UIBarButtonItem alloc] initWithCustomView:leadingBtn];
-    self.navigationItem.leftBarButtonItem.accessibilityLabel =
+    UIBarButtonItem *leadingItem = PPCartStandaloneBarButtonItem(leadingBtn);
+    leadingItem.accessibilityLabel =
     [self pp_cartCanNavigateBackInStack]
     ? NSLocalizedString(@"Back", @"Navigate back")
     : NSLocalizedString(@"Home", @"Navigate home");
+    self.navigationItem.leftBarButtonItem = leadingItem;
 
     [self pp_refreshCartEditControls];
 
@@ -2098,6 +2175,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     }
 
     self.summaryView.alpha = (summary.uniqueItems > 0) ? 1.0 : 0.0;
+    self.tableBottomConstraint.constant = (summary.uniqueItems > 0) ? 24.0 : 0.0;
     if (summary.uniqueItems > 0) {
         [self.summaryView pp_startTrustBannerShimmer];
     } else {
