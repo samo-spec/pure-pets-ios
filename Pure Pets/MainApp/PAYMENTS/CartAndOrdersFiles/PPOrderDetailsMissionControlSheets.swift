@@ -492,7 +492,10 @@ private struct PPOrderMissionRequestDetailsSheet: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(Color.ppPrimary)
                 .frame(width: 46, height: 46)
-                .background(Color.ppPrimary.opacity(0.11), in: Circle())
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 13,
+                    fill: Color.ppPrimary.opacity(0.11)
+                )
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(currentRequest.typeTitle)
@@ -669,10 +672,10 @@ private struct PPOrderMissionCancellationStageRow: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(accent)
                     .frame(width: 36, height: 36)
-                    .background(accent.opacity(0.11), in: Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(accent.opacity(0.22), lineWidth: 1)
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 10,
+                        fill: accent.opacity(0.11),
+                        stroke: accent.opacity(0.22)
                     )
                     .accessibilityHidden(true)
 
@@ -904,7 +907,10 @@ private struct PPOrderMissionComposerSheet: View {
                                                     .font(.system(size: 10, weight: .bold))
                                                     .foregroundStyle(Color.white)
                                                     .frame(width: 28, height: 28)
-                                                    .background(Color.black.opacity(0.7), in: Circle())
+                                                    .ppOrderMissionSquircleSurface(
+                                                        cornerRadius: 8,
+                                                        fill: Color.black.opacity(0.7)
+                                                    )
                                                     .frame(width: 44, height: 44)
                                                     .contentShape(Rectangle())
                                             }
@@ -1081,39 +1087,11 @@ private struct PPOrderMissionAddressesSheet: View {
                                 action: store.retryAddressEligibility
                             )
                         } else {
-                            HStack(alignment: .top, spacing: PPSpace.sm) {
-                                Image(systemName: "box.truck.badge.clock.fill")
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(Color.ppWarning)
-                                    .frame(width: 32, height: 32)
-                                    .background(Color.ppWarning.opacity(0.14), in: Circle())
-                                    .accessibilityHidden(true)
-
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text(PPOrderMissionText("order_mission_address_locked_title"))
-                                        .font(PPOrderMissionTypography.headline(14))
-                                        .foregroundStyle(Color.ppTextPrimary)
-
-                                    Text(store.state.isDeliveryStarted
-                                        ? PPOrderMissionText("order_mission_address_locked_delivering_desc")
-                                        : store.state.addressEditMessage)
-                                        .font(PPOrderMissionTypography.caption(12.5))
-                                        .foregroundStyle(Color.ppTextSecondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                            }
-                            .padding(.horizontal, PPSpace.sm)
-                            .padding(.vertical, PPSpace.xs + 2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                                    .fill(Color.ppWarning.opacity(0.06))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                                            .stroke(Color.ppWarning.opacity(0.20), lineWidth: 1)
-                                    )
+                            PPOrderMissionDeliveryLockedNotice(
+                                description: store.state.isDeliveryStarted
+                                    ? PPOrderMissionText("order_mission_address_locked_delivering_desc")
+                                    : store.state.addressEditMessage
                             )
-                            .padding(.vertical, PPSpace.xxs)
                         }
                     } else if store.addressesLoading {
                         ProgressView(PPOrderMissionText("Loading"))
@@ -1232,7 +1210,10 @@ private struct PPOrderMissionFulfillmentSheet: View {
                                 .font(.system(size: 23, weight: .bold))
                                 .foregroundStyle(color)
                                 .frame(width: 54, height: 54)
-                                .background(color.opacity(0.11), in: Circle())
+                                .ppOrderMissionSquircleSurface(
+                                    cornerRadius: 15,
+                                    fill: color.opacity(0.11)
+                                )
                                 .accessibilityHidden(true)
                         }
                         Text(currentFulfillment.ownerTitle)
@@ -1308,7 +1289,10 @@ private struct PPOrderMissionRequestCard: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(Color.ppPrimary)
                     .frame(width: 40, height: 40)
-                    .background(Color.ppPrimary.opacity(0.1), in: Circle())
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 12,
+                        fill: Color.ppPrimary.opacity(0.1)
+                    )
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(request.typeTitle)
@@ -1354,7 +1338,10 @@ private struct PPOrderMissionSupportOption: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Color.ppPrimary)
                     .frame(width: 46, height: 46)
-                    .background(Color.ppPrimary.opacity(0.1), in: Circle())
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 13,
+                        fill: Color.ppPrimary.opacity(0.1)
+                    )
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -1386,7 +1373,10 @@ private struct PPOrderMissionComposerIntro: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(Color.ppPrimary)
                 .frame(width: 52, height: 52)
-                .background(Color.ppPrimary.opacity(0.1), in: Circle())
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 15,
+                    fill: Color.ppPrimary.opacity(0.1)
+                )
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: PPSpace.xs) {
                 Text(action.title)
@@ -1500,7 +1490,10 @@ private struct PPOrderMissionAddressRow: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(Color.ppPrimary)
                 .frame(width: 44, height: 44)
-                .background(Color.ppPrimary.opacity(0.09), in: Circle())
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 13,
+                    fill: Color.ppPrimary.opacity(0.09)
+                )
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(address.title)
@@ -1596,7 +1589,10 @@ private struct PPOrderMissionSheetEmptyState: View {
                 .font(.system(size: 30, weight: .semibold))
                 .foregroundStyle(Color.ppTextTertiary)
                 .frame(width: 70, height: 70)
-                .background(Color.ppSecondarySurface, in: Circle())
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 20,
+                    fill: Color.ppSecondarySurface
+                )
                 .accessibilityHidden(true)
             Text(title)
                 .font(PPOrderMissionTypography.title())

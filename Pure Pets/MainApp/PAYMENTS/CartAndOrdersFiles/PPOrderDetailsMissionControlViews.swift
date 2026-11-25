@@ -129,21 +129,12 @@ struct PPOrderDetailsMissionControlScreen: View {
 
     private var navigationHeader: some View {
         HStack(spacing: PPSpace.sm) {
-            Button(action: store.close) {
-                Image(systemName: store.closeSymbol)
-                    .font(.system(size: 17, weight: .bold))
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Color.ppSurfaceElevated,
-                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .stroke(Color.ppSurfaceBorder, lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(closeAccessibilityLabel)
+            navigationHeaderButton(
+                symbol: store.closeSymbol,
+                fontWeight: .bold,
+                accessibilityLabel: closeAccessibilityLabel,
+                action: store.close
+            )
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(store.state.screenTitle.isEmpty
@@ -151,55 +142,59 @@ struct PPOrderDetailsMissionControlScreen: View {
                      : store.state.screenTitle)
                     .font(PPOrderMissionTypography.headline())
                     .foregroundStyle(Color.ppTextPrimary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .minimumScaleFactor(0.85)
                 HStack(spacing: PPSpace.xs) {
                     Circle()
                         .fill(connectionColor)
                         .frame(width: 6, height: 6)
                     Text(PPOrderMissionText(connectionKey))
-                    .font(PPOrderMissionTypography.caption(12))
-                    .foregroundStyle(Color.ppTextSecondary)
+                        .font(PPOrderMissionTypography.caption(12))
+                        .foregroundStyle(Color.ppTextSecondary)
                 }
             }
+            .accessibilityElement(children: .combine)
 
             Spacer(minLength: PPSpace.sm)
 
-            Button(action: store.share) {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Color.ppSurfaceElevated,
-                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .stroke(Color.ppSurfaceBorder, lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(PPOrderMissionText("Share"))
+            navigationHeaderButton(
+                symbol: "square.and.arrow.up",
+                accessibilityLabel: PPOrderMissionText("Share"),
+                action: store.share
+            )
 
-            Button {
-                store.activeSheet = .support
-            } label: {
-                Image(systemName: "headphones")
-                    .font(.system(size: 17, weight: .semibold))
-                    .frame(width: 44, height: 44)
-                    .background(
-                        PPOrderMissionColorRole.support.opacity(0.16),
-                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .stroke(
-                                PPOrderMissionColorRole.support.opacity(0.32),
-                                lineWidth: 1
-                            )
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(PPOrderMissionText("cart_support_menu_title"))
+            navigationHeaderButton(
+                symbol: "headphones",
+                fill: PPOrderMissionColorRole.support.opacity(0.16),
+                stroke: PPOrderMissionColorRole.support.opacity(0.32),
+                accessibilityLabel: PPOrderMissionText("cart_support_menu_title"),
+                action: { store.activeSheet = .support }
+            )
         }
+    }
+
+    private func navigationHeaderButton(
+        symbol: String,
+        fontWeight: Font.Weight = .semibold,
+        fill: Color = Color.ppSurfaceElevated,
+        stroke: Color = Color.ppSurfaceBorder,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: fontWeight))
+                .foregroundStyle(Color.ppTextPrimary)
+                .frame(width: 44, height: 44)
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 13,
+                    fill: fill,
+                    stroke: stroke
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var closeAccessibilityLabel: String {
@@ -304,14 +299,17 @@ struct PPOrderDetailsMissionControlScreen: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Color.ppPrimary)
                     .frame(width: 40, height: 40)
-                    .background(Color.ppPrimary.opacity(0.12), in: Circle())
-                    .overlay(Circle().stroke(Color.ppPrimary.opacity(0.24), lineWidth: 1))
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 12,
+                        fill: Color.ppPrimary.opacity(0.12),
+                        stroke: Color.ppPrimary.opacity(0.24)
+                    )
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(PPOrderMissionText("order_delivery_otp_eyebrow"))
                         .font(PPOrderMissionTypography.caption(11.5))
-                        .tracking(layoutDirection == .rightToLeft ? 0 : 0.9)
+                        .tracking(store.isRightToLeft ? 0 : 0.9)
                         .foregroundStyle(Color.ppTextTertiary)
                     Text(PPOrderMissionText("order_delivery_otp_title"))
                         .font(PPOrderMissionTypography.headline())
@@ -339,23 +337,22 @@ struct PPOrderDetailsMissionControlScreen: View {
                 .accessibilityLabel(PPOrderMissionText("order_delivery_otp_copy_action"))
             }
 
-            // OTP Digits display
+            // OTP Digits display (pinned LTR so verification digits never reverse in Arabic RTL)
             Button(action: copyDeliveryOtp) {
                 HStack(spacing: PPSpace.sm) {
                     Spacer(minLength: 0)
                     ForEach(Array(store.state.deliveryOtp.enumerated()), id: \.offset) { index, char in
                         Text(String(char))
                             .font(.system(size: 26, weight: .bold, design: .monospaced))
+                            .minimumScaleFactor(0.75)
                             .foregroundStyle(Color.ppPrimary)
-                            .frame(width: 44, height: 52)
-                            .background(
-                                Color.ppBackground,
-                                in: RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                            .frame(minWidth: 32, maxWidth: 44, minHeight: 52)
+                            .ppOrderMissionSquircleSurface(
+                                cornerRadius: PPCorner.medium,
+                                fill: Color.ppBackground,
+                                stroke: Color.ppPrimary.opacity(0.35),
+                                lineWidth: 1.5
                             )
-                            .overlay {
-                                RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                                    .strokeBorder(Color.ppPrimary.opacity(0.35), lineWidth: 1.5)
-                            }
                         if index == 2 && store.state.deliveryOtp.count == 6 {
                             Spacer()
                                 .frame(width: 8)
@@ -363,6 +360,7 @@ struct PPOrderDetailsMissionControlScreen: View {
                     }
                     Spacer(minLength: 0)
                 }
+                .environment(\.layoutDirection, .leftToRight)
                 .padding(.vertical, PPSpace.xs)
             }
             .buttonStyle(.plain)
@@ -395,14 +393,17 @@ struct PPOrderDetailsMissionControlScreen: View {
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(PPOrderMissionColorRole.location)
                     .frame(width: 40, height: 40)
-                    .background(PPOrderMissionColorRole.location.opacity(0.12), in: Circle())
-                    .overlay(Circle().stroke(PPOrderMissionColorRole.location.opacity(0.24), lineWidth: 1))
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 12,
+                        fill: PPOrderMissionColorRole.location.opacity(0.12),
+                        stroke: PPOrderMissionColorRole.location.opacity(0.24)
+                    )
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(PPOrderMissionText("order_courier_info_eyebrow"))
                         .font(PPOrderMissionTypography.caption(11.5))
-                        .tracking(layoutDirection == .rightToLeft ? 0 : 0.9)
+                        .tracking(store.isRightToLeft ? 0 : 0.9)
                         .foregroundStyle(Color.ppTextTertiary)
                     Text(PPOrderMissionText("order_courier_info_title"))
                         .font(PPOrderMissionTypography.headline())
@@ -484,9 +485,9 @@ struct PPOrderDetailsMissionControlScreen: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(Color.ppTextSecondary)
                     .frame(width: 36, height: 36)
-                    .background(
-                        Color.ppSecondarySurface,
-                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 10,
+                        fill: Color.ppSecondarySurface
                     )
                     .accessibilityHidden(true)
 
@@ -510,9 +511,9 @@ struct PPOrderDetailsMissionControlScreen: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(PPOrderMissionColorRole.primaryAction)
                     .frame(width: 32, height: 32)
-                    .background(
-                        PPOrderMissionColorRole.primaryAction.opacity(0.10),
-                        in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 9,
+                        fill: PPOrderMissionColorRole.primaryAction.opacity(0.10)
                     )
                     .accessibilityHidden(true)
             }
@@ -1034,13 +1035,10 @@ struct PPOrderMissionSection<Content: View>: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(accent)
                     .frame(width: 38, height: 38)
-                    .background(
-                        accent.opacity(0.18),
-                        in: RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .stroke(accent.opacity(0.32), lineWidth: 1)
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 11,
+                        fill: accent.opacity(0.18),
+                        stroke: accent.opacity(0.32)
                     )
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 1) {
@@ -1070,7 +1068,8 @@ struct PPOrderMissionTimelineRow: View {
         HStack(alignment: .top, spacing: PPSpace.md) {
             VStack(spacing: 0) {
                 ZStack {
-                    Circle().fill(accent.opacity(0.18))
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(accent.opacity(0.18))
                     Image(systemName: event.symbol)
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(accent)
@@ -1231,7 +1230,10 @@ struct PPOrderMissionInlineEmpty: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Color.ppTextTertiary)
                 .frame(width: 36, height: 36)
-                .background(Color.ppSecondarySurface, in: Circle())
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 10,
+                    fill: Color.ppSecondarySurface
+                )
                 .accessibilityHidden(true)
             Text(title)
                 .font(PPOrderMissionTypography.callout())
@@ -1331,8 +1333,11 @@ struct PPOrderMissionFulfillmentRow: View {
                 .foregroundStyle(color)
                 .environment(\.layoutDirection, .leftToRight)
                 .frame(width: 32, height: 32)
-                .background(color.opacity(0.18), in: Circle())
-                .overlay(Circle().stroke(color.opacity(0.3), lineWidth: 1))
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 9,
+                    fill: color.opacity(0.18),
+                    stroke: color.opacity(0.3)
+                )
             VStack(alignment: .leading, spacing: 2) {
                 Text(fulfillment.ownerTitle)
                     .font(PPOrderMissionTypography.callout())
@@ -1372,12 +1377,10 @@ private struct PPOrderMissionRequestPreview: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(supportColor)
                 .frame(width: 38, height: 38)
-                .background(supportColor.opacity(0.16), in: Circle())
-                .overlay(
-                    Circle().stroke(
-                        supportColor.opacity(0.30),
-                        lineWidth: 1
-                    )
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 11,
+                    fill: supportColor.opacity(0.16),
+                    stroke: supportColor.opacity(0.30)
                 )
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
@@ -1480,15 +1483,15 @@ private struct PPOrderMissionCommandOrbit: View {
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(accent)
                 .frame(width: 38, height: 38)
-                .background(
-                    LinearGradient(
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 11,
+                    fill: LinearGradient(
                         colors: [accent.opacity(0.24), accent.opacity(0.07)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    in: Circle()
+                    stroke: accent.opacity(0.32)
                 )
-                .overlay(Circle().stroke(accent.opacity(0.32), lineWidth: 1))
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 1) {
@@ -1624,7 +1627,10 @@ private struct PPOrderMissionCommandOrbit: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Color.ppTextTertiary)
                 .frame(width: 40, height: 40)
-                .background(Color.ppSurfaceOverlay, in: Circle())
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 12,
+                    fill: Color.ppSurfaceOverlay
+                )
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(PPOrderMissionText("order_mission_command_empty_title"))
@@ -1663,6 +1669,7 @@ private struct PPOrderMissionHeroCommand: View {
     let handle: (PPOrderMissionAction) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.colorScheme) private var colorScheme
 
@@ -1714,22 +1721,23 @@ private struct PPOrderMissionHeroCommand: View {
                         .font(PPOrderMissionTypography.headline(18))
                         .foregroundStyle(Color.ppTextPrimary)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     Text(action.v6Subtitle)
                         .font(PPOrderMissionTypography.caption(12))
                         .foregroundStyle(Color.ppTextSecondary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 }
 
                 Spacer(minLength: PPSpace.sm)
 
-                Image(systemName: "arrow.up.right")
+                Image(systemName: "arrow.up.forward")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(color)
                     .frame(width: 32, height: 32)
-                    .background(color.opacity(0.12), in: Circle())
-                    .overlay(
-                        Circle().stroke(color.opacity(0.22), lineWidth: 1)
+                    .ppOrderMissionSquircleSurface(
+                        cornerRadius: 9,
+                        fill: color.opacity(0.12),
+                        stroke: color.opacity(0.22)
                     )
                     .accessibilityHidden(true)
             }
@@ -1763,6 +1771,7 @@ private struct PPOrderMissionActionTile: View {
     let accent: Color
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
 
     private var actionColor: Color {
@@ -1803,14 +1812,14 @@ private struct PPOrderMissionActionTile: View {
                     .font(PPOrderMissionTypography.headline(14))
                     .foregroundStyle(Color.ppTextPrimary)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.85)
 
                 Text(action.v6Subtitle)
                     .font(PPOrderMissionTypography.caption(11))
                     .foregroundStyle(Color.ppTextSecondary)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.80)
             }
 
@@ -1847,9 +1856,10 @@ private struct PPOrderMissionLockedRow: View {
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(Color.ppTextTertiary)
                 .frame(width: 24, height: 24)
-                .background(Color.ppSurfaceElevated, in: Circle())
-                .overlay(
-                    Circle().stroke(Color.ppSurfaceBorder, lineWidth: 1)
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 7,
+                    fill: Color.ppSurfaceElevated,
+                    stroke: Color.ppSurfaceBorder
                 )
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
@@ -2095,38 +2105,9 @@ private struct PPOrderMissionDestinationCard: View {
     }
 
     private var deliveryLockedNotice: some View {
-        HStack(alignment: .top, spacing: PPSpace.sm) {
-            Image(systemName: "box.truck.badge.clock.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Color.ppWarning)
-                .frame(width: 32, height: 32)
-                .background(Color.ppWarning.opacity(0.14), in: Circle())
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(PPOrderMissionText("order_mission_address_locked_title"))
-                    .font(PPOrderMissionTypography.headline(14))
-                    .foregroundStyle(Color.ppTextPrimary)
-
-                Text(PPOrderMissionText("order_mission_address_locked_delivering_desc"))
-                    .font(PPOrderMissionTypography.caption(12.5))
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.horizontal, PPSpace.sm)
-        .padding(.vertical, PPSpace.xs + 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                .fill(Color.ppWarning.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
-                        .stroke(Color.ppWarning.opacity(0.20), lineWidth: 1)
-                )
+        PPOrderMissionDeliveryLockedNotice(
+            description: PPOrderMissionText("order_mission_address_locked_delivering_desc")
         )
-        .padding(.vertical, PPSpace.xxs)
-        .accessibilityElement(children: .combine)
     }
 
     private var recipientLayout: AnyLayout {
@@ -2254,5 +2235,67 @@ private struct PPOrderMissionMap: UIViewRepresentable {
             ),
             animated: false
         )
+    }
+}
+
+@available(iOS 17.0, *)
+extension View {
+    /// Applies a continuous semi-square surface with optional hairline border across Order Details.
+    func ppOrderMissionSquircleSurface<Fill: ShapeStyle>(
+        cornerRadius: CGFloat,
+        fill: Fill,
+        stroke: Color? = nil,
+        lineWidth: CGFloat = 1
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        return background(fill, in: shape)
+            .overlay {
+                if let stroke {
+                    shape.stroke(stroke, lineWidth: lineWidth)
+                }
+            }
+    }
+}
+
+@available(iOS 17.0, *)
+struct PPOrderMissionDeliveryLockedNotice: View {
+    let description: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: PPSpace.sm) {
+            Image(systemName: "box.truck.badge.clock.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.ppWarning)
+                .frame(width: 32, height: 32)
+                .ppOrderMissionSquircleSurface(
+                    cornerRadius: 9,
+                    fill: Color.ppWarning.opacity(0.14)
+                )
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(PPOrderMissionText("order_mission_address_locked_title"))
+                    .font(PPOrderMissionTypography.headline(14))
+                    .foregroundStyle(Color.ppTextPrimary)
+
+                Text(description)
+                    .font(PPOrderMissionTypography.caption(12.5))
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, PPSpace.xs + 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(Color.ppWarning.opacity(0.06))
+                .overlay(
+                    RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                        .stroke(Color.ppWarning.opacity(0.20), lineWidth: 1)
+                )
+        )
+        .padding(.vertical, PPSpace.xxs)
+        .accessibilityElement(children: .combine)
     }
 }
