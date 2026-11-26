@@ -486,7 +486,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     badge.textAlignment = NSTextAlignmentCenter;
     badge.font = [UIFont systemFontOfSize:10.5 weight:UIFontWeightBold];
     badge.textColor = UIColor.whiteColor;
-    badge.backgroundColor = UIColor.ppPrimary;
+    badge.backgroundColor = PPPetCareDarkAccentColor();
     badge.adjustsFontSizeToFitWidth = YES;
     badge.minimumScaleFactor = 0.82;
     badge.layer.cornerRadius = 9.0;
@@ -521,7 +521,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     }
     [self.navCartButton pp_resolveLayerColors];
     if (self.navCartBadgeLabel) {
-        self.navCartBadgeLabel.backgroundColor = UIColor.ppPrimary;
+        self.navCartBadgeLabel.backgroundColor = PPPetCareDarkAccentColor();
         [self.navCartBadgeLabel pp_setBorderColor:UIColor.ppBackground];
     }
     if (@available(iOS 15.0, *)) {

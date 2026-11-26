@@ -38,7 +38,6 @@ struct LensResultSheet: View {
 
     @State private var selectedCategory: LensDiscoveryCategory = .accessories
     @State private var guidanceSignalVisible = false
-    @State private var heroPulse = false
 
     var body: some View {
         ScrollView {
@@ -68,7 +67,7 @@ struct LensResultSheet: View {
             }
             .padding(.horizontal, LensResultMetrics.screenInset)
             .padding(.top, 14)
-            .padding(.bottom, 96) // Space for floating bottom dock
+            .padding(.bottom, 16) // The safe-area dock reserves its own space.
         }
         .lensScrollIndicatorsHidden()
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -108,11 +107,7 @@ struct LensResultSheet: View {
         .accessibilityAction(.escape, scanAgain)
         .onAppear {
             revealGuidanceSignal()
-            if !reduceMotion {
-                withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                    heroPulse = true
-                }
-            }
+
         }
     }
 
@@ -161,38 +156,12 @@ struct LensResultSheet: View {
             // Live Discovery Status Capsule
             discoveryStatusBar
         }
-        .padding(18)
-        .background(
-            store.theme.surfaceRaised,
-            in: RoundedRectangle(
-                cornerRadius: LensResultMetrics.heroCardRadius,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: LensResultMetrics.heroCardRadius,
-                style: .continuous
-            )
-            .stroke(
-                LinearGradient(
-                    colors: [
-                        store.theme.recognition.opacity(contrast == .increased ? 0.75 : 0.35),
-                        store.theme.brandStrong.opacity(contrast == .increased ? 0.45 : 0.12),
-                        Color.clear
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: contrast == .increased ? 1.5 : 1.2
-            )
+        .padding(.vertical, 12)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(store.theme.separator.opacity(separatorOpacity))
+                .frame(height: 1)
         }
-        .shadow(
-            color: Color.black.opacity(0.04),
-            radius: 12,
-            x: 0,
-            y: 4
-        )
         .accessibilityElement(children: .contain)
     }
 
@@ -200,12 +169,12 @@ struct LensResultSheet: View {
         ZStack {
             // Ambient soft glow backing
             Circle()
-                .fill(store.theme.recognition.opacity(heroPulse && !reduceMotion ? 0.22 : 0.12))
+                .fill(store.theme.recognition.opacity(0.12))
                 .frame(
                     width: LensResultMetrics.heroIconSize + 8,
                     height: LensResultMetrics.heroIconSize + 8
                 )
-                .scaleEffect(heroPulse && !reduceMotion ? 1.06 : 1.0)
+
 
             // Confidence progress arc
             if let confidence = store.animalContext?.confidence {
@@ -217,13 +186,9 @@ struct LensResultSheet: View {
                     )
 
                 Circle()
-                    .trim(from: 0, to: min(max(CGFloat(confidence), 0.15), 1.0))
+                    .trim(from: 0, to: min(max(CGFloat(confidence), 0), 1))
                     .stroke(
-                        LinearGradient(
-                            colors: [store.theme.recognition, store.theme.brandStrong],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
+                        store.theme.recognition,
                         style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
@@ -351,27 +316,12 @@ struct LensResultSheet: View {
                 HStack(alignment: .center, spacing: 12) {
                     ZStack {
                         Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        store.theme.brandSoft,
-                                        Color.purple.opacity(0.12)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
+                            .fill(store.theme.brandSoft)
                             .frame(width: 44, height: 44)
 
                         Image(systemName: "sparkles")
                             .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [store.theme.brandStrong, Color.purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
+                            .foregroundStyle(store.theme.brandStrong)
                             .scaleEffect(guidanceSignalVisible && !reduceMotion ? 1.08 : 0.96)
                     }
                     .accessibilityHidden(true)
@@ -790,20 +740,10 @@ struct LensResultSheet: View {
                 .foregroundStyle(Color.white)
                 .frame(maxWidth: .infinity, minHeight: LensResultMetrics.actionButtonHeight)
                 .background(
-                    LinearGradient(
-                        colors: [store.theme.brandStrong, store.theme.brandPressed],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    in: Capsule()
+                    store.theme.brandStrong,
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
-                .shadow(
-                    color: store.theme.brandStrong.opacity(contrast == .increased ? 0.55 : 0.38),
-                    radius: 12,
-                    x: 0,
-                    y: 5
-                )
-                .contentShape(Capsule())
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
             .buttonStyle(
                 LensSpringCardButtonStyle(reduceMotion: reduceMotion)

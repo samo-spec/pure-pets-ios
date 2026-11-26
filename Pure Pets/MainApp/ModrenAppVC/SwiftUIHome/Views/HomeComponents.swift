@@ -6471,7 +6471,12 @@ struct PureLensCardV2: View {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             action()
         } label: {
-            HomeLensCardLabel(title: title, purpose: purpose, openCamera: openCamera)
+            HomeLensCardLabel(
+                title: title,
+                purpose: purpose,
+                openCamera: openCamera,
+                motionReady: motionReady
+            )
         }
         .buttonStyle(HomeLensPressStyle())
         .onAppear { acknowledgeReadiness(motionReady) }
@@ -6496,6 +6501,7 @@ private struct HomeLensCardLabel: View {
     let title: String
     let purpose: String
     let openCamera: String
+    let motionReady: Bool
 
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.horizontalSizeClass) private var widthClass
@@ -6515,12 +6521,15 @@ private struct HomeLensCardLabel: View {
                     HStack(spacing: PPSpace.base) {
                         copy.frame(minWidth: minimumCopyWidth, idealWidth: minimumCopyWidth,
                                    maxWidth: .infinity, alignment: .leading)
-                        HomeLensRangefinder(diameter: widthClass == .regular ? 144 : 112)
+                        HomeLensRangefinder(
+                            diameter: widthClass == .regular ? 144 : 112,
+                            motionReady: motionReady
+                        )
                     }
                     VStack(alignment: .leading, spacing: PPSpace.xs) {
                         HStack(spacing: PPSpace.md) {
                             heading.frame(maxWidth: .infinity, alignment: .leading)
-                            HomeLensRangefinder(diameter: 56)
+                            HomeLensRangefinder(diameter: 56, motionReady: motionReady)
                         }
                         explanation
                         cameraCommand
@@ -6581,11 +6590,12 @@ private struct HomeLensCardLabel: View {
     }
 }
 
-/// A printed focus scale surrounds a still portrait. Only the two sight marks
-/// move on press; the subject and the optical scale keep their registration.
+/// A printed rangefinder focus scale surrounds a coaxial multi-coated 7-blade optical lens.
+/// Both the aperture diaphragm and sight marks respond synchronously to press focus-lock.
 @available(iOS 16.0, *)
 private struct HomeLensRangefinder: View {
     let diameter: CGFloat
+    let motionReady: Bool
 
     @Environment(\.homePureLensIsPressed) private var isPressed
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -6595,11 +6605,11 @@ private struct HomeLensRangefinder: View {
         ZStack {
             Circle().fill(Color.ppWarmPorcelain)
 
-            Image(decorative: "homeLensFalcon")
-                .resizable()
-                .scaledToFill()
-                .clipShape(Circle())
-                .padding(diameter * 0.085)
+            HomeLensAliveLens(
+                isPressed: isPressed,
+                motionReady: motionReady
+            )
+            .padding(diameter * 0.085)
 
             Circle()
                 .strokeBorder(Color.ppTextSecondary.opacity(contrast == .increased ? 0.7 : 0.24),
@@ -6625,17 +6635,406 @@ private struct HomeLensRangefinder: View {
 
             let marks = HomeLensFocusMarks()
             ZStack {
-                marks.stroke(.black.opacity(0.65), lineWidth: 3)
-                marks.stroke(.white, lineWidth: 1.25)
+                marks.stroke(Color.black.opacity(0.44), lineWidth: 2.6)
+                marks.stroke(.white, lineWidth: 1.35)
             }
             .frame(width: diameter * 0.58, height: diameter * 0.115)
             .scaleEffect(x: isPressed && !reduceMotion ? 0.88 : 1, y: 1)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: isPressed)
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.22, dampingFraction: 0.88),
+                value: isPressed
+            )
             .offset(y: -diameter * 0.16)
         }
         .frame(width: diameter, height: diameter)
         .accessibilityHidden(true)
         .allowsHitTesting(false)
+    }
+}
+
+@available(iOS 16.0, *)
+private struct HomeLensAliveLens: View {
+    let isPressed: Bool
+    let motionReady: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var isVisible = false
+    @State private var accumulatedBreathTime: TimeInterval = 0
+    @State private var activeWindowStart: Date?
+    @State private var focusLockProgress: CGFloat = 0
+
+    private var isAmbientPaused: Bool {
+        !(motionReady && isVisible && scenePhase == .active && !reduceMotion && !isPressed)
+    }
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: isAmbientPaused)) { timeline in
+            let breathTime: TimeInterval = {
+                guard !reduceMotion else { return 0 }
+                let liveDelta: TimeInterval
+                if !isAmbientPaused, let start = activeWindowStart {
+                    liveDelta = max(0, timeline.date.timeIntervalSince(start))
+                } else {
+                    liveDelta = 0
+                }
+                return accumulatedBreathTime + liveDelta
+            }()
+
+            HomeLensOpticalCanvas(
+                breathTime: breathTime,
+                focusLockProgress: focusLockProgress,
+                reduceMotion: reduceMotion,
+                reduceTransparency: reduceTransparency,
+                colorScheme: colorScheme,
+                contrast: contrast
+            )
+        }
+        .onAppear {
+            isVisible = true
+            focusLockProgress = isPressed ? 1 : 0
+            syncAmbientClock()
+        }
+        .onDisappear {
+            isVisible = false
+            syncAmbientClock()
+        }
+        .onChange(of: isAmbientPaused) { _ in
+            syncAmbientClock()
+        }
+        .onChange(of: isPressed) { pressed in
+            let target: CGFloat = pressed ? 1 : 0
+            if reduceMotion {
+                focusLockProgress = target
+            } else {
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.88)) {
+                    focusLockProgress = target
+                }
+            }
+        }
+    }
+
+    private func syncAmbientClock(now: Date = Date()) {
+        if isAmbientPaused {
+            if let start = activeWindowStart {
+                accumulatedBreathTime += max(0, now.timeIntervalSince(start))
+                activeWindowStart = nil
+            }
+        } else if activeWindowStart == nil {
+            activeWindowStart = now
+        }
+    }
+}
+
+@available(iOS 16.0, *)
+private struct HomeLensOpticalCanvas: View, Animatable {
+    let breathTime: TimeInterval
+    var focusLockProgress: CGFloat
+    let reduceMotion: Bool
+    let reduceTransparency: Bool
+    let colorScheme: ColorScheme
+    let contrast: ColorSchemeContrast
+
+    var animatableData: CGFloat {
+        get { focusLockProgress }
+        set { focusLockProgress = newValue }
+    }
+
+    var body: some View {
+        Canvas { context, size in
+            let side = min(size.width, size.height)
+            let radius = side / 2
+            guard radius > 4 else { return }
+
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let clampedLock = max(0, min(1, focusLockProgress))
+            let primaryBreath = sin(breathTime * (2 * .pi / 3.2))
+            let microHunt = 0.28 * sin(breathTime * (2 * .pi / 1.45) + 0.65)
+            let organicWave = reduceMotion ? 0 : (primaryBreath + microHunt) / 1.28
+            let breathAttenuated = organicWave * Double(1 - clampedLock)
+            let orbitAngle: CGFloat = reduceMotion ? 0 : CGFloat(breathTime * (2 * .pi / 6.4)) * (1 - clampedLock)
+            let pulseWave = reduceMotion ? 0.5 : (0.5 + 0.5 * sin(breathTime * (2 * .pi / 2.2)))
+
+            let isDark = colorScheme == .dark
+            let isHighContrast = contrast == .increased
+            let showFineVernier = side >= 72
+
+            // 1. Stepped satin platinum-titanium barrel (light mode) / gunmetal-titanium (dark mode)
+            let barrelRect = CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)
+            let barrelPath = Path(ellipseIn: barrelRect)
+            context.fill(
+                barrelPath,
+                with: .radialGradient(
+                    Gradient(colors: [
+                        isDark ? Color(red: 0.34, green: 0.34, blue: 0.39) : Color(red: 0.87, green: 0.86, blue: 0.88),
+                        isDark ? Color(red: 0.21, green: 0.21, blue: 0.26) : Color(red: 0.67, green: 0.66, blue: 0.71)
+                    ]),
+                    center: CGPoint(x: center.x - radius * 0.24, y: center.y - radius * 0.24),
+                    startRadius: radius * 0.12,
+                    endRadius: radius
+                )
+            )
+            context.stroke(
+                barrelPath,
+                with: .color(
+                    isDark
+                        ? Color.white.opacity(isHighContrast ? 0.68 : 0.34)
+                        : Color.ppTextSecondary.opacity(isHighContrast ? 0.68 : 0.32)
+                ),
+                lineWidth: isHighContrast ? 1.5 : 1.0
+            )
+
+            // 2. Coupled optical collar ticks & top Pure Pets crimson index
+            let collarOuter = radius * 0.94
+            let collarInner = radius * (showFineVernier ? 0.87 : 0.85)
+            let collarRotation = CGFloat(breathAttenuated) * (.pi / 22) - CGFloat(clampedLock) * (.pi / 13)
+            let tickCount = showFineVernier ? 24 : 12
+            for index in 0..<tickCount {
+                let angle = CGFloat(index) * (2 * .pi / CGFloat(tickCount)) - .pi / 2 + collarRotation
+                let isCardinal = index.isMultiple(of: showFineVernier ? 6 : 3)
+                let innerR = isCardinal ? collarInner - radius * 0.015 : collarInner
+                var tick = Path()
+                tick.move(to: CGPoint(x: center.x + cos(angle) * innerR, y: center.y + sin(angle) * innerR))
+                tick.addLine(to: CGPoint(x: center.x + cos(angle) * collarOuter, y: center.y + sin(angle) * collarOuter))
+                let defaultTickColor: Color = isDark
+                    ? Color.white.opacity(isCardinal ? (isHighContrast ? 0.72 : 0.44) : (isHighContrast ? 0.42 : 0.22))
+                    : Color.ppTextPrimary.opacity(isCardinal ? (isHighContrast ? 0.82 : 0.56) : (isHighContrast ? 0.52 : 0.28))
+                let tickColor: Color = index == 0 ? Color.ppPrimary : defaultTickColor
+                context.stroke(tick, with: .color(tickColor), lineWidth: index == 0 ? 1.8 : (isCardinal ? 1.1 : 0.75))
+            }
+
+            // Inner chamfer shoulder ring
+            let shoulderR = radius * 0.82
+            let shoulderRect = CGRect(x: center.x - shoulderR, y: center.y - shoulderR, width: shoulderR * 2, height: shoulderR * 2)
+            context.stroke(
+                Path(ellipseIn: shoulderRect),
+                with: .color(
+                    isDark
+                        ? Color.white.opacity(isHighContrast ? 0.32 : 0.16)
+                        : Color.white.opacity(isHighContrast ? 0.78 : 0.62)
+                ),
+                lineWidth: 0.9
+            )
+
+            // 3. Curved deep optical sapphire glass pupil & T* anti-reflective substrate
+            let boreR = radius * 0.76
+            let boreRect = CGRect(x: center.x - boreR, y: center.y - boreR, width: boreR * 2, height: boreR * 2)
+            let borePath = Path(ellipseIn: boreRect)
+            context.fill(
+                borePath,
+                with: .radialGradient(
+                    Gradient(colors: [
+                        isDark ? Color(red: 0.12, green: 0.16, blue: 0.26) : Color(red: 0.22, green: 0.30, blue: 0.46),
+                        isDark ? Color(red: 0.06, green: 0.08, blue: 0.14) : Color(red: 0.13, green: 0.18, blue: 0.30)
+                    ]),
+                    center: CGPoint(x: center.x - boreR * 0.14, y: center.y - boreR * 0.14),
+                    startRadius: boreR * 0.04,
+                    endRadius: boreR
+                )
+            )
+
+            context.drawLayer { boreContext in
+                boreContext.clip(to: borePath)
+
+                // Deep sapphire & crimson thin-film optical well tint gliding subtly across glass curvature
+                if !reduceTransparency {
+                    let coatAngle = orbitAngle - .pi * 0.75
+                    let coatCenter = CGPoint(
+                        x: center.x + cos(coatAngle) * boreR * 0.22,
+                        y: center.y + sin(coatAngle) * boreR * 0.22
+                    )
+                    boreContext.fill(
+                        borePath,
+                        with: .radialGradient(
+                            Gradient(colors: [
+                                Color.ppInfo.opacity(isDark ? 0.34 : 0.46),
+                                Color.ppPrimary.opacity(isDark ? 0.18 : 0.24),
+                                Color.clear
+                            ]),
+                            center: coatCenter,
+                            startRadius: boreR * 0.05,
+                            endRadius: boreR * 0.98
+                        )
+                    )
+                }
+
+                // 4. Seven overlapping beveled iris blades framing the live heptagonal aperture
+                let bladeCount = 7
+                let baseOpenRatio = 0.36 + 0.095 * CGFloat(breathAttenuated)
+                let lockedOpenRatio = 0.21
+                let openRatio = baseOpenRatio * (1 - clampedLock) + lockedOpenRatio * clampedLock
+                let apertureR = boreR * openRatio
+                let halfSectorCos: Double = cos(Double.pi / Double(bladeCount))
+                let vertexR = apertureR / CGFloat(halfSectorCos)
+                let apertureSpin = CGFloat(breathAttenuated) * 0.26 + clampedLock * 0.34
+                let stepAngle = 2 * .pi / CGFloat(bladeCount)
+
+                for i in 0..<bladeCount {
+                    let a0 = apertureSpin + CGFloat(i) * stepAngle
+                    let a1 = apertureSpin + CGFloat(i + 1) * stepAngle
+                    let p0 = CGPoint(x: center.x + cos(a0) * vertexR, y: center.y + sin(a0) * vertexR)
+                    let p1 = CGPoint(x: center.x + cos(a1) * vertexR, y: center.y + sin(a1) * vertexR)
+
+                    let dx = p1.x - p0.x
+                    let dy = p1.y - p0.y
+                    let edgeLength = max(0.001, hypot(dx, dy))
+                    let ux = dx / edgeLength
+                    let uy = dy / edgeLength
+                    let outerExtend = boreR * 1.18
+                    let tailPoint = CGPoint(x: p0.x + ux * outerExtend, y: p0.y + uy * outerExtend)
+                    let rootPoint = CGPoint(x: p0.x - ux * (boreR * 0.22), y: p0.y - uy * (boreR * 0.22))
+                    let outwardNormal = CGPoint(
+                        x: cos(a0 + stepAngle * 0.5) * boreR * 1.15,
+                        y: sin(a0 + stepAngle * 0.5) * boreR * 1.15
+                    )
+                    let outerCap = CGPoint(x: center.x + outwardNormal.x, y: center.y + outwardNormal.y)
+
+                    var blade = Path()
+                    blade.move(to: p0)
+                    blade.addLine(to: tailPoint)
+                    blade.addLine(to: outerCap)
+                    blade.addLine(to: rootPoint)
+                    blade.closeSubpath()
+
+                    let shadeDelta = Double(i % 2) * 0.032
+                    let bladeStart = isDark
+                        ? Color(red: 0.28 + shadeDelta, green: 0.30 + shadeDelta, blue: 0.36 + shadeDelta)
+                        : Color(red: 0.56 + shadeDelta, green: 0.59 + shadeDelta, blue: 0.67 + shadeDelta)
+                    let bladeEnd = isDark
+                        ? Color(red: 0.18 + shadeDelta * 0.5, green: 0.20 + shadeDelta * 0.5, blue: 0.25 + shadeDelta * 0.5)
+                        : Color(red: 0.36 + shadeDelta * 0.5, green: 0.40 + shadeDelta * 0.5, blue: 0.49 + shadeDelta * 0.5)
+                    boreContext.fill(
+                        blade,
+                        with: .linearGradient(
+                            Gradient(colors: [bladeStart, bladeEnd]),
+                            startPoint: p0,
+                            endPoint: outerCap
+                        )
+                    )
+
+                    // Overlapping blade bevel highlight
+                    var bevel = Path()
+                    bevel.move(to: p0)
+                    bevel.addLine(to: tailPoint)
+                    boreContext.stroke(
+                        bevel,
+                        with: .color(
+                            Color.white.opacity(
+                                isDark
+                                    ? (isHighContrast ? 0.56 : 0.28)
+                                    : (isHighContrast ? 0.72 : 0.48)
+                            )
+                        ),
+                        lineWidth: isHighContrast ? 1.15 : 0.8
+                    )
+                }
+
+                // 5. Living recognition core inside the open pupil (shifts toward PureLens emerald on focus lock)
+                let corePulseScale = 1.0 + 0.11 * CGFloat(pulseWave) * (1 - clampedLock)
+                let coreRingR = apertureR * 0.58 * corePulseScale
+                let coreRect = CGRect(
+                    x: center.x - coreRingR,
+                    y: center.y - coreRingR,
+                    width: coreRingR * 2,
+                    height: coreRingR * 2
+                )
+                let beaconOpacity = reduceTransparency
+                    ? (clampedLock > 0.35 ? 0.92 : 0.62)
+                    : (0.38 + 0.34 * pulseWave * Double(1 - clampedLock) + Double(clampedLock) * 0.52)
+                let beaconColor: Color = clampedLock > 0.35 ? Color.ppSuccess : Color.ppInfo
+                boreContext.stroke(
+                    Path(ellipseIn: coreRect),
+                    with: .color(beaconColor.opacity(beaconOpacity)),
+                    lineWidth: isHighContrast ? 1.5 : 1.15
+                )
+
+                if !reduceMotion {
+                    var opticalSweep = Path()
+                    opticalSweep.addArc(
+                        center: center,
+                        radius: coreRingR * 1.24,
+                        startAngle: Angle(radians: Double(orbitAngle) - 0.55),
+                        endAngle: Angle(radians: Double(orbitAngle) + 0.68),
+                        clockwise: false
+                    )
+                    boreContext.stroke(
+                        opticalSweep,
+                        with: .color(beaconColor.opacity(0.42 + 0.45 * Double(clampedLock))),
+                        style: StrokeStyle(lineWidth: max(1.1, boreR * 0.04), lineCap: .round)
+                    )
+                }
+
+                let centerDotR = max(1.6, boreR * (0.044 + 0.016 * CGFloat(pulseWave) * (1 - clampedLock) + 0.025 * clampedLock))
+                boreContext.fill(
+                    Path(ellipseIn: CGRect(
+                        x: center.x - centerDotR,
+                        y: center.y - centerDotR,
+                        width: centerDotR * 2,
+                        height: centerDotR * 2
+                    )),
+                    with: .color((clampedLock > 0.35 ? Color.ppSuccess : Color.ppPrimary).opacity(0.70 + 0.25 * pulseWave * Double(1 - clampedLock) + 0.30 * Double(clampedLock)))
+                )
+
+                // 6. Curved T* multi-coating glass meniscus catchlight
+                let glintAngle = CGFloat(breathAttenuated) * 0.26 - .pi * 0.72 + sin(orbitAngle) * 0.14
+                let arcR = boreR * 0.80
+                var topMeniscus = Path()
+                topMeniscus.addArc(
+                    center: center,
+                    radius: arcR,
+                    startAngle: Angle(radians: Double(glintAngle - 0.55)),
+                    endAngle: Angle(radians: Double(glintAngle + 0.42)),
+                    clockwise: false
+                )
+                if reduceTransparency {
+                    boreContext.stroke(
+                        topMeniscus,
+                        with: .color(Color.ppInfo),
+                        style: StrokeStyle(lineWidth: max(1.5, boreR * 0.075), lineCap: .round)
+                    )
+                } else {
+                    boreContext.stroke(
+                        topMeniscus,
+                        with: .linearGradient(
+                            Gradient(colors: [
+                                Color.white.opacity(isDark ? 0.68 : 0.86),
+                                Color.ppInfo.opacity(isDark ? 0.45 : 0.55),
+                                Color.clear
+                            ]),
+                            startPoint: CGPoint(x: center.x - boreR * 0.65, y: center.y - boreR * 0.65),
+                            endPoint: CGPoint(x: center.x + boreR * 0.35, y: center.y - boreR * 0.15)
+                        ),
+                        style: StrokeStyle(lineWidth: max(2.0, boreR * 0.11), lineCap: .round)
+                    )
+                }
+
+                // Subtle crimson counter-glint on opposite glass curvature
+                var counterArc = Path()
+                counterArc.addArc(
+                    center: center,
+                    radius: boreR * 0.66,
+                    startAngle: Angle(radians: Double(glintAngle + .pi - 0.38)),
+                    endAngle: Angle(radians: Double(glintAngle + .pi + 0.38)),
+                    clockwise: false
+                )
+                boreContext.stroke(
+                    counterArc,
+                    with: .color(Color.ppPrimary.opacity(reduceTransparency ? 0.75 : (isDark ? 0.40 : 0.48))),
+                    style: StrokeStyle(lineWidth: max(1.2, boreR * 0.055), lineCap: .round)
+                )
+            }
+
+            // Crisp bore inner lip ring
+            context.stroke(
+                borePath,
+                with: .color(isDark ? Color.black.opacity(0.55) : Color.ppTextPrimary.opacity(0.28)),
+                lineWidth: 1.15
+            )
+        }
     }
 }
 

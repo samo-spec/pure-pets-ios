@@ -411,75 +411,66 @@ private struct PPPetFolioRecord: View {
     }
 
     private var portraitSize: CGFloat {
-        usesSpread ? 260 : (stacksIdentity ? 144 : min(196, max(120, availableWidth * 0.36)))
+        usesSpread ? 220 : (stacksIdentity ? 112 : 100)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            HStack(alignment: .center, spacing: 12) {
+        VStack(alignment: .leading, spacing: 20) {
+            if usesSpread {
+                HStack(alignment: .top, spacing: 28) {
+                    identitySurface.frame(width: 300, alignment: .leading)
+                    careSurface.frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                identitySurface
+                careSurface
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var identitySurface: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
                 if pet.isDefaultPet {
                     PPPetFolioDefaultMark()
                 } else {
                     Text(PPPetLang("pet_folio_profile"))
-                        .font(PPPetProfileFont.medium())
+                        .font(PPPetProfileFont.caption())
                         .foregroundStyle(Color.ppTextSecondary)
                 }
                 Spacer(minLength: 0)
                 PPPetFolioMenu(pet: pet, onEdit: onEdit, onMakeDefault: onMakeDefault, onDelete: onDelete)
             }
-
-            if usesSpread {
-                HStack(alignment: .top, spacing: 40) {
-                    VStack(alignment: .leading, spacing: 24) {
-                        portrait
-                        identity
-                    }
-                    .frame(width: 300, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 28) {
-                        vaccinationRecord
-                        editButton
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 8)
+            if stacksIdentity || usesSpread {
+                VStack(alignment: .leading, spacing: 12) {
+                    portrait
+                    identity
                 }
             } else {
-                compactRecord
+                HStack(alignment: .center, spacing: 16) {
+                    portrait
+                    identity
+                }
             }
+            editButton
         }
-        .padding(availableWidth < 360 ? 20 : 24)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .background(Color.ppSurface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder,
                               lineWidth: contrast == .increased ? 1.5 : 0.75)
                 .allowsHitTesting(false)
         }
-        .accessibilityElement(children: .contain)
     }
 
-    private var compactRecord: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            if stacksIdentity {
-                VStack(alignment: .leading, spacing: 20) {
-                    portrait
-                    identity
-                }
-            } else {
-                HStack(alignment: .center, spacing: 20) {
-                    portrait
-                    identity
-                }
-            }
-
-            Rectangle()
-                .fill(contrast == .increased ? Color.ppTextSecondary : Color.ppSurfaceBorder)
-                .frame(height: 1)
-                .accessibilityHidden(true)
-
-            vaccinationRecord
-            editButton
-        }
+    private var careSurface: some View {
+        vaccinationRecord
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var editButton: some View {
@@ -492,11 +483,11 @@ private struct PPPetFolioRecord: View {
                     .accessibilityHidden(true)
             }
             .font(PPPetProfileFont.headline())
-            .foregroundStyle(Color.ppTextPrimary)
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
-            .frame(minHeight: 54)
-            .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .foregroundStyle(Color.ppAccentText)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(minHeight: 48)
+            .background(Color.ppSoftRose, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(PPPetProfilePressStyle())
@@ -520,7 +511,7 @@ private struct PPPetFolioRecord: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
                 identityField(PPPetLang("pet_folio_breed"), value: pet.ppDisplayBreed)
                 identityField(PPPetLang("pet_folio_age"), value: pet.displayAgeText())
             }
@@ -622,7 +613,7 @@ private struct PPPetFolioSelector: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
-                PPPetFolioPortrait(image: image, size: 52)
+                PPPetFolioPortrait(image: image, size: 40)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(pet.ppDisplayName)
                         .font(PPPetProfileFont.headline())
@@ -643,7 +634,9 @@ private struct PPPetFolioSelector: View {
                         .accessibilityHidden(true)
                 }
             }
-            .padding(12)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(minHeight: 56)
             .frame(maxWidth: isVertical ? .infinity : nil, alignment: .leading)
             .background(isSelected ? Color.ppSurface : Color.clear,
                         in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -981,7 +974,7 @@ struct PPPetProfilesListScreen: View {
             VStack(spacing: 0) {
                 navigation
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 18) {
                         introduction
                         if store.isLoading && store.pets.isEmpty {
                             PPPetFolioState(isLoading: true, onAction: requestRefresh)
@@ -1146,7 +1139,7 @@ struct PPPetProfilesListScreen: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: 10) {
                         ForEach(store.pets, id: \.ppStableIdentifier) { pet in
-                            selector(for: pet, vertical: false).frame(width: 208)
+                            selector(for: pet, vertical: false)
                         }
                     }
                     .padding(.vertical, 2)

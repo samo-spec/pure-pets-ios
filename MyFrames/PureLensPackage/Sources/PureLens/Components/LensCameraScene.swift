@@ -47,7 +47,15 @@ struct LensCameraScene: View {
 
                 if showsFooter {
                     cameraCaption
-                        .padding(16)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background {
+                            if store.animalContext != nil {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(store.theme.cameraChrome.opacity(reduceTransparency ? 1 : 0.84))
+                            }
+                        }
+                        .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background {
                             GeometryReader { caption in
@@ -171,8 +179,8 @@ private struct LensDetectionReticle: View {
     let differentiateWithoutColor: Bool
 
     var body: some View {
-        ZStack {
-            LensCornerBrackets(cornerLength: min(36, rect.width * 0.16), cornerRadius: 20)
+        ZStack(alignment: .topTrailing) {
+            LensCornerBrackets(cornerLength: min(30, rect.width * 0.14), cornerRadius: 14)
                 .stroke(
                     accent,
                     style: StrokeStyle(
@@ -185,8 +193,8 @@ private struct LensDetectionReticle: View {
 
 
             if phase == .candidateFound || phase == .confirming {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .trim(from: 0, to: max(0.08, min(progress, 1)))
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .trim(from: 0, to: max(0, min(progress, 1)))
                     .stroke(
                         theme.recognition,
                         style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
@@ -210,10 +218,11 @@ private struct LensDetectionReticle: View {
                 Image(systemName: "checkmark")
                     .font(.system(size: 21, weight: .black))
                     .foregroundStyle(theme.cameraChrome)
-                    .frame(width: 42, height: 42)
+                    .frame(width: 34, height: 34)
                     .background(theme.recognition, in: Circle())
                     .overlay { Circle().stroke(Color.white.opacity(0.52), lineWidth: 1) }
-                    .transition(.scale.combined(with: .opacity))
+                    .padding(8)
+                    .transition(.opacity)
             }
 
             if !isInterrupted, phase == .unsupported || phase == .uncertain
@@ -221,10 +230,11 @@ private struct LensDetectionReticle: View {
                 Image(systemName: terminalSymbol)
                     .font(.system(size: 20, weight: .black))
                     .foregroundStyle(theme.cameraChrome)
-                    .frame(width: 42, height: 42)
+                    .frame(width: 34, height: 34)
                     .background(accent, in: Circle())
                     .overlay { Circle().stroke(Color.white.opacity(0.52), lineWidth: 1) }
-                    .transition(.scale.combined(with: .opacity))
+                    .padding(8)
+                    .transition(.opacity)
             }
 
             if isInterrupted {

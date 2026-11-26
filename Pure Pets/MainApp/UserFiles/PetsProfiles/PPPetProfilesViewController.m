@@ -14,6 +14,7 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "PPMarketplaceHeroCardStyle.h"
+#import "PPPetAdViewerLegacyBridge.h"
 #import <Pure_Pets-Swift.h>
 
 static CGFloat const PPPetProfilesMaximumContentWidth = 760.0;
@@ -1049,6 +1050,14 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
+    if (self.swiftUIHost) {
+        CGFloat clearance = [PPPetAdViewerLegacyBridge bottomNavigationClearanceFromViewController:self];
+        UIEdgeInsets insets = self.additionalSafeAreaInsets;
+        if (fabs(insets.bottom - clearance) > 0.5) {
+            insets.bottom = clearance;
+            self.additionalSafeAreaInsets = insets;
+        }
+    }
     self.backgroundGradientLayer.frame = self.view.bounds;
     [self pp_updateHeaderLayout];
     [self pp_layoutHeroMaterial];
@@ -1136,7 +1145,6 @@ typedef NS_ENUM(NSInteger, PPPetProfilesStateKind) {
 
     for (PPPetProfile *pet in self.pets) {
         NSString *key = [self pp_swiftImageKeyForPet:pet];
-        self.swiftUIImageMap[key] = [PPModernAvatarRenderer avatarImageForName:(pet.name ?: @"") size:96.0];
 
         NSString *requestedURL = pet.imageURL ?: @"";
         if (requestedURL.length == 0) continue;

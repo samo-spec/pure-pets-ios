@@ -19,15 +19,15 @@
 #import "Language.h"
 #import "GM.h"
 #import "PPImageLoaderManager.h"
+#import "PPPetAdViewerLegacyBridge.h"
 #import <Pure_Pets-Swift.h>
 @import PhotosUI;
+@import FirebaseAuth;
+#import <ImageIO/ImageIO.h>
 
 static NSString * _Nullable PPEditorCurrentUID(void) {
-    NSString *uid = [UserManager sharedManager].currentUser.ID;
-    if (uid.length > 0) return uid;
-    // resolvedUID includes [FIRAuth auth].currentUser.uid fallback,
-    // covering cold-start / background-restore where currentUser is not yet loaded.
-    return [PPPetProfileManager sharedManager].resolvedUID;
+    // Storage and Firestore both authorize the active Firebase identity.
+    return [FIRAuth auth].currentUser.uid;
 }
 
 static BOOL PPEditorMatchesOwner(NSString *ownerUID) {
@@ -439,7 +439,15 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    if (self.swiftUIHost) return;
+    if (self.swiftUIHost) {
+        CGFloat clearance = [PPPetAdViewerLegacyBridge bottomNavigationClearanceFromViewController:self];
+        UIEdgeInsets insets = self.additionalSafeAreaInsets;
+        if (fabs(insets.bottom - clearance) > 0.5) {
+            insets.bottom = clearance;
+            self.additionalSafeAreaInsets = insets;
+        }
+        return;
+    }
     [self pp_applyCanvasBackground];
     self.backgroundGlowViewTop.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewTop.bounds) * 0.5;
     self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
@@ -797,12 +805,13 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     NSUInteger requestID = ++self.photoRequestID;
     [self pp_updateSwiftUIEditorHost];
     __weak typeof(self) ws = self;
-    self.photoLoadProgress = [result.itemProvider loadObjectOfClass:UIImage.class completionHandler:^(UIImage *image, NSError *error) {
+    void (^finish)(UIImage *, NSError *) = ^(UIImage *image, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(ws) self = ws;
             if (!self || requestID != self.photoRequestID) return;
             self.isLoadingPhoto = NO;
             self.photoLoadProgress = nil;
+            if (!PPEditorMatchesOwner(self.ownerUID)) { [self pp_rejectChangedOwner]; return; }
             if (error || ![image isKindOfClass:UIImage.class]) {
                 [self pp_updateSwiftUIEditorHost];
                 [PPHUD showError:kLang(@"pet_editor_photo_error_title") subtitle:kLang(@"pet_editor_photo_load_error")];
@@ -816,7 +825,44 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
                 [self pp_refreshHeroHeader];
             }
         });
-    }];
+    };
+    NSItemProvider *provider = result.itemProvider;
+    if ([provider hasItemConformingToTypeIdentifier:@"public.image"]) {
+        self.photoLoadProgress = [provider loadDataRepresentationForTypeIdentifier:@"public.image" completionHandler:^(NSData *data, NSError *error) {
+            UIImage *image = nil;
+            if (data.length) {
+                CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
+                if (source) {
+                    NSDictionary *options = @{
+                        (__bridge NSString *)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+                        (__bridge NSString *)kCGImageSourceCreateThumbnailWithTransform: @YES,
+                        (__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize: @1600
+                    };
+                    CGImageRef thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+                    if (thumbnail) {
+                        image = [UIImage imageWithCGImage:thumbnail];
+                        CGImageRelease(thumbnail);
+                    }
+                    CFRelease(source);
+                }
+            }
+            if (image) { finish(image, nil); return; }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(ws) self = ws;
+                if (!self || requestID != self.photoRequestID) return;
+                if (![provider canLoadObjectOfClass:UIImage.class]) { finish(nil, error); return; }
+                self.photoLoadProgress = [provider loadObjectOfClass:UIImage.class completionHandler:^(UIImage *fallback, NSError *fallbackError) {
+                    finish(fallback, fallbackError);
+                }];
+            });
+        }];
+    } else if ([provider canLoadObjectOfClass:UIImage.class]) {
+        self.photoLoadProgress = [provider loadObjectOfClass:UIImage.class completionHandler:^(UIImage *image, NSError *error) {
+            finish(image, error);
+        }];
+    } else {
+        finish(nil, nil);
+    }
 }
 
 #pragma mark - UITableViewDataSource
@@ -1214,7 +1260,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(ws) self = ws;
                 if (error || imageURL.length == 0) {
-                    NSLog(@"[PetProfileEditor] ❌ uploadPetImage failed for petID=%@ error=%@", petID, error);
+                    NSLog(@"[PetProfileEditor] Pet image upload failed (code=%ld)", (long)error.code);
                     self.isSaving = NO;
                     self.swiftUISaveSucceeded = NO;
                     [self pp_updateSwiftUIEditorHost];

@@ -92,18 +92,21 @@ public struct PureLensView: View {
                     HStack(alignment: .top, spacing: 20) {
                         cameraViewport
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        instructionPanel(maximumHeight: proxy.size.height, isSidePanel: true)
+                        VStack(spacing: 12) {
+                            phaseRail
+                            instructionPanel(maximumHeight: max(0, proxy.size.height - 52), isSidePanel: true)
+                        }
                             .frame(width: min(380, proxy.size.width * 0.40))
                     }
                 } else {
                     VStack(spacing: 12) {
                         cameraViewport
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        if !dynamicTypeSize.isAccessibilitySize && proxy.size.height >= 320 {
+                            phaseRail
+                        }
                         instructionPanel(
-                            maximumHeight: min(
-                                proxy.size.height * (dynamicTypeSize.isAccessibilitySize ? 0.68 : 0.48),
-                                dynamicTypeSize.isAccessibilitySize ? proxy.size.height : 280
-                            ),
+                            maximumHeight: promptBudget(in: proxy.size.height),
                             fillsAvailableHeight: true
                         )
                     }
@@ -116,49 +119,60 @@ public struct PureLensView: View {
         .background(store.theme.cameraChrome.ignoresSafeArea())
     }
 
+    // Keep the camera geometry independent of the semantic phase rail.
+    // The physical camera is never mirrored; only its localized chrome is.
     private var cameraViewport: some View {
-        GeometryReader { proxy in
-            VStack(spacing: 0) {
-                // The semantic rail lives outside the physical camera coordinate
-                // space. Labels mirror in Arabic; the camera image never does.
-                if proxy.size.height >= 200, !dynamicTypeSize.isAccessibilitySize {
-                    LensPhaseRail(
-                        phase: store.scanPhase,
-                        isPaused: store.isCameraInterrupted
-                            || store.didDeclineRemoteProcessingForCurrentDetection,
-                        theme: store.theme,
-                        labels: [
-                            store.localized("lens.stage.camera"),
-                            store.localized("lens.stage.recognition"),
-                            store.localized("lens.stage.discovery")
-                        ],
-                        accessibilityLabel: store.localized("lens.phase.accessibility"),
-                        pausedLabel: store.localized("lens.stage.paused"),
-                        increasedContrast: colorSchemeContrast == .increased
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(store.theme.cameraChrome)
-                }
-
-                LensCameraScene(
-                    store: store,
-                    reduceMotion: reduceMotion,
-                    reduceTransparency: reduceTransparency,
-                    differentiateWithoutColor: differentiateWithoutColor
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        LensCameraScene(
+            store: store,
+            reduceMotion: reduceMotion,
+            reduceTransparency: reduceTransparency,
+            differentiateWithoutColor: differentiateWithoutColor
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(
                     store.theme.textOnCamera.opacity(colorSchemeContrast == .increased ? 0.42 : 0.16),
                     lineWidth: 1
                 )
                 .allowsHitTesting(false)
         }
+    }
+
+    private var phaseRail: some View {
+        LensPhaseRail(
+            phase: store.scanPhase,
+            isPaused: store.isCameraInterrupted
+                || store.didDeclineRemoteProcessingForCurrentDetection,
+            theme: store.theme,
+            labels: [
+                store.localized("lens.stage.camera"),
+                store.localized("lens.stage.recognition"),
+                store.localized("lens.stage.discovery")
+            ],
+            accessibilityLabel: store.localized("lens.phase.accessibility"),
+            pausedLabel: store.localized("lens.stage.paused"),
+            increasedContrast: colorSchemeContrast == .increased
+        )
+        .padding(.horizontal, 4)
+    }
+
+    private func promptBudget(in height: CGFloat) -> CGFloat {
+        if dynamicTypeSize.isAccessibilitySize {
+            return max(0, height * 0.68)
+        }
+        // Reserve a constant height throughout live acquisition. Expand only
+        // for recoverable states with choices or actions, never per video frame.
+        let needsRecovery: Bool
+        switch store.scanPhase {
+        case .unsupported, .uncertain, .notAnimal, .taxonomyUnavailable, .validationFailed:
+            needsRecovery = true
+        default:
+            needsRecovery = store.didDeclineRemoteProcessingForCurrentDetection
+                || store.isCameraInterrupted
+        }
+        return max(0, min(height * (needsRecovery ? 0.48 : 0.33), needsRecovery ? 300 : 208))
     }
 
     private func instructionPanel(
@@ -260,7 +274,7 @@ private struct LensPhaseRail: View {
     var body: some View {
         HStack(spacing: 12) {
             ForEach(0..<3) { index in
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
                         Image(systemName: symbol(for: index))
                             .font(.system(size: 11, weight: .semibold))
@@ -274,8 +288,7 @@ private struct LensPhaseRail: View {
                     )
                     Capsule()
                         .fill(index <= currentStage ? accent : theme.textOnCamera.opacity(0.16))
-                        .frame(height: index == currentStage ? 3 : 1)
-                        .frame(height: 3)
+                        .frame(height: 2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

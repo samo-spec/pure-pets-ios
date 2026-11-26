@@ -85,6 +85,22 @@ private enum PPVetCardStyle {
     static func providerLabel(_ key: String, _ profile: PPVetViewerSnapshot) -> String {
         String(format: copy(key), profile.title)
     }
+
+    /// Deeper Pet Care teal matching `PPPetCareDarkAccentTextColor()` in `PetCareHelpers.h`.
+    static var careDarkAccent: Color {
+        Color(uiColor: UIColor { traitCollection in
+            let dark = traitCollection.userInterfaceStyle == .dark
+            let highContrast = traitCollection.accessibilityContrast == .high
+            if dark {
+                return highContrast
+                    ? UIColor(red: 122.0 / 255.0, green: 192.0 / 255.0, blue: 198.0 / 255.0, alpha: 1.0)
+                    : UIColor(red: 92.0 / 255.0, green: 165.0 / 255.0, blue: 173.0 / 255.0, alpha: 1.0)
+            }
+            return highContrast
+                ? UIColor(red: 24.0 / 255.0, green: 68.0 / 255.0, blue: 75.0 / 255.0, alpha: 1.0)
+                : UIColor(red: 31.0 / 255.0, green: 86.0 / 255.0, blue: 94.0 / 255.0, alpha: 1.0)
+        })
+    }
 }
 
 // Apply Bold Text through Font, which supports the iOS 15 deployment target.
@@ -305,7 +321,7 @@ private struct PPVetCardRole: View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
             Label(PPVetCardStyle.copy(profile.isCompany ? "vet_detail_clinic" : "vet_detail_doctor"),
                   systemImage: profile.isCompany ? "building.2" : "stethoscope")
-                .foregroundStyle(Color.ppAccentText)
+                .foregroundStyle(PPVetCardStyle.careDarkAccent)
             if profile.isVerified {
                 Label(PPVetCardStyle.copy("vet_detail_profile_verified"), systemImage: "checkmark.seal")
                     .foregroundStyle(Color.ppTextSecondary)
@@ -480,7 +496,7 @@ private struct PPVetCardActions: View {
                 .padding(.horizontal, PPSpace.base)
                 .padding(.vertical, PPSpace.sm)
                 .frame(minHeight: 48)
-                .foregroundStyle(Color.ppAccentText)
+                .foregroundStyle(PPVetCardStyle.careDarkAccent)
                 .background(Color.ppSecondarySurface, in: RoundedRectangle(cornerRadius: PPCorner.small))
                 .contentShape(RoundedRectangle(cornerRadius: PPCorner.small))
             }

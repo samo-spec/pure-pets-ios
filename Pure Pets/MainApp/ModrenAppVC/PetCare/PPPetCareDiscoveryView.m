@@ -113,7 +113,7 @@ static UIButton *PPCareButton(NSString *identifier)
     _careMark.translatesAutoresizingMaskIntoConstraints = NO;
     _careMark.contentMode = UIViewContentModeScaleAspectFit;
     _careMark.isAccessibilityElement = NO;
-    _careMark.tintColor = PPPetCareBrandPrimaryColor();
+    _careMark.tintColor = PPPetCareDarkAccentColor();
     [_careContainer addSubview:_careMark];
 
     _careLottieView = [[LOTAnimationView alloc] initWithFrame:CGRectMake(0, 0, 124.0, 62.0)];
@@ -357,12 +357,12 @@ static UIButton *PPCareButton(NSString *identifier)
         if (label == _title || label == _stateTitle) {
             label.textColor = PPPetCareTextColor();
         } else if (label == _retainedLabel) {
-            label.textColor = PPPetCareBrandAccentTextColor();
+            label.textColor = PPPetCareDarkAccentTextColor();
         } else {
             label.textColor = PPPetCareSecondaryTextColor();
         }
     }
-    _careMark.tintColor = PPPetCareBrandPrimaryColor();
+    _careMark.tintColor = PPPetCareDarkAccentColor();
     _stateIcon.tintColor = (state == PPPetCareDiscoveryStateError)
         ? PPPetCareDynamicHex(255.0, 59.0, 48.0, 1.0, 255.0, 69.0, 58.0, 1.0)
         : PPPetCareAccentColor();
@@ -483,7 +483,7 @@ static UIButton *PPCareButton(NSString *identifier)
     [self styleButton:_primaryButton title:kLang(actionKey) symbol:state == PPPetCareDiscoveryStateNoMatches ? @"line.3.horizontal.decrease" : @"arrow.clockwise" selected:YES filled:YES];
     UIButtonConfiguration *primaryConfig = _primaryButton.configuration;
     primaryConfig.baseForegroundColor = UIColor.whiteColor;
-    primaryConfig.background.backgroundColor = PPPetCareBrandPrimaryColor();
+    primaryConfig.background.backgroundColor = PPPetCareDarkAccentColor();
     primaryConfig.background.cornerRadius = PPCornerSmall;
     _primaryButton.configuration = primaryConfig;
 
@@ -595,13 +595,13 @@ static NSDictionary *PPPetCareRetintedECGJSON(NSDictionary *rawJSON, UITraitColl
     NSArray<NSNumber *> *baselineColor = dark
         ? @[@0.9622, @0.9252, @0.9178, @1.0]
         : PPPetCareLottieRGBA([PPPetCareSecondaryTextColor() colorWithAlphaComponent:0.42], traits);
-    NSArray<NSNumber *> *pulseColor = PPPetCareLottieRGBA(PPPetCareBrandAccentTextColor(), traits);
+    NSArray<NSNumber *> *pulseColor = PPPetCareLottieRGBA(PPPetCareDarkAccentTextColor(), traits);
     NSArray<NSNumber *> *dotColor = dark
         ? PPPetCareLottieRGBA(PPPetCareTextColor(), traits)
-        : PPPetCareLottieRGBA(PPPetCareBrandPrimaryColor(), traits);
+        : PPPetCareLottieRGBA(PPPetCareDarkAccentColor(), traits);
     NSArray<NSNumber *> *blurStrokeColor = dark
-        ? @[@0.2327, @0.0273, @0.0718, @1.0]
-        : PPPetCareLottieRGBA([PPPetCareBrandPrimaryColor() colorWithAlphaComponent:0.25], traits);
+        ? @[@0.0706, @0.2000, @0.2196, @1.0]
+        : PPPetCareLottieRGBA([PPPetCareDarkAccentColor() colorWithAlphaComponent:0.25], traits);
 
     NSArray *layers = [mutableJSON[@"layers"] isKindOfClass:NSArray.class] ? mutableJSON[@"layers"] : nil;
     for (id layerObj in layers) {

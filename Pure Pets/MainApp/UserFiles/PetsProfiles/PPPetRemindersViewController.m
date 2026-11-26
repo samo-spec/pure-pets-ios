@@ -127,6 +127,7 @@ static NSLayoutConstraint * PPRemPreferredCardWidth(UIView *card, UIView *contai
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         PPPetsApplySurfaceStyle(self.cardContainer, PPCornerCard);
+        self.cardContainer.layer.shadowOpacity = 0;
     }
 }
 
@@ -180,6 +181,7 @@ static NSLayoutConstraint * PPRemPreferredCardWidth(UIView *card, UIView *contai
     _cardContainer = [UIView new];
     _cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
     PPPetsApplySurfaceStyle(_cardContainer, PPCornerCard);
+    _cardContainer.layer.shadowOpacity = 0;
     [self.contentView addSubview:_cardContainer];
 
     _typeMarker = [UIView new];
@@ -401,6 +403,7 @@ static NSLayoutConstraint * PPRemPreferredCardWidth(UIView *card, UIView *contai
     }
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         PPPetsApplySurfaceStyle(self.cardContainer, PPCornerCard);
+        self.cardContainer.layer.shadowOpacity = 0;
     }
 }
 
@@ -448,6 +451,7 @@ static NSLayoutConstraint * PPRemPreferredCardWidth(UIView *card, UIView *contai
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.accentColor = accentColor ?: AppPrimaryClr;
     PPPetsApplySurfaceStyle(self, PPCornerMedium);
+    self.layer.shadowOpacity = 0;
 
     _iconWell = [UIView new];
     _iconWell.translatesAutoresizingMaskIntoConstraints = NO;
@@ -480,26 +484,26 @@ static NSLayoutConstraint * PPRemPreferredCardWidth(UIView *card, UIView *contai
     [self addSubview:_captionLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heightAnchor constraintGreaterThanOrEqualToConstant:72.0],
+        [self.heightAnchor constraintGreaterThanOrEqualToConstant:64.0],
 
-        [_iconWell.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPSpaceMD],
+        [_iconWell.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPSpaceSM],
         [_iconWell.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [_iconWell.widthAnchor constraintEqualToConstant:38.0],
-        [_iconWell.heightAnchor constraintEqualToConstant:38.0],
+        [_iconWell.widthAnchor constraintEqualToConstant:32.0],
+        [_iconWell.heightAnchor constraintEqualToConstant:32.0],
 
         [_iconView.centerXAnchor constraintEqualToAnchor:_iconWell.centerXAnchor],
         [_iconView.centerYAnchor constraintEqualToAnchor:_iconWell.centerYAnchor],
         [_iconView.widthAnchor constraintEqualToConstant:19.0],
         [_iconView.heightAnchor constraintEqualToConstant:19.0],
 
-        [_valueLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:PPSpaceMD],
-        [_valueLabel.leadingAnchor constraintEqualToAnchor:_iconWell.trailingAnchor constant:PPSpaceMD],
-        [_valueLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPSpaceMD],
+        [_valueLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:PPSpaceSM],
+        [_valueLabel.leadingAnchor constraintEqualToAnchor:_iconWell.trailingAnchor constant:PPSpaceSM],
+        [_valueLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPSpaceSM],
 
         [_captionLabel.topAnchor constraintEqualToAnchor:_valueLabel.bottomAnchor constant:PPSpaceXXS],
         [_captionLabel.leadingAnchor constraintEqualToAnchor:_valueLabel.leadingAnchor],
         [_captionLabel.trailingAnchor constraintEqualToAnchor:_valueLabel.trailingAnchor],
-        [_captionLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-PPSpaceMD],
+        [_captionLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-PPSpaceSM],
     ]];
 
     self.isAccessibilityElement = YES;
@@ -521,6 +525,7 @@ static NSLayoutConstraint * PPRemPreferredCardWidth(UIView *card, UIView *contai
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         PPPetsApplySurfaceStyle(self, PPCornerMedium);
+    self.layer.shadowOpacity = 0;
         self.iconWell.backgroundColor = [self.accentColor colorWithAlphaComponent:0.11];
     }
 }
@@ -593,7 +598,8 @@ static UIButton * PPRemBuildActionButton(NSString *title, NSString *symbolName, 
 
     _cardContainer = [UIView new];
     _cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    PPPetsApplySurfaceStyle(_cardContainer, PPCornerHero - PPSpaceXS);
+    PPPetsApplySurfaceStyle(_cardContainer, PPCornerCard);
+    _cardContainer.layer.shadowOpacity = 0;
     [self.contentView addSubview:_cardContainer];
 
     UIView *iconWell = [UIView new];
@@ -615,7 +621,7 @@ static UIButton * PPRemBuildActionButton(NSString *title, NSString *symbolName, 
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _titleLabel.font = PPRemScaledFont([GM boldFontWithSize:PPFontTitle2], UIFontTextStyleTitle2);
     _titleLabel.textColor = AppPrimaryTextClr;
-    _titleLabel.textAlignment = NSTextAlignmentCenter;
+    _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _titleLabel.numberOfLines = 0;
     _titleLabel.adjustsFontForContentSizeCategory = YES;
     _titleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
@@ -625,7 +631,7 @@ static UIButton * PPRemBuildActionButton(NSString *title, NSString *symbolName, 
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _subtitleLabel.font = PPRemScaledFont([GM MidFontWithSize:PPFontBody], UIFontTextStyleBody);
     _subtitleLabel.textColor = AppSecondaryTextClr;
-    _subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    _subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _subtitleLabel.numberOfLines = 0;
     _subtitleLabel.adjustsFontForContentSizeCategory = YES;
     [_cardContainer addSubview:_subtitleLabel];
@@ -652,28 +658,28 @@ static UIButton * PPRemBuildActionButton(NSString *title, NSString *symbolName, 
         [_cardContainer.widthAnchor constraintLessThanOrEqualToConstant:560.0],
         preferredWidth,
 
-        [iconWell.topAnchor constraintEqualToAnchor:_cardContainer.topAnchor constant:PPSpaceXL],
-        [iconWell.centerXAnchor constraintEqualToAnchor:_cardContainer.centerXAnchor],
-        [iconWell.widthAnchor constraintEqualToConstant:68.0],
-        [iconWell.heightAnchor constraintEqualToConstant:68.0],
+        [iconWell.topAnchor constraintEqualToAnchor:_cardContainer.topAnchor constant:PPSpaceBase],
+        [iconWell.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceBase],
+        [iconWell.widthAnchor constraintEqualToConstant:44.0],
+        [iconWell.heightAnchor constraintEqualToConstant:44.0],
 
         [iconView.centerXAnchor constraintEqualToAnchor:iconWell.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconWell.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:30.0],
-        [iconView.heightAnchor constraintEqualToConstant:30.0],
+        [iconView.widthAnchor constraintEqualToConstant:22.0],
+        [iconView.heightAnchor constraintEqualToConstant:22.0],
 
         [_titleLabel.topAnchor constraintEqualToAnchor:iconWell.bottomAnchor constant:PPSpaceBase],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceXL],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceXL],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceBase],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceBase],
 
         [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:PPSpaceSM],
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
 
-        [buttonStack.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:PPSpaceXL],
-        [buttonStack.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceXL],
-        [buttonStack.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceXL],
-        [buttonStack.bottomAnchor constraintEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceXL],
+        [buttonStack.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:PPSpaceBase],
+        [buttonStack.leadingAnchor constraintEqualToAnchor:_cardContainer.leadingAnchor constant:PPSpaceBase],
+        [buttonStack.trailingAnchor constraintEqualToAnchor:_cardContainer.trailingAnchor constant:-PPSpaceBase],
+        [buttonStack.bottomAnchor constraintEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceBase],
     ]];
     return self;
 }
@@ -727,7 +733,8 @@ static UIButton * PPRemBuildActionButton(NSString *title, NSString *symbolName, 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-        PPPetsApplySurfaceStyle(self.cardContainer, PPCornerHero - PPSpaceXS);
+        PPPetsApplySurfaceStyle(self.cardContainer, PPCornerCard);
+        self.cardContainer.layer.shadowOpacity = 0;
     }
 }
 

@@ -31,31 +31,14 @@ struct LensBottomPrompt: View {
             ? max(0, maximumHeight)
             : min(contentHeight, max(0, maximumHeight)))
         .onPreferenceChange(LensPromptHeightKey.self) { contentHeight = $0 }
-        .background {
-            RoundedRectangle(cornerRadius: surfaceRadius, style: .continuous)
-                .fill(store.theme.cameraChrome)
-                .overlay {
-                    RoundedRectangle(cornerRadius: surfaceRadius, style: .continuous)
-                        .fill(store.theme.textOnCamera.opacity(increasedContrast ? 0.085 : 0.055))
-                }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: surfaceRadius, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: surfaceRadius, style: .continuous)
-                .strokeBorder(
-                    store.theme.textOnCamera.opacity(increasedContrast ? 0.42 : 0.16),
-                    lineWidth: increasedContrast ? 1.5 : 1
-                )
-                .allowsHitTesting(false)
-        }
+        .background(store.theme.cameraChrome)
     }
 
-    private var surfaceRadius: CGFloat { isSidePanel ? 28 : 30 }
-    private var contentInset: CGFloat { isSidePanel ? 24 : 22 }
+    private var contentInset: CGFloat { isSidePanel ? 16 : 4 }
 
     private var promptContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: statusSymbol)
                         .font(.system(size: 13, weight: .semibold))
@@ -101,7 +84,7 @@ struct LensBottomPrompt: View {
             recoveryActions
 
             if store.configuration.showsPrivacyNotice {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
                     Rectangle()
                         .fill(store.theme.textOnCamera.opacity(increasedContrast ? 0.32 : 0.12))
                         .frame(height: 1)
@@ -122,7 +105,8 @@ struct LensBottomPrompt: View {
             }
         }
         .multilineTextAlignment(.leading)
-        .padding(contentInset)
+        .padding(.horizontal, contentInset)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 

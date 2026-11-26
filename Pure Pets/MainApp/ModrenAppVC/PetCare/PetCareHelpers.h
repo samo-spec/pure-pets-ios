@@ -135,6 +135,34 @@ PPPetCareHelperInline UIColor *PPPetCareActiveChipTextColor(void)
     return PPPetCareDynamicHex(31.0, 86.0, 94.0, 1.0, 163.0, 220.0, 224.0, 1.0);
 }
 
+PPPetCareHelperInline UIColor *PPPetCareDarkAccentColor(void)
+{
+    // Deeper Pet Care teal for filled controls, marks, and ECG accents:
+    // #1F565E (light, 8.23:1 with white) / #2B6971 (dark, 6.25:1 with white)
+    return PPPetCareDynamicHex(31.0, 86.0, 94.0, 1.0, 43.0, 105.0, 113.0, 1.0);
+}
+
+PPPetCareHelperInline UIColor *PPPetCareDarkAccentTextColor(void)
+{
+    // High-contrast darker Pet Care teal for foreground labels, icons, and ECG pulse:
+    // #1F565E / #18444B (light, >= 7.35:1) / #5CA5AD / #7AC0C6 (dark, >= 5.57:1)
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+            BOOL highContrast = traitCollection.accessibilityContrast == UIAccessibilityContrastHigh;
+            if (dark) {
+                return highContrast
+                    ? [UIColor colorWithRed:122.0/255.0 green:192.0/255.0 blue:198.0/255.0 alpha:1.0]
+                    : [UIColor colorWithRed:92.0/255.0 green:165.0/255.0 blue:173.0/255.0 alpha:1.0];
+            }
+            return highContrast
+                ? [UIColor colorWithRed:24.0/255.0 green:68.0/255.0 blue:75.0/255.0 alpha:1.0]
+                : [UIColor colorWithRed:31.0/255.0 green:86.0/255.0 blue:94.0/255.0 alpha:1.0];
+        }];
+    }
+    return [UIColor colorWithRed:31.0/255.0 green:86.0/255.0 blue:94.0/255.0 alpha:1.0];
+}
+
 PPPetCareHelperInline UIColor *PPPetCareBrandPrimaryColor(void)
 {
     // PurePets-DesignSystem ppPrimary: #CB2654

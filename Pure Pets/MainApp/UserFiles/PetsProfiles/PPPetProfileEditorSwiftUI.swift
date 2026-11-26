@@ -590,83 +590,91 @@ private struct PPPetEditorPortrait: View {
     private var hasImage: Bool { store.selectedImage != nil || store.remoteImage != nil }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Button(action: onPhoto) {
-                VStack(spacing: 8) {
-                    ZStack(alignment: .bottomTrailing) {
-                        Group {
-                            if let image = store.selectedImage ?? store.remoteImage {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                            } else {
-                                ZStack {
-                                    Color.ppSoftRose
-                                    Image(systemName: "pawprint.fill")
-                                        .font(.system(size: 44, weight: .regular))
-                                        .foregroundStyle(Color.ppAccentText)
-                                }
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 16) {
+                    photoButton
+                    identityFields
+                }
+            } else {
+                HStack(alignment: .center, spacing: 16) {
+                    photoButton
+                    identityFields
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ppPetSurface(radius: 22, tint: .ppSurface, elevation: false)
+    }
+
+    private var photoButton: some View {
+        Button(action: onPhoto) {
+            VStack(spacing: 6) {
+                ZStack(alignment: .bottomTrailing) {
+                    Group {
+                        if let image = store.selectedImage ?? store.remoteImage {
+                            Image(uiImage: image).resizable().scaledToFill()
+                        } else {
+                            ZStack {
+                                Color.ppSoftRose
+                                Image(systemName: "pawprint.fill")
+                                    .font(.system(size: 29, weight: .medium))
+                                    .foregroundStyle(Color.ppAccentText)
                             }
                         }
-                        .frame(width: 112, height: 112)
-                        .clipShape(Circle())
-                        .padding(6)
-                        .overlay(Circle().strokeBorder(Color.ppPrimary.opacity(contrast == .increased ? 1 : 0.22), lineWidth: 1))
-
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color.white)
-                            .frame(width: 36, height: 36)
-                            .background(Color.ppPrimary, in: Circle())
-                            .overlay(Circle().strokeBorder(Color.ppBackground, lineWidth: 3))
                     }
-                    Text(PPPetLang(hasImage ? "pet_photo_change" : "pet_editor_add_photo"))
-                        .font(PPPetProfileFont.medium())
-                        .foregroundStyle(Color.ppAccentText)
-                        .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: 84, height: 84)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 32, height: 32)
+                        .background(Color.ppPrimary, in: Circle())
+                        .overlay(Circle().strokeBorder(Color.ppSurface, lineWidth: 2))
                 }
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PPPetProfilePressStyle())
-            .accessibilityLabel(PPPetLang(hasImage ? "pet_photo_change" : "pet_photo_pick"))
-            .accessibilityIdentifier("petEditor.photo")
-
-            VStack(spacing: 8) {
-                Text(PPPetLang("pet_editor_name_label"))
-                    .font(PPPetProfileFont.caption())
-                    .foregroundStyle(Color.ppTextSecondary)
-
-                nameField
-                    .font(PPPetProfileFont.largeTitle())
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .multilineTextAlignment(.center)
-                    .textInputAutocapitalization(.words)
-                    .disableAutocorrection(true)
-                    .focused($focusedField, equals: .name)
-                    .submitLabel(.next)
-                    .onSubmit { focusedField = .age }
-                    .frame(minHeight: 48)
-                    .accessibilityLabel(PPPetLang("pet_field_name"))
-                    .accessibilityHint(PPPetLang("pet_editor_name_hint"))
-                    .accessibilityIdentifier("petEditor.name")
-
-                Capsule()
-                    .fill(focusedField == .name ? Color.ppPrimary : Color.ppSurfaceBorder)
-                    .frame(width: 48, height: 2)
-                    .accessibilityHidden(true)
-
-                Text(PPPetLang("pet_editor_identity_hint"))
+                Text(PPPetLang(hasImage ? "pet_photo_change" : "pet_editor_add_photo"))
                     .font(PPPetProfileFont.footnote())
-                    .foregroundStyle(Color.ppTextSecondary)
+                    .foregroundStyle(Color.ppAccentText)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
-            .id(PPPetEditorField.name)
+            .frame(minWidth: 84, minHeight: 44)
+            .contentShape(Rectangle())
         }
-        .multilineTextAlignment(.center)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
+        .buttonStyle(PPPetProfilePressStyle())
+        .accessibilityLabel(PPPetLang(hasImage ? "pet_photo_change" : "pet_photo_pick"))
+        .accessibilityIdentifier("petEditor.photo")
+    }
+
+    private var identityFields: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(PPPetLang("pet_editor_name_label"))
+                .font(PPPetProfileFont.caption())
+                .foregroundStyle(Color.ppTextSecondary)
+            nameField
+                .font(PPPetProfileFont.title())
+                .foregroundStyle(Color.ppTextPrimary)
+                .multilineTextAlignment(.leading)
+                .textInputAutocapitalization(.words)
+                .disableAutocorrection(true)
+                .focused($focusedField, equals: .name)
+                .submitLabel(.next)
+                .onSubmit { focusedField = .age }
+                .frame(minHeight: 44)
+                .accessibilityLabel(PPPetLang("pet_field_name"))
+                .accessibilityHint(PPPetLang("pet_editor_name_hint"))
+                .accessibilityIdentifier("petEditor.name")
+            Rectangle()
+                .fill(focusedField == .name ? Color.ppPrimary : Color.ppSurfaceBorder)
+                .frame(height: 1)
+                .accessibilityHidden(true)
+            Text(PPPetLang("pet_editor_identity_hint"))
+                .font(PPPetProfileFont.footnote())
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .id(PPPetEditorField.name)
     }
 
     private var nameBinding: Binding<String> {
@@ -920,7 +928,7 @@ struct PPPetProfileEditorScreen: View {
 
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 18) {
                         PPPetEditorPortrait(store: store, focusedField: $focusedField, onPhoto: {
                             focusedField = nil
                             onPhoto()
@@ -1034,7 +1042,7 @@ struct PPPetProfileEditorScreen: View {
             }
             .id(PPPetEditorField.age)
         }
-        .ppPetSurface(radius: 24, tint: .ppSurface, elevation: false)
+        .ppPetSurface(radius: 18, tint: .ppSurface, elevation: false)
     }
 }
 

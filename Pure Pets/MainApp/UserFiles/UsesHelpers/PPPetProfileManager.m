@@ -10,6 +10,7 @@
 #import "PPPetProfile.h"
 #import "PPPetReminder.h"
 #import "PPAuditLogger.h"
+#import <math.h>
 
 @import FirebaseAuth;
 @import FirebaseFirestore;
@@ -204,49 +205,73 @@ NSNotificationName const PPPetProfileManagerDidChangeNotification =
 
 - (void)uploadPetImage:(UIImage *)image petID:(NSString *)petID completion:(void (^)(NSString * _Nullable imageURL, NSError * _Nullable error))completion
 {
-    NSString *uid = [self pp_resolvedUID];
-    if (uid.length == 0 || petID.length == 0 || !image) {
-        NSLog(@"[PPPetProfileManager] ❌ Cannot upload pet image: missing uid=%@ petID=%@ image=%@", uid, petID, image);
-        if (completion) completion(nil, [NSError errorWithDomain:@"PPPetProfileManager"
-                                                           code:400
-                                                       userInfo:@{NSLocalizedDescriptionKey: @"Missing pet image data"}]);
+    NSString *uid = [FIRAuth auth].currentUser.uid;
+    if (uid.length == 0 || petID.length == 0 || !image || [petID containsString:@"/"]) {
+        if (completion) completion(nil, [NSError errorWithDomain:@"PPPetProfileManager" code:400 userInfo:nil]);
         return;
     }
 
-    NSData *data = [GM compressImageToMaxSize:image maxSizeKB:600] ?: UIImageJPEGRepresentation(image, 0.82);
-    if (!data || data.length == 0) {
-        data = UIImagePNGRepresentation(image);
-    }
-    if (!data || data.length == 0) {
-        NSLog(@"[PPPetProfileManager] ❌ Failed to encode image for petID=%@", petID);
-        if (completion) completion(nil, [NSError errorWithDomain:@"PPPetProfileManager"
-                                                           code:422
-                                                       userInfo:@{NSLocalizedDescriptionKey: @"Failed to encode image data"}]);
-        return;
-    }
-
-    FIRStorageReference *ref = [[[[[FIRStorage storage] reference] child:@"users"] child:uid]
-                                child:[NSString stringWithFormat:@"pets/%@/avatar.jpg", petID]];
-
-    FIRStorageMetadata *meta = [FIRStorageMetadata new];
-    meta.contentType = @"image/jpeg";
-
-    NSLog(@"[PPPetProfileManager] 📤 Uploading pet image to: %@", ref.fullPath);
-    [ref putData:data metadata:meta completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"[PPPetProfileManager] ❌ putData error at %@: %@", ref.fullPath, error);
-            if (completion) completion(nil, error);
+    // Encode a bounded, correctly oriented JPEG away from the main thread.
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        CGFloat longest = MAX(image.size.width, image.size.height);
+        if (!isfinite(longest) || longest <= 0 || image.size.width <= 0 || image.size.height <= 0) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(nil, [NSError errorWithDomain:@"PPPetProfileManager" code:422 userInfo:nil]);
+            });
             return;
         }
-        [ref downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable error) {
-            if (error) {
-                NSLog(@"[PPPetProfileManager] ❌ downloadURL error at %@: %@", ref.fullPath, error);
-            } else {
-                NSLog(@"[PPPetProfileManager] ✅ Uploaded pet image at %@ -> %@", ref.fullPath, URL.absoluteString);
-            }
-            if (completion) completion(URL.absoluteString, error);
+        CGFloat ratio = MIN(1.0, 1600.0 / longest);
+        CGSize size = CGSizeMake(MAX(1, floor(image.size.width * ratio)), MAX(1, floor(image.size.height * ratio)));
+        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+        format.scale = 1;
+        format.opaque = YES;
+        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size format:format];
+        UIImage *normalized = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+            [UIColor.whiteColor setFill];
+            UIRectFill(CGRectMake(0, 0, size.width, size.height));
+            [image drawInRect:CGRectMake(0, 0, size.width, size.height)];
         }];
-    }];
+        NSData *data = [GM compressImageToMaxSize:normalized maxSizeKB:600];
+        if (!data.length || data.length > 10 * 1024 * 1024) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(nil, [NSError errorWithDomain:@"PPPetProfileManager" code:422 userInfo:nil]);
+            });
+            return;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (![[FIRAuth auth].currentUser.uid isEqualToString:uid]) {
+                if (completion) completion(nil, [NSError errorWithDomain:@"PPPetProfileManager" code:401 userInfo:nil]);
+                return;
+            }
+            FIRStorageReference *ref = [[[[[FIRStorage storage] reference] child:@"users"] child:uid]
+                                        child:[NSString stringWithFormat:@"pets/%@/avatar.jpg", petID]];
+            FIRStorageMetadata *meta = [FIRStorageMetadata new];
+            meta.contentType = @"image/jpeg";
+            meta.cacheControl = @"private, max-age=0, must-revalidate";
+
+            [ref putData:data metadata:meta completion:^(FIRStorageMetadata *metadata, NSError *error) {
+                if (error || ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) {
+                    if (completion) completion(nil, error ?: [NSError errorWithDomain:@"PPPetProfileManager" code:401 userInfo:nil]);
+                    return;
+                }
+                [ref downloadURLWithCompletion:^(NSURL *URL, NSError *urlError) {
+                    if (urlError || !URL || ![[FIRAuth auth].currentUser.uid isEqualToString:uid]) {
+                        if (completion) completion(nil, urlError ?: [NSError errorWithDomain:@"PPPetProfileManager" code:422 userInfo:nil]);
+                        return;
+                    }
+                    // Keep existing Firebase alt/token parameters intact; each replacement
+                    // receives its own URL cache key across the profile, home and editor.
+                    NSURLComponents *components = [NSURLComponents componentsWithURL:URL resolvingAgainstBaseURL:NO];
+                    NSMutableArray<NSURLQueryItem *> *items = [components.queryItems mutableCopy] ?: [NSMutableArray array];
+                    [items addObject:[NSURLQueryItem queryItemWithName:@"ppv" value:NSUUID.UUID.UUIDString]];
+                    components.queryItems = items;
+                    NSString *versionedURL = components.URL.absoluteString;
+                    if (completion) completion(versionedURL, versionedURL.length ? nil : [NSError errorWithDomain:@"PPPetProfileManager" code:422 userInfo:nil]);
+                }];
+            }];
+        });
+    });
 }
 
 // MARK: - Pet Reminders
